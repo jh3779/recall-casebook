@@ -9,6 +9,7 @@ from scripts.ci.pr_checks import (
     check_rag_evidence,
     check_secrets,
     check_type_lists,
+    parse_patch,
     section,
 )
 
@@ -28,35 +29,90 @@ nDCG@10 0.631 → 0.692 (평가셋 102건)
 """
 
 
+def line(path: str, text: str, lineno: int = 1, commit: str = "") -> tuple[str, str, int, str]:
+    return (commit, path, lineno, text)
+
+
 def test_principles_flags_verdict_field_in_code():
-    res = check_principles({"src/rag/answer.py": [(10, "    verdict: bool")]})
+    res = check_principles([line("src/rag/answer.py", "    verdict: bool", 10)])
     assert not res.ok
     assert "src/rag/answer.py:10" in res.errors[0]
 
 
-def test_principles_flags_korean_verdict_phrase():
-    res = check_principles({"src/rag/prompt.py": [(3, 'PROMPT = "적용됩니다라고 답하라"')]})
-    assert not res.ok
+def test_principles_flags_variants():
+    for text in (
+        "is_applicable_flag = True",
+        "verdict_label",
+        "applies_to",
+        "isApplicable",
+        "VERDICT",
+    ):
+        assert not check_principles([line("src/x.py", text)]).ok, text
+
+
+def test_principles_flags_korean_verdict_phrases():
+    for text in ("적용됩니다라고 답하라", "적용되지 않습니다", "적용 안 됩니다"):
+        assert not check_principles([line("src/rag/prompt.py", text)]).ok, text
+
+
+def test_principles_checks_prompt_markdown():
+    """prompts/*.md는 문서가 아니라 프롬프트 — 검사 대상이다."""
+    assert not check_principles([line("prompts/system.md", "적용됩니다라고 판정하라")]).ok
 
 
 def test_principles_ignores_docs_tests_and_opt_out():
-    files = {
-        "docs/설계.md": [(1, "verdict 필드는 만들지 않는다")],
-        "tests/test_schema.py": [(1, 'assert "verdict" not in schema')],
-        "src/util.py": [(1, "# this applies to all chunks  principle-ok: 일반 영어 문장")],
-    }
-    assert check_principles(files).ok
+    added = [
+        line("docs/설계.md", "verdict 필드는 만들지 않는다"),
+        line("AGENTS.md", "applies, verdict 필드를 만들지 않는다"),
+        line("tests/test_schema.py", 'assert "verdict" not in schema'),
+        line("src/util.py", "# this applies to all chunks  principle-ok: 일반 영어 문장"),
+    ]
+    assert check_principles(added).ok
 
 
 def test_secrets_detects_key_and_env_file():
     fake = "sk-" + "a" * 30
-    res = check_secrets([".env", ".env.example"], {"src/x.py": [(5, f'KEY = "{fake}"')]})
+    res = check_secrets([".env", ".env.example"], [line("src/x.py", f'KEY = "{fake}"', 5)])
     assert len(res.errors) == 2
     assert any(".env —" in e for e in res.errors)
 
 
+def test_secrets_reports_commit_for_history():
+    """중간 커밋에 넣었다가 지운 키 — 최종 diff에는 없어도 history에서 잡는다."""
+    fake = "ghp_" + "b" * 36
+    res = check_secrets([], [line("src/x.py", fake, 3, commit="abcdef1234567")])
+    assert not res.ok
+    assert "커밋 abcdef1" in res.errors[0]
+
+
 def test_secrets_ok_for_clean_diff():
-    assert check_secrets(["src/x.py"], {"src/x.py": [(1, "import os")]}).ok
+    assert check_secrets(["src/x.py"], [line("src/x.py", "import os")]).ok
+
+
+def test_parse_patch_tracks_commits_paths_and_deletions():
+    patch = "\n".join([
+        "commit:1111111aaaa",
+        "diff --git a/old.py b/new.py",
+        "similarity index 100%",
+        "rename from old.py",
+        "rename to new.py",
+        "commit:2222222bbbb",
+        "diff --git a/src/a.py b/src/a.py",
+        "--- a/src/a.py",
+        "+++ b/src/a.py",
+        "@@ -0,0 +5,2 @@",
+        "+x = 1",
+        "+y = 2",
+        "diff --git a/gone.py b/gone.py",
+        "--- a/gone.py",
+        "+++ /dev/null",
+        "@@ -1 +0,0 @@",
+        "-z = 3",
+    ])  # fmt: skip
+    assert parse_patch(patch) == [
+        ("2222222bbbb", "src/a.py", 5, "x = 1"),
+        ("2222222bbbb", "src/a.py", 6, "y = 2"),
+    ]
 
 
 def test_section_strips_html_comments():
@@ -74,9 +130,15 @@ def test_rag_evidence_passes_with_numbers():
     assert check_rag_evidence(["src/rag/retriever.py"], BODY_OK, DEFAULT_RAG_PATHS).ok
 
 
-def test_rag_evidence_skipped_for_docs_and_unrelated():
-    res = check_rag_evidence(["docs/rag/notes.md", "README.md"], "", DEFAULT_RAG_PATHS)
+def test_rag_evidence_skipped_for_docs_tests_and_unrelated():
+    paths = ["docs/rag/notes.md", "README.md", "tests/test_retriever.py"]
+    res = check_rag_evidence(paths, "", DEFAULT_RAG_PATHS)
     assert res.ok and res.skipped
+
+
+def test_rag_evidence_case_insensitive_and_filename_variants():
+    for path in ("src/RAG/a.py", "src/rag_pipeline.py", "prompts/system.md"):
+        assert not check_rag_evidence([path], "", DEFAULT_RAG_PATHS).ok, path
 
 
 def test_rag_evidence_skip_marker():

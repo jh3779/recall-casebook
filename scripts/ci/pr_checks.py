@@ -2,7 +2,7 @@
 
 검사 (실패 시 exit 1):
   principles   G-07  코드에 판정 필드·판정 문구가 새로 들어왔는가
-  secrets      G-07  추가된 줄에 비밀값 패턴·.env 파일이 있는가
+  secrets      G-07  PR의 커밋들이 추가한 줄에 비밀값 패턴·.env 파일이 있는가 (중간 커밋 포함)
   rag-evidence G-08  RAG 코드를 바꿨는데 PR 본문 "검증 방법"에 before → after 수치가 없는가
   pr-body      -     PR 본문 필수 항목(변경 요약·변경 유형·관련 이슈)이 비었는가
   type-lists   -     브랜치·커밋 type 목록이 여러 파일에서 서로 같은가
@@ -27,9 +27,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 # --- 서비스 원칙 (AGENTS.md 2절) -------------------------------------------------
-PRINCIPLE_PATTERN = re.compile(r"\b(applies|verdict|is_applicable)\b|적용됩니다|적용되지 않습니다")
-# 원칙을 "설명"하는 문서·테스트·CI 자체는 검사하지 않는다
-PRINCIPLE_EXEMPT = ("*.md", "docs/*", "tests/*", "scripts/ci/*", ".claude/*", ".github/*")
+# 단어 경계 없이·대소문자 무시: applies_to, verdict_label, isApplicable, VERDICT 등 변형까지 잡는다
+PRINCIPLE_PATTERN = re.compile(
+    r"applies|verdict|is_?applicable|적용\s*(됩니다|되지\s*않습니다|안\s*됩니다)", re.IGNORECASE
+)
+# 원칙을 "설명"하는 문서·테스트·CI 자체는 검사하지 않는다.
+# .md 전체를 빼면 prompts/*.md 같은 프롬프트 파일이 빠지므로, docs/와 루트 문서만 뺀다.
+DOC_EXEMPT = ("docs/*", "tests/*", "scripts/ci/*", ".claude/*", ".github/*")
 # 정당한 사용(예: 영어 일반 문장)은 그 줄에 표시를 달아 통과시킨다
 PRINCIPLE_OPT_OUT = "principle-ok:"
 
@@ -44,7 +48,9 @@ SECRET_PATTERNS = {
 }
 
 # --- RAG 품질 근거 ----------------------------------------------------------------
-DEFAULT_RAG_PATHS = ["*rag/*", "*retriev*", "*prompt*", "*chunk*", "*embed*", "*eval/*"]
+DEFAULT_RAG_PATHS = [
+    "*rag/*", "*rag_*", "*_rag.*", "*retriev*", "*prompt*", "*chunk*", "*embed*", "*eval/*", "*eval_*",
+]  # fmt: skip
 EVIDENCE_PATTERN = re.compile(r"\d.*(→|->).*\d")
 RAG_SKIP_MARKER = re.compile(r"\[skip-rag-evidence:\s*\S.*\]")
 
@@ -70,7 +76,8 @@ class Result:
 def git(*args: str) -> str:
     # quotepath=false: 한글 파일명(docs/기획.md 등)을 이스케이프하지 않고 그대로 받는다
     cmd = ["git", "-c", "core.quotepath=false", *args]
-    return subprocess.run(cmd, cwd=ROOT, check=True, capture_output=True, text=True).stdout
+    out = subprocess.run(cmd, cwd=ROOT, check=True, capture_output=True)
+    return out.stdout.decode("utf-8", errors="replace")  # 비-UTF8 텍스트 diff에서 멈추지 않게
 
 
 def changed_files(base: str, head: str) -> list[str]:
@@ -78,32 +85,54 @@ def changed_files(base: str, head: str) -> list[str]:
     return [line for line in out.splitlines() if line]
 
 
-def added_lines(base: str, head: str, path: str) -> list[tuple[int, str]]:
-    """(새 파일 기준 줄 번호, 내용) 목록."""
-    diff = git("diff", "--unified=0", f"{base}...{head}", "--", path)
-    result: list[tuple[int, str]] = []
-    lineno = 0
-    for line in diff.splitlines():
-        if line.startswith("@@"):
+Added = list[tuple[str, str, int, str]]  # (커밋 또는 "", 경로, 새 파일 기준 줄 번호, 내용)
+
+
+def parse_patch(patch: str) -> Added:
+    """git diff/log -p --unified=0 출력에서 추가된 줄만 뽑는다. `commit:<sha>` 줄로 커밋을 구분한다."""
+    result: Added = []
+    commit, path, lineno = "", None, 0
+    for line in patch.splitlines():
+        if line.startswith("commit:"):
+            commit, path = line[len("commit:") :].strip(), None
+        elif line.startswith("+++ "):
+            target = line[4:]
+            path = target[2:] if target.startswith("b/") else None  # /dev/null = 삭제
+        elif line.startswith("@@"):
             m = re.search(r"\+(\d+)", line)
             lineno = int(m.group(1)) if m else 0
-        elif line.startswith("+") and not line.startswith("+++"):
-            result.append((lineno, line[1:]))
+        elif line.startswith("+") and path is not None:
+            result.append((commit, path, lineno, line[1:]))
             lineno += 1
     return result
 
 
+def added_lines(base: str, head: str) -> Added:
+    """PR 최종 diff의 추가 줄. -M: 이름만 바꾼 파일을 통째로 '추가'로 보지 않는다."""
+    return parse_patch(git("diff", "-M", "--unified=0", "--diff-filter=ACMR", f"{base}...{head}"))
+
+
+def history_added_lines(base: str, head: str) -> Added:
+    """PR의 커밋 하나하나가 추가한 줄 — 중간에 넣었다 지운 비밀값도 잡는다."""
+    return parse_patch(
+        git("log", "-p", "-M", "--unified=0", "--format=commit:%H", f"{base}..{head}")
+    )
+
+
 def matches(path: str, patterns: list[str] | tuple[str, ...]) -> bool:
-    return any(fnmatch.fnmatch(path, p) for p in patterns)
+    return any(fnmatch.fnmatch(path.lower(), p.lower()) for p in patterns)
+
+
+def is_doc(path: str) -> bool:
+    """원칙을 설명하는 문서·테스트·CI 자체 — 루트의 *.md와 DOC_EXEMPT 경로."""
+    return ("/" not in path and path.endswith(".md")) or matches(path, DOC_EXEMPT)
 
 
 # --- 검사 -------------------------------------------------------------------------
-def check_principles(files: dict[str, list[tuple[int, str]]]) -> Result:
+def check_principles(added: Added) -> Result:
     r = Result("principles")
-    for path, lines in files.items():
-        if matches(path, PRINCIPLE_EXEMPT):
-            continue
-        for lineno, text in lines:
+    for _, path, lineno, text in added:
+        if not is_doc(path):
             if PRINCIPLE_PATTERN.search(text) and PRINCIPLE_OPT_OUT not in text:
                 r.errors.append(
                     f"{path}:{lineno} 판정 필드·판정 문구 — AGENTS.md 2절 위반 "
@@ -112,19 +141,20 @@ def check_principles(files: dict[str, list[tuple[int, str]]]) -> Result:
     return r
 
 
-def check_secrets(paths: list[str], files: dict[str, list[tuple[int, str]]]) -> Result:
+def check_secrets(paths: list[str], history: Added) -> Result:
+    """paths: 최종 diff의 파일, history: 커밋별 추가 줄 (history_added_lines)."""
     r = Result("secrets")
-    for path in paths:
+    for path in sorted(set(paths) | {p for _, p, _, _ in history}):
         name = Path(path).name
         if (name == ".env" or name.startswith(".env.")) and name != ".env.example":
-            r.errors.append(f"{path} — .env 파일은 커밋하지 않는다")
-    for path, lines in files.items():
-        for lineno, text in lines:
-            for label, pattern in SECRET_PATTERNS.items():
-                if pattern.search(text):
-                    r.errors.append(
-                        f"{path}:{lineno} {label}로 보이는 값 — 즉시 키를 폐기하고 제거"
-                    )
+            r.errors.append(f"{path} — .env 파일은 커밋하지 않는다 (이력에 남았으면 키 폐기)")
+    for commit, path, lineno, text in history:
+        for label, pattern in SECRET_PATTERNS.items():
+            if pattern.search(text):
+                where = f" (커밋 {commit[:7]})" if commit else ""
+                r.errors.append(
+                    f"{path}:{lineno} {label}로 보이는 값{where} — 지워도 이력에 남는다, 즉시 키 폐기"
+                )
     return r
 
 
@@ -142,7 +172,7 @@ def rag_paths() -> list[str]:
 
 def check_rag_evidence(paths: list[str], body: str, patterns: list[str]) -> Result:
     r = Result("rag-evidence")
-    touched = [p for p in paths if matches(p, patterns) and not p.endswith(".md")]
+    touched = [p for p in paths if matches(p, patterns) and not is_doc(p)]
     if not touched:
         r.skipped = "RAG 코드 변경 없음"
         return r
@@ -209,7 +239,7 @@ def check_md_links() -> Result:
         path = ROOT / rel
         in_code = False
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-            if line.lstrip().startswith("```"):
+            if line.lstrip().startswith(("```", "~~~")):
                 in_code = not in_code
                 continue
             if in_code:
@@ -218,7 +248,11 @@ def check_md_links() -> Result:
                 if re.match(r"^[a-z]+:", target) or target.startswith("#"):
                     continue
                 target = target.split("#", 1)[0]
-                if target and not (path.parent / target).exists():
+                # /로 시작하면 저장소 루트 기준 (GitHub 렌더링 방식)
+                resolved = (
+                    ROOT / target.lstrip("/") if target.startswith("/") else path.parent / target
+                )
+                if target and not resolved.exists():
                     r.errors.append(f"{rel}:{lineno} 깨진 링크 → {target}")
     return r
 
@@ -262,8 +296,10 @@ def main() -> int:
 
     if base and head:
         paths = changed_files(base, head)
-        files = {p: added_lines(base, head, p) for p in paths}
-        results += [check_principles(files), check_secrets(paths, files)]
+        results += [
+            check_principles(added_lines(base, head)),
+            check_secrets(paths, history_added_lines(base, head)),
+        ]
         if body is not None:
             results.append(check_rag_evidence(paths, body, rag_paths()))
     else:

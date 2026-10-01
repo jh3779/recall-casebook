@@ -115,7 +115,11 @@ gh pr comment $N --body-file <결과.md>
 gh pr checks $N --watch   # 게시 후 merge-gate가 success로 바뀌는지 확인
 ```
 
-`merge-gate`가 success가 아니면 Actions 요약을 보고 원인(리뷰 SHA 불일치, 미해결 스레드 등)을 해결한다.
+`merge-gate`가 success가 아니면 Actions 요약을 보고 원인(리뷰 SHA 불일치, 미해결 스레드, 변경 요청 등)을 해결한다. 코멘트를 게시했는데 `merge-gate`가 다시 돌지 않으면(이 워크플로를 고치는 PR이거나 main에 아직 없을 때) 재판정 리뷰를 제출한다:
+
+```bash
+gh pr review $N --comment -b "merge-gate 재판정"
+```
 
 - 전부 ✅ → 코멘트 마지막 줄에 병합할 사람을 `@태그`하고 "병합 전 검증 확인 요청드립니다".
 - 하나라도 ❌ → 제목을 `## ❌ 병합 전 검증 결과`로, 실패 게이트·원인·제안 수정을 적는다. 병합하지 않는다.

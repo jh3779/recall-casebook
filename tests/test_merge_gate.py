@@ -49,14 +49,50 @@ def test_unresolved_threads_fail():
     assert "2개" in gate.description
 
 
+def gh_review(
+    sha: str, state: str = "COMMENTED", body: str = "지적 1건", author: str = "bot"
+) -> dict:
+    return {"commit": sha, "state": state, "body": body, "author": author}
+
+
 def test_github_review_on_head_counts():
-    gate = evaluate(HEAD, [{"commit": HEAD, "author": "bot"}], [result("✅", HEAD)], 0)
+    gate = evaluate(HEAD, [gh_review(HEAD)], [result("✅", HEAD)], 0)
     assert gate.state == "success"
 
 
 def test_github_review_on_old_commit_does_not_count():
-    gate = evaluate(HEAD, [{"commit": OLD, "author": "bot"}], [result("✅", HEAD)], 0)
+    gate = evaluate(HEAD, [gh_review(OLD)], [result("✅", HEAD)], 0)
     assert gate.state == "pending"
+
+
+def test_empty_comment_review_from_thread_reply_does_not_count():
+    gate = evaluate(HEAD, [gh_review(HEAD, body="")], [result("✅", HEAD)], 0)
+    assert gate.state == "pending"
+
+
+def test_retrigger_review_does_not_count():
+    gate = evaluate(HEAD, [gh_review(HEAD, body="merge-gate 재판정")], [result("✅", HEAD)], 0)
+    assert gate.state == "pending"
+
+
+def test_dismissed_review_does_not_count():
+    gate = evaluate(HEAD, [gh_review(HEAD, state="DISMISSED")], [result("✅", HEAD)], 0)
+    assert gate.state == "pending"
+
+
+def test_changes_requested_fails_even_with_ok_result():
+    reviews = [gh_review(HEAD, state="CHANGES_REQUESTED", author="r1")]
+    gate = evaluate(HEAD, reviews, [review(HEAD), result("✅", HEAD)], 0)
+    assert gate.state == "failure"
+    assert "r1" in gate.description
+
+
+def test_comment_after_changes_requested_keeps_request_but_approval_clears_it():
+    cr = gh_review(HEAD, state="CHANGES_REQUESTED", author="r1")
+    comments = [review(HEAD), result("✅", HEAD)]
+    assert evaluate(HEAD, [cr, gh_review(HEAD, author="r1")], comments, 0).state == "failure"
+    approved = gh_review(HEAD, state="APPROVED", author="r1")
+    assert evaluate(HEAD, [cr, approved], comments, 0).state == "success"
 
 
 def test_result_comment_is_not_a_review():

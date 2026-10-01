@@ -4,8 +4,9 @@ name: merge-gate
 # 판정 로직: scripts/ci/merge_gate.py (테스트: tests/test_merge_gate.py)
 #
 # ⚠️ issue_comment·workflow_dispatch로 실행될 때는 main에 있는 이 파일과 스크립트가 쓰인다(GitHub 동작).
-#    리뷰 스레드를 resolve하는 것은 Actions 이벤트가 없어서, resolve한 뒤에는 코멘트를 하나 남기거나
-#    Actions 탭에서 이 워크플로를 PR 번호로 수동 실행해 재평가한다.
+#    리뷰 스레드 resolve는 Actions 트리거 이벤트가 없다(pull_request_review_thread는 webhook 전용).
+#    재판정이 필요하면 `gh pr review <N> --comment -b "merge-gate 재판정"` — 리뷰는 PR 쪽 워크플로로 돈다.
+#    (docs/MERGE_PROTOCOL.md 2-1절)
 
 on:
   pull_request:

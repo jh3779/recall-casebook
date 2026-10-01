@@ -2,7 +2,9 @@
 
 판정 (PR의 현재 head 커밋 기준):
   G-02·G-03  자동 리뷰가 현재 head 기준으로 있는가
-             - GitHub 리뷰: review.commit.oid == head
+             - GitHub 리뷰: review.commit.oid == head, 상태 COMMENTED/APPROVED, 본문 있음
+               (인라인 답글이 만드는 빈 COMMENTED 리뷰·DISMISSED·재판정 트리거 리뷰는 세지 않는다)
+             - 현재 head에 CHANGES_REQUESTED가 남아 있으면 failure
              - 코멘트형 리뷰: 첫 줄 `## 🤖 자동 리뷰 (head <SHA>)`의 SHA가 head와 일치
   G-05       미해결 리뷰 스레드가 0개인가
   결과 코멘트 현재 head에 대한 가장 최근 `## ✅/❌ 병합 전 검증 결과 (head <SHA>)`가 ✅인가
@@ -27,6 +29,8 @@ from dataclasses import dataclass
 CONTEXT = "merge-gate"
 REVIEW_MARKER = re.compile(r"^##\s*🤖\s*자동 리뷰\s*\(head\s*`?([0-9a-f]{7,40})`?\)")
 RESULT_MARKER = re.compile(r"^##\s*(✅|❌)\s*병합 전 검증 결과\s*\(head\s*`?([0-9a-f]{7,40})`?\)")
+# 재판정만을 위해 제출하는 리뷰 (MERGE_PROTOCOL 2-1절) — 리뷰로 세지 않는다
+RETRIGGER_MARKER = "merge-gate 재판정"
 
 
 @dataclass
@@ -45,9 +49,21 @@ def same_commit(short: str, head: str) -> bool:
 
 
 def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: int) -> Gate:
-    """reviews: [{"commit": sha}], comments: [{"body": str}] (시간순)."""
+    """reviews: [{"commit", "state", "body", "author"}], comments: [{"body", "author"}] (둘 다 시간순)."""
+    on_head = [r for r in reviews if r.get("commit") == head]
+    latest_state: dict[str, str] = {}  # 리뷰어별 현재 head 위의 마지막 상태
+    for r in on_head:
+        if r.get("state") in ("APPROVED", "CHANGES_REQUESTED", "COMMENTED", "DISMISSED"):
+            if r.get("state") != "COMMENTED" or r.get("author") not in latest_state:
+                latest_state[r.get("author") or "?"] = r["state"]
+    changes_requested = sorted(a for a, st in latest_state.items() if st == "CHANGES_REQUESTED")
+
     review_sources = [
-        f"GitHub 리뷰 ({r.get('author', '?')})" for r in reviews if r.get("commit") == head
+        f"GitHub 리뷰 ({r.get('author', '?')})"
+        for r in on_head
+        if r.get("state") in ("COMMENTED", "APPROVED")
+        and (r.get("body") or "").strip()
+        and not first_line(r.get("body") or "").startswith(RETRIGGER_MARKER)
     ]
     for c in comments:
         m = REVIEW_MARKER.match(first_line(c["body"]))
@@ -66,8 +82,13 @@ def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: i
         f"- 자동 리뷰 (G-02·G-03): {', '.join(review_sources) if review_sources else '없음'}",
         f"- 미해결 리뷰 스레드 (G-05): {unresolved}개",
         f"- 병합 전 검증 결과 코멘트: {result or '없음'}",
+        f"- 변경 요청(CHANGES_REQUESTED): {', '.join(changes_requested) or '없음'}",
     ]
 
+    if changes_requested:
+        return Gate(
+            "failure", f"{short}: 변경 요청 리뷰 남아 있음 ({', '.join(changes_requested)})", lines
+        )
     if result == "❌":
         return Gate("failure", f"{short}: 병합 전 검증 결과 ❌", lines)
     if unresolved:
@@ -96,6 +117,8 @@ def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int
         {
             "commit": (r.get("commit") or {}).get("oid"),
             "author": (r.get("author") or {}).get("login"),
+            "state": r.get("state"),
+            "body": r.get("body") or "",
         }
         for r in pr["reviews"]
     ]
