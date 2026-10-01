@@ -7,3 +7,7 @@
 - 2026-10-01: pre-commit → lefthook 교체(DEC-002), 참고 레포 기반 `docs/기획.md` 7단계 초안 작성(DEC-003)
 - 2026-10-01: uv 개발환경(DEC-004)·`docs/개발환경.md`·CI `ci.yml`, 에이전트 행동강령 AGENTS.md/CLAUDE.md/.claude/settings.json(DEC-005)
 - 2026-10-01: 전체 셋팅 안내서 `docs/시작하기.md` 작성, README·AGENTS.md에서 연결
+- 2026-10-01: GitHub private 저장소 생성·첫 push(CI green), squash 전용·브랜치 자동 삭제, 룰셋 `main 보호` 적용(DEC-006)
+- 2026-10-01: 병합 전 검증 프로토콜(MERGE_PROTOCOL.md·pre-merge-check 스킬) 도입, `gh pr merge` deny→ask (DEC-007)
+- 2026-10-01: CI 상세 검증 추가 — `pr-verify`·`merge-gate` 워크플로 + scripts/ci + 테스트 23개, 룰셋 필수 체크 5개로 (DEC-008)
+- 2026-10-01: Codex 리뷰(놓쳤던 2건) 반영 — merge-gate main 전용 실행·2단계 도입(DEC-009), Codex 형식 인식·결과 뒤 리뷰 무효화, pr-verify 근거 강화, 설정 파일 분리

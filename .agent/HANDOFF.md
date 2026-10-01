@@ -8,7 +8,7 @@ _갱신: 2026-10-01_
 
 ## Current Phase
 
-P0 — 저장소 셋팅 완료, 기획 초안 작성 완료(팀 검토 전). 아직 첫 커밋 없음.
+P0 — 저장소 셋팅 완료·GitHub 업로드 완료(`jh3779/LG_CNS_RAG_main`, private), 기획 초안은 팀 검토 전.
 
 ## Completed
 
@@ -19,10 +19,19 @@ P0 — 저장소 셋팅 완료, 기획 초안 작성 완료(팀 검토 전). 아
 - 전체 셋팅 안내서 `docs/시작하기.md`: 도구 설치 → 저장소 받기 → 작업 흐름 → 자동 검사 → 에이전트 → 관리자 최초 설정(9절, 첫 push·병합 방식·룰셋·초대 명령 포함).
 - `docs/기획.md`: 참고 레포 기반으로 7단계 채움 (DEC-003). 2번 상용 서비스 조사와 4번 일부 "왜 골랐나"는 "아직 없음".
 
+## Repo Status (2026-10-01)
+
+- https://github.com/jh3779/LG_CNS_RAG_main (private). 첫 커밋 `edefe82` main push → CI `ci.yml` 전 단계 success.
+- 병합: squash만, 커밋 메시지 = PR 제목, 머지 후 브랜치 자동 삭제.
+- 룰셋 `main 보호`(id 24290303): 삭제·force push 차단, PR 필수(승인 0명, squash만), 필수 체크 4개(`lint-and-test`·`check-branch-name`·`validate-pr-title`·`pr-verify`) (DEC-006·008).
+- CI 필수 체크 4개: 기존 3개 + `pr-verify`(PR 상세 검증) (DEC-008). `merge-gate`는 main 코드로만 돌도록 바꾸면서 **2단계 도입 중** — PR #1 병합 후 다음 PR에서 상태 게시를 확인하고 필수 체크에 다시 넣는다 (DEC-009).
+- 리뷰봇(Codex)은 `jh3779` 계정으로 `### 🤖 자동 리뷰 (Codex) — 커밋 <SHA>` 코멘트를 push 몇 분 뒤에 게시한다. 병합 전 검증 때 반드시 확인.
+- 필수 리뷰어 없음 → 대신 병합 전 검증 프로토콜 `docs/MERGE_PROTOCOL.md` + 스킬 `.claude/skills/pre-merge-check/` (DEC-007). `gh pr merge`는 settings에서 ask.
+- 미설정: 팀원 초대·CODEOWNERS, `DISCORD_EVENT_WEBHOOK` 시크릿.
+
 ## Next Steps
 
 1. 팀이 `docs/기획.md` 검토 — 특히 참고 레포와의 관계(이어서/새로/범위 변경) 결정
-2. GitHub 저장소 생성·첫 push·병합 방식·main 보호 — 명령은 `docs/시작하기.md` 9절 (첫 push만 `LEFTHOOK=0`)
 4. 팀원 collaborator 초대 + `.github/CODEOWNERS` 채우기
 5. 기술 스택 확정 → `uv add`로 런타임 의존성 추가 (후보 목록: `docs/개발환경.md` 4절)
 6. Discord 봇 연동이 필요하면 저장소 시크릿 `DISCORD_EVENT_WEBHOOK` 등록
