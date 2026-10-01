@@ -56,11 +56,14 @@ def same_commit(short: str, head: str) -> bool:
 
 
 def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: int) -> Gate:
-    """reviews: [{"commit", "state", "body", "author", "at"}], comments: [{"body", "author", "at"}].
+    """reviews: [{"commit", "state", "body", "author", "at"}],
+    comments: [{"body", "author", "at", "updated"}] — "at"은 작성 시각, "updated"는 마지막 수정 시각.
 
-    둘 다 시간순이고, "at"은 ISO 8601 시각(초 단위).
+    둘 다 시간순이고 시각은 ISO 8601(초 단위).
     선후 판정: 코멘트끼리는 목록 순서(같은 초도 구분), GitHub 리뷰와 결과 코멘트는 시각으로 비교하되
     같은 초면 보수적으로 "결과 이후"로 본다.
+    수정: 결과 뒤에 **수정된** 리뷰 코멘트는 새 리뷰로 본다. **수정된** 결과 코멘트는 세지 않는다
+    (❌를 ✅로 고쳐 쓰는 것을 막는다 — 결과는 새 코멘트로 다시 올린다).
     """
     on_head = [r for r in reviews if r.get("commit") == head]
     # 리뷰어별 마지막 상태는 커밋과 무관하게 전체 이력으로 본다 — push해도 변경 요청은 풀리지 않는다
@@ -79,18 +82,28 @@ def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: i
         and (r.get("body") or "").strip()
         and not first_line(r.get("body") or "").startswith(RETRIGGER_MARKER)
     ]
-    comment_reviews: list[tuple[int, str]] = []  # (코멘트 목록 순서, 출처)
+    comment_reviews: list[tuple[int, str, str]] = []  # (목록 순서, 수정 시각 또는 "", 출처)
+    edited_results = 0
     result, result_idx, result_at = None, -1, ""  # 현재 head에 대한 가장 최근 결과
     for idx, c in enumerate(comments):
         line = first_line(c["body"])
+        created, updated = c.get("at") or "", c.get("updated") or ""
+        edited = updated if updated > created else ""
         if (m := REVIEW_MARKER.match(line)) and same_commit(m.group(1), head):
-            comment_reviews.append((idx, f"리뷰 코멘트 ({c.get('author', '?')})"))
+            comment_reviews.append((idx, edited, f"리뷰 코멘트 ({c.get('author', '?')})"))
         elif (m := RESULT_MARKER.match(line)) and same_commit(m.group(2), head):
-            result, result_idx, result_at = m.group(1), idx, c.get("at") or ""
-    review_sources = [src for _, src in gh_reviews] + [src for _, src in comment_reviews]
-    # 결과 코멘트보다 나중에 올라온 리뷰 — 그 지적을 처리하기 전에 쓴 결과이므로 무효
+            if edited:
+                edited_results += 1  # 고쳐 쓴 결과는 인정하지 않는다
+                continue
+            result, result_idx, result_at = m.group(1), idx, created
+    review_sources = [src for _, src in gh_reviews] + [src for _, _, src in comment_reviews]
+    # 결과 코멘트보다 나중에 올라오거나 나중에 수정된 리뷰 — 그 지적을 처리하기 전에 쓴 결과이므로 무효
     reviews_after_result = (
-        [src for idx, src in comment_reviews if idx > result_idx]
+        [
+            src + (" — 결과 이후 수정됨" if idx < result_idx else "")
+            for idx, edited, src in comment_reviews
+            if idx > result_idx or (edited and result_at and edited >= result_at)
+        ]
         + [src for at, src in gh_reviews if at and result_at and at >= result_at]
         if result
         else []
@@ -104,6 +117,7 @@ def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: i
         f"- 병합 전 검증 결과 코멘트: {result or '없음'}",
         f"- 변경 요청(CHANGES_REQUESTED): {', '.join(changes_requested) or '없음'}",
         f"- 결과 코멘트 이후 새 리뷰: {', '.join(reviews_after_result) or '없음'}",
+        f"- 수정돼서 무시한 결과 코멘트: {edited_results}개",
     ]
 
     if changes_requested:
@@ -134,37 +148,48 @@ def gh(*args: str) -> str:
     return subprocess.run(["gh", *args], check=True, capture_output=True, text=True).stdout
 
 
+def gh_pages(path: str) -> list[dict]:
+    """REST 목록을 끝까지 받는다 (100개 넘어도 누락 없음)."""
+    pages = json.loads(gh("api", path, "--paginate", "--slurp"))
+    return [item for page in pages for item in page]
+
+
 def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int]:
-    pr = json.loads(
-        gh("pr", "view", number, "--repo", repo, "--json", "state,headRefOid,reviews,comments")
-    )
+    pr = json.loads(gh("api", f"repos/{repo}/pulls/{number}"))
     reviews = [
         {
-            "commit": (r.get("commit") or {}).get("oid"),
-            "author": (r.get("author") or {}).get("login"),
+            "commit": r.get("commit_id"),
+            "author": (r.get("user") or {}).get("login"),
             "state": r.get("state"),
             "body": r.get("body") or "",
-            "at": r.get("submittedAt") or "",
+            "at": r.get("submitted_at") or "",
         }
-        for r in pr["reviews"]
+        for r in gh_pages(f"repos/{repo}/pulls/{number}/reviews?per_page=100")
     ]
+    # gh pr view의 코멘트에는 수정 시각이 없어 REST로 받는다. 작성 순서로 안정 정렬해 둔다
+    # (API 기본 순서가 생성 순이지만, 판정이 순서에 의존하므로 한 번 더 보장한다).
+    raw = gh_pages(f"repos/{repo}/issues/{number}/comments?per_page=100")
     comments = [
         {
-            "body": c["body"],
-            "author": (c.get("author") or {}).get("login"),
-            "at": c.get("createdAt") or "",
+            "body": c.get("body") or "",
+            "author": (c.get("user") or {}).get("login"),
+            "at": c.get("created_at") or "",
+            "updated": c.get("updated_at") or "",
         }
-        for c in pr["comments"]
+        for c in sorted(raw, key=lambda c: (c.get("created_at") or "", c.get("id") or 0))
     ]
     owner, name = repo.split("/")
     query = (
-        "query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){"
-        "reviewThreads(first:100){nodes{isResolved}}}}}"
+        "query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){"
+        "pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){"
+        "nodes{isResolved} pageInfo{hasNextPage endCursor}}}}}"
     )
-    threads = json.loads(
+    pages = json.loads(
         gh(
             "api",
             "graphql",
+            "--paginate",
+            "--slurp",
             "-F",
             f"o={owner}",
             "-F",
@@ -173,11 +198,16 @@ def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int
             f"n={number}",
             "-f",
             f"query={query}",
-        )
+        )  # fmt: skip
     )
-    nodes = threads["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
-    unresolved = sum(1 for n in nodes if not n["isResolved"])
-    return pr["state"], pr["headRefOid"], reviews, comments, unresolved
+    unresolved = sum(
+        1
+        for p in pages
+        for n in p["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
+        if not n["isResolved"]
+    )
+    state = "OPEN" if pr["state"] == "open" else pr["state"].upper()
+    return state, pr["head"]["sha"], reviews, comments, unresolved
 
 
 def main() -> int:

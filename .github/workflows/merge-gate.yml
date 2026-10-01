@@ -4,13 +4,15 @@ name: merge-gate
 # 판정 로직: scripts/ci/merge_gate.py (테스트: tests/test_merge_gate.py)
 #
 # 🔒 이 워크플로는 **기본 브랜치(main)의 코드만** 실행한다 (DEC-009).
-#    - pull_request_target · issue_comment · workflow_dispatch는 모두 main의 워크플로 파일로 돈다.
+#    - pull_request_target · issue_comment는 둘 다 main의 워크플로 파일로 돈다.
+#    - workflow_dispatch는 쓰지 않는다 — 실행할 브랜치를 고를 수 있어, PR 브랜치로 수동 실행하면 PR이 고친
+#      워크플로가 statuses: write 권한으로 돈다 (리뷰봇 지적, 공식 문서 "dispatch it against any branch").
 #    - checkout도 main으로 고정하고, PR의 파일·명령은 실행하지 않는다. PR 정보는 API로만 읽는다.
 #    - 그래서 PR이 이 파일이나 scripts/ci/merge_gate.py를 고쳐도 **자기 게이트에는 영향이 없다**.
 #    - pull_request · pull_request_review 트리거는 PR 쪽 워크플로를 실행하므로 쓰지 않는다.
 #
 # 재판정: 코멘트를 남기면 다시 돈다 (결과 코멘트 게시가 곧 재판정). 리뷰 제출·스레드 resolve는
-#   main 코드로 도는 트리거가 없으므로, 그 뒤에는 코멘트를 하나 남기거나 Actions에서 수동 실행한다.
+#   main 코드로 도는 트리거가 없으므로, 그 뒤에는 코멘트를 하나 남긴다 (`merge-gate 재판정`).
 #   (docs/MERGE_PROTOCOL.md 2-1절)
 
 on:
@@ -18,11 +20,6 @@ on:
     types: [opened, reopened, synchronize, ready_for_review]
   issue_comment:
     types: [created, edited, deleted]
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: '재평가할 PR 번호'
-        required: true
 
 permissions:
   contents: read
@@ -30,7 +27,7 @@ permissions:
   statuses: write
 
 concurrency:
-  group: merge-gate-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}
+  group: merge-gate-${{ github.event.pull_request.number || github.event.issue.number }}
   cancel-in-progress: true
 
 jobs:
@@ -49,6 +46,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
           POST_STATUS: "1"
         run: python3 scripts/ci/merge_gate.py

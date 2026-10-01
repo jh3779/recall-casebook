@@ -58,7 +58,7 @@
 - **Date**: 2026-10-01
 
 ## DEC-009: merge-gate는 main 코드로만 실행, 2단계 도입
-- **Decision**: `merge-gate` 트리거를 `pull_request_target`·`issue_comment`·`workflow_dispatch`로 바꾸고 checkout을 main으로 고정한다(PR 코드 미실행, API로만 판정). 이 워크플로가 main에 없으면 PR에서 돌 수 없으므로 필수 체크에서 잠시 빼고(1단계) PR #1 병합 후 다음 PR에서 상태 게시를 확인해 다시 필수로 넣는다(2단계). 함께: Codex 리뷰 형식 인식, 결과 코멘트 뒤 새 리뷰면 pending, G-02(출처)는 수동 게이트로 명시, RAG 경로 설정을 `scripts/ci/pr_verify.toml`로 이동(G-09 충돌 해소), RAG 근거에 지표 이름 요구·skip은 검증 방법 섹션 안에서만.
+- **Decision**: `merge-gate` 트리거를 `pull_request_target`·`issue_comment`로 바꾸고 (처음엔 `workflow_dispatch`도 넣었으나 PR 브랜치로 수동 실행하면 PR이 고친 워크플로가 쓰기 권한으로 돌아 제거 — 리뷰봇 `88648fa` 리뷰) checkout을 main으로 고정한다(PR 코드 미실행, API로만 판정). 이 워크플로가 main에 없으면 PR에서 돌 수 없으므로 필수 체크에서 잠시 빼고(1단계) PR #1 병합 후 다음 PR에서 상태 게시를 확인해 다시 필수로 넣는다(2단계). 함께: Codex 리뷰 형식 인식, 결과 코멘트 뒤 새 리뷰면 pending, G-02(출처)는 수동 게이트로 명시, RAG 경로 설정을 `scripts/ci/pr_verify.toml`로 이동(G-09 충돌 해소), RAG 근거에 지표 이름 요구·skip은 검증 방법 섹션 안에서만.
 - **Reason**: 리뷰봇(Codex) 리뷰(PR #1, head `9c78f5d`·`def6923`) — `statuses: write`로 PR이 고칠 수 있는 스크립트를 실행해 PR이 자기 게이트를 통과시킬 수 있었음(C2). 사용자 승인("보완 작업 진행").
 - **Alternatives**: `pull_request`·`pull_request_review` 유지 + 스크립트 경로만 main에서 받기 — 워크플로 파일 자체가 PR 쪽이라 PR이 고칠 수 있어 기각.
 - **남은 한계**: 같은 계정 자기 인증, 쓰기 권한자의 상태 위조 → 리뷰 전용 계정·GitHub App 필요(이슈 #4, 사용자 결정 대기).

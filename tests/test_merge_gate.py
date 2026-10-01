@@ -175,3 +175,26 @@ def test_review_marker_needs_sha_boundary():
     head = "addedfe" + "0" * 33
     body = {"body": "## 🤖 자동 리뷰 — 커밋 addedfeature 반영", "at": ""}
     assert evaluate(head, [], [body, result("✅", head)], 0).state == "pending"
+
+
+def test_review_edited_after_result_invalidates_it():
+    """리뷰봇이 ✅ 결과 뒤에 기존 리뷰를 고쳐 새 지적을 넣으면 pending (리뷰봇 88648fa 리뷰)."""
+    edited = codex(HEAD, "2026-10-01T14:00:00Z") | {"updated": "2026-10-01T14:20:00Z"}
+    comments = [edited, result("✅", HEAD, "2026-10-01T14:10:00Z")]
+    gate = evaluate(HEAD, [], comments, 0)
+    assert gate.state == "pending"
+    assert "결과 이후 수정됨" in "\n".join(gate.lines)
+
+
+def test_review_edited_before_result_is_fine():
+    edited = codex(HEAD, "2026-10-01T14:00:00Z") | {"updated": "2026-10-01T14:05:00Z"}
+    comments = [edited, result("✅", HEAD, "2026-10-01T14:10:00Z")]
+    assert evaluate(HEAD, [], comments, 0).state == "success"
+
+
+def test_edited_result_comment_is_ignored():
+    """❌ 결과를 ✅로 고쳐 쓴 코멘트는 인정하지 않는다 — 결과는 새로 올린다."""
+    tampered = result("✅", HEAD, "2026-10-01T14:10:00Z") | {"updated": "2026-10-01T14:30:00Z"}
+    gate = evaluate(HEAD, [], [review(HEAD, "2026-10-01T14:00:00Z"), tampered], 0)
+    assert gate.state == "pending"
+    assert "- 수정돼서 무시한 결과 코멘트: 1개" in gate.lines
