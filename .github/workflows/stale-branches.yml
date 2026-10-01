@@ -1,0 +1,39 @@
+name: Cleanup Stale Branches
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # 매주 월요일 00:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (실제 삭제하지 않음)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+permissions:
+  contents: write
+  # 열린 PR과 연결된 브랜치를 보호 대상에서 제외하려고 PR 목록을 조회한다.
+  # 누락 시 "403 Resource not accessible by integration"로 매 실행 실패 (SACHO 실측).
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete stale branches
+        uses: cbrgm/cleanup-stale-branches-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # action이 owner/repo를 자동 추론하지 않아 명시가 필요하다 (SACHO 실측).
+          repository: ${{ github.repository }}
+          # 도입 초기에는 dry-run으로 몇 주 돌려 삭제 대상을 확인한 뒤 'false'로 전환한다.
+          dry-run: ${{ github.event.inputs.dry_run || 'true' }}
+          ignore-branches: 'main'
+          # 머지된 브랜치는 delete_branch_on_merge가 즉시 지우므로, 여기 남는 것은
+          # 닫힌 PR·PR 없는 브랜치뿐이다. 그것들에 한 달을 준다.
+          last-commit-age-days: 30

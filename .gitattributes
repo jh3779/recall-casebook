@@ -1,0 +1,16 @@
+# 줄바꿈 강제: 쉘 스크립트와 CI 자산은 LF로 저장
+# (Linux GitHub Actions runner에서 실행되어야 하므로 CRLF 금지)
+*.sh        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.bash      text eol=lf
+*.py        text eol=lf
+
+# 일반 텍스트 파일은 OS 기본값 사용
+*.md        text
+*.txt       text
+.gitignore  text
+.gitattributes text
+
+# 노트북은 diff 노이즈가 크므로 바이너리 취급 대신 텍스트 유지 (nbstripout 도입 시 재검토)
+*.ipynb     text

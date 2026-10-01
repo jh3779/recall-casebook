@@ -1,0 +1,33 @@
+[project]
+name = "lg-cns-rag"
+version = "0.1.0"
+description = "미국 제조업 공장 Compliance AI — 40 CFR Part 63 근거 조문 RAG"
+requires-python = ">=3.12"
+# 런타임 의존성은 기술 스택이 확정되면 `uv add <패키지>`로 추가한다 (docs/개발환경.md 4절).
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.15",
+]
+
+[tool.uv]
+# 배포용 패키지를 빌드하지 않는다 — 의존성·가상환경 관리 전용으로 uv를 쓴다.
+package = false
+# 팀원 모두 같은 uv 버전으로 uv.lock을 만들도록 고정한다 (file-converter와 같은 방식).
+# CI의 astral-sh/setup-uv도 이 값을 읽는다. 올릴 때는 `uv self update` 후 이 값도 함께 바꾼다.
+required-version = ">=0.12.5"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+# 한글 주석·docstring이 길어지는 경우가 많아 줄 길이는 포맷터에만 맡긴다
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

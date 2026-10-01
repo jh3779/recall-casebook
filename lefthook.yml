@@ -1,0 +1,51 @@
+# lefthook.yml — 클라이언트 측 git hook 설정 (SACHO와 같은 방식)
+#
+# 설치 (최초 1회):
+#   - macOS:   brew install lefthook && lefthook install
+#   - Windows: scoop install lefthook && lefthook install
+#
+# 검증되는 항목:
+#   - pre-commit: .env 등 비밀 파일 · 개인키 · 1MB 초과 파일 커밋 차단
+#                 + ruff check --fix / ruff format (staged .py만, uv.lock에 고정된 ruff 사용)
+#   - commit-msg: Conventional Commits 형식
+#   - pre-push:   main 직접 push 차단 → 브랜치명 규칙 (값싼 것부터 순서대로)
+#
+# ⚠️ 클라이언트 측 방어선이다. `lefthook install`을 안 했거나 `--no-verify`로 우회하면
+#    통과된다. 서버 쪽은 CI(branch-name-check · pr-title-check)가 한 번 더 검사한다.
+#
+# NOTE: 인라인 multi-line 스크립트는 Git Bash on Windows에서 lefthook이 큰따옴표/백슬래시를
+#       mangle하는 버그가 있다(SACHO 실측). 검증 로직은 scripts/ 파일로 빼고 한 줄로 호출한다.
+#
+# 브랜치 type 목록은 scripts/check-branch.sh · scripts/check-commit-msg.sh ·
+# .github/workflows/branch-name-check.yml · pr-title-check.yml · CONTRIBUTING.md
+# 다섯 곳에 있다 — 바꿀 때 함께 갱신한다.
+
+pre-commit:
+  commands:
+    staged-files-check:
+      run: bash scripts/check-staged.sh {staged_files}
+    # ruff는 pyproject.toml dev 그룹(uv.lock)에 고정된 버전을 그대로 쓴다 —
+    # 훅이 별도 버전을 관리하면 CI와 결과가 갈라질 수 있다 (file-converter와 같은 판단).
+    # stage_fixed: 고친 파일을 다시 stage해서 수정본이 커밋에 들어가게 한다.
+    ruff-check:
+      glob: "*.py"
+      run: uv run --locked ruff check --fix {staged_files}
+      stage_fixed: true
+    ruff-format:
+      glob: "*.py"
+      run: uv run --locked ruff format {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  commands:
+    conventional-commits:
+      run: bash scripts/check-commit-msg.sh {1}
+
+# piped: 앞 검사가 실패하면 뒤 검사는 시작하지 않는다. 이름 앞 번호로 순서를 고정한다.
+pre-push:
+  piped: true
+  commands:
+    01-no-direct-main-push:
+      run: bash scripts/check-branch.sh no-main-push
+    02-branch-name-check:
+      run: bash scripts/check-branch.sh name

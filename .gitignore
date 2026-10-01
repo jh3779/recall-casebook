@@ -1,0 +1,48 @@
+# macOS
+.DS_Store
+
+# 비밀값
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# RAG 산출물 — 원본·인덱스는 재현 스크립트로 생성 (용량·라이선스 문제)
+data/raw/
+data/processed/
+vectorstore/
+chroma_db/
+*.faiss
+*.index
+
+# 개인 메모
+RETROSPECTIVE.md
+
+# IDE
+.idea/
+.vscode/
+
+# Claude Code 로컬 설정·worktree (팀 공유용 .claude/settings.json은 커밋 가능)
+.claude/settings.local.json
+.claude/worktrees/
+
+# 전역 ~/.gitignore가 .agent/를 제외하지만, 이 저장소에서는 인계 문서를 팀과 공유한다
+!.agent/
