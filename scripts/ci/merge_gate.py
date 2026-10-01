@@ -31,7 +31,10 @@ import sys
 from dataclasses import dataclass
 
 CONTEXT = "merge-gate"
-REVIEW_MARKER = re.compile(r"^#{2,3}\s*🤖\s*자동 리뷰.*?(?:\(head|커밋)\s*`?([0-9a-f]{7,40})`?")
+# 첫 줄에 SHA는 하나만 쓴다 (MERGE_PROTOCOL 1절). 끝 경계: `커밋 addedfeature` 같은 영단어를 SHA로 읽지 않게
+REVIEW_MARKER = re.compile(
+    r"^#{2,3}\s*🤖\s*자동 리뷰.*?(?:\(head|커밋)\s*`?([0-9a-f]{7,40})(?![0-9a-zA-Z])`?"
+)
 RESULT_MARKER = re.compile(r"^##\s*(✅|❌)\s*병합 전 검증 결과\s*\(head\s*`?([0-9a-f]{7,40})`?\)")
 # 재판정만을 위해 제출하는 리뷰 (MERGE_PROTOCOL 2-1절) — 리뷰로 세지 않는다
 RETRIGGER_MARKER = "merge-gate 재판정"
@@ -55,7 +58,9 @@ def same_commit(short: str, head: str) -> bool:
 def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: int) -> Gate:
     """reviews: [{"commit", "state", "body", "author", "at"}], comments: [{"body", "author", "at"}].
 
-    둘 다 시간순이고, "at"은 ISO 8601 시각(문자열 비교로 순서가 맞다).
+    둘 다 시간순이고, "at"은 ISO 8601 시각(초 단위).
+    선후 판정: 코멘트끼리는 목록 순서(같은 초도 구분), GitHub 리뷰와 결과 코멘트는 시각으로 비교하되
+    같은 초면 보수적으로 "결과 이후"로 본다.
     """
     on_head = [r for r in reviews if r.get("commit") == head]
     # 리뷰어별 마지막 상태는 커밋과 무관하게 전체 이력으로 본다 — push해도 변경 요청은 풀리지 않는다
@@ -67,24 +72,29 @@ def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: i
                 latest_state[r.get("author") or "?"] = r["state"]
     changes_requested = sorted(a for a, st in latest_state.items() if st == "CHANGES_REQUESTED")
 
-    review_events: list[tuple[str, str]] = [  # (시각, 출처)
+    gh_reviews = [
         (r.get("at") or "", f"GitHub 리뷰 ({r.get('author', '?')})")
         for r in on_head
         if r.get("state") in ("COMMENTED", "APPROVED")
         and (r.get("body") or "").strip()
         and not first_line(r.get("body") or "").startswith(RETRIGGER_MARKER)
     ]
-    result, result_at = None, ""  # 현재 head에 대한 가장 최근 결과
-    for c in comments:
+    comment_reviews: list[tuple[int, str]] = []  # (코멘트 목록 순서, 출처)
+    result, result_idx, result_at = None, -1, ""  # 현재 head에 대한 가장 최근 결과
+    for idx, c in enumerate(comments):
         line = first_line(c["body"])
         if (m := REVIEW_MARKER.match(line)) and same_commit(m.group(1), head):
-            review_events.append((c.get("at") or "", f"리뷰 코멘트 ({c.get('author', '?')})"))
+            comment_reviews.append((idx, f"리뷰 코멘트 ({c.get('author', '?')})"))
         elif (m := RESULT_MARKER.match(line)) and same_commit(m.group(2), head):
-            if (c.get("at") or "") >= result_at:
-                result, result_at = m.group(1), c.get("at") or ""
-    review_sources = [src for _, src in review_events]
+            result, result_idx, result_at = m.group(1), idx, c.get("at") or ""
+    review_sources = [src for _, src in gh_reviews] + [src for _, src in comment_reviews]
     # 결과 코멘트보다 나중에 올라온 리뷰 — 그 지적을 처리하기 전에 쓴 결과이므로 무효
-    reviews_after_result = [src for at, src in review_events if result and at > result_at]
+    reviews_after_result = (
+        [src for idx, src in comment_reviews if idx > result_idx]
+        + [src for at, src in gh_reviews if at and result_at and at >= result_at]
+        if result
+        else []
+    )
 
     short = head[:7]
     lines = [

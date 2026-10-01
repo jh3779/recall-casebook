@@ -115,7 +115,7 @@ gh pr diff $N --name-only | grep -E '^(pyproject\.toml|uv\.lock|\.agent/)' || ec
 
 ```bash
 gh pr comment $N --body-file <결과.md>
-gh pr checks $N --watch   # 게시 후 merge-gate가 success로 바뀌는지 확인
+gh pr checks $N --watch   # merge-gate가 필수 체크로 도입된 뒤(2단계)에만 의미 있음 — 1단계에선 이 PR에서 안 돈다
 ```
 
 `merge-gate`가 success가 아니면 Actions 요약을 보고 원인(리뷰 SHA 불일치, 미해결 스레드, 변경 요청 등)을 해결한다. `merge-gate`는 main 코드로 돌며 코멘트가 올라오면 다시 판정한다. GitHub 리뷰 제출·스레드 resolve 뒤처럼 다시 돌지 않았으면 재판정 코멘트를 남긴다:

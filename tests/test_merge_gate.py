@@ -154,3 +154,24 @@ def test_github_review_after_result_invalidates_it():
     reviews = [gh_review(HEAD) | {"at": "2026-10-01T06:00:00Z"}]
     comments = [review(HEAD, "2026-10-01T05:00:00Z"), result("✅", HEAD, "2026-10-01T05:30:00Z")]
     assert evaluate(HEAD, reviews, comments, 0).state == "pending"
+
+
+def test_review_in_same_second_after_result_invalidates_it():
+    """같은 초에 결과 → 리뷰 순으로 올라와도 리뷰가 '이후'로 잡힌다 (리뷰 T1)."""
+    same = "2026-10-01T06:00:00Z"
+    comments = [review(HEAD, "2026-10-01T05:00:00Z"), result("✅", HEAD, same), codex(HEAD, same)]
+    assert evaluate(HEAD, [], comments, 0).state == "pending"
+
+
+def test_github_review_in_same_second_as_result_is_treated_as_after():
+    same = "2026-10-01T06:00:00Z"
+    reviews = [gh_review(HEAD) | {"at": same}]
+    comments = [review(HEAD, "2026-10-01T05:00:00Z"), result("✅", HEAD, same)]
+    assert evaluate(HEAD, reviews, comments, 0).state == "pending"
+
+
+def test_review_marker_needs_sha_boundary():
+    """`커밋 addedfeature`의 앞 7자를 SHA로 읽지 않는다 (리뷰 M1)."""
+    head = "addedfe" + "0" * 33
+    body = {"body": "## 🤖 자동 리뷰 — 커밋 addedfeature 반영", "at": ""}
+    assert evaluate(head, [], [body, result("✅", head)], 0).state == "pending"

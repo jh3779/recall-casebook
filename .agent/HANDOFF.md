@@ -23,7 +23,7 @@ P0 — 저장소 셋팅 완료·GitHub 업로드 완료(`jh3779/LG_CNS_RAG_main`
 
 - https://github.com/jh3779/LG_CNS_RAG_main (private). 첫 커밋 `edefe82` main push → CI `ci.yml` 전 단계 success.
 - 병합: squash만, 커밋 메시지 = PR 제목, 머지 후 브랜치 자동 삭제.
-- 룰셋 `main 보호`(id 24290303): 삭제·force push 차단, PR 필수(승인 0명, squash만), 필수 체크 `lint-and-test`·`check-branch-name`·`validate-pr-title` (DEC-006).
+- 룰셋 `main 보호`(id 24290303): 삭제·force push 차단, PR 필수(승인 0명, squash만), 필수 체크 4개(`lint-and-test`·`check-branch-name`·`validate-pr-title`·`pr-verify`) (DEC-006·008).
 - CI 필수 체크 4개: 기존 3개 + `pr-verify`(PR 상세 검증) (DEC-008). `merge-gate`는 main 코드로만 돌도록 바꾸면서 **2단계 도입 중** — PR #1 병합 후 다음 PR에서 상태 게시를 확인하고 필수 체크에 다시 넣는다 (DEC-009).
 - 리뷰봇(Codex)은 `jh3779` 계정으로 `### 🤖 자동 리뷰 (Codex) — 커밋 <SHA>` 코멘트를 push 몇 분 뒤에 게시한다. 병합 전 검증 때 반드시 확인.
 - 필수 리뷰어 없음 → 대신 병합 전 검증 프로토콜 `docs/MERGE_PROTOCOL.md` + 스킬 `.claude/skills/pre-merge-check/` (DEC-007). `gh pr merge`는 settings에서 ask.
