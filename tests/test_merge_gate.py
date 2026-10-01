@@ -103,3 +103,17 @@ def test_result_comment_is_not_a_review():
 def test_too_short_sha_rejected():
     body = {"body": "## 🤖 자동 리뷰 (head `b86f`)"}
     assert evaluate(HEAD, [], [body, result("✅", HEAD)], 0).state == "pending"
+
+
+def test_changes_requested_on_old_commit_still_blocks():
+    """변경 요청 뒤 push해도 풀리지 않는다 — GitHub과 같은 동작 (리뷰 N2)."""
+    cr_old = gh_review(OLD, state="CHANGES_REQUESTED", author="r1")
+    gate = evaluate(HEAD, [cr_old], [review(HEAD), result("✅", HEAD)], 0)
+    assert gate.state == "failure"
+
+
+def test_dismissed_clears_old_changes_request():
+    cr_old = gh_review(OLD, state="CHANGES_REQUESTED", author="r1")
+    dismissed = gh_review(OLD, state="DISMISSED", author="r1")
+    gate = evaluate(HEAD, [cr_old, dismissed], [review(HEAD), result("✅", HEAD)], 0)
+    assert gate.state == "success"

@@ -162,3 +162,25 @@ def test_repo_consistency_checks_pass():
     assert check_type_lists().ok, check_type_lists().errors
     assert check_md_links().ok, check_md_links().errors
     assert check_agents_import().ok
+
+
+def test_parse_patch_plusplus_content_is_not_a_header():
+    """추가된 줄 내용이 `++ x`면 diff에서 `+++ x` — 헤더로 오인하면 뒤의 비밀값이 빠진다 (리뷰 N1)."""
+    fake = "sk-" + "c" * 30
+    patch = "\n".join([
+        "diff --git a/src/a.py b/src/a.py",
+        "--- a/src/a.py",
+        "+++ b/src/a.py",
+        "@@ -0,0 +1,3 @@",
+        "+x = 1",
+        "+++ evil",
+        f'+key = "{fake}"',
+    ])  # fmt: skip
+    added = parse_patch(patch)
+    assert [t for _, _, _, t in added] == ["x = 1", "++ evil", f'key = "{fake}"']
+    assert not check_secrets([], added).ok
+
+
+def test_parse_patch_strips_tab_after_path_with_space():
+    patch = "diff --git a/a b.py b/a b.py\n--- /dev/null\n+++ b/a b.py\t\n@@ -0,0 +1 @@\n+x = 1"
+    assert parse_patch(patch) == [("", "a b.py", 1, "x = 1")]

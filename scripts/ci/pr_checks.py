@@ -88,35 +88,52 @@ def changed_files(base: str, head: str) -> list[str]:
 Added = list[tuple[str, str, int, str]]  # (커밋 또는 "", 경로, 새 파일 기준 줄 번호, 내용)
 
 
+DIFF_ARGS = (
+    "-M",
+    "--unified=0",
+    "--no-color",
+    "--no-ext-diff",
+    "--src-prefix=a/",
+    "--dst-prefix=b/",
+)
+
+
 def parse_patch(patch: str) -> Added:
-    """git diff/log -p --unified=0 출력에서 추가된 줄만 뽑는다. `commit:<sha>` 줄로 커밋을 구분한다."""
+    """git diff/log -p --unified=0 출력에서 추가된 줄만 뽑는다. `commit:<sha>` 줄로 커밋을 구분한다.
+
+    파일 헤더(`+++ b/<경로>`)는 `diff --git` 뒤, 첫 `@@` 전에서만 읽는다. hunk 안에서는 `+`로 시작하는
+    줄을 전부 내용으로 본다 — 내용이 `++ x`인 추가 줄(`+++ x`)을 헤더로 오인하면 그 뒤가 검사에서 빠진다.
+    --unified=0이라 hunk 안의 접두어 없는 줄은 `diff --git`·`commit:` 같은 구조 줄뿐이다.
+    """
     result: Added = []
-    commit, path, lineno = "", None, 0
+    commit, path, lineno, in_hunk = "", None, 0, False
     for line in patch.splitlines():
         if line.startswith("commit:"):
-            commit, path = line[len("commit:") :].strip(), None
-        elif line.startswith("+++ "):
-            target = line[4:]
-            path = target[2:] if target.startswith("b/") else None  # /dev/null = 삭제
+            commit, path, in_hunk = line[len("commit:") :].strip(), None, False
+        elif line.startswith("diff --git "):
+            path, in_hunk = None, False
         elif line.startswith("@@"):
             m = re.search(r"\+(\d+)", line)
-            lineno = int(m.group(1)) if m else 0
-        elif line.startswith("+") and path is not None:
-            result.append((commit, path, lineno, line[1:]))
-            lineno += 1
+            lineno, in_hunk = (int(m.group(1)) if m else 0), True
+        elif in_hunk:
+            if line.startswith("+") and path is not None:
+                result.append((commit, path, lineno, line[1:]))
+                lineno += 1
+        elif line.startswith("+++ "):
+            # 공백이 든 경로는 끝에 탭이 붙는다. /dev/null = 삭제된 파일
+            target = line[4:].rstrip("\t")
+            path = target[2:] if target.startswith("b/") else None
     return result
 
 
 def added_lines(base: str, head: str) -> Added:
     """PR 최종 diff의 추가 줄. -M: 이름만 바꾼 파일을 통째로 '추가'로 보지 않는다."""
-    return parse_patch(git("diff", "-M", "--unified=0", "--diff-filter=ACMR", f"{base}...{head}"))
+    return parse_patch(git("diff", *DIFF_ARGS, "--diff-filter=ACMR", f"{base}...{head}"))
 
 
 def history_added_lines(base: str, head: str) -> Added:
     """PR의 커밋 하나하나가 추가한 줄 — 중간에 넣었다 지운 비밀값도 잡는다."""
-    return parse_patch(
-        git("log", "-p", "-M", "--unified=0", "--format=commit:%H", f"{base}..{head}")
-    )
+    return parse_patch(git("log", "-p", *DIFF_ARGS, "--format=commit:%H", f"{base}..{head}"))
 
 
 def matches(path: str, patterns: list[str] | tuple[str, ...]) -> bool:

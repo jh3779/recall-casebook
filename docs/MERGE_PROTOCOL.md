@@ -32,6 +32,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 
 - **리뷰 기준 커밋이 PR의 현재 head와 같아야 한다.**
   - GitHub 리뷰(Review)는 `.commit.oid == headRefOid`로 확인한다.
+  - GitHub 리뷰로 남길 때는 **본문(요약)을 반드시 쓴다.** 인라인 코멘트만 있고 본문이 빈 리뷰는 `merge-gate`가 자동 리뷰로 세지 않는다(스레드 답글이 만드는 빈 리뷰와 구분할 수 없어서).
   - 코멘트로 남긴 리뷰는 **첫 줄을 `## 🤖 자동 리뷰 (head <짧은 SHA>)`** 로 쓰고, 그 SHA가 head와 일치해야 한다. (코멘트에는 커밋 정보가 없어서 첫 줄로 정한다.)
 - **작성자 에이전트가 자기 코드를 같은 컨텍스트에서 "문제없음"이라고 하는 것은 자동 리뷰가 아니다.** 별도 리뷰 도구·에이전트(새 컨텍스트)로 리뷰한다.
 - `## ✅/❌ 병합 전 검증 결과` 코멘트(4절)는 리뷰가 아니라 **게이트 결과**다. 자동 리뷰로 세지 않는다.
@@ -61,7 +62,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 |---|---|---|---|
 | `lint-and-test` | `ci.yml` | G-01, G-09 일부 | ruff · pytest · `uv sync --locked`(pyproject와 uv.lock 불일치) |
 | `pr-verify` | `pr-verify.yml` → `scripts/ci/pr_checks.py` | G-07, G-08 + 저장소 정합성 | 코드·프롬프트에 판정 필드·문구(`applies`·`verdict`·`is_applicable` 변형 포함, 대소문자 무시 / `docs/`·루트 `*.md`·테스트·CI 제외 / 줄에 `principle-ok: <이유>` 주석으로 예외) · 커밋별 추가 줄의 비밀값 패턴(중간에 넣었다 지운 값 포함)·`.env` · RAG 경로 변경 시 "검증 방법" before → after 수치 · PR 본문 필수 항목 · 브랜치 type 목록 6곳 일치 · 문서 상대 링크 · `CLAUDE.md`의 `@AGENTS.md` |
-| `merge-gate` | `merge-gate.yml` → `scripts/ci/merge_gate.py` | G-02, G-03, G-05 + 결과 코멘트 | 현재 head 기준 자동 리뷰 존재(GitHub 리뷰는 본문 있는 COMMENTED/APPROVED만, 빈 답글·DISMISSED·재판정 트리거 제외) · 미해결 스레드 0 · `CHANGES_REQUESTED` 없음 · 현재 head의 가장 최근 결과 코멘트가 ✅. 없으면 pending, ❌·미해결 스레드·변경 요청이면 failure |
+| `merge-gate` | `merge-gate.yml` → `scripts/ci/merge_gate.py` | G-02, G-03, G-05 + 결과 코멘트 | 현재 head 기준 자동 리뷰 존재(GitHub 리뷰는 본문 있는 COMMENTED/APPROVED만, 빈 답글·DISMISSED·재판정 트리거 제외) · 미해결 스레드 0 · 리뷰어별 마지막 상태가 `CHANGES_REQUESTED`가 아님(이전 커밋에서 남긴 것 포함) · 현재 head의 가장 최근 결과 코멘트가 ✅. 없으면 pending, ❌·미해결 스레드·변경 요청이면 failure |
 
 - RAG 경로는 `pyproject.toml`의 `[tool.lg-cns-rag] rag-paths`로 정한다 (대소문자 무시, `docs/`·루트 `*.md`·`tests/` 제외 — `prompts/*.md`는 포함). 수치를 낼 수 없는 정당한 경우는 PR 본문에 `[skip-rag-evidence: 이유]`를 적는다.
 - `merge-gate`는 PR push·리뷰·코멘트 때마다 다시 판정한다. **리뷰 스레드 resolve는 Actions 트리거 이벤트가 없어**(공식 문서 "Events that trigger workflows"에 `pull_request_review_thread` 없음, 2026-10-01 확인) 자동 재판정이 안 된다 — 아래 재판정 방법을 쓴다.
