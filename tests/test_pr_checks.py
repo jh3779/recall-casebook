@@ -11,6 +11,7 @@ from scripts.ci.pr_checks import (
     check_type_lists,
     parse_patch,
     section,
+    unquote_git_path,
 )
 
 BODY_OK = """## 변경 요약
@@ -184,3 +185,44 @@ def test_parse_patch_plusplus_content_is_not_a_header():
 def test_parse_patch_strips_tab_after_path_with_space():
     patch = "diff --git a/a b.py b/a b.py\n--- /dev/null\n+++ b/a b.py\t\n@@ -0,0 +1 @@\n+x = 1"
     assert parse_patch(patch) == [("", "a b.py", 1, "x = 1")]
+
+
+def test_unquote_git_path():
+    assert unquote_git_path('"b/a\\"b.py"') == 'b/a"b.py'
+    assert unquote_git_path('"b/c\\\\d\\te.py"') == "b/c\\d\te.py"
+    assert unquote_git_path('"b/\\352\\260\\200.py"') == "b/가.py"  # 8진수 UTF-8 바이트
+    assert unquote_git_path("b/plain.py") == "b/plain.py"
+
+
+def test_parse_patch_quoted_path_is_not_dropped():
+    """git이 따옴표로 감싼 경로의 추가 줄도 검사한다 (리뷰 E1 — 실제 git 출력 형식)."""
+    fake = "sk-" + "d" * 30
+    patch = "\n".join([
+        'diff --git "a/a\\"b.py" "b/a\\"b.py"',
+        "--- /dev/null",
+        '+++ "b/a\\"b.py"',
+        "@@ -0,0 +1 @@",
+        f'+key = "{fake}"',
+    ])  # fmt: skip
+    added = parse_patch(patch)
+    assert added == [("", 'a"b.py', 1, f'key = "{fake}"')]
+    assert not check_secrets([], added).ok
+
+
+def test_parse_patch_unreadable_header_fails_closed():
+    patch = "diff --git x y\n+++ weird-prefix/a.py\n@@ -0,0 +1 @@\n+x = 1"
+    assert parse_patch(patch) == [("", "weird-prefix/a.py", 1, "x = 1")]
+
+
+def test_secrets_scans_final_diff_for_merge_commit_content():
+    """병합 커밋의 충돌 해결에서만 생긴 줄은 git log -p에 없다 — 최종 diff로 잡는다 (리뷰 E2)."""
+    fake = "AKIA" + "Z" * 16
+    res = check_secrets([], history=[], final=[line("src/x.py", fake, 7)])
+    assert not res.ok
+
+
+def test_secrets_reports_same_line_once():
+    fake = "sk-" + "e" * 30
+    same = line("src/x.py", fake, 2)
+    res = check_secrets([], history=[("abc1234", *same[1:])], final=[same])
+    assert len(res.errors) == 1

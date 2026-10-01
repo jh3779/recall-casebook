@@ -98,6 +98,32 @@ DIFF_ARGS = (
 )
 
 
+GIT_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13, '"': 34, "\\": 92}
+
+
+def unquote_git_path(target: str) -> str:
+    """git이 `"`·`\\`·제어문자가 든 경로를 감싸는 C 스타일 인용(`"b/a\\"b.py"`)을 푼다."""
+    if not (len(target) >= 2 and target[0] == target[-1] == '"'):
+        return target
+    raw, out, i = target[1:-1], bytearray(), 0
+    while i < len(raw):
+        ch = raw[i]
+        if ch == "\\" and i + 1 < len(raw):
+            nxt = raw[i + 1]
+            octal = raw[i + 1 : i + 4]
+            if len(octal) == 3 and all(c in "01234567" for c in octal):
+                out.append(int(octal, 8))  # \\NNN 8진수 바이트
+                i += 4
+                continue
+            if nxt in GIT_ESCAPES:
+                out.append(GIT_ESCAPES[nxt])
+                i += 2
+                continue
+        out += ch.encode("utf-8")
+        i += 1
+    return out.decode("utf-8", errors="replace")
+
+
 def parse_patch(patch: str) -> Added:
     """git diff/log -p --unified=0 출력에서 추가된 줄만 뽑는다. `commit:<sha>` 줄로 커밋을 구분한다.
 
@@ -120,9 +146,13 @@ def parse_patch(patch: str) -> Added:
                 result.append((commit, path, lineno, line[1:]))
                 lineno += 1
         elif line.startswith("+++ "):
-            # 공백이 든 경로는 끝에 탭이 붙는다. /dev/null = 삭제된 파일
-            target = line[4:].rstrip("\t")
-            path = target[2:] if target.startswith("b/") else None
+            # 공백이 든 경로는 끝에 탭이 붙고, 특수문자가 든 경로는 따옴표로 인용된다
+            target = unquote_git_path(line[4:].rstrip("\t"))
+            if target == "/dev/null":  # 삭제된 파일
+                path = None
+            else:
+                # 형식을 못 읽어도 줄을 버리지 않는다 (fail-closed) — 원래 문자열을 경로로 쓴다
+                path = target[2:] if target.startswith("b/") else target
     return result
 
 
@@ -158,14 +188,22 @@ def check_principles(added: Added) -> Result:
     return r
 
 
-def check_secrets(paths: list[str], history: Added) -> Result:
-    """paths: 최종 diff의 파일, history: 커밋별 추가 줄 (history_added_lines)."""
+def check_secrets(paths: list[str], history: Added, final: Added | None = None) -> Result:
+    """paths: 최종 diff의 파일, history: 커밋별 추가 줄, final: 최종 diff의 추가 줄.
+
+    history만 보면 병합 커밋(충돌 해결)에서만 생긴 줄을 놓친다 — git log -p는 병합 커밋 diff를
+    출력하지 않는다. 그래서 최종 diff도 함께 본다. 같은 줄은 한 번만 보고한다.
+    """
     r = Result("secrets")
     for path in sorted(set(paths) | {p for _, p, _, _ in history}):
         name = Path(path).name
         if (name == ".env" or name.startswith(".env.")) and name != ".env.example":
             r.errors.append(f"{path} — .env 파일은 커밋하지 않는다 (이력에 남았으면 키 폐기)")
-    for commit, path, lineno, text in history:
+    seen: set[tuple[str, str]] = set()
+    for commit, path, lineno, text in [*history, *(final or [])]:
+        if (path, text) in seen:
+            continue
+        seen.add((path, text))
         for label, pattern in SECRET_PATTERNS.items():
             if pattern.search(text):
                 where = f" (커밋 {commit[:7]})" if commit else ""
@@ -313,9 +351,10 @@ def main() -> int:
 
     if base and head:
         paths = changed_files(base, head)
+        final = added_lines(base, head)
         results += [
-            check_principles(added_lines(base, head)),
-            check_secrets(paths, history_added_lines(base, head)),
+            check_principles(final),
+            check_secrets(paths, history_added_lines(base, head), final),
         ]
         if body is not None:
             results.append(check_rag_evidence(paths, body, rag_paths()))
