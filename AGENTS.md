@@ -9,7 +9,7 @@
 1. `.agent/HANDOFF.md` — 지금 어디까지 했고 다음에 뭘 하나
 2. `.agent/PROJECT_CONTEXT.md` — 프로젝트 목표·팀·제약
 3. `docs/기획.md` — 무엇을 왜 만드는가 (특히 1절 해결 범위, 5절 설계 제약)
-4. 작업 영역에 따라: `docs/시작하기.md`(전체 셋팅·작업 흐름), `CONTRIBUTING.md`(git·PR), `docs/개발환경.md`(uv 상세)
+4. 작업 영역에 따라: `docs/시작하기.md`(전체 셋팅·작업 흐름), `CONTRIBUTING.md`(git·PR), `docs/개발환경.md`(uv 상세), `docs/MERGE_PROTOCOL.md`(병합 전 검증)
 
 작업 전에 `git status --short`로 남의 변경이 있는지 본다. 이해하지 못한 변경은 덮어쓰지 않는다.
 
@@ -64,7 +64,10 @@
 - 브랜치: `<type>/<소문자-하이픈>` — type: `feat fix refactor docs research data chore remove`
 - 커밋·PR 제목: `<type>: <한국어 설명>` (첫 글자 대문자 금지)
 - **main에 직접 커밋·push하지 않는다.** `--no-verify`, `LEFTHOOK=0`으로 훅을 우회하지 않는다.
-- **PR을 병합하지 않는다.** 병합은 사람이 한다. force push는 사용자가 요청한 경우에만 `--force-with-lease`로.
+- **병합 전에는 반드시 [`docs/MERGE_PROTOCOL.md`](docs/MERGE_PROTOCOL.md)의 게이트를 전부 돌린다.** 이 저장소는 필수 리뷰어가 없다 — 그 대신 **자동 리뷰가 최신 커밋 기준으로 있는지, 지적을 하나도 빠짐없이 처리했는지**를 에이전트가 확인하고 결과 표를 PR 코멘트로 남긴다. 하나라도 ❌면 병합하지 않는다.
+- 병합은 기본적으로 사람이 한다. 에이전트는 사용자가 **그 PR의 병합을 명시적으로 지시**하고 게이트가 전부 ✅일 때만 `gh pr merge <N> --squash`를 실행한다.
+- 자기가 작성한 코드를 같은 컨텍스트에서 "문제없음"이라고 리뷰하지 않는다. 별도 리뷰어(리뷰봇·`/code-review`·리뷰 에이전트)의 결과를 쓴다.
+- force push는 사용자가 요청한 경우에만 `--force-with-lease`로.
 - 커밋·push·PR 생성은 사용자가 요청했을 때만 한다.
 - PR 본문의 첫 줄이나 마지막 줄에 리뷰어를 `@태그`하고 "리뷰 요청드립니다"를 적는다.
 - 리뷰를 할 때는 결론만 쓰지 않고 근거(`파일:줄`, 판단 이유, 배제한 가능성)를 함께 적는다.

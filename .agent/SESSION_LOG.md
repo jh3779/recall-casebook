@@ -8,3 +8,4 @@
 - 2026-10-01: uv 개발환경(DEC-004)·`docs/개발환경.md`·CI `ci.yml`, 에이전트 행동강령 AGENTS.md/CLAUDE.md/.claude/settings.json(DEC-005)
 - 2026-10-01: 전체 셋팅 안내서 `docs/시작하기.md` 작성, README·AGENTS.md에서 연결
 - 2026-10-01: GitHub private 저장소 생성·첫 push(CI green), squash 전용·브랜치 자동 삭제, 룰셋 `main 보호` 적용(DEC-006)
+- 2026-10-01: 병합 전 검증 프로토콜(MERGE_PROTOCOL.md·pre-merge-check 스킬) 도입, `gh pr merge` deny→ask (DEC-007)

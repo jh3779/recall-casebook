@@ -10,7 +10,10 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git branch:*)",
-      "Bash(lefthook validate:*)"
+      "Bash(lefthook validate:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr diff:*)"
     ],
     "deny": [
       "Read(./.env)",
@@ -18,8 +21,10 @@
       "Read(./.env.*.local)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
-      "Bash(gh pr merge:*)",
       "Bash(pip install:*)"
+    ],
+    "ask": [
+      "Bash(gh pr merge:*)"
     ]
   }
 }

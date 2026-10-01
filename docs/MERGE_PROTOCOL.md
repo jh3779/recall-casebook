@@ -1,0 +1,125 @@
+# 병합 전 검증 프로토콜
+
+> **원칙: 게이트 하나라도 ❌면 병합하지 않는다.**
+>
+> 이 저장소의 main 룰셋은 **필수 리뷰어를 두지 않는다**(승인 0명, DEC-006). 사람 승인 대신
+> **자동 리뷰를 받고, 그 지적을 하나도 빠짐없이 처리했는지**를 이 문서의 게이트로 확인한다.
+> GitHub이 강제하는 것은 CI 3개뿐이므로, 나머지는 이 문서를 따르는 사람·에이전트가 지킨다.
+>
+> - 이 문서가 **기준(정본)** 이다. Claude Code의 실행 절차는 [`.claude/skills/pre-merge-check/SKILL.md`](../.claude/skills/pre-merge-check/SKILL.md).
+>   둘이 어긋나면 이 문서에 맞춰 스킬을 고친다.
+> - 다른 에이전트(Codex 등)는 이 문서의 명령을 그대로 실행한다.
+
+---
+
+## 0. 언제 적용하나
+
+- 사용자가 **"병합해 줘", "머지 전 검토해 줘", "병합해도 돼?"** 라고 할 때 — 병합 버튼을 누르기 전에 항상.
+- 에이전트가 PR 작업을 끝내고 "준비됐다"고 보고하기 전.
+- 예외: 사용자가 특정 게이트를 **명시적으로** 건너뛰라고 한 경우만. 이때도 결과 코멘트에 `G-XX 스킵(사용자 지시)`를 남긴다.
+
+## 1. 자동 리뷰란
+
+PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남긴 지적 목록이다. 아래 중 하나 이상이면 된다.
+
+| 출처 | 어디에 남나 |
+|---|---|
+| 리뷰봇 (Discord 봇 함대, `review-bot-notify.yml`로 PR push를 감지) | PR 리뷰·코멘트 |
+| Claude Code `/code-review` 또는 리뷰 에이전트 | PR 코멘트로 게시 |
+| 기타 AI 리뷰 도구 | PR 리뷰·코멘트 |
+
+**작성자 에이전트가 자기 코드를 스스로 "문제없음"이라고 하는 것은 자동 리뷰가 아니다.** 같은 세션에서 코드를 짠 에이전트라면 별도 리뷰 도구·에이전트(새 컨텍스트)로 리뷰한다.
+
+---
+
+## 2. 게이트
+
+| ID | 게이트 | 통과 기준 | 확인 방법 |
+|---|---|---|---|
+| G-01 | **CI** | 필수 체크 3개(`lint-and-test` · `check-branch-name` · `validate-pr-title`) 모두 pass | `gh pr checks <N>` |
+| G-02 | **자동 리뷰 존재** | 자동 리뷰가 1건 이상 있다. 없으면 **직접 돌려서** PR 코멘트로 남긴 뒤 진행 | `gh pr view <N> --json reviews,comments` |
+| G-03 | **리뷰가 최신 커밋 기준** | 마지막 자동 리뷰가 **마지막 push 이후**에 작성됐다. 리뷰 뒤에 커밋이 추가됐으면 재리뷰 | 리뷰 시각 vs `commits[-1].committedDate` (또는 리뷰가 가리키는 커밋 SHA vs `headRefOid`) |
+| G-04 | **지적 전부 처리** | 모든 지적에 처리 결과가 있다: **반영**(커밋 SHA) / **반박**(근거 `파일:줄`) / **후속 이슈**(이슈 링크). 🔴 심각(버그·보안·데이터 손실·서비스 원칙 위반) 지적은 **반영만** 허용 | 리뷰 본문을 전부 읽고 표로 정리 |
+| G-05 | **리뷰 스레드 해결** | 미해결 인라인 리뷰 스레드 0개 | 아래 [3절](#3-명령-모음) GraphQL |
+| G-06 | **diff 정독 · PR 설명 일치** | `gh pr diff <N>` 전량을 읽었고, PR 제목·본문이 실제 변경과 맞는다 (요약만 보고 넘기지 않는다) | `gh pr diff <N>` |
+| G-07 | **서비스 원칙 스윕** | 판정 필드(`applies` · `verdict` · `is_applicable`)·"적용됩니다/적용되지 않습니다"류 출력이 새로 생기지 않았다. 비밀값·`.env`가 없다 | 아래 grep |
+| G-08 | **RAG 품질 근거** | 검색·답변·프롬프트·청킹·색인을 바꿨다면 PR 본문 "검증 방법"에 **같은 평가셋 before → after 수치**가 있다. 해당 없으면 "해당 없음" | PR 본문 확인 |
+| G-09 | **의존성 · 인계 문서** | `pyproject.toml`을 바꿨으면 `uv.lock`도 바뀌었다. 의미 있는 진전·결정이면 `.agent/`가 갱신됐다 | `gh pr diff <N> --name-only` |
+
+---
+
+## 3. 명령 모음
+
+```bash
+N=<PR 번호>
+REPO=jh3779/LG_CNS_RAG_main
+
+# G-01 CI
+gh pr checks $N
+
+# G-02 · G-03 리뷰·코멘트와 마지막 커밋 시각
+gh pr view $N --json headRefOid,commits,reviews,comments \
+  -q '{head: .headRefOid, last_commit: .commits[-1].committedDate,
+       reviews: [.reviews[] | {author: .author.login, state, at: .submittedAt, commit: .commit.oid}],
+       comments: [.comments[] | {author: .author.login, at: .createdAt}]}'
+gh pr view $N --comments          # 본문까지 전부 읽기
+
+# G-05 미해결 리뷰 스레드
+gh api graphql -F o=${REPO%/*} -F r=${REPO#*/} -F n=$N -f query='
+query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
+  reviewThreads(first:100){nodes{isResolved path line comments(first:1){nodes{author{login} body}}}}}}}' \
+  -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not)]'
+
+# G-06 diff
+gh pr diff $N
+
+# G-07 서비스 원칙 · 비밀값 (추가된 줄만)
+gh pr diff $N | grep -E '^\+' | grep -nEi 'applies|verdict|is_applicable|적용됩니다|적용되지 않습니다' || echo "판정 표현 없음"
+gh pr diff $N --name-only | grep -E '(^|/)\.env($|\.)' | grep -v '\.env\.example' || echo ".env 없음"
+
+# G-09 의존성
+gh pr diff $N --name-only | grep -E '^(pyproject\.toml|uv\.lock)$'
+```
+
+G-07 grep에 걸렸다고 바로 실패는 아니다 — 문서·테스트에서 "판정 필드를 만들지 않는다"고 **설명**하는 줄이면 통과. 답변 스키마·프롬프트·출력 코드에 들어간 경우만 ❌.
+
+---
+
+## 4. 결과 보고 — PR 코멘트로 남긴다
+
+게이트를 돌린 뒤 **결과를 PR 코멘트로 게시한다** (사람이 병합 버튼 앞에서 바로 볼 수 있게). 첫 줄은 고정 문구로 시작한다.
+
+```markdown
+## ✅ 병합 전 검증 결과 (head `abc1234`)
+
+| 게이트 | 결과 | 근거 |
+|---|---|---|
+| G-01 CI | ✅ | 3/3 pass |
+| G-02 자동 리뷰 존재 | ✅ | /code-review (2026-10-01 14:30) |
+| G-03 최신 커밋 기준 | ✅ | 리뷰 14:30 > 마지막 커밋 14:12 |
+| G-04 지적 처리 | ✅ | 3건: 반영 2 (`def5678`), 반박 1 (`src/x.py:42` — 이유) |
+| G-05 스레드 해결 | ✅ | 미해결 0 |
+| G-06 diff·설명 | ✅ | 파일 4개 전량 확인 |
+| G-07 원칙 스윕 | ✅ | 판정 표현 없음, .env 없음 |
+| G-08 RAG 근거 | 해당 없음 | 검색·답변 코드 변경 없음 |
+| G-09 의존성·인계 | ✅ | uv.lock 동반, HANDOFF 갱신 |
+
+### 자동 리뷰 지적 처리 내역
+| # | 지적 (출처) | 심각도 | 처리 | 근거 |
+|---|---|---|---|---|
+
+@<병합할 사람> 병합 전 검증 확인 요청드립니다.
+```
+
+- 하나라도 ❌면 제목을 `## ❌ 병합 전 검증 결과`로 쓰고, 실패 게이트·원인·제안 수정을 적는다. **병합하지 않는다.**
+- 이 코멘트를 남긴 뒤 커밋이 추가되면 결과는 무효 — 다시 돌린다.
+
+## 5. 병합은 누가 하나
+
+- 기본은 **사람**이 위 코멘트를 보고 squash merge 한다.
+- 에이전트는 사용자가 **그 PR의 병합을 명시적으로 지시한 경우에만** `gh pr merge <N> --squash`를 실행할 수 있고, 그때도 4절 코멘트가 ✅로 게시된 뒤여야 한다. (Claude Code는 `.claude/settings.json`에서 이 명령이 매번 확인을 묻도록 돼 있다.)
+
+## 6. 이 문서의 갱신 규칙
+
+- 병합 뒤에 문제가 발견되면, 어느 게이트가 놓쳤는지 따져서 **게이트를 추가하거나 고친다.** "다음엔 조심하자"로 끝내지 않는다.
+- 게이트가 너무 많아 실제로 안 지켜지면 그것도 실패다. 지켜지지 않는 게이트는 빼거나 CI로 옮긴다.

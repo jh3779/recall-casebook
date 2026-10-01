@@ -64,7 +64,8 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 
 ## 머지 규칙
 - **Squash merge만 허용** (merge commit/rebase merge 금지) · linear history 유지
-- PR의 머지/close 결정은 리뷰어가 수행 — 작성자는 자기 PR을 직접 close하지 않는다
+- **필수 리뷰어는 없다** (룰셋 승인 0명, DEC-006). 대신 병합 전에 [`docs/MERGE_PROTOCOL.md`](docs/MERGE_PROTOCOL.md)의 게이트를 돌린다 — 자동 리뷰가 최신 커밋 기준으로 있고, 그 지적이 전부 처리(반영/반박/후속 이슈)됐고, 리뷰 스레드가 모두 해결됐는지 확인한 결과 표가 **PR 코멘트로 ✅ 게시된 뒤에만** 병합한다
+- 작성자는 자기 PR을 직접 close하지 않는다
 - 머지 후 원격 브랜치 삭제, 로컬은 정리(clean up)
 
 ## 비밀값
@@ -77,5 +78,5 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 | squash merge만 허용 (커밋 메시지 = PR 제목) | 저장소 설정 + 룰셋 `allowed_merge_methods` | ✅ 적용됨 |
 | 머지 후 원격 브랜치 삭제 | 저장소 설정: `delete_branch_on_merge` | ✅ 적용됨 |
 | 브랜치명·PR 제목 규칙 + lint·테스트 | CI 필수 상태 체크 3개 (`lint-and-test` · `check-branch-name` · `validate-pr-title`) | ✅ 적용됨 — 실패 시 병합 불가 |
-| main 직접 push·force push·삭제 차단, PR 필수 | 룰셋 `main 보호` (Pro 플랜이라 private에서 동작) | ✅ 적용됨 — 필수 승인 0명 (팀원 합류 후 상향 검토) |
+| main 직접 push·force push·삭제 차단, PR 필수 | 룰셋 `main 보호` (Pro 플랜이라 private에서 동작) | ✅ 적용됨 — 필수 승인 0명, 대신 병합 전 검증 프로토콜(문서 규칙) |
 | CODEOWNERS 승인 게이트 | 룰셋 "Require review from Code Owners" | ⬜ 팀원 확정 후 결정 |
