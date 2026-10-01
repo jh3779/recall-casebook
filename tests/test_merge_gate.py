@@ -192,9 +192,28 @@ def test_review_edited_before_result_is_fine():
     assert evaluate(HEAD, [], comments, 0).state == "success"
 
 
-def test_edited_result_comment_is_ignored():
+def test_edited_result_comment_is_not_accepted():
     """❌ 결과를 ✅로 고쳐 쓴 코멘트는 인정하지 않는다 — 결과는 새로 올린다."""
     tampered = result("✅", HEAD, "2026-10-01T14:10:00Z") | {"updated": "2026-10-01T14:30:00Z"}
     gate = evaluate(HEAD, [], [review(HEAD, "2026-10-01T14:00:00Z"), tampered], 0)
     assert gate.state == "pending"
-    assert "- 수정돼서 무시한 결과 코멘트: 1개" in gate.lines
+    assert "새 결과 코멘트를 올리세요" in gate.description
+
+
+def test_edited_latest_result_does_not_revive_earlier_ok():
+    """✅(T2) → ❌(T3, 나중에 수정)이면 앞선 ✅가 되살아나면 안 된다 (리뷰 N1)."""
+    comments = [
+        review(HEAD, "2026-10-01T14:00:00Z"),
+        result("✅", HEAD, "2026-10-01T14:10:00Z"),
+        result("❌", HEAD, "2026-10-01T14:20:00Z") | {"updated": "2026-10-01T14:25:00Z"},
+    ]
+    assert evaluate(HEAD, [], comments, 0).state == "pending"
+
+
+def test_new_result_after_edited_one_counts():
+    comments = [
+        review(HEAD, "2026-10-01T14:00:00Z"),
+        result("❌", HEAD, "2026-10-01T14:10:00Z") | {"updated": "2026-10-01T14:15:00Z"},
+        result("✅", HEAD, "2026-10-01T14:20:00Z"),
+    ]
+    assert evaluate(HEAD, [], comments, 0).state == "success"

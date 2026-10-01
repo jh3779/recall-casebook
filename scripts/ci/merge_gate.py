@@ -62,8 +62,9 @@ def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: i
     둘 다 시간순이고 시각은 ISO 8601(초 단위).
     선후 판정: 코멘트끼리는 목록 순서(같은 초도 구분), GitHub 리뷰와 결과 코멘트는 시각으로 비교하되
     같은 초면 보수적으로 "결과 이후"로 본다.
-    수정: 결과 뒤에 **수정된** 리뷰 코멘트는 새 리뷰로 본다. **수정된** 결과 코멘트는 세지 않는다
-    (❌를 ✅로 고쳐 쓰는 것을 막는다 — 결과는 새 코멘트로 다시 올린다).
+    수정: 결과 뒤에 **수정된** 리뷰 코멘트는 새 리뷰로 본다. 결과는 **목록의 마지막 결과 코멘트만**
+    기준으로 하고, 그것이 수정됐으면 pending이다 — ❌를 ✅로 고쳐 쓰거나, 수정을 핑계로 앞선 ✅를
+    되살리는 것을 막는다. 결과는 새 코멘트로 다시 올린다.
     """
     on_head = [r for r in reviews if r.get("commit") == head]
     # 리뷰어별 마지막 상태는 커밋과 무관하게 전체 이력으로 본다 — push해도 변경 요청은 풀리지 않는다
@@ -83,7 +84,7 @@ def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: i
         and not first_line(r.get("body") or "").startswith(RETRIGGER_MARKER)
     ]
     comment_reviews: list[tuple[int, str, str]] = []  # (목록 순서, 수정 시각 또는 "", 출처)
-    edited_results = 0
+    last_result_edited = False
     result, result_idx, result_at = None, -1, ""  # 현재 head에 대한 가장 최근 결과
     for idx, c in enumerate(comments):
         line = first_line(c["body"])
@@ -92,10 +93,9 @@ def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: i
         if (m := REVIEW_MARKER.match(line)) and same_commit(m.group(1), head):
             comment_reviews.append((idx, edited, f"리뷰 코멘트 ({c.get('author', '?')})"))
         elif (m := RESULT_MARKER.match(line)) and same_commit(m.group(2), head):
-            if edited:
-                edited_results += 1  # 고쳐 쓴 결과는 인정하지 않는다
-                continue
+            # 마지막 결과가 기준 — 수정된 결과를 건너뛰면 앞선 ✅가 되살아나므로 건너뛰지 않는다
             result, result_idx, result_at = m.group(1), idx, created
+            last_result_edited = bool(edited)
     review_sources = [src for _, src in gh_reviews] + [src for _, _, src in comment_reviews]
     # 결과 코멘트보다 나중에 올라오거나 나중에 수정된 리뷰 — 그 지적을 처리하기 전에 쓴 결과이므로 무효
     reviews_after_result = (
@@ -114,12 +114,17 @@ def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: i
         f"- head `{short}`",
         f"- 자동 리뷰 (G-03): {', '.join(review_sources) if review_sources else '없음'}",
         f"- 미해결 리뷰 스레드 (G-05): {unresolved}개",
-        f"- 병합 전 검증 결과 코멘트: {result or '없음'}",
+        f"- 병합 전 검증 결과 코멘트: {result or '없음'}{' (수정됨 — 무효)' if last_result_edited else ''}",
         f"- 변경 요청(CHANGES_REQUESTED): {', '.join(changes_requested) or '없음'}",
         f"- 결과 코멘트 이후 새 리뷰: {', '.join(reviews_after_result) or '없음'}",
-        f"- 수정돼서 무시한 결과 코멘트: {edited_results}개",
     ]
 
+    if last_result_edited:
+        return Gate(
+            "pending",
+            f"{short}: 마지막 결과 코멘트가 수정됨 — 고치지 말고 새 결과 코멘트를 올리세요",
+            lines,
+        )
     if changes_requested:
         return Gate(
             "failure", f"{short}: 변경 요청 리뷰 남아 있음 ({', '.join(changes_requested)})", lines
