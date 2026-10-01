@@ -71,11 +71,11 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 - API 키·토큰은 `.env`에만 둔다. `.env.example`에는 키 이름만 적는다.
 - 실수로 커밋했다면 즉시 키를 폐기(rotate)하고 팀에 알린다 — 히스토리 삭제만으로는 부족하다.
 
-## 저장소 설정으로 강제할 것 (GitHub 저장소 생성 후 적용)
+## 저장소 설정으로 강제되는 것 (2026-10-01 적용, `jh3779/LG_CNS_RAG_main`)
 | 정책 | 강제 수단 | 상태 |
 |---|---|---|
-| squash merge만 허용 | 저장소 설정: merge commit·rebase merge 비활성 | ⬜ 미적용 |
-| 머지 후 원격 브랜치 삭제 | 저장소 설정: `delete_branch_on_merge` | ⬜ 미적용 |
-| 브랜치명·PR 제목 규칙 | CI (`branch-name-check` · `pr-title-check`) | ⬜ 저장소 push 후 동작 |
-| main 직접 push 차단 + 필수 상태 체크 | Branch protection (`main`) — private 무료 플랜 미지원 | ⬜ 미적용 |
+| squash merge만 허용 (커밋 메시지 = PR 제목) | 저장소 설정 + 룰셋 `allowed_merge_methods` | ✅ 적용됨 |
+| 머지 후 원격 브랜치 삭제 | 저장소 설정: `delete_branch_on_merge` | ✅ 적용됨 |
+| 브랜치명·PR 제목 규칙 + lint·테스트 | CI 필수 상태 체크 3개 (`lint-and-test` · `check-branch-name` · `validate-pr-title`) | ✅ 적용됨 — 실패 시 병합 불가 |
+| main 직접 push·force push·삭제 차단, PR 필수 | 룰셋 `main 보호` (Pro 플랜이라 private에서 동작) | ✅ 적용됨 — 필수 승인 0명 (팀원 합류 후 상향 검토) |
 | CODEOWNERS 승인 게이트 | 룰셋 "Require review from Code Owners" | ⬜ 팀원 확정 후 결정 |
