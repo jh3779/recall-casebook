@@ -24,11 +24,20 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 
 | 출처 | 어디에 남나 |
 |---|---|
-| 리뷰봇 (Discord 봇 함대, `review-bot-notify.yml`로 PR push를 감지) | PR 리뷰·코멘트 |
+| 리뷰봇 (Discord 봇 함대, `review-bot-notify.yml`이 PR push를 Discord로 알림) | PR 리뷰·코멘트 — ⚠️ 이 저장소에서 봇이 PR에 실제로 게시하는지는 **아직 확인 전**. 게시되지 않으면 아래 방법으로 리뷰를 돌린다 |
 | Claude Code `/code-review` 또는 리뷰 에이전트 | PR 코멘트로 게시 |
 | 기타 AI 리뷰 도구 | PR 리뷰·코멘트 |
 
-**작성자 에이전트가 자기 코드를 스스로 "문제없음"이라고 하는 것은 자동 리뷰가 아니다.** 같은 세션에서 코드를 짠 에이전트라면 별도 리뷰 도구·에이전트(새 컨텍스트)로 리뷰한다.
+**자동 리뷰로 인정하는 조건**
+
+- **리뷰 기준 커밋이 PR의 현재 head와 같아야 한다.**
+  - GitHub 리뷰(Review)는 `.commit.oid == headRefOid`로 확인한다.
+  - 코멘트로 남긴 리뷰는 **첫 줄을 `## 🤖 자동 리뷰 (head <짧은 SHA>)`** 로 쓰고, 그 SHA가 head와 일치해야 한다. (코멘트에는 커밋 정보가 없어서 첫 줄로 정한다.)
+- **작성자 에이전트가 자기 코드를 같은 컨텍스트에서 "문제없음"이라고 하는 것은 자동 리뷰가 아니다.** 별도 리뷰 도구·에이전트(새 컨텍스트)로 리뷰한다.
+- `## ✅/❌ 병합 전 검증 결과` 코멘트(4절)는 리뷰가 아니라 **게이트 결과**다. 자동 리뷰로 세지 않는다.
+- **심각도는 리뷰어가 매긴다.** 작성자는 심각도를 낮출 수 없다.
+
+> ⚠️ **알려진 한계** — 작성자 에이전트가 리뷰 도구를 직접 돌리고 지적을 스스로 "반박" 처리하는 것까지 구조적으로 막지는 못한다. 그래서 **반박은 반드시 근거(`파일:줄`)를 남기고**, 병합하는 사람이 4절 결과 코멘트의 "지적 처리 내역"에서 반박 항목을 직접 확인한다. 🔴 심각 지적은 반박할 수 없다.
 
 ---
 
@@ -38,8 +47,8 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 |---|---|---|---|
 | G-01 | **CI** | 필수 체크 3개(`lint-and-test` · `check-branch-name` · `validate-pr-title`) 모두 pass | `gh pr checks <N>` |
 | G-02 | **자동 리뷰 존재** | 자동 리뷰가 1건 이상 있다. 없으면 **직접 돌려서** PR 코멘트로 남긴 뒤 진행 | `gh pr view <N> --json reviews,comments` |
-| G-03 | **리뷰가 최신 커밋 기준** | 마지막 자동 리뷰가 **마지막 push 이후**에 작성됐다. 리뷰 뒤에 커밋이 추가됐으면 재리뷰 | 리뷰 시각 vs `commits[-1].committedDate` (또는 리뷰가 가리키는 커밋 SHA vs `headRefOid`) |
-| G-04 | **지적 전부 처리** | 모든 지적에 처리 결과가 있다: **반영**(커밋 SHA) / **반박**(근거 `파일:줄`) / **후속 이슈**(이슈 링크). 🔴 심각(버그·보안·데이터 손실·서비스 원칙 위반) 지적은 **반영만** 허용 | 리뷰 본문을 전부 읽고 표로 정리 |
+| G-03 | **리뷰가 최신 커밋 기준** | 자동 리뷰의 기준 커밋 = 현재 head (1절 조건). 리뷰 뒤에 커밋이 추가됐으면 재리뷰 | 리뷰 `.commit.oid` 또는 코멘트 첫 줄의 SHA vs `headRefOid` (커밋 **시각** 비교는 rebase·amend 때 틀리므로 쓰지 않는다) |
+| G-04 | **지적 전부 처리** | 모든 지적에 처리 결과가 있다: **반영**(커밋 SHA) / **반박**(근거 `파일:줄`) / **후속 이슈**(이슈 링크). 🔴 심각(버그·보안·데이터 손실·서비스 원칙 위반) 지적은 **반영만** 허용. 반영으로 커밋이 늘면 G-01·G-03부터 다시 | 리뷰 본문을 전부 읽고 표로 정리 |
 | G-05 | **리뷰 스레드 해결** | 미해결 인라인 리뷰 스레드 0개 | 아래 [3절](#3-명령-모음) GraphQL |
 | G-06 | **diff 정독 · PR 설명 일치** | `gh pr diff <N>` 전량을 읽었고, PR 제목·본문이 실제 변경과 맞는다 (요약만 보고 넘기지 않는다) | `gh pr diff <N>` |
 | G-07 | **서비스 원칙 스윕** | 판정 필드(`applies` · `verdict` · `is_applicable`)·"적용됩니다/적용되지 않습니다"류 출력이 새로 생기지 않았다. 비밀값·`.env`가 없다 | 아래 grep |
@@ -57,14 +66,14 @@ REPO=jh3779/LG_CNS_RAG_main
 # G-01 CI
 gh pr checks $N
 
-# G-02 · G-03 리뷰·코멘트와 마지막 커밋 시각
-gh pr view $N --json headRefOid,commits,reviews,comments \
-  -q '{head: .headRefOid, last_commit: .commits[-1].committedDate,
-       reviews: [.reviews[] | {author: .author.login, state, at: .submittedAt, commit: .commit.oid}],
-       comments: [.comments[] | {author: .author.login, at: .createdAt}]}'
+# G-02 · G-03 현재 head, 리뷰(기준 커밋 포함), 코멘트 첫 줄
+gh pr view $N --json headRefOid,reviews,comments \
+  -q '{head: .headRefOid[0:7],
+       reviews: [.reviews[] | {author: .author.login, state, commit: .commit.oid[0:7]}],
+       comments: [.comments[] | {author: .author.login, at: .createdAt, first_line: (.body | split("\n")[0])}]}'
 gh pr view $N --comments          # 본문까지 전부 읽기
 
-# G-05 미해결 리뷰 스레드
+# G-05 미해결 리뷰 스레드 (100개 초과 시 누락 — 그 규모가 되면 페이지네이션 추가)
 gh api graphql -F o=${REPO%/*} -F r=${REPO#*/} -F n=$N -f query='
 query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
   reviewThreads(first:100){nodes{isResolved path line comments(first:1){nodes{author{login} body}}}}}}}' \
@@ -77,8 +86,8 @@ gh pr diff $N
 gh pr diff $N | grep -E '^\+' | grep -nEi 'applies|verdict|is_applicable|적용됩니다|적용되지 않습니다' || echo "판정 표현 없음"
 gh pr diff $N --name-only | grep -E '(^|/)\.env($|\.)' | grep -v '\.env\.example' || echo ".env 없음"
 
-# G-09 의존성
-gh pr diff $N --name-only | grep -E '^(pyproject\.toml|uv\.lock)$'
+# G-09 의존성 · 인계 문서
+gh pr diff $N --name-only | grep -E '^(pyproject\.toml|uv\.lock|\.agent/)' || echo "의존성·.agent 변경 없음"
 ```
 
 G-07 grep에 걸렸다고 바로 실패는 아니다 — 문서·테스트에서 "판정 필드를 만들지 않는다"고 **설명**하는 줄이면 통과. 답변 스키마·프롬프트·출력 코드에 들어간 경우만 ❌.
@@ -117,7 +126,12 @@ G-07 grep에 걸렸다고 바로 실패는 아니다 — 문서·테스트에서
 ## 5. 병합은 누가 하나
 
 - 기본은 **사람**이 위 코멘트를 보고 squash merge 한다.
-- 에이전트는 사용자가 **그 PR의 병합을 명시적으로 지시한 경우에만** `gh pr merge <N> --squash`를 실행할 수 있고, 그때도 4절 코멘트가 ✅로 게시된 뒤여야 한다. (Claude Code는 `.claude/settings.json`에서 이 명령이 매번 확인을 묻도록 돼 있다.)
+- 에이전트는 사용자가 **그 PR의 병합을 명시적으로 지시한 경우에만** 병합할 수 있고, 그때도 4절 코멘트가 ✅로 게시된 뒤여야 한다. (Claude Code는 `.claude/settings.json`에서 이 명령이 매번 확인을 묻도록 돼 있다.)
+- 병합 명령에는 **결과 코멘트에 적힌 head SHA를 반드시 붙인다.** 코멘트 게시 뒤에 push가 들어왔으면 GitHub이 병합을 거부한다.
+  ```bash
+  gh pr merge <N> --squash --match-head-commit <결과 코멘트의 head SHA(전체)>
+  ```
+- 사람이 웹에서 병합할 때도 결과 코멘트의 head SHA가 PR의 최신 커밋과 같은지 보고 누른다.
 
 ## 6. 이 문서의 갱신 규칙
 

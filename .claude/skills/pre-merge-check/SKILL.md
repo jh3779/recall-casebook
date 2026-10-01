@@ -41,14 +41,15 @@ gh pr checks $N
 ## 2. G-02 · G-03 자동 리뷰 존재 + 최신 커밋 기준
 
 ```bash
-gh pr view $N --json headRefOid,commits,reviews,comments \
-  -q '{head: .headRefOid, last_commit: .commits[-1].committedDate,
-       reviews: [.reviews[] | {author: .author.login, state, at: .submittedAt, commit: .commit.oid}],
-       comments: [.comments[] | {author: .author.login, at: .createdAt}]}'
+gh pr view $N --json headRefOid,reviews,comments \
+  -q '{head: .headRefOid[0:7],
+       reviews: [.reviews[] | {author: .author.login, state, commit: .commit.oid[0:7]}],
+       comments: [.comments[] | {author: .author.login, at: .createdAt, first_line: (.body | split("\n")[0])}]}'
 gh pr view $N --comments
 ```
 
-- 자동 리뷰(리뷰봇·`/code-review`·리뷰 에이전트 등)가 **마지막 커밋 시각 이후**에 있는지 본다.
+- 자동 리뷰가 **현재 head 기준**인지 본다: GitHub 리뷰는 `commit == head`, 코멘트형 리뷰는 첫 줄 `## 🤖 자동 리뷰 (head <SHA>)`의 SHA == head. 커밋 **시각**으로 비교하지 않는다(rebase·amend 때 틀림).
+- `## ✅/❌ 병합 전 검증 결과` 코멘트는 자동 리뷰로 세지 않는다.
 - **없거나 오래됐으면 직접 리뷰를 돌린다.** 이 세션에서 PR 코드를 직접 작성했다면 같은 컨텍스트로 "문제없음"을 판단하지 말고, `/code-review` 또는 `review-agent` 같은 별도 컨텍스트 리뷰어를 쓴다.
 - 직접 돌린 리뷰 결과는 PR 코멘트로 게시한다 (`gh pr comment $N --body-file <파일>`). 첫 줄은 `## 🤖 자동 리뷰 (head <짧은 SHA>)`.
 
@@ -62,7 +63,7 @@ gh pr view $N --comments
 | 반박 | 근거 `파일:줄` + 왜 문제가 아닌지 |
 | 후속 이슈 | `gh issue create`로 만든 이슈 링크 |
 
-🔴 심각(버그 · 보안 · 데이터 손실 · 서비스 원칙 위반) 지적은 **반영만** 허용한다. 처리 방향이 애매하면 사용자에게 묻는다.
+🔴 심각(버그 · 보안 · 데이터 손실 · 서비스 원칙 위반) 지적은 **반영만** 허용한다. **심각도는 리뷰어가 매긴 대로** 쓰고 낮추지 않는다. 반박은 근거를 남겨 병합하는 사람이 확인할 수 있게 한다. 처리 방향이 애매하면 사용자에게 묻는다.
 
 ## 4. G-05 리뷰 스레드 해결
 
@@ -73,7 +74,7 @@ query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(nu
   -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not)]'
 ```
 
-결과가 `[]`여야 한다. 남은 스레드는 3절처럼 처리한 뒤 답글로 처리 내역을 남긴다. 스레드를 resolve하는 것은 사람이 하거나, 처리 내역을 답글로 남긴 뒤에만 한다.
+결과가 `[]`여야 한다 (100개 초과 시 누락 — 그 규모가 되면 페이지네이션 추가). 남은 스레드는 3절처럼 처리한 뒤 답글로 처리 내역을 남긴다. 스레드를 resolve하는 것은 사람이 하거나, 처리 내역을 답글로 남긴 뒤에만 한다.
 
 ## 5. G-06 diff 정독 · PR 설명 일치
 
@@ -100,14 +101,14 @@ gh pr diff $N --name-only | grep -E '(^|/)\.env($|\.)' | grep -v '\.env\.example
 ## 8. G-09 의존성 · 인계 문서
 
 ```bash
-gh pr diff $N --name-only | grep -E '^(pyproject\.toml|uv\.lock|\.agent/)'
+gh pr diff $N --name-only | grep -E '^(pyproject\.toml|uv\.lock|\.agent/)' || echo "의존성·.agent 변경 없음"
 ```
 
 `pyproject.toml`만 있고 `uv.lock`이 없으면 ❌. 결정·진전이 있는 PR인데 `.agent/` 갱신이 없으면 ❌(단순 수정 PR은 해당 없음).
 
 ## 9. 결과 게시
 
-`docs/MERGE_PROTOCOL.md` 4절 형식으로 결과 표 + 지적 처리 내역을 만들어 **PR 코멘트로 게시**한다.
+`docs/MERGE_PROTOCOL.md` 4절 형식으로 결과 표 + 지적 처리 내역을 만들어 **PR 코멘트로 게시**한다. 첫 줄에 **head 짧은 SHA**를 넣는다.
 
 ```bash
 gh pr comment $N --body-file <결과.md>
@@ -121,7 +122,7 @@ gh pr comment $N --body-file <결과.md>
 전부 ✅인 코멘트를 게시한 뒤, 사용자가 이 PR의 병합을 지시했을 때만:
 
 ```bash
-gh pr merge $N --squash
+gh pr merge $N --squash --match-head-commit <결과 코멘트에 적은 head SHA(전체)>
 ```
 
-`.claude/settings.json`이 이 명령에 매번 확인을 묻는다. 병합 후 `git switch main && git pull`.
+`--match-head-commit`은 빼지 않는다 — 결과 코멘트 뒤에 push가 들어왔으면 GitHub이 병합을 거부한다. `.claude/settings.json`이 이 명령에 매번 확인을 묻는다. 병합 후 `git switch main && git pull`.
