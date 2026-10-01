@@ -6,12 +6,16 @@ HEAD = "b86f4ef0efa700cc53388958f6252ec117ed9922"
 OLD = "937597a0000000000000000000000000000000000"
 
 
-def review(sha: str) -> dict:
-    return {"body": f"## 🤖 자동 리뷰 (head `{sha[:7]}`)\n\n내용"}
+def review(sha: str, at: str = "") -> dict:
+    return {"body": f"## 🤖 자동 리뷰 (head `{sha[:7]}`)\n\n내용", "at": at}
 
 
-def result(mark: str, sha: str) -> dict:
-    return {"body": f"## {mark} 병합 전 검증 결과 (head `{sha[:7]}`)\n\n| 게이트 |"}
+def codex(sha: str, at: str = "") -> dict:
+    return {"body": f"### 🤖 자동 리뷰 (Codex) — 커밋 `{sha[:8]}`\n\n## 전체 위험도: 상", "at": at}
+
+
+def result(mark: str, sha: str, at: str = "") -> dict:
+    return {"body": f"## {mark} 병합 전 검증 결과 (head `{sha[:7]}`)\n\n| 게이트 |", "at": at}
 
 
 def test_success_when_review_and_ok_result_on_head():
@@ -117,3 +121,36 @@ def test_dismissed_clears_old_changes_request():
     dismissed = gh_review(OLD, state="DISMISSED", author="r1")
     gate = evaluate(HEAD, [cr_old, dismissed], [review(HEAD), result("✅", HEAD)], 0)
     assert gate.state == "success"
+
+
+def test_codex_review_format_counts_as_review():
+    """리뷰봇(Codex) 형식도 자동 리뷰로 인식 (PR #1에서 놓쳤던 형식)."""
+    gate = evaluate(HEAD, [], [codex(HEAD), result("✅", HEAD)], 0)
+    assert gate.state == "success"
+    assert evaluate(HEAD, [], [codex(OLD), result("✅", HEAD)], 0).state == "pending"
+
+
+def test_review_after_ok_result_invalidates_it():
+    """✅ 결과 뒤에 새 리뷰가 오면 그 지적을 처리하기 전이므로 pending (PR #1 실제 사례)."""
+    comments = [
+        review(HEAD, "2026-10-01T05:45:14Z"),
+        result("✅", HEAD, "2026-10-01T05:46:08Z"),
+        codex(HEAD, "2026-10-01T05:51:51Z"),
+    ]
+    gate = evaluate(HEAD, [], comments, 0)
+    assert gate.state == "pending"
+    assert "결과 코멘트 이후 새 리뷰" in gate.description
+
+
+def test_result_reposted_after_new_review_passes():
+    comments = [
+        codex(HEAD, "2026-10-01T05:51:51Z"),
+        result("✅", HEAD, "2026-10-01T06:10:00Z"),
+    ]
+    assert evaluate(HEAD, [], comments, 0).state == "success"
+
+
+def test_github_review_after_result_invalidates_it():
+    reviews = [gh_review(HEAD) | {"at": "2026-10-01T06:00:00Z"}]
+    comments = [review(HEAD, "2026-10-01T05:00:00Z"), result("✅", HEAD, "2026-10-01T05:30:00Z")]
+    assert evaluate(HEAD, reviews, comments, 0).state == "pending"

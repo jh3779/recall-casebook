@@ -142,15 +142,46 @@ def test_rag_evidence_case_insensitive_and_filename_variants():
         assert not check_rag_evidence([path], "", DEFAULT_RAG_PATHS).ok, path
 
 
-def test_rag_evidence_skip_marker():
-    body = BODY_OK + "\n[skip-rag-evidence: 로그 메시지만 수정]\n"
-    body = body.replace("nDCG@10 0.631 → 0.692 (평가셋 102건)", "")
+def test_rag_evidence_skip_marker_inside_section():
+    body = BODY_OK.replace(
+        "nDCG@10 0.631 → 0.692 (평가셋 102건)", "[skip-rag-evidence: 로그 메시지만 수정]"
+    )
     res = check_rag_evidence(["src/rag/retriever.py"], body, DEFAULT_RAG_PATHS)
     assert res.ok and res.skipped
 
 
+def test_rag_evidence_skip_marker_outside_section_ignored():
+    """skip 표시는 '## 검증 방법' 안에서만 인정 (Codex 리뷰 C4)."""
+    body = BODY_OK.replace("nDCG@10 0.631 → 0.692 (평가셋 102건)", "로컬 확인")
+    body += "\n[skip-rag-evidence: 아무 이유]\n"
+    assert not check_rag_evidence(["src/rag/retriever.py"], body, DEFAULT_RAG_PATHS).ok
+
+
+def test_rag_evidence_requires_metric_name():
+    """숫자 → 숫자만으로는 근거가 아니다 — `Python 3.11 → 3.12` (Codex 리뷰 C4)."""
+    body = BODY_OK.replace("nDCG@10 0.631 → 0.692 (평가셋 102건)", "Python 3.11 → 3.12")
+    assert not check_rag_evidence(["src/rag/retriever.py"], body, DEFAULT_RAG_PATHS).ok
+    for ok_line in ("Hit@5 0.882 -> 0.931", "인용 근거율 0.996 → 1.000", "Recall@20 0.752 → 0.782"):
+        body = BODY_OK.replace("nDCG@10 0.631 → 0.692 (평가셋 102건)", ok_line)
+        assert check_rag_evidence(["src/rag/retriever.py"], body, DEFAULT_RAG_PATHS).ok, ok_line
+
+
 def test_pr_body_ok():
     assert check_pr_body(BODY_OK).ok
+
+
+def test_pr_body_requires_change_type_section():
+    """'## 변경 유형' 섹션 자체가 없어도 실패 (Codex 리뷰 C6)."""
+    res = check_pr_body("## 변경 요약\n내용\n\n## 관련 이슈\n없음\n")
+    assert not res.ok
+    assert "섹션이 없다" in res.errors[0]
+
+
+def test_rag_paths_config_file_matches_defaults():
+    """설정은 pyproject.toml이 아니라 scripts/ci/pr_verify.toml에 둔다 (Codex 리뷰 C5)."""
+    from scripts.ci.pr_checks import rag_paths
+
+    assert rag_paths() == DEFAULT_RAG_PATHS
 
 
 def test_pr_body_missing_parts():

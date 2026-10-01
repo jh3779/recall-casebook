@@ -51,8 +51,15 @@ SECRET_PATTERNS = {
 DEFAULT_RAG_PATHS = [
     "*rag/*", "*rag_*", "*_rag.*", "*retriev*", "*prompt*", "*chunk*", "*embed*", "*eval/*", "*eval_*",
 ]  # fmt: skip
+# 한 줄 안에 "지표 이름 + 숫자 → 숫자"가 있어야 근거로 본다 — `Python 3.11 → 3.12` 같은 줄은 인정하지 않는다
+METRIC_PATTERN = re.compile(
+    r"ndcg|hit@|recall|mrr|map@|precision|faithfulness|f1|rouge|bleu|accuracy|judge"
+    r"|정확도|적중률|근거율|재현율|정밀도|충실도",
+    re.IGNORECASE,
+)
 EVIDENCE_PATTERN = re.compile(r"\d.*(→|->).*\d")
 RAG_SKIP_MARKER = re.compile(r"\[skip-rag-evidence:\s*\S.*\]")
+CONFIG_PATH = Path(__file__).with_name("pr_verify.toml")
 
 BRANCH_TYPES_SOURCES = {
     "scripts/check-branch.sh": r'PATTERN="\^\(([a-z|]+)\)/',
@@ -221,8 +228,17 @@ def section(body: str, title: str) -> str | None:
 
 
 def rag_paths() -> list[str]:
-    cfg = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    return cfg.get("tool", {}).get("lg-cns-rag", {}).get("rag-paths", DEFAULT_RAG_PATHS)
+    if not CONFIG_PATH.exists():
+        return DEFAULT_RAG_PATHS
+    return tomllib.loads(CONFIG_PATH.read_text(encoding="utf-8")).get(
+        "rag-paths", DEFAULT_RAG_PATHS
+    )
+
+
+def has_metric_evidence(text: str) -> bool:
+    return any(
+        METRIC_PATTERN.search(ln) and EVIDENCE_PATTERN.search(ln) for ln in text.splitlines()
+    )
 
 
 def check_rag_evidence(paths: list[str], body: str, patterns: list[str]) -> Result:
@@ -232,12 +248,14 @@ def check_rag_evidence(paths: list[str], body: str, patterns: list[str]) -> Resu
         r.skipped = "RAG 코드 변경 없음"
         return r
     evidence = section(body, "검증 방법") or ""
-    if RAG_SKIP_MARKER.search(body):
-        r.skipped = "PR 본문에 skip-rag-evidence 사유 명시"
-    elif not EVIDENCE_PATTERN.search(evidence):
+    # skip 표시는 "검증 방법" 섹션 안에서만 인정한다 — 본문 아무 데나 적어 넘기지 못하게
+    if RAG_SKIP_MARKER.search(evidence):
+        r.skipped = "'## 검증 방법'에 skip-rag-evidence 사유 명시"
+    elif not has_metric_evidence(evidence):
         r.errors.append(
             f"RAG 관련 파일 변경({', '.join(touched[:3])}{' 외' if len(touched) > 3 else ''}) — "
-            "PR 본문 '## 검증 방법'에 같은 평가셋 before → after 수치가 필요하다 (G-08)"
+            "PR 본문 '## 검증 방법'에 지표 이름과 같은 평가셋 before → after 수치가 필요하다 "
+            "(예: `nDCG@10 0.631 → 0.692 (평가셋 v2 102건)`, G-08)"
         )
     return r
 
@@ -247,7 +265,9 @@ def check_pr_body(body: str) -> Result:
     if not (section(body, "변경 요약") or ""):
         r.errors.append("PR 본문 '## 변경 요약'이 비어 있다")
     kinds = section(body, "변경 유형")
-    if kinds is not None and not re.search(r"- \[[xX]\]", kinds):
+    if kinds is None:
+        r.errors.append("PR 본문에 '## 변경 유형' 섹션이 없다 (PR 템플릿 사용)")
+    elif not re.search(r"- \[[xX]\]", kinds):
         r.errors.append("PR 본문 '## 변경 유형'에 체크된 항목이 없다")
     if not (section(body, "관련 이슈") or ""):
         r.errors.append("PR 본문 '## 관련 이슈'가 비어 있다 (없으면 \"없음\")")

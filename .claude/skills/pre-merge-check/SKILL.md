@@ -48,7 +48,10 @@ gh pr view $N --json headRefOid,reviews,comments \
 gh pr view $N --comments
 ```
 
-- 자동 리뷰가 **현재 head 기준**인지 본다: GitHub 리뷰는 `commit == head`, 코멘트형 리뷰는 첫 줄 `## 🤖 자동 리뷰 (head <SHA>)`의 SHA == head. 커밋 **시각**으로 비교하지 않는다(rebase·amend 때 틀림).
+- 자동 리뷰가 **현재 head 기준**인지 본다: GitHub 리뷰는 `commit == head`, 코멘트형 리뷰는 첫 줄의 SHA == head. 커밋 **시각**으로 비교하지 않는다(rebase·amend 때 틀림).
+  - 리뷰 에이전트: `## 🤖 자동 리뷰 (head <SHA>)`
+  - **리뷰봇(Codex): `### 🤖 자동 리뷰 (Codex) — 커밋 <SHA>`** — push 몇 분 뒤에 자동으로 올라온다. **결과 코멘트를 쓰기 전에 현재 head에 대한 Codex 리뷰가 올라왔는지 확인하고, 올라왔으면 그 지적도 4절에서 전부 처리한다.** (PR #1에서 이 리뷰를 놓쳐 ✅ 결과를 무효화한 적이 있다.)
+- **`gh pr view $N --comments` 전체를 읽는다.** 내가 올린 코멘트만 보지 않는다 — 같은 계정(`jh3779`)으로 리뷰봇이 올린 코멘트가 섞여 있다.
 - `## ✅/❌ 병합 전 검증 결과` 코멘트는 자동 리뷰로 세지 않는다.
 - **없거나 오래됐으면 직접 리뷰를 돌린다.** 이 세션에서 PR 코드를 직접 작성했다면 같은 컨텍스트로 "문제없음"을 판단하지 말고, `/code-review` 또는 `review-agent` 같은 별도 컨텍스트 리뷰어를 쓴다.
 - 직접 돌린 리뷰 결과는 PR 코멘트로 게시한다 (`gh pr comment $N --body-file <파일>`). 첫 줄은 `## 🤖 자동 리뷰 (head <짧은 SHA>)`.
@@ -115,11 +118,13 @@ gh pr comment $N --body-file <결과.md>
 gh pr checks $N --watch   # 게시 후 merge-gate가 success로 바뀌는지 확인
 ```
 
-`merge-gate`가 success가 아니면 Actions 요약을 보고 원인(리뷰 SHA 불일치, 미해결 스레드, 변경 요청 등)을 해결한다. 코멘트를 게시했는데 `merge-gate`가 다시 돌지 않으면(이 워크플로를 고치는 PR이거나 main에 아직 없을 때) 재판정 리뷰를 제출한다:
+`merge-gate`가 success가 아니면 Actions 요약을 보고 원인(리뷰 SHA 불일치, 미해결 스레드, 변경 요청 등)을 해결한다. `merge-gate`는 main 코드로 돌며 코멘트가 올라오면 다시 판정한다. GitHub 리뷰 제출·스레드 resolve 뒤처럼 다시 돌지 않았으면 재판정 코멘트를 남긴다:
 
 ```bash
-gh pr review $N --comment -b "merge-gate 재판정"
+gh pr comment $N -b "merge-gate 재판정"
 ```
+
+`merge-gate`가 필수 체크가 아닌 동안(2단계 도입 중, MERGE_PROTOCOL 2-1절)에는 이 결과 코멘트가 유일한 확인 수단이다.
 
 - 전부 ✅ → 코멘트 마지막 줄에 병합할 사람을 `@태그`하고 "병합 전 검증 확인 요청드립니다".
 - 하나라도 ❌ → 제목을 `## ❌ 병합 전 검증 결과`로, 실패 게이트·원인·제안 수정을 적는다. 병합하지 않는다.

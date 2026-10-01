@@ -4,7 +4,7 @@
 >
 > 이 저장소의 main 룰셋은 **필수 리뷰어를 두지 않는다**(승인 0명, DEC-006). 사람 승인 대신
 > **자동 리뷰를 받고, 그 지적을 하나도 빠짐없이 처리했는지**를 이 문서의 게이트로 확인한다.
-> 게이트 중 기계로 판정할 수 있는 것은 **CI가 필수 체크로 강제**한다(2-1절). 내용 판단(지적을 제대로 처리했나, diff를 읽었나)은 이 문서를 따르는 사람·에이전트가 지킨다.
+> 게이트 중 기계로 판정할 수 있는 것은 **CI가 필수 체크로 강제**한다(2-1절). 리뷰의 출처(G-02)와 내용 판단(지적을 제대로 처리했나, diff를 읽었나)은 기계가 못 하므로 **병합하는 사람이 직접 확인**한다.
 >
 > - 이 문서가 **기준(정본)** 이다. Claude Code의 실행 절차는 [`.claude/skills/pre-merge-check/SKILL.md`](../.claude/skills/pre-merge-check/SKILL.md).
 >   둘이 어긋나면 이 문서에 맞춰 스킬을 고친다.
@@ -24,7 +24,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 
 | 출처 | 어디에 남나 |
 |---|---|
-| 리뷰봇 (Discord 봇 함대, `review-bot-notify.yml`이 PR push를 Discord로 알림) | PR 리뷰·코멘트 — ⚠️ 이 저장소에서 봇이 PR에 실제로 게시하는지는 **아직 확인 전**. 게시되지 않으면 아래 방법으로 리뷰를 돌린다 |
+| 리뷰봇 (Codex, `review-bot-notify.yml`이 PR push를 알림) | PR 코멘트 — 첫 줄 `### 🤖 자동 리뷰 (Codex) — 커밋 <SHA>` (PR #1에서 게시 확인, 2026-10-01). push 몇 분 뒤에 올라오므로 결과 코멘트를 쓰기 전에 기다린다 |
 | Claude Code `/code-review` 또는 리뷰 에이전트 | PR 코멘트로 게시 |
 | 기타 AI 리뷰 도구 | PR 리뷰·코멘트 |
 
@@ -46,7 +46,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 
 | ID | 게이트 | 통과 기준 | 확인 방법 |
 |---|---|---|---|
-| G-01 | **CI** | 필수 체크 5개(`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify` · `merge-gate`) 모두 pass. `merge-gate`는 이 문서의 결과 코멘트를 게시해야 통과하므로, 결과 코멘트 작성 시점에는 나머지 4개만 본다 | `gh pr checks <N>` |
+| G-01 | **CI** | 필수 체크(`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`) 모두 pass. `merge-gate`는 결과 코멘트를 게시해야 통과하므로 결과 코멘트 작성 시점에는 보지 않는다 (지금은 2단계 도입 중이라 필수 아님, 2-1절) | `gh pr checks <N>` |
 | G-02 | **자동 리뷰 존재** | 자동 리뷰가 1건 이상 있다. 없으면 **직접 돌려서** PR 코멘트로 남긴 뒤 진행 | `gh pr view <N> --json reviews,comments` |
 | G-03 | **리뷰가 최신 커밋 기준** | 자동 리뷰의 기준 커밋 = 현재 head (1절 조건). 리뷰 뒤에 커밋이 추가됐으면 재리뷰 | 리뷰 `.commit.oid` 또는 코멘트 첫 줄의 SHA vs `headRefOid` (커밋 **시각** 비교는 rebase·amend 때 틀리므로 쓰지 않는다) |
 | G-04 | **지적 전부 처리** | 모든 지적에 처리 결과가 있다: **반영**(커밋 SHA) / **반박**(근거 `파일:줄`) / **후속 이슈**(이슈 링크). 🔴 심각(버그·보안·데이터 손실·서비스 원칙 위반) 지적은 **반영만** 허용. 반영으로 커밋이 늘면 G-01·G-03부터 다시 | 리뷰 본문을 전부 읽고 표로 정리 |
@@ -61,22 +61,25 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 | 필수 체크 | 워크플로 → 스크립트 | 강제하는 게이트 | 판정 |
 |---|---|---|---|
 | `lint-and-test` | `ci.yml` | G-01, G-09 일부 | ruff · pytest · `uv sync --locked`(pyproject와 uv.lock 불일치) |
-| `pr-verify` | `pr-verify.yml` → `scripts/ci/pr_checks.py` | G-07, G-08 + 저장소 정합성 | 코드·프롬프트에 판정 필드·문구(`applies`·`verdict`·`is_applicable` 변형 포함, 대소문자 무시 / `docs/`·루트 `*.md`·테스트·CI 제외 / 줄에 `principle-ok: <이유>` 주석으로 예외) · 커밋별 추가 줄의 비밀값 패턴(중간에 넣었다 지운 값 포함)·`.env` · RAG 경로 변경 시 "검증 방법" before → after 수치 · PR 본문 필수 항목 · 브랜치 type 목록 6곳 일치 · 문서 상대 링크 · `CLAUDE.md`의 `@AGENTS.md` |
-| `merge-gate` | `merge-gate.yml` → `scripts/ci/merge_gate.py` | G-02, G-03, G-05 + 결과 코멘트 | 현재 head 기준 자동 리뷰 존재(GitHub 리뷰는 본문 있는 COMMENTED/APPROVED만, 빈 답글·DISMISSED·재판정 트리거 제외) · 미해결 스레드 0 · 리뷰어별 마지막 상태가 `CHANGES_REQUESTED`가 아님(이전 커밋에서 남긴 것 포함) · 현재 head의 가장 최근 결과 코멘트가 ✅. 없으면 pending, ❌·미해결 스레드·변경 요청이면 failure |
+| `pr-verify` | `pr-verify.yml` → `scripts/ci/pr_checks.py` | G-07, G-08 + 저장소 정합성 | 코드·프롬프트에 판정 필드·문구(`applies`·`verdict`·`is_applicable` 변형 포함, 대소문자 무시 / `docs/`·루트 `*.md`·테스트·CI 제외 / 줄에 `principle-ok: <이유>` 주석으로 예외) · 커밋별 추가 줄 + 최종 diff의 비밀값 패턴·`.env` · RAG 경로 변경 시 "검증 방법"에 **지표 이름 + before → after 수치** · PR 본문 필수 항목(섹션 존재 포함) · 브랜치 type 목록 6곳 일치 · 문서 상대 링크 · `CLAUDE.md`의 `@AGENTS.md` |
+| `merge-gate` ⏸️ | `merge-gate.yml` → `scripts/ci/merge_gate.py` | **G-03**, G-05 + 결과 코멘트 | 현재 head 기준 자동 리뷰 존재(리뷰 에이전트 `## 🤖 자동 리뷰 (head …)` · 리뷰봇 `### 🤖 자동 리뷰 (Codex) — 커밋 …` · 본문 있는 GitHub 리뷰) · 미해결 스레드 0 · 리뷰어별 마지막 상태가 `CHANGES_REQUESTED`가 아님 · 현재 head의 가장 최근 결과 코멘트가 ✅ **그리고 그 뒤에 새 리뷰가 없음**. 없으면 pending, ❌·미해결 스레드·변경 요청이면 failure |
 
-- RAG 경로는 `pyproject.toml`의 `[tool.lg-cns-rag] rag-paths`로 정한다 (대소문자 무시, `docs/`·루트 `*.md`·`tests/` 제외 — `prompts/*.md`는 포함). 수치를 낼 수 없는 정당한 경우는 PR 본문에 `[skip-rag-evidence: 이유]`를 적는다.
-- `merge-gate`는 PR push·리뷰·코멘트 때마다 다시 판정한다. **리뷰 스레드 resolve는 Actions 트리거 이벤트가 없어**(공식 문서 "Events that trigger workflows"에 `pull_request_review_thread` 없음, 2026-10-01 확인) 자동 재판정이 안 된다 — 아래 재판정 방법을 쓴다.
-- 코멘트(`issue_comment`)·수동 실행(`workflow_dispatch`)으로 도는 `merge-gate`는 **main에 있는** 워크플로·스크립트를 쓴다(GitHub 동작). 그래서 **`merge-gate`가 main에 아직 없거나, 이 파일들을 고치는 PR**은 코멘트로 재판정되지 않는다.
-- **재판정 방법** — 리뷰(`pull_request_review`)는 PR 쪽 워크플로로 돌므로 항상 동작한다:
+⏸️ `merge-gate`는 **2단계 도입 중**이라 지금은 필수 체크가 아니다 (DEC-009). 아래 "🔒 실행 위치"로 바꾸면서, 이 워크플로가 main에 들어가기 전에는 PR에서 돌 수 없게 됐기 때문이다.
+1단계: 필수 체크에서 빼고 PR #1(이 워크플로)을 main에 병합 → 2단계: 다음 PR에서 `merge-gate`가 실제로 상태를 게시하는 것을 확인한 뒤 필수 체크에 다시 넣는다. 그 전까지 이 게이트들은 4절 결과 코멘트로 사람이 확인한다.
+
+- **🔒 실행 위치 (DEC-009)** — `merge-gate`는 상태를 기록하는 쓰기 권한을 가지므로 **main의 코드만** 실행한다. 트리거는 `pull_request_target`·`issue_comment`·`workflow_dispatch`(셋 다 main의 워크플로 파일로 돈다)이고, checkout도 main으로 고정하며 PR 정보는 API로만 읽는다. 그래서 PR이 `merge-gate.yml`이나 `merge_gate.py`를 고쳐도 자기 게이트에는 반영되지 않는다. PR 쪽 워크플로로 도는 `pull_request`·`pull_request_review` 트리거는 쓰지 않는다.
+- **재판정** — 코멘트를 남기면 다시 판정한다(결과 코멘트 게시가 곧 재판정). GitHub 리뷰 제출·스레드 resolve는 main 코드로 도는 트리거가 없으므로(공식 문서 "Events that trigger workflows"에 `pull_request_review_thread` 없음, 2026-10-01 확인), 그 뒤에는 아래처럼 코멘트를 남기거나 Actions에서 `merge-gate`를 PR 번호로 수동 실행한다.
   ```bash
-  gh pr review <N> --comment -b "merge-gate 재판정"
+  gh pr comment <N> -b "merge-gate 재판정"
   ```
-  첫 줄이 `merge-gate 재판정`인 리뷰는 자동 리뷰로 세지 않는다.
-- **CI가 판정하지 못하는 것**: G-04(지적 처리가 타당한가), G-06(diff를 실제로 읽었나·PR 설명이 맞나), G-09의 `.agent/` 갱신 필요성. 이것들은 결과 코멘트를 쓰는 에이전트와 병합하는 사람이 판단한다. `merge-gate`는 그 결과 코멘트가 현재 head에 ✅로 있는지까지만 강제한다.
+- RAG 경로는 `scripts/ci/pr_verify.toml`의 `rag-paths`로 정한다 (대소문자 무시, `docs/`·루트 `*.md`·`tests/` 제외 — `prompts/*.md`는 포함). `pyproject.toml`에 두지 않는 이유는 G-09(pyproject를 바꾸면 uv.lock도) 규칙과 부딪히기 때문이다. 수치를 낼 수 없는 정당한 경우는 **"## 검증 방법" 섹션 안에** `[skip-rag-evidence: 이유]`를 적는다.
+- **CI가 판정하지 못하는 것**: **G-02(리뷰를 누가 썼나 — 출처)**, G-04(지적 처리가 타당한가), G-06(diff를 실제로 읽었나·PR 설명이 맞나), G-09의 `.agent/` 갱신 필요성. 이것들은 결과 코멘트를 쓰는 에이전트와 **병합하는 사람이 직접 확인하는 수동 게이트**다. `merge-gate`는 "현재 head에 리뷰 표시와 ✅ 결과 표시가 순서대로 있는지"까지만 본다.
 - **⚠️ 알려진 한계 (CI)**
-  - **같은 계정의 자기 인증**: 지금은 에이전트의 리뷰·결과 코멘트가 모두 PR 작성자와 같은 계정으로 올라간다. 그래서 "PR 작성자의 코멘트 제외"를 걸면 게이트가 열리지 않고, 걸지 않으면 작성자 혼자 마커를 달아 통과시킬 수 있다. 리뷰 전용 계정(봇) 도입 후 허용 리뷰어 목록으로 막는다 — 이슈 #4.
-  - 수치 근거(G-08)는 형식(`숫자 → 숫자`)만 본다. 수치가 맞는지는 사람이 본다.
-  - Dependabot·fork PR은 읽기 전용 토큰이라 상태를 게시하지 못해 `merge-gate`가 pending에 머문다. 현재 private·Dependabot 없음이라 해당 없음 — 도입하면 처리 방법을 정한다.
+  - **같은 계정의 자기 인증 (G-02)**: 리뷰 에이전트·리뷰봇(Codex)·결과 코멘트가 모두 PR 작성자와 같은 `jh3779` 계정으로 올라간다. 그래서 작성자 혼자 표시 두 개를 달아 `merge-gate`를 통과시킬 수 있다. 리뷰 전용 계정(봇) 또는 GitHub App 도입 후 그 계정의 리뷰·결과만 인정한다 — 이슈 #4.
+  - **상태 위조**: 쓰기 권한이 있는 사람은 자기 PR에 워크플로를 추가해 `merge-gate`라는 이름의 상태를 직접 기록할 수 있다(GitHub Actions의 상태는 모두 같은 앱 이름으로 기록됨). 필수 체크를 특정 GitHub App의 상태로 고정해야 막힌다 — 이슈 #4.
+  - `pr-verify`·`lint-and-test`는 **PR의 코드로** 돈다(쓰기 권한 없음). 그래서 `scripts/ci/`나 테스트를 고치는 PR은 자기 검사를 약하게 만들 수 있다 — 이런 PR은 G-06에서 특히 diff를 확인한다.
+  - 수치 근거(G-08)는 형식(지표 이름 + `숫자 → 숫자`)만 본다. 같은 평가셋인지·수치가 맞는지는 사람이 본다.
+  - Dependabot·fork PR에서의 동작은 확인하지 않았다. 현재 private·Dependabot 없음 — 도입하면 확인한다.
 
 로컬에서 미리 돌려 보기:
 
