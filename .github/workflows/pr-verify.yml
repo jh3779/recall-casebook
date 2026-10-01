@@ -1,0 +1,28 @@
+name: PR Verify
+# PR 내용 상세 검증 — docs/MERGE_PROTOCOL.md 게이트 중 기계로 판정할 수 있는 것 (G-07·G-08)
+# + 저장소 내부 정합성 (type 목록 일치, 문서 링크, CLAUDE.md → AGENTS.md import).
+# 검사 로직: scripts/ci/pr_checks.py (테스트: tests/test_pr_checks.py)
+
+on:
+  pull_request:
+    # edited: PR 본문(검증 방법·관련 이슈 등)을 고치면 다시 검사
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # base...head diff에 필요
+
+      # PR 본문은 신뢰할 수 없는 입력 — ${{ }}로 스크립트에 끼워 넣지 않고 환경변수로만 넘긴다
+      - name: PR 상세 검증
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python3 scripts/ci/pr_checks.py

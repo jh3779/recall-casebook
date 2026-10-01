@@ -4,7 +4,7 @@
 >
 > 이 저장소의 main 룰셋은 **필수 리뷰어를 두지 않는다**(승인 0명, DEC-006). 사람 승인 대신
 > **자동 리뷰를 받고, 그 지적을 하나도 빠짐없이 처리했는지**를 이 문서의 게이트로 확인한다.
-> GitHub이 강제하는 것은 CI 3개뿐이므로, 나머지는 이 문서를 따르는 사람·에이전트가 지킨다.
+> 게이트 중 기계로 판정할 수 있는 것은 **CI가 필수 체크로 강제**한다(2-1절). 내용 판단(지적을 제대로 처리했나, diff를 읽었나)은 이 문서를 따르는 사람·에이전트가 지킨다.
 >
 > - 이 문서가 **기준(정본)** 이다. Claude Code의 실행 절차는 [`.claude/skills/pre-merge-check/SKILL.md`](../.claude/skills/pre-merge-check/SKILL.md).
 >   둘이 어긋나면 이 문서에 맞춰 스킬을 고친다.
@@ -45,7 +45,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 
 | ID | 게이트 | 통과 기준 | 확인 방법 |
 |---|---|---|---|
-| G-01 | **CI** | 필수 체크 3개(`lint-and-test` · `check-branch-name` · `validate-pr-title`) 모두 pass | `gh pr checks <N>` |
+| G-01 | **CI** | 필수 체크 5개(`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify` · `merge-gate`) 모두 pass. `merge-gate`는 이 문서의 결과 코멘트를 게시해야 통과하므로, 결과 코멘트 작성 시점에는 나머지 4개만 본다 | `gh pr checks <N>` |
 | G-02 | **자동 리뷰 존재** | 자동 리뷰가 1건 이상 있다. 없으면 **직접 돌려서** PR 코멘트로 남긴 뒤 진행 | `gh pr view <N> --json reviews,comments` |
 | G-03 | **리뷰가 최신 커밋 기준** | 자동 리뷰의 기준 커밋 = 현재 head (1절 조건). 리뷰 뒤에 커밋이 추가됐으면 재리뷰 | 리뷰 `.commit.oid` 또는 코멘트 첫 줄의 SHA vs `headRefOid` (커밋 **시각** 비교는 rebase·amend 때 틀리므로 쓰지 않는다) |
 | G-04 | **지적 전부 처리** | 모든 지적에 처리 결과가 있다: **반영**(커밋 SHA) / **반박**(근거 `파일:줄`) / **후속 이슈**(이슈 링크). 🔴 심각(버그·보안·데이터 손실·서비스 원칙 위반) 지적은 **반영만** 허용. 반영으로 커밋이 늘면 G-01·G-03부터 다시 | 리뷰 본문을 전부 읽고 표로 정리 |
@@ -54,6 +54,27 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 | G-07 | **서비스 원칙 스윕** | 판정 필드(`applies` · `verdict` · `is_applicable`)·"적용됩니다/적용되지 않습니다"류 출력이 새로 생기지 않았다. 비밀값·`.env`가 없다 | 아래 grep |
 | G-08 | **RAG 품질 근거** | 검색·답변·프롬프트·청킹·색인을 바꿨다면 PR 본문 "검증 방법"에 **같은 평가셋 before → after 수치**가 있다. 해당 없으면 "해당 없음" | PR 본문 확인 |
 | G-09 | **의존성 · 인계 문서** | `pyproject.toml`을 바꿨으면 `uv.lock`도 바뀌었다. 의미 있는 진전·결정이면 `.agent/`가 갱신됐다 | `gh pr diff <N> --name-only` |
+
+### 2-1. CI가 자동으로 확인하는 것
+
+| 필수 체크 | 워크플로 → 스크립트 | 강제하는 게이트 | 판정 |
+|---|---|---|---|
+| `lint-and-test` | `ci.yml` | G-01, G-09 일부 | ruff · pytest · `uv sync --locked`(pyproject와 uv.lock 불일치) |
+| `pr-verify` | `pr-verify.yml` → `scripts/ci/pr_checks.py` | G-07, G-08 + 저장소 정합성 | 코드에 판정 필드·문구(문서·테스트 제외, 줄에 `principle-ok: <이유>` 주석으로 예외) · 비밀값 패턴·`.env` · RAG 경로 변경 시 "검증 방법" before → after 수치 · PR 본문 필수 항목 · 브랜치 type 목록 6곳 일치 · 문서 상대 링크 · `CLAUDE.md`의 `@AGENTS.md` |
+| `merge-gate` | `merge-gate.yml` → `scripts/ci/merge_gate.py` | G-02, G-03, G-05 + 결과 코멘트 | 현재 head 기준 자동 리뷰 존재 · 미해결 스레드 0 · 현재 head의 가장 최근 결과 코멘트가 ✅. 없으면 pending, ❌·미해결 스레드면 failure |
+
+- RAG 경로는 `pyproject.toml`의 `[tool.lg-cns-rag] rag-paths`로 바꿀 수 있다 (기본: `*rag/*`, `*retriev*`, `*prompt*`, `*chunk*`, `*embed*`, `*eval/*`, `.md` 제외). 수치를 낼 수 없는 정당한 경우는 PR 본문에 `[skip-rag-evidence: 이유]`를 적는다.
+- `merge-gate`는 PR push·리뷰·코멘트 때마다 다시 판정한다. **리뷰 스레드 resolve는 이벤트가 없어** 자동 재판정이 안 된다 — resolve한 뒤 코멘트를 하나 남기거나 Actions에서 `merge-gate`를 PR 번호로 수동 실행한다.
+- 코멘트로 실행되는 `merge-gate`는 **main에 있는** 워크플로·스크립트를 쓴다(GitHub 동작). 이 파일들을 고치는 PR은 병합 전까지 push 이벤트로만 판정된다.
+- **CI가 판정하지 못하는 것**: G-04(지적 처리가 타당한가), G-06(diff를 실제로 읽었나·PR 설명이 맞나), G-09의 `.agent/` 갱신 필요성. 이것들은 결과 코멘트를 쓰는 에이전트와 병합하는 사람이 판단한다. `merge-gate`는 그 결과 코멘트가 현재 head에 ✅로 있는지까지만 강제한다.
+
+로컬에서 미리 돌려 보기:
+
+```bash
+BASE_SHA=$(git merge-base origin/main HEAD) HEAD_SHA=HEAD PR_BODY="$(gh pr view <N> --json body -q .body)" \
+  python3 scripts/ci/pr_checks.py
+REPO=jh3779/LG_CNS_RAG_main PR_NUMBER=<N> python3 scripts/ci/merge_gate.py   # 상태는 게시하지 않음
+```
 
 ---
 

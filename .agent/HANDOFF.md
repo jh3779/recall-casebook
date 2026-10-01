@@ -24,6 +24,7 @@ P0 — 저장소 셋팅 완료·GitHub 업로드 완료(`jh3779/LG_CNS_RAG_main`
 - https://github.com/jh3779/LG_CNS_RAG_main (private). 첫 커밋 `edefe82` main push → CI `ci.yml` 전 단계 success.
 - 병합: squash만, 커밋 메시지 = PR 제목, 머지 후 브랜치 자동 삭제.
 - 룰셋 `main 보호`(id 24290303): 삭제·force push 차단, PR 필수(승인 0명, squash만), 필수 체크 `lint-and-test`·`check-branch-name`·`validate-pr-title` (DEC-006).
+- CI 필수 체크 5개: 기존 3개 + `pr-verify`(PR 상세 검증) + `merge-gate`(자동 리뷰·스레드·결과 코멘트 → 커밋 상태) (DEC-008).
 - 필수 리뷰어 없음 → 대신 병합 전 검증 프로토콜 `docs/MERGE_PROTOCOL.md` + 스킬 `.claude/skills/pre-merge-check/` (DEC-007). `gh pr merge`는 settings에서 ask.
 - 미설정: 팀원 초대·CODEOWNERS, `DISCORD_EVENT_WEBHOOK` 시크릿.
 

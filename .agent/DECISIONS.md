@@ -48,3 +48,11 @@
 - **Alternatives**: 룰셋 `required_review_thread_resolution` 켜기 — 구조적으로 강제되지만 사용자가 문서 규칙을 지시해 이번엔 G-05 게이트로만 확인. 필수 승인 1명 — 사용자가 원하지 않음.
 - **Status**: Accepted
 - **Date**: 2026-10-01
+
+## DEC-008: 병합 전 검증 중 기계 판정 가능한 게이트를 CI 필수 체크로
+- **Decision**: `pr-verify`(scripts/ci/pr_checks.py — 판정 필드·비밀값·RAG 수치 근거·PR 본문·type 목록 6곳·문서 링크·AGENTS import)와 `merge-gate`(scripts/ci/merge_gate.py — 현재 head 기준 자동 리뷰·미해결 스레드 0·✅ 결과 코멘트 → 커밋 상태)를 추가하고 룰셋 필수 체크를 5개로 늘린다. 필수 승인은 계속 0명.
+- **Reason**: 사용자 지시("CI에도 내부 상세 검증"). DEC-007의 문서 규칙만으로는 에이전트가 따를 때만 지켜지므로, 기계로 판정 가능한 부분은 병합 버튼에서 막는다.
+- **Alternatives**: 룰셋 `required_review_thread_resolution` — merge-gate가 G-05를 함께 보므로 중복. 외부 비밀값 스캐너(gitleaks 등) — 지금 규모에는 정규식으로 충분, 필요 시 추가.
+- **한계**: G-04·G-06 내용 판단은 기계로 못 함 (merge-gate는 결과 코멘트 존재까지만). issue_comment 트리거는 main의 워크플로를 쓰므로 이 PR 병합 전에는 push 이벤트로만 판정. 스레드 resolve는 이벤트가 없어 수동 재실행 필요.
+- **Status**: Accepted
+- **Date**: 2026-10-01

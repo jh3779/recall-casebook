@@ -1,0 +1,279 @@
+"""PR 내용 상세 검증 — docs/MERGE_PROTOCOL.md 게이트 중 기계로 판정할 수 있는 것을 CI에서 돌린다.
+
+검사 (실패 시 exit 1):
+  principles   G-07  코드에 판정 필드·판정 문구가 새로 들어왔는가
+  secrets      G-07  추가된 줄에 비밀값 패턴·.env 파일이 있는가
+  rag-evidence G-08  RAG 코드를 바꿨는데 PR 본문 "검증 방법"에 before → after 수치가 없는가
+  pr-body      -     PR 본문 필수 항목(변경 요약·변경 유형·관련 이슈)이 비었는가
+  type-lists   -     브랜치·커밋 type 목록이 여러 파일에서 서로 같은가
+  md-links     -     문서의 상대 경로 링크가 실제 파일을 가리키는가
+  agents-import -    CLAUDE.md가 AGENTS.md를 불러오는가
+
+환경변수: BASE_SHA, HEAD_SHA, PR_BODY (없으면 diff·본문 검사는 건너뛴다)
+로컬 실행: BASE_SHA=$(git merge-base origin/main HEAD) HEAD_SHA=HEAD python3 scripts/ci/pr_checks.py
+"""
+
+from __future__ import annotations
+
+import fnmatch
+import os
+import re
+import subprocess
+import sys
+import tomllib
+from dataclasses import dataclass, field
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+
+# --- 서비스 원칙 (AGENTS.md 2절) -------------------------------------------------
+PRINCIPLE_PATTERN = re.compile(r"\b(applies|verdict|is_applicable)\b|적용됩니다|적용되지 않습니다")
+# 원칙을 "설명"하는 문서·테스트·CI 자체는 검사하지 않는다
+PRINCIPLE_EXEMPT = ("*.md", "docs/*", "tests/*", "scripts/ci/*", ".claude/*", ".github/*")
+# 정당한 사용(예: 영어 일반 문장)은 그 줄에 표시를 달아 통과시킨다
+PRINCIPLE_OPT_OUT = "principle-ok:"
+
+# --- 비밀값 ---------------------------------------------------------------------
+SECRET_PATTERNS = {
+    "개인키": re.compile(r"-----BEGIN ([A-Z]+ )?PRIVATE KEY-----"),
+    "OpenAI 키": re.compile(r"\bsk-(proj-)?[A-Za-z0-9_-]{20,}"),
+    "Anthropic 키": re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}"),
+    "AWS 액세스 키": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    "GitHub 토큰": re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b"),
+    "Slack 토큰": re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}"),
+}
+
+# --- RAG 품질 근거 ----------------------------------------------------------------
+DEFAULT_RAG_PATHS = ["*rag/*", "*retriev*", "*prompt*", "*chunk*", "*embed*", "*eval/*"]
+EVIDENCE_PATTERN = re.compile(r"\d.*(→|->).*\d")
+RAG_SKIP_MARKER = re.compile(r"\[skip-rag-evidence:\s*\S.*\]")
+
+BRANCH_TYPES_SOURCES = {
+    "scripts/check-branch.sh": r'PATTERN="\^\(([a-z|]+)\)/',
+    "scripts/check-commit-msg.sh": r'PATTERN="\^\(([a-z|]+)\)\(',
+    ".github/workflows/branch-name-check.yml": r'PATTERN="\^\(([a-z|]+)\)/',
+}
+
+
+@dataclass
+class Result:
+    name: str
+    errors: list[str] = field(default_factory=list)
+    skipped: str | None = None
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors
+
+
+# --- git 헬퍼 ---------------------------------------------------------------------
+def git(*args: str) -> str:
+    # quotepath=false: 한글 파일명(docs/기획.md 등)을 이스케이프하지 않고 그대로 받는다
+    cmd = ["git", "-c", "core.quotepath=false", *args]
+    return subprocess.run(cmd, cwd=ROOT, check=True, capture_output=True, text=True).stdout
+
+
+def changed_files(base: str, head: str) -> list[str]:
+    out = git("diff", "--name-only", "--diff-filter=ACMR", f"{base}...{head}")
+    return [line for line in out.splitlines() if line]
+
+
+def added_lines(base: str, head: str, path: str) -> list[tuple[int, str]]:
+    """(새 파일 기준 줄 번호, 내용) 목록."""
+    diff = git("diff", "--unified=0", f"{base}...{head}", "--", path)
+    result: list[tuple[int, str]] = []
+    lineno = 0
+    for line in diff.splitlines():
+        if line.startswith("@@"):
+            m = re.search(r"\+(\d+)", line)
+            lineno = int(m.group(1)) if m else 0
+        elif line.startswith("+") and not line.startswith("+++"):
+            result.append((lineno, line[1:]))
+            lineno += 1
+    return result
+
+
+def matches(path: str, patterns: list[str] | tuple[str, ...]) -> bool:
+    return any(fnmatch.fnmatch(path, p) for p in patterns)
+
+
+# --- 검사 -------------------------------------------------------------------------
+def check_principles(files: dict[str, list[tuple[int, str]]]) -> Result:
+    r = Result("principles")
+    for path, lines in files.items():
+        if matches(path, PRINCIPLE_EXEMPT):
+            continue
+        for lineno, text in lines:
+            if PRINCIPLE_PATTERN.search(text) and PRINCIPLE_OPT_OUT not in text:
+                r.errors.append(
+                    f"{path}:{lineno} 판정 필드·판정 문구 — AGENTS.md 2절 위반 "
+                    f"(정당한 사용이면 줄에 `{PRINCIPLE_OPT_OUT} <이유>` 주석)"
+                )
+    return r
+
+
+def check_secrets(paths: list[str], files: dict[str, list[tuple[int, str]]]) -> Result:
+    r = Result("secrets")
+    for path in paths:
+        name = Path(path).name
+        if (name == ".env" or name.startswith(".env.")) and name != ".env.example":
+            r.errors.append(f"{path} — .env 파일은 커밋하지 않는다")
+    for path, lines in files.items():
+        for lineno, text in lines:
+            for label, pattern in SECRET_PATTERNS.items():
+                if pattern.search(text):
+                    r.errors.append(
+                        f"{path}:{lineno} {label}로 보이는 값 — 즉시 키를 폐기하고 제거"
+                    )
+    return r
+
+
+def section(body: str, title: str) -> str | None:
+    """`## <title>` 아래 내용 (HTML 주석 제거). 섹션이 없으면 None."""
+    body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+    m = re.search(rf"^##\s*{re.escape(title)}\s*$(.*?)(?=^##\s|\Z)", body, flags=re.M | re.S)
+    return m.group(1).strip() if m else None
+
+
+def rag_paths() -> list[str]:
+    cfg = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    return cfg.get("tool", {}).get("lg-cns-rag", {}).get("rag-paths", DEFAULT_RAG_PATHS)
+
+
+def check_rag_evidence(paths: list[str], body: str, patterns: list[str]) -> Result:
+    r = Result("rag-evidence")
+    touched = [p for p in paths if matches(p, patterns) and not p.endswith(".md")]
+    if not touched:
+        r.skipped = "RAG 코드 변경 없음"
+        return r
+    evidence = section(body, "검증 방법") or ""
+    if RAG_SKIP_MARKER.search(body):
+        r.skipped = "PR 본문에 skip-rag-evidence 사유 명시"
+    elif not EVIDENCE_PATTERN.search(evidence):
+        r.errors.append(
+            f"RAG 관련 파일 변경({', '.join(touched[:3])}{' 외' if len(touched) > 3 else ''}) — "
+            "PR 본문 '## 검증 방법'에 같은 평가셋 before → after 수치가 필요하다 (G-08)"
+        )
+    return r
+
+
+def check_pr_body(body: str) -> Result:
+    r = Result("pr-body")
+    if not (section(body, "변경 요약") or ""):
+        r.errors.append("PR 본문 '## 변경 요약'이 비어 있다")
+    kinds = section(body, "변경 유형")
+    if kinds is not None and not re.search(r"- \[[xX]\]", kinds):
+        r.errors.append("PR 본문 '## 변경 유형'에 체크된 항목이 없다")
+    if not (section(body, "관련 이슈") or ""):
+        r.errors.append("PR 본문 '## 관련 이슈'가 비어 있다 (없으면 \"없음\")")
+    return r
+
+
+def type_lists() -> dict[str, set[str]]:
+    found: dict[str, set[str]] = {}
+    for path, pattern in BRANCH_TYPES_SOURCES.items():
+        m = re.search(pattern, (ROOT / path).read_text(encoding="utf-8"))
+        found[path] = set(m.group(1).split("|")) if m else set()
+    title = (ROOT / ".github/workflows/pr-title-check.yml").read_text(encoding="utf-8")
+    m = re.search(r"types: \|-\n((?:[ \t]+[a-z]+\n)+)", title)
+    found[".github/workflows/pr-title-check.yml"] = set(m.group(1).split()) if m else set()
+    contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    found["CONTRIBUTING.md"] = set(re.findall(r"^\| `([a-z]+)/` \|", contributing, flags=re.M))
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    m = re.search(r"type: `([a-z ]+)`", agents)
+    found["AGENTS.md"] = set(m.group(1).split()) if m else set()
+    return found
+
+
+def check_type_lists() -> Result:
+    r = Result("type-lists")
+    found = type_lists()
+    reference = found["scripts/check-branch.sh"]
+    for path, types in found.items():
+        if not types:
+            r.errors.append(
+                f"{path} — type 목록을 찾지 못했다 (형식이 바뀌었으면 scripts/ci/pr_checks.py도 수정)"
+            )
+        elif types != reference:
+            missing, extra = sorted(reference - types), sorted(types - reference)
+            r.errors.append(
+                f"{path} — scripts/check-branch.sh와 다름 (빠짐 {missing}, 추가 {extra})"
+            )
+    return r
+
+
+def check_md_links() -> Result:
+    r = Result("md-links")
+    link = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+    for rel in git("ls-files", "*.md").splitlines():
+        path = ROOT / rel
+        in_code = False
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if line.lstrip().startswith("```"):
+                in_code = not in_code
+                continue
+            if in_code:
+                continue
+            for target in link.findall(re.sub(r"`[^`]*`", "", line)):
+                if re.match(r"^[a-z]+:", target) or target.startswith("#"):
+                    continue
+                target = target.split("#", 1)[0]
+                if target and not (path.parent / target).exists():
+                    r.errors.append(f"{rel}:{lineno} 깨진 링크 → {target}")
+    return r
+
+
+def check_agents_import() -> Result:
+    r = Result("agents-import")
+    claude = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    if not re.search(r"^@AGENTS\.md\s*$", claude, flags=re.M):
+        r.errors.append(
+            "CLAUDE.md:1 `@AGENTS.md` import 줄이 없다 — 규칙 원본은 AGENTS.md (DEC-005)"
+        )
+    return r
+
+
+# --- 출력 -------------------------------------------------------------------------
+def report(results: list[Result]) -> int:
+    rows = ["| 검사 | 결과 | 내용 |", "|---|---|---|"]
+    for res in results:
+        if res.skipped:
+            rows.append(f"| {res.name} | ⏭️ | {res.skipped} |")
+        elif res.ok:
+            rows.append(f"| {res.name} | ✅ | |")
+        else:
+            rows.append(f"| {res.name} | ❌ | {len(res.errors)}건 |")
+        for err in res.errors:
+            loc = re.match(r"^([^\s:]+):(\d+)", err)
+            prefix = f"file={loc.group(1)},line={loc.group(2)}::" if loc else "::"
+            print(f"::error {prefix}[{res.name}] {err}")
+    summary = "## PR 상세 검증\n\n" + "\n".join(rows) + "\n"
+    print(summary)
+    if out := os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(out, "a", encoding="utf-8") as f:
+            f.write(summary)
+    return 0 if all(res.ok for res in results) else 1
+
+
+def main() -> int:
+    base, head = os.environ.get("BASE_SHA"), os.environ.get("HEAD_SHA")
+    body = os.environ.get("PR_BODY")
+    results: list[Result] = []
+
+    if base and head:
+        paths = changed_files(base, head)
+        files = {p: added_lines(base, head, p) for p in paths}
+        results += [check_principles(files), check_secrets(paths, files)]
+        if body is not None:
+            results.append(check_rag_evidence(paths, body, rag_paths()))
+    else:
+        results.append(Result("diff", skipped="BASE_SHA·HEAD_SHA 없음 — diff 검사 건너뜀"))
+
+    if body is not None:
+        results.append(check_pr_body(body))
+    results += [check_type_lists(), check_md_links(), check_agents_import()]
+    return report(results)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

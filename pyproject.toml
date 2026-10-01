@@ -19,6 +19,11 @@ package = false
 # CI의 astral-sh/setup-uv도 이 값을 읽는다. 올릴 때는 `uv self update` 후 이 값도 함께 바꾼다.
 required-version = ">=0.12.5"
 
+[tool.lg-cns-rag]
+# pr-verify(scripts/ci/pr_checks.py) G-08: 이 경로(fnmatch, .md 제외)를 바꾼 PR은
+# 본문 "검증 방법"에 같은 평가셋 before → after 수치가 필요하다. 코드 구조가 정해지면 좁힌다.
+rag-paths = ["*rag/*", "*retriev*", "*prompt*", "*chunk*", "*embed*", "*eval/*"]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100

@@ -36,7 +36,7 @@ PR이 `OPEN`이 아니면 중단하고 보고한다.
 gh pr checks $N
 ```
 
-`lint-and-test` · `check-branch-name` · `validate-pr-title`가 모두 pass여야 한다. pending이면 `gh pr checks $N --watch`로 기다린다. fail이면 로그(`gh run view <id> --log-failed`)로 원인을 찾아 보고한다.
+`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`가 모두 pass여야 한다. `merge-gate`는 9절 결과 코멘트를 게시해야 통과하므로 이 단계에서는 pending이 정상이다. `pr-verify`가 실패하면 Actions 요약 표에서 어느 검사가 ❌인지 보고 고친다. pending이면 `gh pr checks $N --watch`로 기다린다. fail이면 로그(`gh run view <id> --log-failed`)로 원인을 찾아 보고한다.
 
 ## 2. G-02 · G-03 자동 리뷰 존재 + 최신 커밋 기준
 
@@ -112,7 +112,10 @@ gh pr diff $N --name-only | grep -E '^(pyproject\.toml|uv\.lock|\.agent/)' || ec
 
 ```bash
 gh pr comment $N --body-file <결과.md>
+gh pr checks $N --watch   # 게시 후 merge-gate가 success로 바뀌는지 확인
 ```
+
+`merge-gate`가 success가 아니면 Actions 요약을 보고 원인(리뷰 SHA 불일치, 미해결 스레드 등)을 해결한다.
 
 - 전부 ✅ → 코멘트 마지막 줄에 병합할 사람을 `@태그`하고 "병합 전 검증 확인 요청드립니다".
 - 하나라도 ❌ → 제목을 `## ❌ 병합 전 검증 결과`로, 실패 게이트·원인·제안 수정을 적는다. 병합하지 않는다.

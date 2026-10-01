@@ -53,14 +53,16 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 
 ## 자동 검증
 - `.github/workflows/ci.yml` — uv로 설치 후 ruff lint·format 검사 + pytest (`uv sync --locked`라 `uv.lock` 누락도 잡음)
+- `.github/workflows/pr-verify.yml` — PR 내용 상세 검증: 판정 필드·비밀값·RAG 수치 근거·PR 본문 필수 항목 + 저장소 정합성(type 목록 일치·문서 링크·AGENTS import). `scripts/ci/pr_checks.py`
+- `.github/workflows/merge-gate.yml` — 병합 게이트: 현재 head 기준 자동 리뷰·미해결 스레드 0·✅ 검증 결과 코멘트 → 커밋 상태 `merge-gate`. `scripts/ci/merge_gate.py`
 - `.github/workflows/branch-name-check.yml` — 브랜치명 규칙 CI 검증
 - `.github/workflows/pr-title-check.yml` — PR 제목 Conventional Commits 검증
 - `.github/workflows/stale-branches.yml` — 30일 방치 브랜치 주간 정리 (닫힌 PR·PR 없는 브랜치)
 - `lefthook.yml` — 로컬 git 훅: 커밋 시 비밀 파일·개인키·1MB 초과 파일 차단 + ruff 자동 수정·포맷, 커밋 메시지 형식 검사, push 시 main 직접 push 차단·브랜치명 검사 (`scripts/check-*.sh`)
 - PR 본문은 `.github/pull_request_template.md` 체크리스트를 채운다
 
-> 브랜치 타입 목록을 바꿀 때는 이 문서의 표, `branch-name-check.yml`의 PATTERN,
-> `pr-title-check.yml`의 types **세 곳을 함께** 갱신한다.
+> 브랜치 타입 목록을 바꿀 때는 이 문서의 표, `AGENTS.md`, `scripts/check-branch.sh`·`check-commit-msg.sh`,
+> `branch-name-check.yml`의 PATTERN, `pr-title-check.yml`의 types **여섯 곳을 함께** 갱신한다. 하나라도 다르면 `pr-verify`가 실패한다.
 
 ## 머지 규칙
 - **Squash merge만 허용** (merge commit/rebase merge 금지) · linear history 유지
@@ -77,6 +79,6 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 |---|---|---|
 | squash merge만 허용 (커밋 메시지 = PR 제목) | 저장소 설정 + 룰셋 `allowed_merge_methods` | ✅ 적용됨 |
 | 머지 후 원격 브랜치 삭제 | 저장소 설정: `delete_branch_on_merge` | ✅ 적용됨 |
-| 브랜치명·PR 제목 규칙 + lint·테스트 | CI 필수 상태 체크 3개 (`lint-and-test` · `check-branch-name` · `validate-pr-title`) | ✅ 적용됨 — 실패 시 병합 불가 |
+| 브랜치명·PR 제목 규칙 + lint·테스트 + PR 상세 검증 + 병합 게이트 | CI 필수 상태 체크 5개 (`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify` · `merge-gate`) | ✅ 적용됨 — 실패·pending 시 병합 불가 |
 | main 직접 push·force push·삭제 차단, PR 필수 | 룰셋 `main 보호` (Pro 플랜이라 private에서 동작) | ✅ 적용됨 — 필수 승인 0명, 대신 병합 전 검증 프로토콜(문서 규칙) |
 | CODEOWNERS 승인 게이트 | 룰셋 "Require review from Code Owners" | ⬜ 팀원 확정 후 결정 |

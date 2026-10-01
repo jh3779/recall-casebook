@@ -9,3 +9,4 @@
 - 2026-10-01: 전체 셋팅 안내서 `docs/시작하기.md` 작성, README·AGENTS.md에서 연결
 - 2026-10-01: GitHub private 저장소 생성·첫 push(CI green), squash 전용·브랜치 자동 삭제, 룰셋 `main 보호` 적용(DEC-006)
 - 2026-10-01: 병합 전 검증 프로토콜(MERGE_PROTOCOL.md·pre-merge-check 스킬) 도입, `gh pr merge` deny→ask (DEC-007)
+- 2026-10-01: CI 상세 검증 추가 — `pr-verify`·`merge-gate` 워크플로 + scripts/ci + 테스트 23개, 룰셋 필수 체크 5개로 (DEC-008)

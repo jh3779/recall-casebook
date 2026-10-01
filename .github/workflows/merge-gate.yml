@@ -1,0 +1,46 @@
+name: merge-gate
+# 병합 게이트 — 현재 head 기준 자동 리뷰 존재(G-02·G-03), 미해결 리뷰 스레드 0개(G-05),
+# ✅ 병합 전 검증 결과 코멘트를 확인해 커밋 상태 `merge-gate`를 남긴다 (룰셋 필수 체크).
+# 판정 로직: scripts/ci/merge_gate.py (테스트: tests/test_merge_gate.py)
+#
+# ⚠️ issue_comment·workflow_dispatch로 실행될 때는 main에 있는 이 파일과 스크립트가 쓰인다(GitHub 동작).
+#    리뷰 스레드를 resolve하는 것은 Actions 이벤트가 없어서, resolve한 뒤에는 코멘트를 하나 남기거나
+#    Actions 탭에서 이 워크플로를 PR 번호로 수동 실행해 재평가한다.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  issue_comment:
+    types: [created, edited, deleted]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: '재평가할 PR 번호'
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: merge-gate-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    # 일반 이슈 코멘트는 제외 (PR 코멘트만)
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 병합 게이트 판정 + 상태 게시
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}
+          POST_STATUS: "1"
+        run: python3 scripts/ci/merge_gate.py
