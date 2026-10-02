@@ -12,3 +12,4 @@
 - **병합 전 검증은 `pre-merge-check` 스킬로 한다** (`.claude/skills/pre-merge-check/`). "병합해 줘", "머지해도 돼?" 같은 요청을 받으면 묻지 않고 먼저 이 스킬을 실행한다. 기준은 `docs/MERGE_PROTOCOL.md`.
 - **팀 공유 설정**: `.claude/settings.json`(커밋됨)에 공통 권한을 둔다. 개인 설정은 `.claude/settings.local.json`(gitignore됨)에 둔다.
 - 라이브러리 사용법은 기억에 의존하지 말고 공식 문서(context7 MCP 등)로 확인한다. 특히 LLM·임베딩 SDK는 버전마다 API가 바뀐다.
+

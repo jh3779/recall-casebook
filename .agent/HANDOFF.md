@@ -1,43 +1,68 @@
 # Agent Handoff
 
-_갱신: 2026-10-01_
+_갱신: 2026-10-02_
 
 ## Current Objective
 
-협업용 저장소 초기 셋팅 + 기획 초안 + uv 개발환경 + 에이전트 행동강령.
+`docs/기획v1.md` — 온보딩 체크리스트 RAG(GitLab 핸드북 기반) 기획서를 7단계 틀로 작성 중. 신규 입사자·부서 이동자 대상.
 
 ## Current Phase
 
-P0 — 저장소 셋팅 완료·GitHub 업로드 완료(`jh3779/LG_CNS_RAG_main`, private), 기획 초안은 팀 검토 전.
+없음 — `PROJECT_CONTEXT.md`에 Phases 로드맵이 아직 정의돼 있지 않다. 느슨하게는 "기획 단계"(10/2 주제 결정 ~ 10/6-7 프로토타입 전).
 
 ## Completed
 
-- 협업 설정: README, CONTRIBUTING(GitHub Flow·브랜치/PR 규칙·lefthook 설치), PR 템플릿, CODEOWNERS(빈 틀), CI 워크플로 5개(브랜치명·PR 제목 검사, 리뷰봇·플랜봇 알림, stale 브랜치 정리), .gitignore/.gitattributes/.editorconfig, .env.example
-- git 훅: pre-commit 프레임워크 대신 **lefthook** (DEC-002). `lefthook.yml` + `scripts/check-{staged,commit-msg,branch}.sh`. 로컬 `lefthook install` 완료, 스크립트 동작 수동 확인함.
-- uv 셋팅 (DEC-004): `pyproject.toml`(런타임 의존성 비움, dev: pytest·ruff), `.python-version` 3.12, `uv.lock`, `tests/test_smoke.py`, CI `ci.yml`. lefthook pre-commit에 ruff 추가. 로컬에서 `uv sync` → ruff·pytest 통과 확인. 안내서 `docs/개발환경.md`.
-- 에이전트 행동강령 (DEC-005): `AGENTS.md`(원본) + `CLAUDE.md`(@import + Claude 전용 보충) + `.claude/settings.json`(팀 공유 권한: uv/git 읽기 허용, .env 읽기·force push·PR 병합·pip install 차단).
-- 전체 셋팅 안내서 `docs/시작하기.md`: 도구 설치 → 저장소 받기 → 작업 흐름 → 자동 검사 → 에이전트 → 관리자 최초 설정(9절, 첫 push·병합 방식·룰셋·초대 명령 포함).
-- `docs/기획.md`: 참고 레포 기반으로 7단계 채움 (DEC-003). 2번 상용 서비스 조사와 4번 일부 "왜 골랐나"는 "아직 없음".
+- **1절 문제 정의**: 문제 배경 + 신규 입사자(1~4)·부서 이동자(5~7)·공통(8) 고통 포인트를 번호 매겨 작성. 5번은 `people-group/promotions-transfers.md:701` 근거 인용 포함.
+- **2절 RAG가 필수적인 이유**: 1~6번 작성. 1번은 사용자 요청으로 파인튜닝 대비 설명을 빼고 "갱신 지연 없이 반영" 중심으로 재작성.
+- **3절 GitLab 데이터셋 실측 결과**: `docs/GitLab_Data-main/handbook/content`를 직접 측정. 전체 4,625개 파일(md 4,612개), `handbook/` 하위 36개 디렉토리 중 조직 부서가 아닌 스텁 2개(`job-description-library`, `teamops`) 제외한 **핵심 부서 34개**. 부서별 추정 토큰 수(글자수÷4 경험칙) 표 작성.
+- **4~8절 + 발표 전 점검**: 뼈대(표 헤더·가이드 문구)만 작성. 4번(유사 서비스 조사·차별점)·5번(기술 스택)은 **도메인 4개(인사/엔지니어링/전사 공통/영업·지원)별 하위 섹션**으로 분리 — 사용자가 "도메인마다 달라질 수 있다"고 지적해 반영.
+- **DECISIONS.md**: DEC-010 추가 — 주제를 Compliance AI(참고 레포 기반)에서 온보딩 체크리스트 RAG(GitLab 핸드북)로 전환했음을 기록. DEC-003은 Superseded by DEC-010 처리.
 
-## Repo Status (2026-10-01)
+## Last Work
 
-- https://github.com/jh3779/LG_CNS_RAG_main (private). 첫 커밋 `edefe82` main push → CI `ci.yml` 전 단계 success.
-- 병합: squash만, 커밋 메시지 = PR 제목, 머지 후 브랜치 자동 삭제.
-- 룰셋 `main 보호`(id 24290303): 삭제·force push 차단, PR 필수(승인 0명, squash만), 필수 체크 4개(`lint-and-test`·`check-branch-name`·`validate-pr-title`·`pr-verify`) (DEC-006·008).
-- CI 필수 체크 4개: 기존 3개 + `pr-verify`(PR 상세 검증) (DEC-008). `merge-gate`는 main 코드로만 돌도록 바꾸면서 **2단계 도입 중** — PR #1 병합 후 다음 PR에서 상태 게시를 확인하고 필수 체크에 다시 넣는다 (DEC-009).
-- 리뷰봇(Codex)은 `jh3779` 계정으로 `### 🤖 자동 리뷰 (Codex) — 커밋 <SHA>` 코멘트를 push 몇 분 뒤에 게시한다. 병합 전 검증 때 반드시 확인.
-- 필수 리뷰어 없음 → 대신 병합 전 검증 프로토콜 `docs/MERGE_PROTOCOL.md` + 스킬 `.claude/skills/pre-merge-check/` (DEC-007). `gh pr merge`는 settings에서 ask.
-- 미설정: 팀원 초대·CODEOWNERS, `DISCORD_EVENT_WEBHOOK` 시크릿.
+사용자가 "기술 스택과 유사 서비스 조사·차별점도 도메인마다 달라질 수 있다"고 지적 → `기획v1.md` 4·5절을 단일 표에서 인사/엔지니어링/전사 공통/영업·지원 4개 하위 섹션(각자 표)으로 재구성. 그 직후 사용자가 "현재 내용 기록해줘"라고 해서 이 체크포인트를 실행 중.
 
-## Next Steps
+## Current State
 
-1. 팀이 `docs/기획.md` 검토 — 특히 참고 레포와의 관계(이어서/새로/범위 변경) 결정
-4. 팀원 collaborator 초대 + `.github/CODEOWNERS` 채우기
-5. 기술 스택 확정 → `uv add`로 런타임 의존성 추가 (후보 목록: `docs/개발환경.md` 4절)
-6. Discord 봇 연동이 필요하면 저장소 시크릿 `DISCORD_EVENT_WEBHOOK` 등록
+`git status --short` 기준:
+```
+ M CLAUDE.md                         (trailing newline 1줄 — 내 작업 아님, 원인 미상)
+?? docs/GitLab_Data-main/            (GitLab 핸드북 데이터셋, 미추적)
+?? docs/기획_뼈대.md                  (이전 버전 기획 틀, 미추적)
+?? docs/기획v1.md                     (현재 작업 중인 기획서, 미추적)
+```
+브랜치: `docs/project-skeleton`. 커밋 없음 — 전부 untracked/unstaged 상태. `docs/기획.md`(옛 주제 7단계 문서, 커밋됨)는 그대로 둠.
 
-## Open Questions
+## Open Issues
 
-- 참고 레포 코드를 가져와 이어서 개발하는가, 기획만 참고하고 새로 만드는가
-- 상용 유사 서비스 조사
-- 팀 구성 및 역할 분담
+- `PROJECT_CONTEXT.md`의 Goal·Tech Stack이 아직 옛 주제(Compliance AI, 참고 레포 기준) 그대로다 — DEC-010에 영향으로 기록해뒀고, 다음 체크포인트 전 갱신 필요.
+- `기획v1.md` 2절 4번 항목에 옛 수치("88건·15개 부서")가 남아있다 — 3절 실측치(36개 디렉토리·4,612개 md)와 불일치. 사용자에게 1차 보고했으나 아직 정정 지시는 없음.
+- 4~8절은 뼈대뿐 실제 내용이 없다 — 팀 PoC(10/6~7) 이후 채울 예정.
+- 토큰 수는 글자수÷4 경험칙 추정치다. `tiktoken` 미설치로 정밀 측정 안 함(설치 시 pyproject.toml·uv.lock 변경 — 사용자 확인 필요).
+- `docs/기획.md`(옛 주제)·`docs/기획_뼈대.md`(이전 버전)와 `docs/기획v1.md`(현재 버전) 세 문서의 보관/정리 방향이 정해지지 않았다.
+
+## Important Decisions
+
+- [[DEC-010]] 주제를 온보딩 체크리스트 RAG로 전환 (`.agent/DECISIONS.md`)
+- DEC-003 Superseded by DEC-010
+
+## Failed Attempts
+
+해당 없음 — 이번 국면은 문서 작성·데이터 실측 위주라 폐기한 접근이 없었다.
+
+## Relevant Files
+
+- `docs/기획v1.md` — 현재 작업 중인 메인 기획 문서
+- `docs/GitLab_Data-main/handbook/content/` — 데이터 원문(측정 대상)
+- `docs/기획.md`, `docs/기획_뼈대.md` — 옛 버전(참고용)
+- `.agent/DECISIONS.md` — DEC-010
+
+## Next Action
+
+1. `기획v1.md` 2절 4번의 "88건·15개 부서" 옛 수치를 3절 실측치로 정정할지 사용자에게 확인
+2. `.agent/PROJECT_CONTEXT.md` Goal·Tech Stack을 온보딩 RAG 주제로 갱신
+3. 도메인별(인사/엔지니어링/전사 공통/영업·지원) PoC 착수 시 4·5절 표를 실제 내용으로 채우기 시작
+
+## Definition of Done
+
+`기획v1.md` 1~8번 + 발표 전 점검까지 전부 실제 내용(뼈대 아님)으로 채워지고, 모든 수치가 참고 레포 인용이 아니라 **이 저장소 데이터(`docs/GitLab_Data-main/`)에서 직접 재현**된 값이며, 발표 전 점검 체크리스트 항목을 전부 체크할 수 있는 상태.

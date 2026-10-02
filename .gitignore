@@ -33,6 +33,9 @@ chroma_db/
 *.faiss
 *.index
 
+# GitLab 핸드북 데이터셋 스냅샷 (docs/기획v1.md 3절 근거 — 73MB, 커밋 안 함)
+docs/GitLab_Data-main/
+
 # 개인 메모
 RETROSPECTIVE.md
 

@@ -11,3 +11,4 @@
 - 2026-10-01: 병합 전 검증 프로토콜(MERGE_PROTOCOL.md·pre-merge-check 스킬) 도입, `gh pr merge` deny→ask (DEC-007)
 - 2026-10-01: CI 상세 검증 추가 — `pr-verify`·`merge-gate` 워크플로 + scripts/ci + 테스트 23개, 룰셋 필수 체크 5개로 (DEC-008)
 - 2026-10-01: Codex 리뷰(놓쳤던 2건) 반영 — merge-gate main 전용 실행·2단계 도입(DEC-009), Codex 형식 인식·결과 뒤 리뷰 무효화, pr-verify 근거 강화, 설정 파일 분리
+- 2026-10-02: 주제를 온보딩 체크리스트 RAG(GitLab 핸드북)로 전환(DEC-010, DEC-003 대체) — `docs/기획v1.md` 1~3절 작성(고통 포인트·RAG 필요성·데이터셋 실측), 4~8절 뼈대(도메인별 하위 섹션 포함)

@@ -2,21 +2,23 @@
 
 ## Goal
 
-LG CNS AI Campus RAG 팀 프로젝트 — **미국 제조업 공장 Compliance AI**. Title V 허가를 받은 미국 중소 제조 공장의 환경 담당자가 서류(반기 보고·연간 인증·초과 신고·갱신)를 쓸 때, 적용될 수 있는 조항 후보와 확인 기준을 최신 근거 조문(40 CFR Part 63)과 함께 정리해 준다. 상세: `docs/기획.md`.
+LG CNS AI Campus RAG 팀 프로젝트 — **온보딩 체크리스트 RAG**. GitLab 공개 핸드북을 데이터로 써서, 신규 입사자·부서 이동자가 새 업무를 맡았을 때 적용될 수 있는 온보딩 항목 후보와 확인 기준을 근거 문서와 함께 정리해 준다. 판정("적용됩니다/안 됩니다")은 하지 않는다. 상세: `docs/기획v1.md` (DEC-010으로 주제 전환, 옛 주제 문서는 `docs/기획.md`에 참고용으로 남아 있음).
 
 ## Current Product Direction
 
-- 기획 초안은 참고 레포 [suuuuuuungho/US-Factory-Compliance-Service](https://github.com/suuuuuuungho/US-Factory-Compliance-Service) `main@0103ea0`(2026-09-30)의 `1_Project_full.md`를 7단계 템플릿에 옮긴 것이다 (DEC-003). **수치는 참고 레포 실측값이며 이 저장소에서 재현하지 않았다.**
-- 서비스 원칙 2개(참고 레포에서 승계): ① 판정하지 않는다 — 답변 JSON에 `applies`·`verdict` 필드 없음 ② 근거 없는 말은 하지 않는다.
-- 미결: 상용 유사 서비스 조사(`docs/기획.md` 2번), 기술 스택 선택 이유(4번 빈칸), 참고 레포와의 관계(이어서 개발 / 새로 구현 / 범위 변경).
+- 데이터: GitLab 공개 핸드북 스냅샷([suuuuuuungho/GitLab_Data](https://github.com/suuuuuuungho/GitLab_Data) 커밋 `0ab0299`, 로컬 `docs/GitLab_Data-main/handbook/content`). 실측: 전체 4,625개 파일(md 4,612개), `handbook/` 하위 36개 디렉토리 중 핵심 부서 34개(스텁 2개 제외), 추정 약 1,175만 토큰(글자수÷4 경험칙).
+- 대상: 신규 입사자 + 부서 이동자. 근거: 핸드북 `people-group/promotions-transfers.md:701`(직무 전환자도 새 직무 온보딩 완료 필요).
+- 2026-10-02 팀 회의 결론: 각 파트(인사/엔지니어링/전사 공통 또는 금융/영업·지원 — `기획v1.md` 4·5절에서 도메인 구성이 아직 확정 중)가 자기 도메인의 최소 DB + RAG PoC를 먼저 만들고, 그 결과로 전체 방향을 정한다.
+- 서비스 원칙(옛 주제에서 승계): ① 판정하지 않는다 ② 근거 없는 말은 하지 않는다 ③ 추적 가능해야 한다.
+- 미결: 유사 서비스 조사(4번), 도메인별 기술 스택(5번), 아키텍처 설계(6번), before/after 수치(7번) — 전부 `docs/기획v1.md`에 뼈대만 있고 팀 PoC(10/6~7) 이후 채운다.
 
 ## Team
 
-- 우지훈(@jh3779) + 팀원 미확정. 팀원 GitHub 아이디가 확정되면 `.github/CODEOWNERS`를 채운다.
+- 4명: 박성호·박예원·우지훈(@jh3779)·이승노. 발표일 2026-10-20. 파트 배정(2026-10-02): 인사·엔지니어링·전사는 다른 팀원, 우지훈은 영업+지원(Sales·Support). GitHub 아이디가 확정되면 `.github/CODEOWNERS`를 채운다.
 
 ## Tech Stack
 
-- 참고 레포 기준: Python · PostgreSQL(Supabase) · FastAPI(Render) · Next.js(Vercel) · Kanon 2 임베더/리랭커 · BM25+RRF · gpt-5-mini. 이 팀에서 그대로 쓸지는 미확정.
+- 미확정 — 도메인별 PoC(기획v1.md 5번) 결과를 보고 정한다. 옛 주제(Compliance AI) 때 썼던 Python·PostgreSQL·Kanon 2·BM25+RRF·gpt-5-mini 조합은 참고 레포 스택일 뿐, 이번 주제에 그대로 쓸지는 결정된 바 없다.
 
 ## Tooling
 

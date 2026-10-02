@@ -18,7 +18,7 @@
 - **Decision**: `docs/기획.md` 초안을 [suuuuuuungho/US-Factory-Compliance-Service](https://github.com/suuuuuuungho/US-Factory-Compliance-Service) `main@0103ea0`의 `1_Project_full.md` 내용으로 채운다. 원문에 근거 없는 칸은 "아직 없음"으로 둔다.
 - **Reason**: 사용자 지시("일단은 이 레포 확인해서"). 잠정 결정 — 팀 검토 후 범위가 바뀔 수 있다.
 - **Alternatives**: 새 주제로 기획 — 미검토.
-- **Status**: Proposed
+- **Status**: Superseded by DEC-010
 - **Date**: 2026-10-01
 
 ## DEC-004: Python 의존성·가상환경은 uv로 관리
@@ -64,3 +64,11 @@
 - **남은 한계**: 같은 계정 자기 인증, 쓰기 권한자의 상태 위조 → 리뷰 전용 계정·GitHub App 필요(이슈 #4, 사용자 결정 대기).
 - **Status**: Accepted
 - **Date**: 2026-10-01
+
+## DEC-010: 프로젝트 주제를 "온보딩 체크리스트 RAG"(GitLab 핸드북)로 전환
+- **Decision**: 기존 주제(미국 제조업 공장 Compliance AI, 참고 레포 `US-Factory-Compliance-Service` 기반)를 접고, **GitLab 공개 핸드북**(`suuuuuuungho/GitLab_Data` 스냅샷 `0ab0299`, 로컬 `docs/GitLab_Data-main/`)을 데이터로 쓰는 **신규 입사자·부서 이동자 온보딩 체크리스트 RAG**로 전환한다. 기획은 `docs/기획v1.md`에 새로 작성 중(7단계 틀 유지, 1~3번 작성 완료, 4~8번은 뼈대만). 데이터는 36개 부서 디렉토리·md 4,612개(핵심 부서 34개, 스텁 2개 제외), 추정 약 1,175만 토큰(글자수÷4 경험칙, 정밀 토크나이저 미설치).
+- **Reason**: 2026-10-02 팀 회의 결론 — 각 파트(인사/엔지니어링/전사 공통/영업·지원)가 자기 도메인의 최소 DB + RAG PoC를 먼저 만들고 그 결과로 전체 방향을 정하기로 함. `docs/기획v1.md` 1절 근거: 핸드북 `people-group/promotions-transfers.md:701`(직무 전환자도 새 직무 온보딩 완료 필요).
+- **Alternatives**: 기존 Compliance AI 주제 유지 — 팀 회의에서 전환 쪽으로 기움(미회수).
+- **영향**: `.agent/PROJECT_CONTEXT.md`의 Goal·Tech Stack 설명이 아직 옛 주제(Compliance AI) 기준이라 **다음 체크포인트 전에 갱신 필요**. `docs/기획.md`(옛 주제 7단계 문서)는 참고용으로 남겨두고 새 작업은 `docs/기획v1.md`에서 이어간다.
+- **Status**: Accepted (DEC-003을 대체함)
+- **Date**: 2026-10-02
