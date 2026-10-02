@@ -6,11 +6,11 @@ LG CNS AI Campus RAG 팀 프로젝트 — **온보딩 체크리스트 RAG**. Git
 
 ## Current Product Direction
 
-- 데이터: GitLab 공개 핸드북 스냅샷([suuuuuuungho/GitLab_Data](https://github.com/suuuuuuungho/GitLab_Data) 커밋 `0ab0299`, 로컬 `docs/GitLab_Data-main/handbook/content`). 실측: 전체 4,625개 파일(md 4,612개), `handbook/` 하위 36개 디렉토리 중 핵심 부서 34개(스텁 2개 제외), 추정 약 1,175만 토큰(글자수÷4 경험칙).
+- 데이터: GitLab 공개 핸드북 스냅샷([suuuuuuungho/GitLab_Data](https://github.com/suuuuuuungho/GitLab_Data) 커밋 `0ab0299`, 로컬 `docs/handbook/content`, `.gitignore`됨). 실측: 전체 4,612개 파일(전부 md — 비문서 파일 13개는 정리함), `handbook/` 하위 36개 디렉토리 중 핵심 부서 34개(스텁 2개 제외), 추정 약 1,175만 토큰(글자수÷4 경험칙). 상세: `docs/handbook/README.md`.
 - 대상: 신규 입사자 + 부서 이동자. 근거: 핸드북 `people-group/promotions-transfers.md:701`(직무 전환자도 새 직무 온보딩 완료 필요).
-- 2026-10-02 팀 회의 결론: 각 파트(인사/엔지니어링/전사 공통 또는 금융/영업·지원 — `기획v1.md` 4·5절에서 도메인 구성이 아직 확정 중)가 자기 도메인의 최소 DB + RAG PoC를 먼저 만들고, 그 결과로 전체 방향을 정한다.
+- 도메인 4개(인사/엔지니어링/전사 공통/영업·지원)로 나눠 각자 최소 DB + RAG PoC를 먼저 만들고, 그 결과로 전체 방향을 정한다(2026-10-02 팀 회의 결론).
 - 서비스 원칙(옛 주제에서 승계): ① 판정하지 않는다 ② 근거 없는 말은 하지 않는다 ③ 추적 가능해야 한다.
-- 미결: 유사 서비스 조사(4번), 도메인별 기술 스택(5번), 아키텍처 설계(6번), before/after 수치(7번) — 전부 `docs/기획v1.md`에 뼈대만 있고 팀 PoC(10/6~7) 이후 채운다.
+- 미결: 도메인별 기술 스택(`기획v1.md` 4번), 아키텍처 설계(5번), before/after 수치(6번) — 전부 뼈대만 있고 팀 PoC(10/6~7) 이후 채운다. (기획v1.md에는 "유사 서비스 조사" 단계가 따로 없다 — 의도적으로 뺀 구조다.)
 
 ## Team
 

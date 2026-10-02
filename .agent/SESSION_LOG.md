@@ -12,3 +12,4 @@
 - 2026-10-01: CI 상세 검증 추가 — `pr-verify`·`merge-gate` 워크플로 + scripts/ci + 테스트 23개, 룰셋 필수 체크 5개로 (DEC-008)
 - 2026-10-01: Codex 리뷰(놓쳤던 2건) 반영 — merge-gate main 전용 실행·2단계 도입(DEC-009), Codex 형식 인식·결과 뒤 리뷰 무효화, pr-verify 근거 강화, 설정 파일 분리
 - 2026-10-02: 주제를 온보딩 체크리스트 RAG(GitLab 핸드북)로 전환(DEC-010, DEC-003 대체) — `docs/기획v1.md` 1~3절 작성(고통 포인트·RAG 필요성·데이터셋 실측), 4~8절 뼈대(도메인별 하위 섹션 포함)
+- 2026-10-02: PR #6 닫음, 데이터셋 정리(73MB→56MB)·`docs/handbook`로 개명, `docs/onboarding-plan` 브랜치에서 진행계획.md 이식, 기각 후보 문서 삭제/이동, AGENTS.md 갱신, 전체 문서 정합성 수정(stale 경로·수치·섹션번호·gitignore)

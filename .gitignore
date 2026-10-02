@@ -33,8 +33,9 @@ chroma_db/
 *.faiss
 *.index
 
-# GitLab 핸드북 데이터셋 스냅샷 (docs/기획v1.md 3절 근거 — 73MB, 커밋 안 함)
-docs/GitLab_Data-main/
+# GitLab 핸드북 데이터셋 스냅샷 (docs/기획v1.md 3절 근거 — 56MB, 커밋 안 함). README.md는 예외로 커밋한다.
+docs/handbook/*
+!docs/handbook/README.md
 
 # 개인 메모
 RETROSPECTIVE.md
