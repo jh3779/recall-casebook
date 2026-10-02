@@ -58,6 +58,8 @@ docs/handbook/
 
 ## 재현 방법
 
+> 이 스크립트는 문서 PR과 분리해 별도 `data:` PR(#8, 브랜치 `data/handbook-fetch-script`)로 올렸다. 그 PR이 병합되기 전에는 `scripts/fetch_handbook_dataset.py`가 이 브랜치에 없다.
+
 ```
 uv run python scripts/fetch_handbook_dataset.py
 ```
