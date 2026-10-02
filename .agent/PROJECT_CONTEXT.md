@@ -18,7 +18,7 @@ LG CNS AI Campus RAG 팀 프로젝트 — **온보딩 체크리스트 RAG**. Git
 
 ## Tech Stack
 
-- 미확정 — 도메인별 PoC(기획v1.md 5번) 결과를 보고 정한다. 옛 주제(Compliance AI) 때 썼던 Python·PostgreSQL·Kanon 2·BM25+RRF·gpt-5-mini 조합은 참고 레포 스택일 뿐, 이번 주제에 그대로 쓸지는 결정된 바 없다.
+- 미확정 — 도메인별 PoC(기획v1.md 4번) 결과를 보고 정한다. 옛 주제(Compliance AI) 때 썼던 Python·PostgreSQL·Kanon 2·BM25+RRF·gpt-5-mini 조합은 참고 레포 스택일 뿐, 이번 주제에 그대로 쓸지는 결정된 바 없다.
 
 ## Tooling
 

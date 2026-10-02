@@ -1,12 +1,12 @@
 # LG_CNS_RAG
 
-LG CNS AI Campus RAG 팀 프로젝트 — **미국 제조업 공장 Compliance AI**.
+LG CNS AI Campus RAG 팀 프로젝트 — **온보딩 체크리스트 RAG**.
 
-대기 배출 허가(Title V)를 받은 미국 중소 공장의 환경 담당자가 보고·인증·신고·갱신 서류를 쓸 때,
-공장에 적용될 수 있는 조항 후보와 확인할 기준을 **최신 근거 조문(40 CFR Part 63)과 함께** 정리해 주는 RAG 서비스.
+GitLab 공개 핸드북을 근거로, 신규 입사자·부서 이동자가 새 업무를 맡았을 때 적용될 수 있는 온보딩 체크리스트 항목과
+확인 기준을 **원문 근거(`source_path#heading_path`)와 함께** 정리해 주는 RAG 서비스.
 판정("적용됩니다")은 하지 않는다.
 
-> 기획 상세: [`docs/기획.md`](docs/기획.md) — 초안은 [US-Factory-Compliance-Service](https://github.com/suuuuuuungho/US-Factory-Compliance-Service)를 기반으로 작성했다.
+> 기획 상세: [`docs/기획v1.md`](docs/기획v1.md). 옛 주제(미국 제조업 공장 Compliance AI) 문서 [`docs/기획.md`](docs/기획.md)는 폐기된 참고용이다 (DEC-010).
 > 기술 스택이 확정되면 이 README에 실행 방법을 추가한다.
 
 ## 시작하기
@@ -34,7 +34,7 @@ AI 에이전트로 작업할 때의 규칙은 [`AGENTS.md`](AGENTS.md)에 있다
 
 | 경로 | 용도 |
 |---|---|
-| `docs/` | 기획(`기획.md`)·개발환경(`개발환경.md`) 등 문서 |
+| `docs/` | 기획(`기획v1.md`)·개발환경(`개발환경.md`) 등 문서 |
 | `tests/` | pytest 테스트 |
 | `AGENTS.md` · `CLAUDE.md` | AI 에이전트 행동강령 (원본은 AGENTS.md) |
 | `.claude/settings.json` | Claude Code 팀 공유 권한 설정 |

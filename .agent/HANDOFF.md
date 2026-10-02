@@ -4,7 +4,7 @@ _갱신: 2026-10-02_
 
 ## Current Objective
 
-PR #7(`docs/project-skeleton` → `main`)에 grilling 결과(Q1~Q5: 평가 기준·도메인 매핑)를 반영한 `기획v1.md` 변경을 커밋·push하고, 새 커밋 기준 자동 리뷰를 받아 `docs/MERGE_PROTOCOL.md` 게이트를 전부 ✅로 만드는 것.
+PR #7(`docs/project-skeleton` → `main`)의 자동 리뷰 지적을 처리하고 `docs/MERGE_PROTOCOL.md` 게이트를 전부 ✅로 만드는 것. 최신 커밋 기준 재리뷰를 기다리는 중.
 
 ## Current Phase
 
@@ -20,25 +20,19 @@ PR #7(`docs/project-skeleton` → `main`)에 grilling 결과(Q1~Q5: 평가 기�
 
 ## Last Work
 
-grilling 반영 직후 체크포인트. 검사 결과: `uv run ruff check .` 통과, `uv run ruff format --check .` 통과(25 files), `uv run pytest` 59 passed. 추가한 문장은 `scripts/ci/pr_checks.py:31`의 판정 문구 패턴에 걸리지 않음을 grep으로 확인.
+grilling 결과를 커밋 `19d06f6`으로 push한 뒤, 사용자 승인으로 [[DEC-012]](FAQ 형태만 평가 질문 출처)를 AGENTS.md·기획v1에 반영하고 PR 본문을 정정했다. 이어서 커밋 `813a772` 기준 두 번째 Codex 리뷰(PR 코멘트)를 대조해 근거가 확인된 지적만 반영했다: ① README·`docs/시작하기.md`·`docs/개발환경.md`의 옛 규제 서비스 안내를 `기획v1.md` 기준으로 교체 ② `PROJECT_CONTEXT.md`의 섹션 번호 오기(기술 스택은 4번) 수정 ③ 이 HANDOFF를 커밋 후에도 참인 상태로 재작성. 검사: `uv run ruff check .` 통과, `ruff format --check` 통과(25 files), `pytest` 59 passed(수정 후 재실행).
 
 ## Current State
 
-`git status --short` (2026-10-02 체크포인트 시점):
-```
- M .agent/DECISIONS.md
- M .agent/HANDOFF.md
- M .agent/SESSION_LOG.md
- M docs/기획v1.md
-```
-`docs/기획v1.md`는 +21/-2줄. 브랜치 `docs/project-skeleton`은 origin과 같은 `813a772`까지 push된 상태이며, 위 변경은 **커밋 전**이다. 커밋 메시지 안: `docs: 기획v1 평가 기준·도메인 매핑 grilling 결과 반영`.
+브랜치 `docs/project-skeleton`. 정확한 커밋·변경 상태는 이 문서가 아니라 `git status --short`·`git log -3`로 먼저 확인한다(이 문서의 상태 기술은 커밋 순간 어긋나기 쉽다).
 
 ## Open Issues
 
-- **커밋·push 대기** — 사용자 승인 후 진행. push하면 최신 커밋이 바뀌므로 리뷰봇 리뷰를 다시 받아야 한다.
+- **재리뷰 대기** — 마지막 push 이후 리뷰봇의 새 리뷰가 달렸는지 확인한다.
 - **팀 확인 필요 4건**: ① 상황 서술 평가 세트가 AGENTS.md 5절("평가셋을 지어내지 않는다")과 충돌하는지 ② 전사 공통을 나누면 도메인 5개 vs 팀원 4명 — 한 명이 두 도메인을 맡을지, 하위 범위로만 쓸지 ③ `domain` 컬럼 배열화 ④ `tools-and-tips` 공용 여부(본문 미확인).
 - 실측에서 확인: 전사 공통은 폴더 수(16)는 최다지만 토큰(2,386,907)은 엔지니어링(4,490,880)·영업·지원(3,223,880)보다 작다 — 분할 근거는 분량이 아니라 성격 혼재.
-- Codex 리뷰 "선택 개선" 2건: ① `DOCUMENTS.md` 관련 — 근거 없는 지적이라 반박 처리 예정 ② `기획v1.md` H1 제목·마지막 줄바꿈 — 미반영.
+- **두 번째 Codex 리뷰(813a772) 중 사용자 결정이 필요했던 2건**(둘 다 사용자 승인으로 처리 완료): ① 문서 유래 질문은 FAQ 형태만 — [[DEC-012]]로 반영 ② 재현 스크립트가 있는데 PR 본문이 "문서만 변경"이던 문제 — PR 본문 정정으로 처리(제목·브랜치는 유지).
+- **반박 처리한 지적**: `DOCUMENTS.md` 기준 문서 부재(저장소 전체 grep에서 그런 지정 기록 없음 — 첫 리뷰의 자동 검증도 근거 부족으로 표시), `기획v1.md` H1 제목·마지막 줄바꿈(1행에 H1 있고 파일 끝 `0a` 확인 — 이미 충족).
 - 인사·엔지니어링·전사 공통 담당자 미정(10/7까지, `docs/진행계획.md`).
 - `기획v1.md` 4~7절은 뼈대뿐 — 도메인별 PoC(10/6~7) 이후 채운다.
 - `PROJECT_CONTEXT.md` Goal·Tech Stack이 옛 주제 기준일 수 있음(DEC-010 "영향" 항목) — 갱신 여부 미확인.
@@ -47,6 +41,7 @@ grilling 반영 직후 체크포인트. 검사 결과: `uv run ruff check .` 통
 
 - [[DEC-010]] 주제를 온보딩 체크리스트 RAG로 전환 (DEC-003 대체)
 - [[DEC-011]] 평가 질문 두 세트 분리·도메인당 최소 30문항·중복 제거 키
+- [[DEC-012]] 문서 유래 평가 질문은 FAQ 형태만 (체크리스트·runbook은 정답 문서 후보)
 
 ## Failed Attempts
 
@@ -64,8 +59,7 @@ grilling 반영 직후 체크포인트. 검사 결과: `uv run ruff check .` 통
 
 ## Next Action
 
-1. 사용자 승인 후 위 4개 파일을 커밋 하나로 묶어 push (PR #7에 반영)
-2. 리뷰봇의 새 리뷰 확인 → `pre-merge-check` 스킬로 게이트 점검 → 사용자에게 병합 여부 확인
+1. 재리뷰 확인 → 새 지적 처리 → `pre-merge-check` 스킬로 게이트 점검 → 사용자에게 병합 여부 확인
 3. 팀 확인 4건(Open Issues)과 34개 부서↔도메인 매핑을 팀과 확정(담당자 확정 10/7과 함께)
 
 ## Definition of Done
