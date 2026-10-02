@@ -58,4 +58,8 @@ docs/handbook/
 
 ## 재현 방법
 
-이 폴더가 로컬에 없으면 위 GitHub 저장소를 받아 `content/` 디렉토리를 `docs/handbook/content/`에 두면 된다. 받는 스크립트는 아직 없다 — 필요해지면 `scripts/`에 추가한다 (AGENTS.md 7절: 원본 데이터는 커밋하지 않고 재현 스크립트를 커밋한다).
+```
+uv run python scripts/fetch_handbook_dataset.py
+```
+
+지정 커밋(`0ab0299`)에서 `handbook/content`를 받아 `docs/handbook/content/`에 두고, 비문서 파일 13개를 지운 뒤 md 파일 수가 4,612개인지 검증한다. 수가 다르면(소스 저장소가 갱신된 경우 등) 실패하며, 그 경우 이 README와 `docs/기획v1.md` 3절 실측치를 다시 맞춰야 한다.

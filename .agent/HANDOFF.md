@@ -4,7 +4,7 @@ _갱신: 2026-10-02_
 
 ## Current Objective
 
-`docs/기획v1.md` — 온보딩 체크리스트 RAG(GitLab 핸드북 기반) 기획서를 작성 중. 신규 입사자·부서 이동자 대상. 지금은 전체 문서(기획v1.md·진행계획.md·.agent/*)의 상호 정합성(경로·수치·섹션 번호)을 맞추는 중.
+PR #7(`docs/project-skeleton` → `main`)의 Codex 자동 리뷰 지적 5건(머지 전 필수 보완)을 반영 중. 반영 후 `docs/MERGE_PROTOCOL.md` 게이트를 다시 돌려 병합 가능 상태로 만드는 것이 목표.
 
 ## Current Phase
 
@@ -12,64 +12,64 @@ _갱신: 2026-10-02_
 
 ## Completed
 
-- **기획v1.md 1~3절**: 고통 포인트(1~8)·RAG 필요성(9~14, 번호는 문서 전체 연속번호)·데이터셋 실측(34개 핵심 부서·4,612개 md·추정 약 1,175만 토큰) 작성 완료. 4~7절(기술스택·아키텍처·개선사항·어려움)은 도메인별(인사/엔지니어링/전사 공통/영업·지원) 뼈대만.
-- **데이터셋 정리**: 비문서 파일 13개(핸드북.zip 등) 삭제, 73MB→56MB. 사용자가 폴더를 `docs/GitLab_Data-main` → `docs/handbook`으로 직접 이름 변경. `docs/handbook/README.md` 작성(구조·실측치·재현 방법).
-- **PR #6 닫음**: 옛 초안(`기획_온보딩.md`, 68건·11개 부서)을 `기획v1.md`로 대체한다는 코멘트와 함께.
-- **커밋 2개 push 완료** (`docs/project-skeleton`): `f7ff989`(기획v1 1~3절+뼈대, DEC-010, gitignore), `7630748`(진행계획.md 이식).
-- **`docs/onboarding-plan` 브랜치 조사**: 주제 후보가 실제 4개였음을 확인(결함 선례·문서 구조화·온보딩·코드 온보딩) + 팀 진행 계획 문서 발견. `진행계획.md`(+쉬운버전)는 커밋, 기각된 후보 3종 중 `기획_문서구조화.md`·`기획_코드온보딩.md`는 삭제, `기획_결함선례.md`는 사용자 바탕화면(`~/Desktop/결함선례_기획/`)으로 이동(모두 사용자 지시).
-- **`진행계획.md`(+쉬운버전) 재작성**: 10/2 결정 결과(주제 확정)로 2절 교체, 역할표에 영업·지원=우지훈 반영, 위험요소 갱신.
-- **AGENTS.md 갱신**: 8절에 "파트 작업은 문서 작성까지가 마무리" 원칙 추가, 1절 프로젝트 한 줄 설명을 온보딩 RAG로, 0절 읽기 순서를 `기획v1.md`로 교체.
-- **전체 문서 정합성 점검(이번 체크포인트)**: `docs/GitLab_Data-main` 잔존 경로, "88건·15개 부서" 잔존 수치, `발표 전 점검`의 끊어진 번호 참조(8번→존재 안 함), DEC-010의 기각 문서 설명 불일치, `.gitignore`가 `docs/handbook/README.md`까지 가려버리던 문제를 찾아 수정. "유사 서비스 조사" 섹션은 사용자 결정으로 **복원하지 않고** 참조 번호만 정리.
+- **PR #7 오픈·리뷰 수신**: 커밋 `f7ff989`·`7630748`·`e3c95a5`·`8b47247`까지 push, `@jh3779` 리뷰 요청 태그 포함 PR 생성. `pr-verify` 1차 실패(판정 문구 오탐) → `principle-ok` 주석으로 해결(커밋 `8b47247`). Codex 자동 리뷰가 "머지 전 필수 보완" 5건을 지적 (PR #7 코멘트, 2026-10-02T07:26).
+- **5건 전부 검증**: 파일:줄 대조로 전부 CONFIRMED 확인(아래 Important Decisions 참고 불필요 — 리뷰 자체가 근거).
+- **1) AGENTS.md 2·5절 규제 서비스 잔재 제거**: 2절을 `source_path#heading_path` 근거 형식으로 재작성(40 CFR 조문 언급 삭제), 5절 평가셋 규칙을 "핸드북 실제 질문에서 추출"로 교체, 기준 폭 출처를 `기획v1.md` 3절로 변경.
+- **2) 평가셋 근거 명시**: `기획v1.md` 1절 고통 포인트 8개 중 7개에 `(가설)` 표시, 3절 PoC 공통 기준에 "평가 질문 출처"(핸드북 실제 질문만 사용, 가설 항목은 검증 전까지 평가셋 근거로 안 씀) 행 추가.
+- **3) 34개 부서 ↔ 도메인 매핑**: 각 부서 `_index.md` 실제 설명을 확인해 `기획v1.md` 3절에 초안 표 추가(인사 6·엔지니어링 5·전사공통 16·영업지원 7). "팀 확인 필요"로 명시, 전사 공통이 넓다는 점도 `진행계획.md`에 반영.
+- **4) 데이터셋 재현 스크립트**: `scripts/fetch_handbook_dataset.py` 작성(지정 커밋 `0ab0299`에서 다운로드 → 비문서 파일 13개 제거 → md 4,612개 검증, 불일치 시 실패). **실제로 실행해 성공 확인**(55M, 4,612개 md). `docs/handbook/README.md` 재현 방법을 이 스크립트로 교체.
+- **5) HANDOFF·기획·진행계획 stale 정리**: `기획_뼈대.md`에 "폐기된 과거 초안" 경고 헤더 추가, `진행계획.md`·`쉬운버전/진행계획.md`의 "금융 vs 전사공통 불일치"(이미 해소됨)·"88건 수치 안 고쳐짐"(이미 고침) 항목을 현재 상태로 교체. `pyproject.toml` description도 온보딩 주제로 변경.
 
 ## Last Work
 
-사용자 요청 "전체 문서 정합성 확인 후 기본 틀만 어느정도 생성해줘"에 따라 위 정합성 점검·수정을 실행 중. `.gitignore`를 `docs/handbook/*` + `!docs/handbook/README.md`로 바꿔 README만 추적되게 고쳤고, `기획v1.md`·`.agent/PROJECT_CONTEXT.md`·`.agent/DECISIONS.md`의 stale 경로/수치/섹션번호를 수정했다. 이 HANDOFF.md 자체도 그 일환으로 갱신 중.
+위 5건을 전부 반영한 직후. 로컬 검증(`ruff check`·`ruff format --check`·`pytest`) 통과 확인함. 아직 커밋 전.
 
 ## Current State
 
 `git status --short --untracked-files=all` 기준 (데이터셋 `docs/handbook/content/`는 ignore돼 제외):
 ```
- M .agent/DECISIONS.md
- M .agent/PROJECT_CONTEXT.md
- M .gitignore
  M AGENTS.md
+ M docs/handbook/README.md
+ M docs/기획_뼈대.md
  M docs/기획v1.md
  M docs/쉬운버전/진행계획.md
  M docs/진행계획.md
-?? docs/handbook/README.md
+ M pyproject.toml
+?? scripts/fetch_handbook_dataset.py
 ```
-브랜치: `docs/project-skeleton` (origin에 `f7ff989`·`7630748`까지 push됨, 위 변경은 아직 커밋 전). `docs/기획.md`(옛 주제, 커밋됨)·`docs/기획_뼈대.md`(이전 버전, 커밋됨, 역사 기록용이라 수정 안 함)는 그대로.
+브랜치 `docs/project-skeleton`은 origin에 `8b47247`까지 push됨(PR #7 오픈). 위 변경은 **아직 커밋 전** — 커밋·push하면 PR #7에 자동으로 반영된다.
 
 ## Open Issues
 
-- 위 변경사항(.gitignore·AGENTS.md·기획v1.md·PROJECT_CONTEXT.md·DECISIONS.md·진행계획.md류·handbook/README.md) **아직 커밋 안 됨** — 사용자 확인 후 커밋할 것.
-- 4~7절(기술스택·아키텍처·개선사항·어려움)은 여전히 뼈대뿐 — 도메인별 PoC(10/6~7) 이후 채운다.
+- 위 변경 커밋·push 필요. 이후 리뷰봇이 새 커밋에 다시 리뷰를 달 것이므로, `docs/MERGE_PROTOCOL.md`대로 그 결과도 확인해야 한다.
+- 리뷰의 "선택 개선" 2건은 아직 미반영: ① 기준 문서 `DOCUMENTS.md` 관련 — 리뷰 자체가 "자동 검증 경고"로 근거 부족이라고 표시했으므로 **반박 처리**(실제로 그런 파일·정책 지정 기록 없음, 무시해도 됨). ② `기획v1.md`에 H1 제목·마지막 줄바꿈 추가 — 아직 안 함.
+- `기획v1.md` 3절 "34개 부서 ↔ 도메인 매핑"은 초안이다 — 전사 공통이 16개로 넓어 팀 확인·재배분이 필요할 수 있다.
 - 인사·엔지니어링·전사 공통 파트 담당자가 아직 미정(10/7까지, `진행계획.md` 참고).
-- 토큰 수는 글자수÷4 경험칙 추정치. `tiktoken` 설치 시 pyproject.toml·uv.lock 변경 필요 — 사용자 확인 대기.
-- AGENTS.md 2절("서비스 원칙")이 아직 Compliance 전용 예시(40 CFR 63.xxxx(a) 인용 형식, 조문 서명 비유)로 남아 있다 — 원칙 자체(판정 안 함·근거·추적성)는 온보딩 주제에도 그대로 승계됐지만, 예시 문구는 아직 안 고쳤다.
+- 4~7절(기술스택·아키텍처·개선사항·어려움)은 여전히 뼈대뿐 — 도메인별 PoC(10/6~7) 이후 채운다.
 
 ## Important Decisions
 
-- [[DEC-010]] 주제를 온보딩 체크리스트 RAG로 전환, 이번 체크포인트에서 Alternatives 설명을 실제 결과(삭제/이동 반영)로 갱신 (`.agent/DECISIONS.md`)
+- [[DEC-010]] 주제를 온보딩 체크리스트 RAG로 전환 (`.agent/DECISIONS.md`)
 - DEC-003 Superseded by DEC-010
 
 ## Failed Attempts
 
-해당 없음 — 이번 국면도 문서 작성·정합성 수정 위주라 폐기한 접근이 없었다.
+- `npx skills add`로 Wayfinder 스킬 자동 설치 시도 → Claude Code 자동 모드 안전장치가 "외부 코드 실행"으로 차단. **신호**: npx/pip 등으로 외부 패키지를 받아 즉시 실행하는 명령은 에이전트가 자동 실행할 수 없다 — 사용자에게 `!` 접두사로 직접 실행하도록 안내한다. 사용자가 `claude plugins install mattpocock-skills`를 직접 실행해 해결함.
 
 ## Relevant Files
 
-- `docs/기획v1.md` — 메인 기획 문서
+- `docs/기획v1.md` — 메인 기획 문서 (1~3절 내용 보강, 4~7절 뼈대)
 - `docs/진행계획.md`(+`쉬운버전/`) — 팀 일정·역할·위험 요소
-- `docs/handbook/README.md`, `docs/handbook/content/`(ignore됨) — 데이터셋
-- `.agent/PROJECT_CONTEXT.md`, `.agent/DECISIONS.md` — 이번에 같이 갱신함
+- `AGENTS.md` — 2·5절 재작성함
+- `scripts/fetch_handbook_dataset.py` — 데이터셋 재현 스크립트 (신규)
+- `docs/handbook/README.md` — 데이터셋 구조·재현 방법
 
 ## Next Action
 
-1. 이번 정합성 수정 커밋·push할지 사용자에게 확인
-2. AGENTS.md 2절 예시를 온보딩 주제에 맞게 고칠지 확인 (Open Issues 참고)
-3. 도메인별 PoC 착수 시 기획v1.md 4~7절 채우기 시작
+1. 위 변경 커밋·push (PR #7에 반영)
+2. 리뷰봇의 새 리뷰 확인 → `docs/MERGE_PROTOCOL.md` 게이트 전부 ✅인지 확인 후 사용자에게 병합 여부 확인
+3. 34개 부서 ↔ 도메인 매핑 초안을 팀(특히 인사·엔지니어링·전사 담당자)과 확정
 
 ## Definition of Done
 
-`기획v1.md` 1~7번 + 발표 전 점검까지 전부 실제 내용(뼈대 아님)으로 채워지고, 모든 수치가 이 저장소 데이터(`docs/handbook/`)에서 직접 재현된 값이며, 발표 전 점검 체크리스트 항목을 전부 체크할 수 있는 상태.
+`기획v1.md` 1~7번 + 발표 전 점검까지 전부 실제 내용(뼈대 아님)으로 채워지고, 모든 수치가 `scripts/fetch_handbook_dataset.py`로 재현된 이 저장소 데이터에서 나온 값이며, 발표 전 점검 체크리스트 항목을 전부 체크할 수 있는 상태.
