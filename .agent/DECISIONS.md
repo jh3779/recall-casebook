@@ -128,3 +128,11 @@
 - **영향**: B안 전에는 `merge-gate`를 필수 체크로 올릴 수 없다(이슈 #5 선행 조건). 이 결정은 원래 "DEC-010으로 기록"하기로 예고됐으나 DEC-010이 주제 전환(2026-10-02)에 쓰여 DEC-017로 기록한다.
 - **Status**: Accepted (2026-10-01 결정, 2026-10-03 기록)
 - **Date**: 2026-10-03
+
+## DEC-018: gh api 경유 PR 병합을 settings.json deny로 막는다
+- **Decision**: `.claude/settings.json`의 deny에 `Bash(gh api*/pulls/*/merge*)`(REST 병합 엔드포인트)와 `Bash(gh api*mergePullRequest*)`(GraphQL 병합 mutation)를 추가한다. `gh pr merge`는 기존대로 ask를 유지한다(사용자 명시 지시 + 게이트 ✅일 때만, AGENTS.md 6절).
+- **Reason**: 이슈 #2. `gh pr merge`만 ask이고 `gh api`로 같은 병합을 할 수 있는 경로가 allow·deny 어디에도 없었다. 기본 승인 프롬프트가 막아 위험은 낮았지만 규칙으로 명시한다. 2026-10-03 사용자 "전체 정리" 지시.
+- **Alternatives**: `Bash(gh api*merge*)` — `mergeStateStatus` 조회처럼 무해한 조회까지 막아 기각. `Bash(gh pr merge *)`까지 deny — ask 정책(사용자 지시 시 병합 허용)과 충돌해 기각. 변수·`sh -c` 래핑까지 막으려면 PreToolUse 훅이 필요하지만 지금은 범위 밖.
+- **영향**: 공식 문서상 deny는 allow·ask보다 먼저 평가된다. 한계: `gh api $ENDPOINT`처럼 변수로 엔드포인트를 가리거나 `sh -c`로 감싸면 규칙이 못 잡는다 — 이 경우에도 기본 승인 프롬프트는 남는다. 중간 `*` 와일드카드 패턴은 문서 기준으로 작성했고 실제 차단 동작은 이번에 직접 시험하지 못했다.
+- **Status**: Accepted (사용자 승인 2026-10-03)
+- **Date**: 2026-10-03
