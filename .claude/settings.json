@@ -21,7 +21,9 @@
       "Read(./.env.*.local)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(gh api*/pulls/*/merge*)",
+      "Bash(gh api*mergePullRequest*)"
     ],
     "ask": [
       "Bash(gh pr merge:*)"
