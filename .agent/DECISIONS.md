@@ -138,9 +138,9 @@
 - **Date**: 2026-10-03
 
 ## DEC-019: 최종 출력 스키마를 {commit_sha, items} 구조로 정하고, source·domains는 코드가 채운다
-- **Decision**: 서비스 응답 전체는 `{commit_sha, items: [...]}`이다(`commit_sha`는 최상위 문자열 하나, 스냅샷이 `0ab0299`로 고정돼 항목별 버전 없음). `items`의 사용자 출력 필드는 `item, reason, criteria, check_method, source, evidence_quote, domains`이고, 내부 검증용은 `chunk_key` 하나다. `source`(`"path#heading"`)와 `evidence_quote`는 필수 문자열이며 검증에 실패하면 항목 전체를 제거한다. `null`은 `criteria`·`check_method`에서만 허용하고, 근거가 없으면 저장 값은 `null`, 화면에는 "확인 필요"로 표시한다. `source`·`domains`는 모델이 쓰지 않고 검증된 `chunk_key`의 메타데이터로 코드가 채운다. `criteria`·`check_method`는 `evidence_quote`에서 그대로 발췌하며 값이 인용문의 부분 문자열인지 코드로 확인한다. 항목 중복 제거 키는 `(chunk_key, evidence_quote, 정리한 item)`이고, 생성 전에 검색 결과를 `chunk_key`로 먼저 합쳐 한 번만 생성한다.
+- **Decision**: 서비스 응답 전체는 `{commit_sha, items: [...]}`이다(`commit_sha`는 최상위 문자열 하나, 스냅샷이 `0ab0299`로 고정돼 항목별 버전 없음). `items`의 사용자 출력 필드는 `item, reason, criteria, check_method, source, evidence_quote, domains`이고, 내부 검증용은 `chunk_key` 하나다. `source`(`"path#heading"`)와 `evidence_quote`는 필수 문자열이며 검증에 실패하면 항목 전체를 제거한다. `null`은 `criteria`·`check_method`에서만 허용하고, 근거가 없으면 저장 값은 `null`, 화면에는 "확인 필요"로 표시한다. `source`·`domains`는 모델이 쓰지 않고 검증된 `chunk_key`의 메타데이터로 코드가 채운다. `criteria`·`check_method`는 `evidence_quote`에서 그대로 발췌하며 값이 인용문의 부분 문자열인지 코드로 확인한다. "공백 정리"는 연속된 공백·탭·줄바꿈을 한 칸으로 합치고 앞뒤 공백을 제거하는 것으로 정의하며(구두점·대소문자는 보존), `chunk_hash`·인용 비교·항목 중복 제거가 모두 이 정의를 쓴다. 인용 비교는 값과 `evidence_quote` 양쪽에 같은 정리를 적용하되 사용자에게는 원문을 보인다. 항목 중복 제거 키는 `(chunk_key, evidence_quote, 공백 정리한 item)`이고, 생성 전에 검색 결과를 `chunk_key`로 먼저 합쳐 한 번만 생성한다.
 - **Reason**: 이슈 #11, PR #13 자동 리뷰(커밋 `bec8dd4`~`0716a55`)의 필수 보완. 출력 스키마가 단계마다 다르면 4개 도메인이 따로 구현한 결과를 합칠 수 없고, 모델이 다른 청크의 경로를 `source`로 쓰는 것·인용문 밖의 조건을 지어내는 것을 막으려면 값의 출처를 코드가 정해야 한다. 키에 `item`을 넣은 이유: 한 문장에서 나온 서로 다른 두 항목이 같은 `(chunk_key, evidence_quote)`라 이전 키로는 하나가 사라진다.
 - **Alternatives**: 항목별 `commit_sha` — 스냅샷이 하나로 고정돼 불필요해 기각(여러 버전을 쓰게 되면 재검토). `source`를 모델이 쓰고 사후 비교만 — 허용은 하되 기본은 코드가 채우는 방식. 빈 값을 `""`·`"확인 필요"` 문자열로 저장 — 도메인마다 구현이 갈려 기각.
-- **영향**: 5절은 아직 초안이라 도메인 PoC(10/6~7) 결과로 바뀔 수 있다. 구현 때 빈·짧은 인용 거부, 인용에 없는 조건을 덧붙인 항목을 실패시키는 테스트가 필요하다.
+- **영향**: 5절은 아직 초안이라 도메인 PoC(10/6~7) 결과로 바뀔 수 있다. 구현 때 필요한 테스트 사례: 빈·짧은 인용 거부, 인용에 없는 조건을 덧붙인 항목 실패, **줄바꿈이 있는 인용문과 공백만 다른 값은 통과**, **`A/B 계정 신청`과 `AB 계정 신청`은 서로 다른 항목으로 보존**.
 - **Status**: Accepted (PR #13 병합 시 확정)
 - **Date**: 2026-10-03
