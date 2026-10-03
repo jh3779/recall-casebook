@@ -119,20 +119,21 @@ def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: i
         f"- 결과 코멘트 이후 새 리뷰: {', '.join(reviews_after_result) or '없음'}",
     ]
 
+    # 변경 요청·미해결 스레드는 결과 코멘트와 무관한 실패 원인이므로 수정된 결과보다 먼저 보여 준다
+    if changes_requested:
+        return Gate(
+            "failure", f"{short}: 변경 요청 리뷰 남아 있음 ({', '.join(changes_requested)})", lines
+        )
+    if unresolved:
+        return Gate("failure", f"{short}: 미해결 리뷰 스레드 {unresolved}개", lines)
     if last_result_edited:
         return Gate(
             "pending",
             f"{short}: 마지막 결과 코멘트가 수정됨 — 고치지 말고 새 결과 코멘트를 올리세요",
             lines,
         )
-    if changes_requested:
-        return Gate(
-            "failure", f"{short}: 변경 요청 리뷰 남아 있음 ({', '.join(changes_requested)})", lines
-        )
     if result == "❌":
         return Gate("failure", f"{short}: 병합 전 검증 결과 ❌", lines)
-    if unresolved:
-        return Gate("failure", f"{short}: 미해결 리뷰 스레드 {unresolved}개", lines)
     if not review_sources:
         return Gate(
             "pending", f"{short}: 현재 head 기준 자동 리뷰 없음 (MERGE_PROTOCOL 1절)", lines
