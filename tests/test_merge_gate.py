@@ -217,3 +217,19 @@ def test_new_result_after_edited_one_counts():
         result("✅", HEAD, "2026-10-01T14:20:00Z"),
     ]
     assert evaluate(HEAD, [], comments, 0).state == "success"
+
+
+def test_changes_requested_beats_edited_result():
+    """결과 코멘트가 수정됐어도 변경 요청이 남아 있으면 원인을 가리지 않고 failure로 보인다 (이슈 #3 O1)."""
+    tampered = result("✅", HEAD, "2026-10-01T14:10:00Z") | {"updated": "2026-10-01T14:30:00Z"}
+    reviews = [gh_review(HEAD, state="CHANGES_REQUESTED", author="bot")]
+    gate = evaluate(HEAD, reviews, [review(HEAD, "2026-10-01T14:00:00Z"), tampered], 0)
+    assert gate.state == "failure"
+    assert "변경 요청" in gate.description
+
+
+def test_unresolved_threads_beat_edited_result():
+    tampered = result("✅", HEAD, "2026-10-01T14:10:00Z") | {"updated": "2026-10-01T14:30:00Z"}
+    gate = evaluate(HEAD, [], [review(HEAD, "2026-10-01T14:00:00Z"), tampered], 2)
+    assert gate.state == "failure"
+    assert "2개" in gate.description
