@@ -1,43 +1,91 @@
 # Agent Handoff
 
-_갱신: 2026-10-01_
+_갱신: 2026-10-03_
 
 ## Current Objective
 
-협업용 저장소 초기 셋팅 + 기획 초안 + uv 개발환경 + 에이전트 행동강령.
+PR #7(`docs/project-skeleton` → `main`)의 자동 리뷰 지적을 처리하고 `docs/MERGE_PROTOCOL.md` 게이트를 전부 ✅로 만드는 것. 최신 커밋 기준 재리뷰를 기다리는 중.
 
 ## Current Phase
 
-P0 — 저장소 셋팅 완료·GitHub 업로드 완료(`jh3779/LG_CNS_RAG_main`, private), 기획 초안은 팀 검토 전.
+없음 — `PROJECT_CONTEXT.md`에 Phases 로드맵이 아직 없다. 느슨하게는 "기획 단계"(10/2 주제 결정 ~ 10/6-7 도메인별 PoC 전).
 
 ## Completed
 
-- 협업 설정: README, CONTRIBUTING(GitHub Flow·브랜치/PR 규칙·lefthook 설치), PR 템플릿, CODEOWNERS(빈 틀), CI 워크플로 5개(브랜치명·PR 제목 검사, 리뷰봇·플랜봇 알림, stale 브랜치 정리), .gitignore/.gitattributes/.editorconfig, .env.example
-- git 훅: pre-commit 프레임워크 대신 **lefthook** (DEC-002). `lefthook.yml` + `scripts/check-{staged,commit-msg,branch}.sh`. 로컬 `lefthook install` 완료, 스크립트 동작 수동 확인함.
-- uv 셋팅 (DEC-004): `pyproject.toml`(런타임 의존성 비움, dev: pytest·ruff), `.python-version` 3.12, `uv.lock`, `tests/test_smoke.py`, CI `ci.yml`. lefthook pre-commit에 ruff 추가. 로컬에서 `uv sync` → ruff·pytest 통과 확인. 안내서 `docs/개발환경.md`.
-- 에이전트 행동강령 (DEC-005): `AGENTS.md`(원본) + `CLAUDE.md`(@import + Claude 전용 보충) + `.claude/settings.json`(팀 공유 권한: uv/git 읽기 허용, .env 읽기·force push·PR 병합·pip install 차단).
-- 전체 셋팅 안내서 `docs/시작하기.md`: 도구 설치 → 저장소 받기 → 작업 흐름 → 자동 검사 → 에이전트 → 관리자 최초 설정(9절, 첫 push·병합 방식·룰셋·초대 명령 포함).
-- `docs/기획.md`: 참고 레포 기반으로 7단계 채움 (DEC-003). 2번 상용 서비스 조사와 4번 일부 "왜 골랐나"는 "아직 없음".
+- PR #7 오픈, Codex 자동 리뷰 "머지 전 필수 보완" 5건을 전부 반영해 커밋 `813a772`로 push함(AGENTS.md 2·5절 재작성, 고통 포인트 `(가설)` 표시, 34개 부서↔도메인 매핑 초안, `scripts/fetch_handbook_dataset.py`, stale 문서 정리).
+- grilling Q1~Q5를 사용자 인터뷰(AskUserQuestion)로 결정 — 다섯 개 모두 권장안 채택. 그중 평가 규칙·중복 제거 키는 [[DEC-011]]로 기록.
+- `docs/기획v1.md` 3절 반영:
+  - "PoC 공통 기준" 표: 중복 제거 키 `(source_path, commit_sha, heading_path)` 명시(코퍼스·최소 DB 행), "평가 질문 유형"(문서 유래 / 상황 서술, 합산 안 함) 행, "평가 질문 최소 개수"(도메인당 30, 미달 시 문항별 성공/실패 목록) 행 추가.
+  - "전사 공통 분할안 (제안)" 소절: 문화·리더십 9개 폴더 747,230 토큰 / 지원 부서·내부 IT 6개 폴더 1,414,776 토큰 / `upstream-studios` 공용(224,901). 공용 2순위 후보 `tools-and-tips`.
 
-## Repo Status (2026-10-01)
+## Last Work
 
-- https://github.com/jh3779/LG_CNS_RAG_main (private). 첫 커밋 `edefe82` main push → CI `ci.yml` 전 단계 success.
-- 병합: squash만, 커밋 메시지 = PR 제목, 머지 후 브랜치 자동 삭제.
-- 룰셋 `main 보호`(id 24290303): 삭제·force push 차단, PR 필수(승인 0명, squash만), 필수 체크 4개(`lint-and-test`·`check-branch-name`·`validate-pr-title`·`pr-verify`) (DEC-006·008).
-- CI 필수 체크 4개: 기존 3개 + `pr-verify`(PR 상세 검증) (DEC-008). `merge-gate`는 main 코드로만 돌도록 바꾸면서 **2단계 도입 중** — PR #1 병합 후 다음 PR에서 상태 게시를 확인하고 필수 체크에 다시 넣는다 (DEC-009).
-- 리뷰봇(Codex)은 `jh3779` 계정으로 `### 🤖 자동 리뷰 (Codex) — 커밋 <SHA>` 코멘트를 push 몇 분 뒤에 게시한다. 병합 전 검증 때 반드시 확인.
-- 필수 리뷰어 없음 → 대신 병합 전 검증 프로토콜 `docs/MERGE_PROTOCOL.md` + 스킬 `.claude/skills/pre-merge-check/` (DEC-007). `gh pr merge`는 settings에서 ask.
-- 미설정: 팀원 초대·CODEOWNERS, `DISCORD_EVENT_WEBHOOK` 시크릿.
+(최신, 10/3) `11fec86` 리뷰도 필수 보완 없음(위험도 하 1건) — 그 지적(`evidence_quote` 검사가 보장하는 범위)을 5절 ⑦에 정확히 한정해 반영. 같은 브랜치에 내가 만들지 않은 커밋 `2fd62d6`(`PROJECT_CONTEXT.md`에 Agent Permissions 섹션, 사용자 계정 19:21)이 올라와 있어 그 위에 이어서 작업했다.
 
-## Next Steps
+(이전, 10/3) 여덟 번째 리뷰 뒤 `815ecc7` 리뷰는 필수 보완 없음(위험도 하 1건). 그 지적(인용 경로만 맞고 내용이 다른 항목)은 5절 ⑥⑦에 `chunk_key`·`evidence_quote` 검증으로 반영하고, PR diff를 정독하다 발견한 오류도 고침: 4절 평가 행 4곳이 손상돼 있던 것(내 편집 실수), `진행계획.md`의 "정답표 직접 만들기" 잔존 문구, HANDOFF 번호 누락, `CLAUDE.md` 의도하지 않은 빈 줄.
 
-1. 팀이 `docs/기획.md` 검토 — 특히 참고 레포와의 관계(이어서/새로/범위 변경) 결정
-4. 팀원 collaborator 초대 + `.github/CODEOWNERS` 채우기
-5. 기술 스택 확정 → `uv add`로 런타임 의존성 추가 (후보 목록: `docs/개발환경.md` 4절)
-6. Discord 봇 연동이 필요하면 저장소 시크릿 `DISCORD_EVENT_WEBHOOK` 등록
+(이전, 10/3) 여덟 번째 Codex 리뷰(`39e4822`) 필수 보완 1건 반영: 정답 표시자를 실명 대신 `labeler_id`로, 질문자≠표시자(DEC-016 ③). PR 본문의 옛 수치 검증 설명도 `기획_뼈대.md` 예외로 정정.
 
-## Open Questions
+(이전, 10/3) 일곱 번째 Codex 리뷰(`29188df`) 필수 보완 2건 반영(DEC-016 보완: 간접 식별 정보 치환·원문은 저장소 밖, 실제 질문 도메인당 최소 34개) + handbook README의 완료된 병합 순서 안내를 현재형으로 수정.
 
-- 참고 레포 코드를 가져와 이어서 개발하는가, 기획만 참고하고 새로 만드는가
-- 상용 유사 서비스 조사
-- 팀 구성 및 역할 분담
+(이전, 10/3) 여섯 번째 Codex 리뷰(`bffa01f`) 필수 보완 1건·선택 1건 반영([[DEC-016]]: 실제 질문 출처 비식별 기록, 실제 질문 최소 34개). 같은 푸시에 main(PR #8 병합분)을 합쳐 `SESSION_LOG.md` 충돌을 해소. **PR #8은 사용자 지시로 병합 완료**(`a43f62d`). 남은 병합은 PR #7. `기획_뼈대.md` 정리는 이슈 #10.
+
+(이전, 10/3) 다섯 번째 Codex 리뷰(`ae9d634`) 필수 보완 2건 반영([[DEC-015]]: 임베딩을 공용 테이블에서 분리, AGENTS.md 5절 질문 출처를 문서 유래/실제 질문 두 세트로 정리, 최소 문항 30→34). PR #8 쪽 지적은 반박 1·후속 이슈 1(#9)로 처리하고 결과 코멘트 게시. 선택 개선 `기획_뼈대.md`는 이슈 #10.
+
+(이전, 10/3) 네 번째 Codex 리뷰(`26c5100`·PR #8 `b3ecb34`) 필수 보완을 사용자 승인으로 처리: `domains[]` 확정·FAQ 점수는 동작 확인용([[DEC-014]]), 쉬운버전 진행계획의 "정답표 직접 만들기" 문구 수정, PR #8에 중단 복구 로직(테스트 5개)과 `.gitignore` 규칙을 넣어 #7과의 순환 의존 해소.
+
+(이전) 세 번째 Codex 리뷰(`ef8fc44`) 필수 보완 4건을 사용자 승인으로 처리: ① 상황 서술 평가 세트는 실제 사례 확보 전까지 "작성 예정"·점수 제외, ② 중복 제거 키에 `chunk_hash` 추가([[DEC-013]]) ③ 재현 스크립트를 **별도 `data:` PR #8**(`data/handbook-fetch-script`)로 분리하고 교체 단계를 안전하게 고침(테스트 4개) ④ 이 PR에서는 스크립트 제거. 직전에는 `기획v1.md` 5절 초안(질문 분류→모델 분류 구조) 작성.
+
+grilling 결과를 커밋 `19d06f6`으로 push한 뒤, 사용자 승인으로 [[DEC-012]](FAQ 형태만 평가 질문 출처)를 AGENTS.md·기획v1에 반영하고 PR 본문을 정정했다. 이어서 커밋 `813a772` 기준 두 번째 Codex 리뷰(PR 코멘트)를 대조해 근거가 확인된 지적만 반영했다: ① README·`docs/시작하기.md`·`docs/개발환경.md`의 옛 규제 서비스 안내를 `기획v1.md` 기준으로 교체 ② `PROJECT_CONTEXT.md`의 섹션 번호 오기(기술 스택은 4번) 수정 ③ 이 HANDOFF를 커밋 후에도 참인 상태로 재작성. 검사: `uv run ruff check .` 통과, `ruff format --check` 통과(25 files), `pytest` 59 passed(수정 후 재실행).
+
+## Current State
+
+브랜치 `docs/project-skeleton`. 정확한 커밋·변경 상태는 이 문서가 아니라 `git status --short`·`git log -3`로 먼저 확인한다(이 문서의 상태 기술은 커밋 순간 어긋나기 쉽다).
+
+## Open Issues
+
+- **재리뷰 대기** — 마지막 push 이후 리뷰봇의 새 리뷰가 달렸는지 확인한다.
+- **PR #8은 병합 완료** — 이제 `docs/handbook/README.md`가 가리키는 스크립트가 main에 있다. PR #7은 사용자가 병합을 명시적으로 지시해야 병합한다.
+- **주의(재발 방지)**: `data/` 브랜치(.gitignore가 없는 main 기준)에서 `uv run ruff format .`을 돌리면 로컬 데이터셋 md 8개가 바뀐다(ruff 0.15가 md 코드블록도 포맷). 이번에 그렇게 돼서 스크립트로 데이터셋을 다시 받아 복구했다. 그 브랜치에서는 `ruff format scripts tests`처럼 경로를 지정한다.
+- **팀 확인 필요 4건**: ① (처리됨 — 실제 사례 확보 전까지 점수 제외, [[DEC-013]]) ② 전사 공통을 나누면 도메인 5개 vs 팀원 4명 — 한 명이 두 도메인을 맡을지, 하위 범위로만 쓸지 ③ (처리됨 — `domains[]` 확정, [[DEC-014]]) ④ `tools-and-tips` 공용 여부(본문 미확인).
+- 실측에서 확인: 전사 공통은 폴더 수(16)는 최다지만 토큰(2,386,907)은 엔지니어링(4,490,880)·영업·지원(3,223,880)보다 작다 — 분할 근거는 분량이 아니라 성격 혼재.
+- **두 번째 Codex 리뷰(813a772) 중 사용자 결정이 필요했던 2건**(둘 다 사용자 승인으로 처리 완료): ① 문서 유래 질문은 FAQ 형태만 — [[DEC-012]]로 반영 ② 재현 스크립트가 있는데 PR 본문이 "문서만 변경"이던 문제 — PR 본문 정정으로 처리(제목·브랜치는 유지).
+- **반박 처리한 지적**: `DOCUMENTS.md` 기준 문서 부재(저장소 전체 grep에서 그런 지정 기록 없음 — 첫 리뷰의 자동 검증도 근거 부족으로 표시), `기획v1.md` H1 제목·마지막 줄바꿈(1행에 H1 있고 파일 끝 `0a` 확인 — 이미 충족).
+- **FAQ 점수 처리는 선택지 A로 확정(2026-10-03)**: FAQ는 동작 확인용, 모델 최종 선택은 실제 질문 세트 결과 뒤. 아직 정하지 않은 것: ① "FAQ" 정의 — 영업·지원 7개 폴더에만 질문형 제목(`## What is …?`)이 556개 있어, 이를 질문으로 쓰면 정답 제목과 글자가 겹쳐 점수가 부풀려진다(FAQ 섹션 본문 문항만 쓰는 선택지 C는 보류) ② 도메인별 FAQ 문항 수 미실측(FAQ 섹션 파일 수는 engineering 26·marketing 19·sales 12·support 8, people-policies·total-rewards·resellers·alliances·values 0). 실제 질문 확보 경로는 **10/6 회의 안건 1순위**로 올린다.
+- **실제 질문 사례를 어디서 얻을지 미정(팀 결정)** — 없으면 모델 최종 선택을 못 한다([[DEC-013]]·[[DEC-014]]).
+- 인사·엔지니어링·전사 공통 담당자 미정(10/7까지, `docs/진행계획.md`).
+- `기획v1.md` 5절(아키텍처·워크플로우)은 **초안** 작성됨(8단계 흐름·단계별 입출력·원칙 강제 표·실패 처리). 미결 4건(② 분류 방식, 복수 도메인 허용, 도메인 5개화, `user_type` 분기)은 팀 확인 필요. 4·6·7절은 뼈대뿐 — 도메인별 PoC(10/6~7) 이후 채운다.
+- `PROJECT_CONTEXT.md` Goal·Tech Stack이 옛 주제 기준일 수 있음(DEC-010 "영향" 항목) — 갱신 여부 미확인.
+
+## Important Decisions
+
+- [[DEC-010]] 주제를 온보딩 체크리스트 RAG로 전환 (DEC-003 대체)
+- [[DEC-011]] 평가 질문 두 세트 분리·도메인당 최소 30문항(→34, DEC-015)·중복 제거 키
+- [[DEC-012]] 문서 유래 평가 질문은 FAQ 형태만 (체크리스트·runbook은 정답 문서 후보)
+- [[DEC-013]] 상황 서술 세트는 실제 사례 확보 전 점수 제외 + 중복 제거 키에 `chunk_hash`
+- [[DEC-014]] `domains[]` 확정, FAQ 점수는 모델 선택의 단독 근거 아님
+- [[DEC-015]] 공용 테이블에서 임베딩 분리, 도메인당 최소 평가 문항 34개, AGENTS.md 5절 질문 출처 두 세트
+- [[DEC-016]] 실제 질문 출처는 비식별 기록(익명 `source_id`), 실제 질문 세트도 최소 34개
+
+## Failed Attempts
+
+- grilling Q5("미커밋 변경을 어떻게 나눠 커밋할지")를 지난 세션 HANDOFF 기준으로 써 두었는데, 실제로는 그 변경이 이미 `813a772`로 push돼 질문 전제가 틀려 있었다. **근본 원인**: HANDOFF의 Current State를 git 실제 상태와 대조하지 않고 질문을 만들었다. **신호**: 커밋·브랜치·변경 범위에 관한 질문을 사용자에게 던지기 직전 → 먼저 `git status`·`git log -3`을 실행해 전제를 확인하고, 어긋나면 질문을 고쳐 묻는다.
+- `npx skills add`로 스킬 자동 설치 시도 → 자동 모드 안전장치가 "외부 코드 실행"으로 차단. **신호**: npx/pip 등으로 외부 패키지를 받아 즉시 실행하는 명령 → 에이전트가 실행하지 말고 사용자에게 `!` 접두사로 직접 실행하도록 안내한다. (`mattpocock-skills` 플러그인은 user 범위로 설치·활성화돼 있음을 `claude plugin list`로 확인함.)
+
+## Relevant Files
+
+- `docs/기획v1.md` — 메인 기획 문서. 3절 "PoC 공통 기준" 표와 "전사 공통 분할안" 소절이 이번 변경
+- `.agent/DECISIONS.md` — DEC-010~016 (평가·스키마·개인정보 규칙은 DEC-011~016)
+- `docs/진행계획.md`(+`쉬운버전/`) — 팀 일정·담당자 미정 항목
+- `AGENTS.md` 5절 — 상황 서술 세트와의 충돌 여부 확인 대상
+- `docs/MERGE_PROTOCOL.md` — 병합 전 게이트
+- `docs/handbook/content/handbook/` — 데이터 원문(gitignore). 실측은 폴더별 `find -name '*.md'` + 바이트÷4
+
+## Next Action
+
+1. 재리뷰 확인 → 새 지적 처리 → `pre-merge-check` 스킬로 게이트 점검 → 사용자에게 병합 여부 확인
+2. 팀 확인 4건(Open Issues)과 34개 부서↔도메인 매핑을 팀과 확정(담당자 확정 10/7과 함께)
+
+## Definition of Done
+
+`기획v1.md` 1~7번 + 발표 전 점검까지 전부 실제 내용(뼈대 아님)으로 채워지고, 모든 수치가 `scripts/fetch_handbook_dataset.py`로 재현된 이 저장소 데이터에서 나온 값이며, 발표 전 점검 체크리스트 항목을 전부 체크할 수 있는 상태.
