@@ -95,6 +95,10 @@ def install_content(content_dir: Path, target: Path) -> None:
     backup = target.parent / f"{target.name}.old"
     target.parent.mkdir(parents=True, exist_ok=True)
 
+    # 이전 실행이 교체 도중 중단돼 target은 없고 백업만 남았다면, 지우지 말고 먼저 되돌린다
+    if backup.exists() and not target.exists():
+        backup.rename(target)
+
     for leftover in (staging, backup):  # 이전 실행이 남긴 찌꺼기
         if leftover.exists():
             shutil.rmtree(leftover)

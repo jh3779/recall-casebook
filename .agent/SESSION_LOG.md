@@ -11,3 +11,4 @@
 - 2026-10-01: 병합 전 검증 프로토콜(MERGE_PROTOCOL.md·pre-merge-check 스킬) 도입, `gh pr merge` deny→ask (DEC-007)
 - 2026-10-01: CI 상세 검증 추가 — `pr-verify`·`merge-gate` 워크플로 + scripts/ci + 테스트 23개, 룰셋 필수 체크 5개로 (DEC-008)
 - 2026-10-01: Codex 리뷰(놓쳤던 2건) 반영 — merge-gate main 전용 실행·2단계 도입(DEC-009), Codex 형식 인식·결과 뒤 리뷰 무효화, pr-verify 근거 강화, 설정 파일 분리
+- 2026-10-03: 핸드북 데이터셋 재현 스크립트를 PR #7에서 분리해 data: PR로 추가 — 교체 단계 안전화(임시 폴더·백업·중단 복구, 테스트 5개), .gitignore에 docs/handbook/* 규칙 이동
