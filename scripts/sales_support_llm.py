@@ -171,6 +171,17 @@ def max_call_cost(q: poc.EvalQuestion, shown: list[poc.Chunk]) -> float:
     return cost_usd(len(sent.encode("utf-8")), MAX_OUTPUT_TOKENS)
 
 
+def _classify_api_error(e: Exception) -> tuple[bool, bool]:
+    """(요청이 처리되기 전에 거부돼 요금이 없는 오류인가, 더 시도해도 소용없어 배치를 멈춰야 하는가)."""
+    import openai
+
+    fatal = isinstance(e, (openai.AuthenticationError, openai.PermissionDeniedError))
+    no_charge = fatal or isinstance(
+        e, (openai.BadRequestError, openai.NotFoundError, openai.UnprocessableEntityError)
+    )
+    return no_charge, fatal
+
+
 def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
     """질문 하나를 모델에 보내고 검증 결과·토큰·지연을 한 줄 기록으로 돌려준다. 오류가 나도 중단하지 않는다."""
     rec: dict = {
@@ -187,6 +198,8 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
         "output_tokens": 0,
         "latency_s": 0.0,
         "error": None,
+        "rejected_before_processing": False,
+        "fatal": False,
         "valid_items": [],
     }
     start = time.time()
@@ -209,6 +222,7 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
         )
     except Exception as e:  # noqa: BLE001 — 한 질문의 실패가 전체 실행을 멈추지 않게 기록만 한다
         rec["error"] = f"{type(e).__name__}: {e}"
+        rec["rejected_before_processing"], rec["fatal"] = _classify_api_error(e)
         rec["latency_s"] = time.time() - start
         return rec
     rec["latency_s"] = time.time() - start
@@ -386,8 +400,10 @@ def run_batch(client, jobs: list[tuple[poc.EvalQuestion, list[poc.Chunk]]], budg
             return records, True
         rec = run_question(client, q, shown)
         # 응답을 못 받아 사용량을 모르는 실패는 요금이 났을 수 있으므로 최악 비용을 누적한다
-        rec["cost_unknown"] = rec["error"] is not None and not (
-            rec["input_tokens"] or rec["output_tokens"]
+        rec["cost_unknown"] = (
+            rec["error"] is not None
+            and not rec["rejected_before_processing"]
+            and not (rec["input_tokens"] or rec["output_tokens"])
         )
         spent += (
             max_call_cost(q, shown)
@@ -395,6 +411,8 @@ def run_batch(client, jobs: list[tuple[poc.EvalQuestion, list[poc.Chunk]]], budg
             else cost_usd(rec["input_tokens"], rec["output_tokens"])
         )
         records.append(rec)
+        if rec["fatal"]:  # 인증·권한 오류는 다음 질문도 똑같이 실패하므로 바로 멈춘다
+            break
     return records, False
 
 
@@ -418,6 +436,7 @@ def summarize(records: list[dict]) -> dict:
         "n_api_errors": sum(r["error"] not in (None, "question_too_long") for r in records),
         "n_local_rejected": sum(r["error"] == "question_too_long" for r in records),
         "n_cost_unknown": sum(bool(r.get("cost_unknown")) for r in records),
+        "aborted_on_fatal_error": any(r.get("fatal") for r in records),
         "schema_ok_rate": len(ok) / n if n else 0.0,
         "items_raw": raw,
         "items_valid": valid,

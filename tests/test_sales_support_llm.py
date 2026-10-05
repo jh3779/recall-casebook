@@ -330,3 +330,23 @@ def test_summary_counts_local_rejections_separately_from_api_errors():
     summary = llm.summarize(records)
     assert summary["n_local_rejected"] == 1 and summary["n_api_errors"] == 1
     assert summary["n_cost_unknown"] == 1
+
+
+def _auth_error():
+    import httpx
+    import openai
+
+    request = httpx.Request("POST", "https://api.openai.com/v1/responses")
+    response = httpx.Response(401, request=request)
+    return openai.AuthenticationError("expired key", response=response, body=None)
+
+
+def test_auth_error_is_not_charged_and_stops_the_batch_immediately():
+    client = FakeClient([_auth_error(), json.dumps({"items": []})])
+    jobs = [(question(), CHUNKS[:2])] * 3
+    records, stopped = llm.run_batch(client, jobs, budget_usd=1.0)
+    assert len(client.calls) == 1 and len(records) == 1  # 첫 호출에서 바로 중단
+    assert records[0]["cost_unknown"] is False and records[0]["fatal"] is True
+    assert stopped is False  # 예산 때문이 아니라 인증 오류로 중단
+    summary = llm.summarize(records)
+    assert summary["n_cost_unknown"] == 0 and summary["aborted_on_fatal_error"] is True
