@@ -297,3 +297,67 @@ def test_compare_reports_marks_differences_at_or_above_threshold():
     hit = by_metric[("BM25", "section", "Hit@1")]
     assert hit["diff"] == pytest.approx(0.05) and hit["different"] is True
     assert by_metric[("BM25", "section", "MRR")]["different"] is False
+
+
+# ---- 임시 chunk_key (팀 합의 전 제안 A: 네 값을 구분 문자로 이어 해시) ----
+
+
+def test_chunk_key_recipe_matches_the_documented_formula():
+    import hashlib
+
+    parts = ["sales/a.md", "0ab0299ce073b847558867ae5abbc42c570bc8d5", "A>B", "abc123"]
+    expected = hashlib.sha256("\x1f".join(parts).encode("utf-8")).hexdigest()[:32]
+    assert poc.make_chunk_key(*parts) == expected
+    assert len(poc.make_chunk_key(*parts)) == poc.CHUNK_KEY_LEN == 32
+
+
+def test_each_chunk_has_doc_id_chunk_key_and_domains():
+    chunks = poc.chunk_file("sales/a.md", "## A\n\nx\n\n## B\n\ny\n")
+    assert all(c.chunk_key and c.doc_id and c.domains == [poc.DOMAIN] for c in chunks)
+    assert len({c.chunk_key for c in chunks}) == len(chunks)
+    assert len({c.doc_id for c in chunks}) == 1  # 같은 문서는 같은 doc_id
+    other = poc.chunk_file("sales/b.md", "## A\n\nx\n")
+    assert other[0].doc_id != chunks[0].doc_id and other[0].chunk_key != chunks[0].chunk_key
+
+
+def test_chunk_key_changes_when_any_of_the_four_fields_changes():
+    base = ("p.md", "sha", "H", "h1")
+    keys = {poc.make_chunk_key(*base)}
+    for i, other in enumerate(("q.md", "sha2", "H2", "h2")):
+        changed = list(base)
+        changed[i] = other
+        keys.add(poc.make_chunk_key(*changed))
+    assert len(keys) == 5
+
+
+def test_duplicate_chunk_keys_are_rejected():
+    chunk = poc.chunk_file("sales/a.md", "## A\n\nx\n")[0]
+    with pytest.raises(ValueError, match="chunk_key 중복"):
+        poc.assert_unique_keys([chunk, chunk])
+
+
+def test_vectors_are_aligned_by_chunk_key_even_if_chunk_order_changes():
+    import numpy as np
+
+    chunks = poc.chunk_file("sales/a.md", "## A\n\nx\n\n## B\n\ny\n\n## C\n\nz\n")
+    keys = [c.chunk_key for c in chunks]
+    vectors = np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])  # 청크 순서(A, B, C)대로 만든 벡터
+    shuffled = [chunks[2], chunks[0], chunks[1]]  # 청크 파일 순서가 바뀐 경우
+    aligned = poc.align_vectors(shuffled, keys, vectors)
+    assert aligned.tolist() == [[1.0, 1.0], [1.0, 0.0], [0.0, 1.0]]
+
+
+def test_align_vectors_reports_missing_keys():
+    import numpy as np
+
+    chunks = poc.chunk_file("sales/a.md", "## A\n\nx\n")
+    with pytest.raises(ValueError, match="벡터가 없는 청크"):
+        poc.align_vectors(chunks, ["other-key"], np.zeros((1, 2)))
+
+
+def test_load_checked_index_exits_with_a_clear_message_when_index_files_are_missing(tmp_path):
+    (tmp_path / "index_meta.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "chunks.jsonl").write_text("", encoding="utf-8")  # 임베딩 파일만 없는 상태
+    with pytest.raises(SystemExit) as e:
+        poc.load_checked_index(tmp_path, tmp_path)
+    assert "색인 파일" in str(e.value) and "embeddings.npz" in str(e.value)

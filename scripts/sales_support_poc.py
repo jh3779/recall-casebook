@@ -17,7 +17,7 @@ import json
 import re
 import sys
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from importlib.metadata import version
 from pathlib import Path
 
@@ -45,6 +45,11 @@ CHUNKING = {"heading_levels": "H2-H4", "max_chunk_chars": MAX_CHUNK_CHARS, "prep
 # 색인에서 뺄 폴더 — 신규 "고객"(제품 구독자)용 온보딩이라 직원 질문에 섞이면 안 된다 (기획v1 4절 데이터 처리 설계 4번)
 EXCLUDE_DIRS = ["customer-experience/customer-onboarding"]
 INDEX_META = "index_meta.json"
+DOMAIN = "sales-support"
+# 임시 chunk_key — 팀 합의 전 제안 A(HANDOFF 할 일 16). 합의되면 DEC로 확정하고 바뀌면 `index`를 다시 한다.
+CHUNK_KEY_SEP = "\x1f"
+CHUNK_KEY_LEN = 32
+CHUNK_KEY_RECIPE = f"sha256(source_path|commit_sha|heading_path|chunk_hash joined by U+001F)[:{CHUNK_KEY_LEN}] (provisional)"
 QUESTION_TYPES = ("doc_derived", "synthetic", "real")
 EQUIVALENT_DIFF = 0.03  # 기획v1 3절: 차이가 이보다 작으면 같다고 본다
 RRF_K = 60
@@ -65,6 +70,9 @@ class Chunk:
     commit_sha: str
     chunk_text: str
     chunk_hash: str
+    doc_id: str = ""  # 문서 단위 식별자 (source_path + commit_sha)
+    chunk_key: str = ""  # 청크 단위 공용 키 — 임베딩이 청크 순서가 아니라 이 키로 원문을 찾는다
+    domains: list[str] = field(default_factory=list)
     doc_title: str = ""  # frontmatter title — 본문이 아니라 메타데이터로 보존한다 (기획v1 4절 데이터 처리 설계 2번)
     doc_description: str = ""
 
@@ -76,6 +84,37 @@ class Chunk:
 def collapse_whitespace(text: str) -> str:
     """공백 정리 — 공백·탭·줄바꿈을 한 칸으로, 앞뒤 제거 (구두점·대소문자는 그대로)."""
     return re.sub(r"\s+", " ", text).strip()
+
+
+def make_chunk_key(source_path: str, commit_sha: str, heading_path: str, chunk_hash: str) -> str:
+    """중복 제거 키 네 값(기획v1 3절)을 구분 문자로 이어 해시한 단일 키 — 임시안."""
+    joined = CHUNK_KEY_SEP.join([source_path, commit_sha, heading_path, chunk_hash])
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:CHUNK_KEY_LEN]
+
+
+def make_doc_id(source_path: str, commit_sha: str) -> str:
+    return hashlib.sha256(
+        CHUNK_KEY_SEP.join([source_path, commit_sha]).encode("utf-8")
+    ).hexdigest()[:16]
+
+
+def assert_unique_keys(chunks: list["Chunk"]) -> None:
+    seen: set[str] = set()
+    for c in chunks:
+        if c.chunk_key in seen:
+            raise ValueError(f"chunk_key 중복: {c.section_key} ({c.chunk_key})")
+        seen.add(c.chunk_key)
+
+
+def align_vectors(chunks: list["Chunk"], keys: list[str], vectors: np.ndarray) -> np.ndarray:
+    """저장된 벡터를 청크 순서가 아니라 chunk_key로 청크에 연결한다 (청크 파일 순서가 바뀌어도 맞는다)."""
+    if len(set(keys)) != len(keys):
+        raise ValueError("embeddings의 chunk_key에 중복이 있습니다")
+    row = {k: i for i, k in enumerate(keys)}
+    missing = [c.section_key for c in chunks if c.chunk_key not in row]
+    if missing:
+        raise ValueError(f"벡터가 없는 청크 {len(missing)}개 (예: {missing[:3]})")
+    return vectors[[row[c.chunk_key] for c in chunks]]
 
 
 def parse_frontmatter(raw: str) -> dict[str, str]:
@@ -146,12 +185,14 @@ def split_long(body: str) -> list[str]:
 def chunk_file(source_path: str, raw: str, first_id: int = 0) -> list[Chunk]:
     chunks: list[Chunk] = []
     meta = parse_frontmatter(raw)
+    doc_id = make_doc_id(source_path, COMMIT_SHA)
     for heading_path, lines in split_sections(preprocess(raw)):
         body = "\n".join(lines).strip()
         if not body:
             continue
         for part in split_long(body):
             normalized = collapse_whitespace(part)
+            chunk_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
             chunks.append(
                 Chunk(
                     chunk_id=first_id + len(chunks),
@@ -159,7 +200,10 @@ def chunk_file(source_path: str, raw: str, first_id: int = 0) -> list[Chunk]:
                     heading_path=heading_path,
                     commit_sha=COMMIT_SHA,
                     chunk_text=part,
-                    chunk_hash=hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16],
+                    chunk_hash=chunk_hash,
+                    doc_id=doc_id,
+                    chunk_key=make_chunk_key(source_path, COMMIT_SHA, heading_path, chunk_hash),
+                    domains=[DOMAIN],
                     doc_title=meta["title"],
                     doc_description=meta["description"],
                 )
@@ -182,6 +226,7 @@ def build_chunks(handbook_dir: Path) -> list[Chunk]:
     for path in list_files(handbook_dir):
         rel = path.relative_to(handbook_dir).as_posix()
         chunks.extend(chunk_file(rel, path.read_text(encoding="utf-8"), len(chunks)))
+    assert_unique_keys(chunks)
     return chunks
 
 
@@ -353,7 +398,7 @@ def evaluate(
 def chunks_digest(chunks: list[Chunk]) -> str:
     """청크 목록의 지문 — 경로·제목 위치·내용 해시·문서 제목·설명을 순서대로 이어 해시한다 (벡터와 청크의 짝이 어긋나거나 메타데이터가 바뀌면 달라진다)."""
     lines = "\n".join(
-        f"{c.source_path}\t{c.heading_path}\t{c.chunk_hash}\t{c.doc_title}\t{c.doc_description}"
+        f"{c.chunk_key}\t{c.source_path}\t{c.heading_path}\t{c.chunk_hash}\t{c.doc_title}\t{c.doc_description}"
         for c in chunks
     )
     return hashlib.sha256(lines.encode("utf-8")).hexdigest()
@@ -366,6 +411,7 @@ def build_meta(chunks: list[Chunk], vector_shape: tuple[int, ...], fastembed_ver
         "fastembed_version": fastembed_version,
         "chunking": CHUNKING,
         "excluded_dirs": EXCLUDE_DIRS,
+        "chunk_key_recipe": CHUNK_KEY_RECIPE,
         "n_chunks": len(chunks),
         "chunks_digest": chunks_digest(chunks),
         "vectors_shape": list(vector_shape),
@@ -387,6 +433,7 @@ def check_index(
         "fastembed_version": fastembed_version,
         "chunking": CHUNKING,
         "excluded_dirs": EXCLUDE_DIRS,
+        "chunk_key_recipe": CHUNK_KEY_RECIPE,
     }
     for key, now in expected.items():
         if meta.get(key) != now:
@@ -451,7 +498,11 @@ def cmd_index(args: argparse.Namespace) -> None:
         )
         return
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    np.save(args.out_dir / "embeddings.npy", vectors)
+    np.savez(
+        args.out_dir / "embeddings.npz",
+        chunk_keys=np.array([c.chunk_key for c in chunks]),
+        vectors=vectors,
+    )
     _write_chunks(chunks, args.out_dir / "chunks.jsonl")
     meta = build_meta(chunks, vectors.shape, version("fastembed"))
     (args.out_dir / INDEX_META).write_text(
@@ -465,13 +516,20 @@ def load_checked_index(handbook_dir: Path, out_dir: Path) -> tuple[list[Chunk], 
     meta_path = out_dir / INDEX_META
     if not meta_path.is_file():
         sys.exit(f"색인 설명 {meta_path}이 없습니다. `index`를 먼저 실행하세요.")
+    for name in ("chunks.jsonl", "embeddings.npz"):
+        if not (out_dir / name).is_file():
+            sys.exit(
+                f"색인 파일 {out_dir / name}이 없습니다. `index`가 아직 실행 중이거나 끝나지 않았을 수 있습니다 "
+                "(`index`는 마지막에 저장합니다). 끝난 뒤 다시 실행하세요."
+            )
     chunks = _read_chunks(out_dir / "chunks.jsonl")
-    vectors = np.load(out_dir / "embeddings.npy")
+    with np.load(out_dir / "embeddings.npz") as z:
+        stored_keys, stored = z["chunk_keys"].tolist(), z["vectors"]
     problems = check_index(
         json.loads(meta_path.read_text(encoding="utf-8")),
         build_chunks(handbook_dir),
         chunks,
-        vectors.shape,
+        stored.shape,
         version("fastembed"),
     )
     if problems:
@@ -479,7 +537,7 @@ def load_checked_index(handbook_dir: Path, out_dir: Path) -> tuple[list[Chunk], 
             "색인이 현재 설정·데이터와 다릅니다. `index`를 다시 실행하세요:\n- "
             + "\n- ".join(problems)
         )
-    return chunks, vectors
+    return chunks, align_vectors(chunks, stored_keys, stored)
 
 
 class Retriever:

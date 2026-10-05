@@ -29,7 +29,6 @@ TOP_K_CHUNKS = 5
 MAX_CHUNK_CHARS_IN_PROMPT = 2000
 MAX_OUTPUT_TOKENS = 1200
 DEFAULT_BUDGET_USD = 1.0
-DOMAIN = "sales-support"
 # 호출 전 추정(여유 포함): 입력 2,500토큰·출력 600토큰 (청크 평균 731자 × 5 + 지시문)
 EST_INPUT_TOKENS = 2500
 EST_OUTPUT_TOKENS = 600
@@ -145,7 +144,7 @@ def validate_items(
             {
                 **it,
                 "source": chunk.section_key,
-                "domains": [DOMAIN],
+                "domains": chunk.domains,
                 "commit_sha": chunk.commit_sha,
             }
         )
