@@ -267,13 +267,46 @@ def test_run_config_has_embedding_file_hash_libraries_retrieval_settings_and_rep
     )
 
 
-def test_question_sets_summary_separates_planned_from_processed_and_marks_incomplete():
-    qs = [poc.EvalQuestion(str(i), f"q{i}", [f"a.md#{i}"]) for i in range(3)]
-    done = llm.question_sets_summary(
-        qs, [{"question_id": "0"}, {"question_id": "1"}, {"question_id": "2"}]
-    )
-    assert done["complete"] is True and done["planned"] == done["processed"]
-    partial = llm.question_sets_summary(qs, [{"question_id": "0"}, {"question_id": "1"}])
-    assert partial["complete"] is False
-    assert partial["planned"]["n"] == 3 and partial["processed"]["n"] == 2
+def test_question_sets_summary_separates_planned_from_processed_and_outcomes():
+    qs = [poc.EvalQuestion(str(i), f"q{i}", [f"a.md#{i}"]) for i in range(4)]
+    ok = {"question_id": "0", "schema_ok": True, "error": None}
+    bad_schema = {"question_id": "1", "schema_ok": False, "error": None}
+    api_err = {"question_id": "2", "schema_ok": False, "error": "RuntimeError: boom"}
+    rejected = {"question_id": "3", "schema_ok": False, "error": "question_too_long"}
+    full = llm.question_sets_summary(qs, [ok, bad_schema, api_err, rejected])
+    assert full["all_attempted"] is True and full["all_succeeded"] is False
+    assert full["outcomes"] == {
+        "success": 1,
+        "schema_error": 1,
+        "api_error": 1,
+        "local_rejected": 1,
+    }
+    partial = llm.question_sets_summary(qs, [ok, bad_schema])
+    assert partial["all_attempted"] is False
+    assert partial["planned"]["n"] == 4 and partial["processed"]["n"] == 2
     assert partial["planned"]["digest"] != partial["processed"]["digest"]
+    clean = llm.question_sets_summary(qs[:1], [ok])
+    assert clean["all_attempted"] is True and clean["all_succeeded"] is True
+
+
+def test_run_config_records_hashes_of_the_scripts_that_ran(tmp_path):
+    meta = {"data_commit_sha": "a", "chunks_digest": "d", "embedding_model": "m"}
+    cfg = llm.build_run_config(meta, "hybrid")
+    assert set(cfg["code_sha256"]) == {"sales_support_llm.py", "sales_support_poc.py"}
+    assert all(len(v) == 64 for v in cfg["code_sha256"].values())
+    assert cfg["client_max_retries"] == 0
+
+
+def test_openai_client_is_created_without_automatic_retries(monkeypatch):
+    seen = {}
+
+    class Dummy:
+        def __init__(self, **kwargs):
+            seen.update(kwargs)
+
+    monkeypatch.setattr(llm, "make_client", llm.make_client)  # 존재 확인
+    import openai
+
+    monkeypatch.setattr(openai, "OpenAI", Dummy)
+    llm.make_client()
+    assert seen == {"max_retries": 0}

@@ -260,6 +260,21 @@ def file_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def code_hashes() -> dict[str, str]:
+    """이 실행에 쓴 스크립트의 내용 해시 — 커밋하지 않은 수정도 구분한다."""
+    here = Path(__file__).resolve().parent
+    return {
+        name: file_sha256(here / name) for name in ("sales_support_llm.py", "sales_support_poc.py")
+    }
+
+
+def make_client():
+    """자동 재시도를 끈 OpenAI 클라이언트 — 재시도가 비용 상한 계산 밖에서 호출을 늘리지 못하게 한다."""
+    from openai import OpenAI
+
+    return OpenAI(max_retries=0)
+
+
 def git_commit() -> str | None:
     """이 코드를 실행한 저장소 커밋 SHA (변경이 커밋되지 않았으면 `-dirty`를 붙인다). git이 없으면 None."""
     import subprocess
@@ -324,17 +339,38 @@ def build_run_config(
         "embeddings_sha256": file_sha256(embeddings_path) if embeddings_path else None,
         "index_meta_sha256": file_sha256(index_meta_path) if index_meta_path else None,
         "repo_commit": git_commit(),
+        "code_sha256": code_hashes(),
+        "client_max_retries": 0,
     }
 
 
 def question_sets_summary(planned: list[poc.EvalQuestion], records: list[dict]) -> dict:
-    """계획한 질문과 실제 처리한 질문을 따로 기록한다 — 예산으로 중단되면 complete=False (완주 실행과 직접 비교하지 않는다)."""
+    """계획한 질문과 실제 시도한 질문을 따로 기록하고 결과를 유형별로 센다.
+
+    all_attempted: 계획한 질문을 모두 시도했는가(예산 중단이면 False — 완주 실행과 직접 비교하지 않는다).
+    all_succeeded: 모두 시도했고 전부 성공(API 오류·구조 오류·로컬 거부가 0)인가.
+    실패한 호출의 실제 청구액은 응답을 못 받으면 코드가 알 수 없으므로 OpenAI 대시보드로 확인한다.
+    """
     done_ids = {r["question_id"] for r in records}
     processed = [q for q in planned if q.question_id in done_ids]
+    outcomes = {"success": 0, "schema_error": 0, "api_error": 0, "local_rejected": 0}
+    for r in records:
+        err = r.get("error")
+        if err == "question_too_long":
+            outcomes["local_rejected"] += 1
+        elif err:
+            outcomes["api_error"] += 1
+        elif r.get("schema_ok"):
+            outcomes["success"] += 1
+        else:
+            outcomes["schema_error"] += 1
+    all_attempted = len(processed) == len(planned)
     return {
         "planned": {"n": len(planned), "digest": poc.question_set_digest(planned)},
         "processed": {"n": len(processed), "digest": poc.question_set_digest(processed)},
-        "complete": len(processed) == len(planned),
+        "outcomes": outcomes,
+        "all_attempted": all_attempted,
+        "all_succeeded": all_attempted and outcomes["success"] == len(planned),
     }
 
 
@@ -441,14 +477,12 @@ def main() -> None:
 
     if not os.environ.get("OPENAI_API_KEY"):
         sys.exit("환경변수 OPENAI_API_KEY가 없습니다. 터미널에서 설정한 뒤 다시 실행하세요.")
-    from openai import OpenAI
-
     ranks = poc.Retriever(chunks, vectors).rank([q.question for q in questions])[args.retrieval]
     jobs = [
         (q, [chunks[i] for i in order[:TOP_K_CHUNKS]])
         for q, order in zip(questions, ranks, strict=True)
     ]
-    records, stopped = run_batch(OpenAI(), jobs, args.budget)
+    records, stopped = run_batch(make_client(), jobs, args.budget)
     summary = summarize(records)
     summary["stopped_by_budget"] = stopped
     summary["retrieval"] = args.retrieval
