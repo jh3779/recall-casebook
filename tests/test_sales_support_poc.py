@@ -1,5 +1,9 @@
 """scripts/sales_support_poc.py 테스트 — 청킹·FAQ 추출·RRF·지표. 모델·네트워크 호출 없음."""
 
+import json
+
+import pytest
+
 from scripts import sales_support_poc as poc
 
 DOC = """---
@@ -168,3 +172,128 @@ def test_check_index_reports_changed_chunks_and_vector_shape():
     problems = poc.check_index(meta, new, old, (2, 384), "9.9.9")
     joined = " ".join(problems)
     assert "chunks_digest" in joined and "vectors" in joined
+
+
+FM_DOC = "---\ntitle: \"Quote Approvals\"\ndescription: 'How quotes get approved'\n---\n\n## Steps\n\nDo it.\n"
+
+
+def test_frontmatter_title_and_description_are_kept_as_chunk_metadata():
+    meta = poc.parse_frontmatter(FM_DOC)
+    assert meta == {"title": "Quote Approvals", "description": "How quotes get approved"}
+    chunk = poc.chunk_file("sales/a.md", FM_DOC)[0]
+    assert (chunk.doc_title, chunk.doc_description) == (
+        "Quote Approvals",
+        "How quotes get approved",
+    )
+    assert "title:" not in chunk.chunk_text  # 본문에는 넣지 않는다(메타데이터로만 보존)
+
+
+def test_frontmatter_missing_or_block_values_become_empty():
+    assert poc.parse_frontmatter("## no frontmatter\n") == {"title": "", "description": ""}
+    folded = "---\ntitle: T\ndescription: >\n  long text\n---\nbody\n"
+    assert poc.parse_frontmatter(folded) == {"title": "T", "description": ""}
+
+
+def test_chunks_digest_detects_title_or_description_changes():
+    a = poc.chunk_file("sales/a.md", FM_DOC)
+    b = poc.chunk_file("sales/a.md", FM_DOC.replace("Quote Approvals", "Quote Approval Steps"))
+    c = poc.chunk_file("sales/a.md", FM_DOC.replace("How quotes get approved", "Other"))
+    assert poc.chunks_digest(a) != poc.chunks_digest(b)
+    assert poc.chunks_digest(a) != poc.chunks_digest(c)
+
+
+def _write_questions(tmp_path, rows):
+    path = tmp_path / "q.jsonl"
+    path.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+    return path
+
+
+def test_load_questions_reads_common_format_for_all_question_types(tmp_path):
+    rows = [
+        {
+            "question_id": "syn-1",
+            "question": "q1",
+            "question_type": "synthetic",
+            "gold_section_keys": ["a.md#A", "b.md#B"],
+        },
+        {
+            "question_id": "real-1",
+            "question": "q2",
+            "question_type": "real",
+            "gold_section_keys": ["a.md#A"],
+        },
+    ]
+    qs = poc.load_questions(_write_questions(tmp_path, rows))
+    assert [(q.question_id, q.question_type, q.gold_section_keys) for q in qs] == [
+        ("syn-1", "synthetic", ["a.md#A", "b.md#B"]),
+        ("real-1", "real", ["a.md#A"]),
+    ]
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {
+            "question_id": "x",
+            "question": "q",
+            "question_type": "made-up",
+            "gold_section_keys": ["a#b"],
+        },
+        {"question_id": "x", "question": "q", "question_type": "real", "gold_section_keys": []},
+        {"question_id": "", "question": "q", "question_type": "real", "gold_section_keys": ["a#b"]},
+    ],
+)
+def test_load_questions_rejects_bad_rows(tmp_path, bad):
+    with pytest.raises(ValueError):
+        poc.load_questions(_write_questions(tmp_path, [bad]))
+
+
+def test_load_questions_rejects_duplicate_ids(tmp_path):
+    row = {
+        "question_id": "x",
+        "question": "q",
+        "question_type": "real",
+        "gold_section_keys": ["a#b"],
+    }
+    with pytest.raises(ValueError, match="중복"):
+        poc.load_questions(_write_questions(tmp_path, [row, row]))
+
+
+def test_question_set_digest_ignores_order_and_changes_with_content():
+    a = poc.EvalQuestion("1", "q1", ["x#a"])
+    b = poc.EvalQuestion("2", "q2", ["y#b", "z#c"])
+    assert poc.question_set_digest([a, b]) == poc.question_set_digest([b, a])
+    changed = poc.EvalQuestion("2", "q2", ["y#b"])
+    assert poc.question_set_digest([a, b]) != poc.question_set_digest([a, changed])
+    renamed = poc.EvalQuestion("2", "q2 changed", ["y#b", "z#c"])
+    assert poc.question_set_digest([a, b]) != poc.question_set_digest([a, renamed])
+
+
+def test_eval_report_records_question_set_and_retrieval_settings():
+    qs = [poc.EvalQuestion("1", "q1", ["x#a"]), poc.EvalQuestion("2", "q2", ["y#b"], "synthetic")]
+    report = poc.build_report(qs, n_chunks=10, results={})
+    assert report["question_set"]["n"] == 2
+    assert report["question_set"]["types"] == {"doc_derived": 1, "synthetic": 1}
+    assert report["question_set"]["digest"] == poc.question_set_digest(qs)
+    settings = report["retrieval_settings"]
+    for key in ("top_k", "candidates", "rrf_k", "rank_bm25_version", "fastembed_version"):
+        assert key in settings
+
+
+def test_compare_refuses_results_from_different_question_sets():
+    a = {"question_set": {"digest": "aaa"}, "results": {}}
+    b = {"question_set": {"digest": "bbb"}, "results": {}}
+    with pytest.raises(ValueError, match="질문 세트"):
+        poc.compare_reports(a, b)
+
+
+def test_compare_reports_marks_differences_at_or_above_threshold():
+    mk = lambda v: {  # noqa: E731
+        "question_set": {"digest": "same"},
+        "results": {"BM25": {"section": {"Hit@1": v, "MRR": 0.5}}},
+    }
+    rows = poc.compare_reports(mk(0.50), mk(0.55))
+    by_metric = {(r["config"], r["unit"], r["metric"]): r for r in rows}
+    hit = by_metric[("BM25", "section", "Hit@1")]
+    assert hit["diff"] == pytest.approx(0.05) and hit["different"] is True
+    assert by_metric[("BM25", "section", "MRR")]["different"] is False

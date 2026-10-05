@@ -45,6 +45,8 @@ CHUNKING = {"heading_levels": "H2-H4", "max_chunk_chars": MAX_CHUNK_CHARS, "prep
 # 색인에서 뺄 폴더 — 신규 "고객"(제품 구독자)용 온보딩이라 직원 질문에 섞이면 안 된다 (기획v1 4절 데이터 처리 설계 4번)
 EXCLUDE_DIRS = ["customer-experience/customer-onboarding"]
 INDEX_META = "index_meta.json"
+QUESTION_TYPES = ("doc_derived", "synthetic", "real")
+EQUIVALENT_DIFF = 0.03  # 기획v1 3절: 차이가 이보다 작으면 같다고 본다
 RRF_K = 60
 TOP_K = (1, 3, 5, 10)
 CANDIDATES = 100  # 하이브리드에 넘기는 각 검색기의 후보 수
@@ -63,6 +65,8 @@ class Chunk:
     commit_sha: str
     chunk_text: str
     chunk_hash: str
+    doc_title: str = ""  # frontmatter title — 본문이 아니라 메타데이터로 보존한다 (기획v1 4절 데이터 처리 설계 2번)
+    doc_description: str = ""
 
     @property
     def section_key(self) -> str:
@@ -72,6 +76,25 @@ class Chunk:
 def collapse_whitespace(text: str) -> str:
     """공백 정리 — 공백·탭·줄바꿈을 한 칸으로, 앞뒤 제거 (구두점·대소문자는 그대로)."""
     return re.sub(r"\s+", " ", text).strip()
+
+
+def parse_frontmatter(raw: str) -> dict[str, str]:
+    """frontmatter의 한 줄짜리 `title`·`description`을 읽는다. 없거나 블록(`>`·`|`) 값이면 빈 문자열."""
+    out = {"title": "", "description": ""}
+    m = re.match(r"\A---\n(.*?)\n---\n", raw, flags=re.DOTALL)
+    if not m:
+        return out
+    for key in out:
+        found = re.search(rf"^{key}:[ \t]*(.*)$", m.group(1), flags=re.MULTILINE)
+        if not found:
+            continue
+        value = found.group(1).strip()
+        if value[:1] in (">", "|"):
+            continue
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        out[key] = value
+    return out
 
 
 def preprocess(text: str) -> str:
@@ -122,6 +145,7 @@ def split_long(body: str) -> list[str]:
 
 def chunk_file(source_path: str, raw: str, first_id: int = 0) -> list[Chunk]:
     chunks: list[Chunk] = []
+    meta = parse_frontmatter(raw)
     for heading_path, lines in split_sections(preprocess(raw)):
         body = "\n".join(lines).strip()
         if not body:
@@ -136,6 +160,8 @@ def chunk_file(source_path: str, raw: str, first_id: int = 0) -> list[Chunk]:
                     commit_sha=COMMIT_SHA,
                     chunk_text=part,
                     chunk_hash=hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16],
+                    doc_title=meta["title"],
+                    doc_description=meta["description"],
                 )
             )
     return chunks
@@ -166,6 +192,7 @@ class EvalQuestion:
     question_id: str
     question: str
     gold_section_keys: list[str]  # FAQ 유래는 질문이 들어 있던 섹션 (원문에 이미 있는 정보)
+    question_type: str = "doc_derived"  # doc_derived / synthetic / real (AGENTS.md 5절 세 세트)
 
 
 def make_question_id(question: str) -> str:
@@ -233,6 +260,49 @@ def build_faq(handbook_dir: Path) -> list[EvalQuestion]:
     return list(faq.values())
 
 
+def load_questions(path: Path) -> list[EvalQuestion]:
+    """합성·실제·문서 유래 질문을 같은 형식(JSONL)으로 읽는다.
+
+    한 줄: {"question_id", "question", "question_type", "gold_section_keys": ["path#heading", ...]}
+    """
+    questions: list[EvalQuestion] = []
+    seen: set[str] = set()
+    for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        qid, text = str(row.get("question_id", "")).strip(), str(row.get("question", "")).strip()
+        qtype, golds = row.get("question_type"), row.get("gold_section_keys")
+        if not qid or not text:
+            raise ValueError(f"{n}번째 줄: question_id와 question이 필요합니다")
+        if qtype not in QUESTION_TYPES:
+            raise ValueError(
+                f"{n}번째 줄: question_type은 {QUESTION_TYPES} 중 하나여야 합니다 ({qtype!r})"
+            )
+        if (
+            not isinstance(golds, list)
+            or not golds
+            or not all(isinstance(g, str) and "#" in g for g in golds)
+        ):
+            raise ValueError(
+                f"{n}번째 줄: gold_section_keys는 'path#heading' 문자열의 비어 있지 않은 목록이어야 합니다"
+            )
+        if qid in seen:
+            raise ValueError(f"{n}번째 줄: question_id 중복 ({qid})")
+        seen.add(qid)
+        questions.append(EvalQuestion(qid, text, list(golds), qtype))
+    return questions
+
+
+def question_set_digest(questions: list[EvalQuestion]) -> str:
+    """질문 세트의 지문 — 순서와 무관하게 id·유형·문장·정답 목록이 같으면 같다 (같은 질문 세트로 비교했는지 증명)."""
+    rows = sorted(
+        f"{q.question_id}\t{q.question_type}\t{collapse_whitespace(q.question)}\t{'|'.join(sorted(q.gold_section_keys))}"
+        for q in questions
+    )
+    return hashlib.sha256("\n".join(rows).encode("utf-8")).hexdigest()
+
+
 def retrieval_text(chunk: Chunk) -> str:
     """검색 대상 문자열 — 헤딩 경로 + 본문. BM25와 벡터가 같은 글을 본다 (비교를 공정하게)."""
     return f"{chunk.heading_path.replace('>', ' > ')}\n{collapse_whitespace(chunk.chunk_text)}"
@@ -281,8 +351,11 @@ def evaluate(
 
 
 def chunks_digest(chunks: list[Chunk]) -> str:
-    """청크 목록의 지문 — 경로·제목 위치·내용 해시를 순서대로 이어 해시한다 (벡터와 청크의 짝이 어긋나면 달라진다)."""
-    lines = "\n".join(f"{c.source_path}\t{c.heading_path}\t{c.chunk_hash}" for c in chunks)
+    """청크 목록의 지문 — 경로·제목 위치·내용 해시·문서 제목·설명을 순서대로 이어 해시한다 (벡터와 청크의 짝이 어긋나거나 메타데이터가 바뀌면 달라진다)."""
+    lines = "\n".join(
+        f"{c.source_path}\t{c.heading_path}\t{c.chunk_hash}\t{c.doc_title}\t{c.doc_description}"
+        for c in chunks
+    )
     return hashlib.sha256(lines.encode("utf-8")).hexdigest()
 
 
@@ -434,11 +507,88 @@ class Retriever:
         return out
 
 
+def build_report(questions: list[EvalQuestion], n_chunks: int, results: dict) -> dict:
+    """평가 결과 파일 내용 — 질문 세트(유형·개수·지문)와 검색 설정을 함께 남겨 같은 조건의 비교인지 확인할 수 있게 한다."""
+    types: dict[str, int] = {}
+    for q in questions:
+        types[q.question_type] = types.get(q.question_type, 0) + 1
+    return {
+        "n_questions": len(questions),
+        "n_chunks": n_chunks,
+        "question_set": {
+            "n": len(questions),
+            "types": types,
+            "digest": question_set_digest(questions),
+        },
+        "retrieval_settings": {
+            "top_k": list(TOP_K),
+            "candidates": CANDIDATES,
+            "rrf_k": RRF_K,
+            "tokenizer": "lowercase [a-z0-9]+",
+            "rank_bm25_version": version("rank-bm25"),
+            "fastembed_version": version("fastembed"),
+        },
+        "results": results,
+    }
+
+
+def compare_reports(a: dict, b: dict) -> list[dict]:
+    """두 평가 결과를 지표별로 비교한다. 질문 세트 지문이 다르면 비교하지 않고 오류를 낸다."""
+    if a["question_set"]["digest"] != b["question_set"]["digest"]:
+        raise ValueError("서로 다른 질문 세트의 결과는 비교할 수 없습니다 (질문 세트 지문이 다름)")
+    rows = []
+    for config, units in a["results"].items():
+        for unit, metrics in units.items():
+            for metric, before in metrics.items():
+                after = b["results"].get(config, {}).get(unit, {}).get(metric)
+                if after is None:
+                    continue
+                diff = after - before
+                rows.append(
+                    {
+                        "config": config,
+                        "unit": unit,
+                        "metric": metric,
+                        "before": before,
+                        "after": after,
+                        "diff": diff,
+                        "different": abs(diff) >= EQUIVALENT_DIFF,
+                    }
+                )
+    return rows
+
+
+def cmd_compare(args: argparse.Namespace) -> None:
+    a = json.loads(args.before.read_text(encoding="utf-8"))
+    b = json.loads(args.after.read_text(encoding="utf-8"))
+    try:
+        rows = compare_reports(a, b)
+    except ValueError as e:
+        sys.exit(str(e))
+    print(
+        f"같은 질문 세트(지문 {a['question_set']['digest'][:12]}…), 차이 {EQUIVALENT_DIFF} 이상이면 '다름'"
+    )
+    for r in rows:
+        if r["unit"] == "section" and r["metric"] in ("Hit@1", "Hit@5", "Recall@5", "MRR"):
+            mark = "다름" if r["different"] else "같음"
+            print(
+                f"{r['config']:<16} {r['metric']:<9} {r['before']:.3f} -> {r['after']:.3f} ({r['diff']:+.3f}) {mark}"
+            )
+
+
 def cmd_eval(args: argparse.Namespace) -> None:
     chunks, vectors = load_checked_index(args.handbook_dir, args.out_dir)
     meta_path = args.out_dir / INDEX_META
     keys = {c.section_key for c in chunks}
-    faq = [q for q in build_faq(args.handbook_dir) if set(q.gold_section_keys) <= keys]
+    if args.questions:
+        faq = load_questions(args.questions)
+        missing = [q.question_id for q in faq if not set(q.gold_section_keys) <= keys]
+        if missing:
+            sys.exit(
+                f"정답 섹션이 색인에 없는 질문이 있습니다 ({len(missing)}개, 예: {missing[:3]})"
+            )
+    else:
+        faq = [q for q in build_faq(args.handbook_dir) if set(q.gold_section_keys) <= keys]
     ranks = Retriever(chunks, vectors).rank([q.question for q in faq])
     bm25_rank, vec_rank, hybrid_rank = ranks["bm25"], ranks["vector"], ranks["hybrid"]
 
@@ -447,7 +597,10 @@ def cmd_eval(args: argparse.Namespace) -> None:
         "벡터(bge-small)": evaluate(vec_rank, chunks, faq),
         "하이브리드(RRF)": evaluate(hybrid_rank, chunks, faq),
     }
-    print(f"질문 {len(faq)}개 (FAQ 유래, 동작 확인용 — 모델 선택 근거 아님), 청크 {len(chunks)}개")
+    kind = (
+        "문서 유래(FAQ) — 동작 확인용, 모델 선택 근거 아님" if not args.questions else "파일 입력"
+    )
+    print(f"질문 {len(faq)}개 ({kind}), 청크 {len(chunks)}개")
     for unit, label in (("file", "파일 단위"), ("section", "섹션 단위")):
         header = [f"Hit@{k}" for k in TOP_K] + [f"Rec@{k}" for k in TOP_K] + ["MRR"]
         print(f"\n[{label}] " + " ".join(f"{m:>7}" for m in header))
@@ -455,18 +608,10 @@ def cmd_eval(args: argparse.Namespace) -> None:
             row = " ".join(f"{v:7.3f}" for v in r[unit].values())
             print(f"{name:<16} {row}")
     args.out_dir.mkdir(parents=True, exist_ok=True)
+    report = build_report(faq, len(chunks), results)
+    report["index_meta"] = json.loads(meta_path.read_text(encoding="utf-8"))
     (args.out_dir / "eval_result.json").write_text(
-        json.dumps(
-            {
-                "n_questions": len(faq),
-                "n_chunks": len(chunks),
-                "index_meta": json.loads(meta_path.read_text(encoding="utf-8")),
-                "results": results,
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
 
@@ -481,9 +626,19 @@ def main() -> None:
     p_index = sub.add_parser("index")
     p_index.add_argument("--limit", type=int, default=0, help="표본 청크 수 (0이면 전체)")
     p_index.set_defaults(func=cmd_index)
-    sub.add_parser("eval").set_defaults(func=cmd_eval)
+    p_eval = sub.add_parser("eval")
+    p_eval.add_argument(
+        "--questions",
+        type=Path,
+        help="질문 JSONL (없으면 FAQ에서 뽑는다). 합성·실제 질문은 이 형식으로 넣는다",
+    )
+    p_eval.set_defaults(func=cmd_eval)
+    p_cmp = sub.add_parser("compare", help="같은 질문 세트로 만든 두 eval_result.json을 비교")
+    p_cmp.add_argument("before", type=Path)
+    p_cmp.add_argument("after", type=Path)
+    p_cmp.set_defaults(func=cmd_compare)
     args = parser.parse_args()
-    if not args.handbook_dir.is_dir():
+    if args.cmd != "compare" and not args.handbook_dir.is_dir():
         sys.exit(
             f"핸드북 데이터가 없습니다: {args.handbook_dir} (scripts/fetch_handbook_dataset.py로 받으세요)"
         )

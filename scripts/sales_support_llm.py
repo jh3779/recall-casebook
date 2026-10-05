@@ -276,6 +276,11 @@ def main() -> None:
     parser.add_argument("--handbook-dir", type=Path, default=poc.HANDBOOK_DIR)
     parser.add_argument("--out-dir", type=Path, default=poc.OUT_DIR)
     parser.add_argument("--limit", type=int, default=30, help="표본 질문 수 (0이면 전체)")
+    parser.add_argument(
+        "--questions",
+        type=Path,
+        help="질문 JSONL (없으면 FAQ에서 뽑는다, 형식은 sales_support_poc.py 참고)",
+    )
     parser.add_argument("--retrieval", choices=["bm25", "vector", "hybrid"], default="hybrid")
     parser.add_argument("--budget", type=float, default=DEFAULT_BUDGET_USD, help="비용 상한($)")
     parser.add_argument(
@@ -287,10 +292,16 @@ def main() -> None:
 
     chunks, vectors = poc.load_checked_index(args.handbook_dir, args.out_dir)
     keys = {c.section_key for c in chunks}
-    questions = pick_sample(
-        [q for q in poc.build_faq(args.handbook_dir) if set(q.gold_section_keys) <= keys],
-        args.limit,
-    )
+    if args.questions:
+        loaded = poc.load_questions(args.questions)
+        missing = [q.question_id for q in loaded if not set(q.gold_section_keys) <= keys]
+        if missing:
+            sys.exit(
+                f"정답 섹션이 색인에 없는 질문이 있습니다 ({len(missing)}개, 예: {missing[:3]})"
+            )
+    else:
+        loaded = [q for q in poc.build_faq(args.handbook_dir) if set(q.gold_section_keys) <= keys]
+    questions = pick_sample(loaded, args.limit)
     est = len(questions) * cost_usd(EST_INPUT_TOKENS, EST_OUTPUT_TOKENS)
     print(
         f"계획: 질문 {len(questions)}개 × 검색 {args.retrieval} = 호출 {len(questions)}회, 모델 {MODEL}, "
@@ -315,6 +326,7 @@ def main() -> None:
     summary = summarize(records)
     summary["stopped_by_budget"] = stopped
     summary["retrieval"] = args.retrieval
+    summary["question_set_digest"] = poc.question_set_digest(questions)
 
     run_dir = args.out_dir / "llm_runs"
     run_dir.mkdir(parents=True, exist_ok=True)
