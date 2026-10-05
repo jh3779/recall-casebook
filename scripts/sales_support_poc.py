@@ -387,18 +387,16 @@ def cmd_index(args: argparse.Namespace) -> None:
     print(f"저장: {args.out_dir} (색인 설명 {INDEX_META} 포함)")
 
 
-def cmd_eval(args: argparse.Namespace) -> None:
-    from fastembed import TextEmbedding
-    from rank_bm25 import BM25Okapi
-
-    meta_path = args.out_dir / INDEX_META
+def load_checked_index(handbook_dir: Path, out_dir: Path) -> tuple[list[Chunk], np.ndarray]:
+    """저장된 색인을 읽고 현재 설정·데이터와 같은지 검사한다. 다르면 중단한다."""
+    meta_path = out_dir / INDEX_META
     if not meta_path.is_file():
         sys.exit(f"색인 설명 {meta_path}이 없습니다. `index`를 먼저 실행하세요.")
-    chunks = _read_chunks(args.out_dir / "chunks.jsonl")
-    vectors = np.load(args.out_dir / "embeddings.npy")
+    chunks = _read_chunks(out_dir / "chunks.jsonl")
+    vectors = np.load(out_dir / "embeddings.npy")
     problems = check_index(
         json.loads(meta_path.read_text(encoding="utf-8")),
-        build_chunks(args.handbook_dir),
+        build_chunks(handbook_dir),
         chunks,
         vectors.shape,
         version("fastembed"),
@@ -408,21 +406,41 @@ def cmd_eval(args: argparse.Namespace) -> None:
             "색인이 현재 설정·데이터와 다릅니다. `index`를 다시 실행하세요:\n- "
             + "\n- ".join(problems)
         )
+    return chunks, vectors
+
+
+class Retriever:
+    """BM25·벡터·하이브리드(RRF) 순위표를 한 번에 만든다 — `eval`과 생성 테스트가 같은 검색을 쓴다."""
+
+    def __init__(self, chunks: list[Chunk], vectors: np.ndarray):
+        from fastembed import TextEmbedding
+        from rank_bm25 import BM25Okapi
+
+        self.vectors = vectors
+        self.bm25 = BM25Okapi([tokenize(retrieval_text(c)) for c in chunks])
+        self.model = TextEmbedding(model_name=EMBEDDING_MODEL)
+
+    def rank(self, questions: list[str]) -> dict[str, list[list[int]]]:
+        q_vecs = np.array(list(self.model.query_embed(questions)))
+        q_vecs /= np.linalg.norm(q_vecs, axis=1, keepdims=True)
+        out: dict[str, list[list[int]]] = {"bm25": [], "vector": [], "hybrid": []}
+        for text, qv in zip(questions, q_vecs, strict=True):
+            scores = self.bm25.get_scores(tokenize(text))
+            b = np.argsort(-scores, kind="stable")[:CANDIDATES].tolist()
+            v = np.argsort(-(self.vectors @ qv), kind="stable")[:CANDIDATES].tolist()
+            out["bm25"].append(b)
+            out["vector"].append(v)
+            out["hybrid"].append(rrf([b, v]))
+        return out
+
+
+def cmd_eval(args: argparse.Namespace) -> None:
+    chunks, vectors = load_checked_index(args.handbook_dir, args.out_dir)
+    meta_path = args.out_dir / INDEX_META
     keys = {c.section_key for c in chunks}
     faq = [q for q in build_faq(args.handbook_dir) if set(q.gold_section_keys) <= keys]
-
-    bm25 = BM25Okapi([tokenize(retrieval_text(c)) for c in chunks])
-    model = TextEmbedding(model_name=EMBEDDING_MODEL)
-    q_vecs = np.array(list(model.query_embed([q.question for q in faq])))
-    q_vecs /= np.linalg.norm(q_vecs, axis=1, keepdims=True)
-
-    bm25_rank, vec_rank, hybrid_rank = [], [], []
-    for q, qv in zip(faq, q_vecs, strict=True):
-        b = np.argsort(-bm25.get_scores(tokenize(q.question)), kind="stable")[:CANDIDATES].tolist()
-        v = np.argsort(-(vectors @ qv), kind="stable")[:CANDIDATES].tolist()
-        bm25_rank.append(b)
-        vec_rank.append(v)
-        hybrid_rank.append(rrf([b, v]))
+    ranks = Retriever(chunks, vectors).rank([q.question for q in faq])
+    bm25_rank, vec_rank, hybrid_rank = ranks["bm25"], ranks["vector"], ranks["hybrid"]
 
     results = {
         "BM25": evaluate(bm25_rank, chunks, faq),
