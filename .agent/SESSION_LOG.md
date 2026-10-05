@@ -61,3 +61,4 @@
 - 2026-10-06: PR #17 3차 리뷰 반영 — 생성 테스트 재현 정보(run_config)·호출 전 예산 검사·엄격 스키마 검사·질문 길이 제한, pr-verify principles 실패(판정 문구 검출 목록·지시문에 principle-ok 표시, 변수명 변경), chunk_key 고정 검증값 테스트
 - 2026-10-06: PR #17 4차 리뷰 반영 — run_config에 임베딩 파일 해시·라이브러리 버전·검색 설정·저장소 커밋 추가, 계획/처리 질문 세트 구분(complete), 최상위 JSON 추가 키 검사. chunk_key DEC는 팀 합의 대기
 - 2026-10-06: PR #17 5차 리뷰 반영 — run_config에 스크립트 내용 해시, 자동 재시도 끔(max_retries=0), 질문 세트 요약에 all_attempted·all_succeeded와 결과 유형별 개수(기존 complete 대체). chunk_key DEC는 팀 합의 대기
+- 2026-10-06: PR #17 6차 리뷰 반영 — 사용량 모르는 실패 호출은 최악 비용 누적, 로컬 거부와 API 오류 집계 분리. 지정 데이터 문서 4개(local-data-model.md·ADR)는 저장소에 없어 해당 없음. 브랜치명(docs/)과 코드 포함 불일치는 분리 여부를 사용자 결정 대기

@@ -310,3 +310,23 @@ def test_openai_client_is_created_without_automatic_retries(monkeypatch):
     monkeypatch.setattr(openai, "OpenAI", Dummy)
     llm.make_client()
     assert seen == {"max_retries": 0}
+
+
+def test_failed_call_without_usage_is_charged_at_worst_case_so_the_budget_still_holds():
+    worst = llm.max_call_cost(question(), CHUNKS[:2])
+    # 예산이 최악 비용 1.5건어치: 첫 호출이 사용량 없이 실패하면 최악 비용이 누적돼 다음 호출은 하지 않는다
+    client = FakeClient([RuntimeError("timeout"), json.dumps({"items": []})])
+    records, stopped = llm.run_batch(client, [(question(), CHUNKS[:2])] * 2, budget_usd=worst * 1.5)
+    assert len(client.calls) == 1 and len(records) == 1 and stopped is True
+    assert records[0]["cost_unknown"] is True
+
+
+def test_summary_counts_local_rejections_separately_from_api_errors():
+    long_q = poc.EvalQuestion("faq-9", "x" * (llm.MAX_QUESTION_CHARS + 1), ["sales/a.md#Access"])
+    client = FakeClient([RuntimeError("boom")])
+    records, _ = llm.run_batch(
+        client, [(long_q, CHUNKS[:2]), (question(), CHUNKS[:2])], budget_usd=1.0
+    )
+    summary = llm.summarize(records)
+    assert summary["n_local_rejected"] == 1 and summary["n_api_errors"] == 1
+    assert summary["n_cost_unknown"] == 1

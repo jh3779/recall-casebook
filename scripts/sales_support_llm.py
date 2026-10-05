@@ -385,7 +385,15 @@ def run_batch(client, jobs: list[tuple[poc.EvalQuestion, list[poc.Chunk]]], budg
         if spent + max_call_cost(q, shown) > budget_usd:  # 호출하기 전에 최대 비용으로 확인한다
             return records, True
         rec = run_question(client, q, shown)
-        spent += cost_usd(rec["input_tokens"], rec["output_tokens"])
+        # 응답을 못 받아 사용량을 모르는 실패는 요금이 났을 수 있으므로 최악 비용을 누적한다
+        rec["cost_unknown"] = rec["error"] is not None and not (
+            rec["input_tokens"] or rec["output_tokens"]
+        )
+        spent += (
+            max_call_cost(q, shown)
+            if rec["cost_unknown"]
+            else cost_usd(rec["input_tokens"], rec["output_tokens"])
+        )
         records.append(rec)
     return records, False
 
@@ -407,7 +415,9 @@ def summarize(records: list[dict]) -> dict:
     lat = sorted(r["latency_s"] for r in records)
     return {
         "n_questions": n,
-        "n_api_errors": sum(r["error"] is not None for r in records),
+        "n_api_errors": sum(r["error"] not in (None, "question_too_long") for r in records),
+        "n_local_rejected": sum(r["error"] == "question_too_long" for r in records),
+        "n_cost_unknown": sum(bool(r.get("cost_unknown")) for r in records),
         "schema_ok_rate": len(ok) / n if n else 0.0,
         "items_raw": raw,
         "items_valid": valid,
