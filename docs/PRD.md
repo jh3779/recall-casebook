@@ -60,20 +60,20 @@ leadership, ceo, board-meetings, eba, acquisitions, legal, finance, business-tec
 |---|---|---|---|
 | `item` | string | 예 | 체크리스트 항목 |
 | `reason` | string | 예 | 왜 필요한지 |
-| `criteria` | string \| null | 아니오 | 적용을 가르는 기준(판정 아님) |
-| `check_method` | string \| null | 아니오 | 확인 방법 |
+| `criteria` | string \| null | 예(값은 null 가능) | 적용을 가르는 기준(판정 아님) |
+| `check_method` | string \| null | 예(값은 null 가능) | 확인 방법 |
 | `source` | string `"path#heading"` | 예 | 코드가 `chunk_key` 메타데이터로 채움, 모델이 안 씀 |
 | `evidence_quote` | string | 예 | 원문 발췌, 근거 없으면 항목 전체 제거 |
 | `domains` | string[] | 예 | 근거 청크의 도메인 합집합 |
 
-`null` 허용은 `criteria`·`check_method`뿐이고, 화면에는 "확인 필요"로만 표시(저장 값은 항상 `null`). 상세 규칙·검증 테스트 사례는 `.agent/DECISIONS.md` DEC-019.
+`criteria`·`check_method`는 **키를 항상 보내고 값만 `null`일 수 있다**(키 생략 금지 — 도메인마다 형태가 갈리지 않게). `null` 허용은 이 두 필드뿐이고, 화면에는 "확인 필요"로만 표시(저장 값은 항상 `null`). 상세 규칙·검증 테스트 사례는 `.agent/DECISIONS.md` DEC-019.
 
 ## 7. 평가 (성공 기준)
 
 - 지표: Recall@k·Hit@k(k=1,3,5,10). 차이 0.03 미만이면 같다고 본다(`기획v1.md` 3절).
 - 질문 세트 3종 — **문서 유래**(FAQ, 동작 확인용), **합성**(역할극, 모델 최종 선택용, DEC-021), **실제**(확보되면 추가 비교용, DEC-013·016). 세 세트는 합산하지 않고 따로 보고한다.
 - 도메인당 최소 34개, `user_type`별 12개, `scenario_type`별 5개(DEC-021·022). 못 채운 도메인은 0.03 비교 대신 문항별 성공/실패로 보고.
-- 평가셋은 AI·팀원이 지어내지 않는다(AGENTS.md 5절) — 질문 출처·정답 표시자(`labeler_id`)를 평가표에 기록.
+- 팀원이 임의로 지어 쓴 질문은 금지하고, AI가 만든 합성 질문은 DEC-021 조건(역할 정의 문서만 제공, 정답 문서 비제공 등)을 지킨 경우에만 허용한다(AGENTS.md 5절). 질문 출처(문서 유래는 FAQ 위치와 제목, 합성은 생성 모델·프롬프트·역할 문서, 실제는 `source_id`·출처 유형·수집 월)와 정답(`gold_source_path#heading`, 여러 개 가능)·`labeler_id`를 평가표에 기록.
 
 ## 8. 일정 (`docs/진행계획.md`)
 

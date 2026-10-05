@@ -7,6 +7,8 @@
 ```mermaid
 erDiagram
     CHUNKS {
+        string doc_id
+        string chunk_key UK
         string source_path
         string commit_sha
         string heading_path
@@ -38,8 +40,9 @@ erDiagram
         string scenario_type
     }
     DOC_DERIVED_SOURCE {
-        string question_id FK
+        string question_id FK, UK
         string question_source_path
+        string question_source_heading
     }
     SYNTHETIC_SOURCE {
         string question_id FK
@@ -49,8 +52,9 @@ erDiagram
         string role_source_path
     }
     REAL_SOURCE {
-        string question_id FK
+        string question_id FK, UK
         string source_id
+        string source_type
         string collection_month
     }
     GOLD_LABEL {
@@ -75,7 +79,7 @@ erDiagram
     QUESTIONS ||--o| DOC_DERIVED_SOURCE : "문서 유래일 때"
     QUESTIONS ||--o| SYNTHETIC_SOURCE : "합성일 때"
     QUESTIONS ||--o| REAL_SOURCE : "실제일 때"
-    QUESTIONS ||--|| GOLD_LABEL : "정답 1개"
+    QUESTIONS ||--|{ GOLD_LABEL : "정답 1개 이상"
     GOLD_LABEL }o--|| CHUNKS : "gold_source_path#heading (논리적 참조)"
     RESPONSE_ITEM }o--|| CHUNKS : "source (검증된 chunk_key)"
 ```
@@ -84,7 +88,7 @@ erDiagram
 
 ### 1. `chunk_key` — 중복 제거·조인의 기준 (DEC-013·014·015)
 
-`CHUNKS`의 실제 기본키는 단일 id가 아니라 **합성 키** `(source_path, commit_sha, heading_path, chunk_hash)`다. `chunk_hash`는 "공백 정리"(연속 공백·탭·줄바꿈을 한 칸으로, 앞뒤 제거, 구두점·대소문자는 보존 — DEC-019)를 적용한 `chunk_text`의 해시. 도메인이 같은 텍스트를 다르게 청킹하면 `chunk_hash`가 달라져 둘 다 남는다 — **의도된 동작**이다.
+`CHUNKS`의 중복 제거 기준은 **네 값의 조합** `(source_path, commit_sha, heading_path, chunk_hash)`다(기획v1 3절). 이 ERD는 임베딩 표가 원문 청크를 가리킬 수 있도록 그 조합으로 계산한 **단일 `chunk_key`** 를 `CHUNKS`에 두는 안을 제안한다 — 모든 도메인이 같은 방식으로 계산해야 합칠 때 임베딩이 원문을 찾는다(예: 네 값을 구분자로 이어 붙인 문자열의 해시). 구현은 네 컬럼 복합키를 쓰는 것도 허용하되, 그 경우 임베딩 표에도 네 컬럼을 그대로 둔다. **어느 쪽으로 통일할지는 팀 확인 후 결정 기록(DEC)으로 남긴다.** 기획v1 3절 최소 구조의 `doc_id`는 문서 단위 식별자로 `CHUNKS`에 유지한다. `chunk_hash`는 "공백 정리"(연속 공백·탭·줄바꿈을 한 칸으로, 앞뒤 제거, 구두점·대소문자는 보존 — DEC-019)를 적용한 `chunk_text`의 해시. 도메인이 같은 텍스트를 다르게 청킹하면 `chunk_hash`가 달라져 둘 다 남는다 — **의도된 동작**이다.
 
 ### 2. 임베딩은 왜 도메인별로 분리하나 (`기획v1.md` 3절)
 
@@ -104,7 +108,7 @@ erDiagram
 | 합성 | `SYNTHETIC_SOURCE` | `generator_model`, `prompt`, `role_source_path` | **예** (조건부, DEC-021) |
 | 실제 | `REAL_SOURCE` | `source_id`(비식별), `collection_month` | 확보되면 추가 비교 (DEC-016) |
 
-`GOLD_LABEL`은 세 유형 모두 공통이며 **질문 출처와 분리**(`role_source_path`와 `gold_source_path`가 같으면 그 문항은 최종 점수에서 뺀다 — 역할 설명 문서 자체가 정답이면 검색이 유리해지는 걸 막는다).
+`GOLD_LABEL`은 세 유형 모두 공통이며 **질문 하나에 정답 행이 여러 개**일 수 있다(체크리스트 질문은 여러 문서가 근거일 수 있다). 정답은 **섹션 단위**(`gold_source_path#gold_heading`)이고, 한 섹션이 여러 청크로 나뉘어도 그 섹션의 어느 청크든 정답으로 인정한다. Recall@k는 "찾은 서로 다른 정답 섹션 수 ÷ 정답 섹션 전체 수", Hit@k는 "정답이 하나라도 있으면 1"이다. 정답이 정말 하나뿐인 질문만 허용하려면 그 제한을 질문 생성·검수 규칙에 적고 두 지표를 함께 쓰는 이유를 다시 정리한다. 또한 정답은 **질문 출처와 분리**(`role_source_path`와 `gold_source_path`가 같으면 그 문항은 최종 점수에서 뺀다 — 역할 설명 문서 자체가 정답이면 검색이 유리해지는 걸 막는다).
 
 ### 5. 개인정보 — 저장소에 넣지 않는 것 (DEC-016)
 

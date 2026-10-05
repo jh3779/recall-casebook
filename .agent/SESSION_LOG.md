@@ -39,3 +39,4 @@
 - 2026-10-04: PR #16 diff 정독 중 발견한 서식·순서·낡은 HANDOFF 서술 정정, Next Action에 제외 후 재확인 조건 추가
 - 2026-10-04: PR #16에서 영업·지원 설계·PRD·ERD(다른 세션 작업)를 분리 — 별도 브랜치 docs/sales-support-design-prd-erd, git add -A 금지 규칙을 HANDOFF에 기록
 - 2026-10-04: 영업·지원 도메인 설계(기획v1 4절)와 PRD·ERD를 PR #16에서 분리해 별도 PR로 올림(다른 세션 작성분, 스택 PR)
+- 2026-10-05: PR #17 필수 보완 중 모델과 무관한 4건 정리(chunk_key 단일 키 제안·정답 복수 허용·criteria 필수 키·출처 필드), 모델·스택 보완은 스택 인터뷰 뒤로 보류(draft)
