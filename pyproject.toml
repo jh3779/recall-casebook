@@ -4,19 +4,23 @@ version = "0.1.0"
 description = "온보딩 체크리스트 RAG — GitLab 핸드북 근거 신규 입사자·부서 이동자 온보딩"
 requires-python = ">=3.12"
 # 런타임 의존성은 기술 스택이 확정되면 `uv add <패키지>`로 추가한다 (docs/개발환경.md 4절).
-dependencies = [
-    "fastembed>=0.8.1",
-    "numpy>=2.5.3",
-    "rank-bm25>=0.2.2",
-]
+dependencies = []
 
 [dependency-groups]
 dev = [
     "pytest>=8",
     "ruff>=0.15",
 ]
+research = [
+    "fastembed>=0.8.1",
+    "numpy>=2.5.3",
+    "rank-bm25>=0.2.2",
+]
 
 [tool.uv]
+# research 그룹은 검증 전 후보 패키지(영업·지원 검색 비교용, 기획v1 4절)다. 확정 전이라 dependencies에
+# 넣지 않고, CI·로컬 `uv sync`에는 기본으로 설치한다(비교 코드 테스트가 import하므로).
+default-groups = ["dev", "research"]
 # 배포용 패키지를 빌드하지 않는다 — 의존성·가상환경 관리 전용으로 uv를 쓴다.
 package = false
 # 팀원 모두 같은 uv 버전으로 uv.lock을 만들도록 고정한다 (file-converter와 같은 방식).
