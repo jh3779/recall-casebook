@@ -44,3 +44,4 @@
 - 2026-10-04: PR #16 diff 정독 중 발견한 서식·순서·낡은 HANDOFF 서술 정정, Next Action에 제외 후 재확인 조건 추가
 - 2026-10-04: PR #16에서 영업·지원 설계·PRD·ERD(다른 세션 작업)를 분리 — 별도 브랜치 docs/sales-support-design-prd-erd, git add -A 금지 규칙을 HANDOFF에 기록
 - 2026-10-05: PR #16 병합(main f98f95a), PR #15에 main 합침·HANDOFF 현재 상태로 갱신, PR #17 draft 보류, 할 일 11·12번(비교 단위 통일·PR #17 재개) 추가
+- 2026-10-05: PR #15 자동 리뷰 반영 — HANDOFF Next Action의 병합 안내를 "사람의 병합 지시를 기다린다"로 수정
