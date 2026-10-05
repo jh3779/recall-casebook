@@ -58,3 +58,4 @@
 - 2026-10-06: 영업·지원 생성 단계 테스트 코드 추가(scripts/sales_support_llm.py, gpt-4o-mini, 영어 출력, 비용 상한 $1, 점진 확대) — 실제 호출은 키 설정 후 사용자 실행, 가짜 클라이언트 테스트 18개 통과
 - 2026-10-06: PR #17 2차 리뷰 반영 — 질문 JSONL 입력·질문 세트 지문·compare, frontmatter 메타데이터 보존, ERD 정답 표시 문장·제외 범위 통일(chunk_key는 회의 대기, 재색인은 사용자 확인 대기)
 - 2026-10-06: chunk_key 임시 구현(A안: 네 값 U+001F 이어 sha256 앞 32자)·doc_id·domains, 임베딩을 embeddings.npz의 chunk_keys로 연결, 재색인(사용자 승인) — DEC는 팀 합의 뒤
+- 2026-10-06: PR #17 3차 리뷰 반영 — 생성 테스트 재현 정보(run_config)·호출 전 예산 검사·엄격 스키마 검사·질문 길이 제한, pr-verify principles 실패(판정 문구 검출 목록·지시문에 principle-ok 표시, 변수명 변경), chunk_key 고정 검증값 테스트

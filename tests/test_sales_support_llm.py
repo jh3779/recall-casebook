@@ -94,7 +94,7 @@ def test_criteria_outside_the_quote_is_flagged_but_kept():
 
 def test_verdict_style_wording_is_counted():
     valid, _, flags = llm.validate_items([item(reason="This does not apply to you.")], CHUNKS[:2])
-    assert len(valid) == 1 and flags["verdict_wording"] == 1
+    assert len(valid) == 1 and flags["judgment_wording"] == 1
 
 
 def test_cost_uses_per_million_token_prices():
@@ -161,3 +161,73 @@ def test_summary_aggregates_rates_and_cost():
     assert summary["items_valid_rate"] == 1.0  # 구조가 맞은 응답의 항목만 센다
     assert summary["gold_cited_rate"] == 0.5
     assert summary["cost_usd"] > 0
+
+
+@pytest.mark.parametrize(
+    "bad_item",
+    [
+        {},  # 필수 키가 하나도 없음
+        {k: v for k, v in item().items() if k != "reason"},  # 키 하나 빠짐
+        item() | {"extra": 1},  # 허용하지 않은 키
+        item(chunk_no="1"),  # 타입이 다름
+        item(criteria=5),
+    ],
+)
+def test_schema_ok_is_false_when_an_item_breaks_the_fixed_schema(bad_item):
+    rec = llm.run_question(FakeClient([json.dumps({"items": [bad_item]})]), question(), CHUNKS[:2])
+    assert rec["schema_ok"] is False and rec["n_valid"] == 0
+
+
+def test_schema_ok_is_true_for_an_empty_item_list_and_for_valid_items():
+    empty = llm.run_question(FakeClient([json.dumps({"items": []})]), question(), CHUNKS[:2])
+    assert empty["schema_ok"] is True and empty["n_raw"] == 0
+
+
+def test_budget_check_happens_before_the_call_not_after():
+    client = FakeClient([json.dumps({"items": []})])
+    # 다음 호출의 최대 비용이 남은 예산보다 크면 호출하지 않는다
+    records, stopped = llm.run_batch(client, [(question(), CHUNKS[:2])], budget_usd=0.0001)
+    assert client.calls == [] and records == [] and stopped is True
+
+
+def test_max_call_cost_is_an_upper_bound_of_the_real_cost():
+    prompt_cost = llm.max_call_cost(question(), CHUNKS[:2])
+    typical = llm.cost_usd(2500, 600)
+    assert prompt_cost >= llm.cost_usd(100, llm.MAX_OUTPUT_TOKENS)
+    assert prompt_cost >= typical * 0.5  # 보수적으로 잡힌 값이라 현실적 비용보다 작지 않다
+
+
+def test_overlong_questions_are_recorded_without_calling_the_api():
+    long_q = poc.EvalQuestion("faq-9", "x" * (llm.MAX_QUESTION_CHARS + 1), ["sales/a.md#Access"])
+    client = FakeClient([json.dumps({"items": []})])
+    records, _ = llm.run_batch(client, [(long_q, CHUNKS[:2])], budget_usd=1.0)
+    assert client.calls == [] and records[0]["error"] == "question_too_long"
+
+
+def test_run_config_records_everything_needed_to_reproduce_a_run():
+    meta = {"data_commit_sha": "a" * 40, "chunks_digest": "d1", "embedding_model": "m"}
+    cfg = llm.build_run_config(meta, "hybrid")
+    for key in (
+        "model",
+        "openai_version",
+        "instructions_sha",
+        "schema_sha",
+        "top_k_chunks",
+        "max_chunk_chars_in_prompt",
+        "max_output_tokens",
+        "temperature",
+        "retrieval",
+        "data_commit_sha",
+        "index_chunks_digest",
+        "index_embedding_model",
+    ):
+        assert key in cfg
+    assert cfg["model"] == llm.MODEL and cfg["data_commit_sha"] == "a" * 40
+    assert cfg["index_chunks_digest"] == "d1" and cfg["retrieval"] == "hybrid"
+
+
+def test_run_config_instructions_hash_changes_when_the_prompt_changes(monkeypatch):
+    meta = {"data_commit_sha": "a", "chunks_digest": "d", "embedding_model": "m"}
+    before = llm.build_run_config(meta, "hybrid")["instructions_sha"]
+    monkeypatch.setattr(llm, "INSTRUCTIONS", llm.INSTRUCTIONS + " Be brief.")
+    assert llm.build_run_config(meta, "hybrid")["instructions_sha"] != before

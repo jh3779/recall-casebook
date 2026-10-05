@@ -361,3 +361,11 @@ def test_load_checked_index_exits_with_a_clear_message_when_index_files_are_miss
     with pytest.raises(SystemExit) as e:
         poc.load_checked_index(tmp_path, tmp_path)
     assert "색인 파일" in str(e.value) and "embeddings.npz" in str(e.value)
+
+
+def test_chunk_key_fixed_literal_test_vector():
+    # 계산식(UTF-8, 구분 문자 U+001F, sha256, 앞 32자)이 바뀌면 이 고정값이 달라져 실패한다
+    key = poc.make_chunk_key(
+        "sales/a.md", "0ab0299ce073b847558867ae5abbc42c570bc8d5", "A>B", "abc123"
+    )
+    assert key == "5203c258dd38e5392a58755a62840ae0"

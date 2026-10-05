@@ -13,6 +13,7 @@ FAQ 질문은 "새 업무를 맡은 사람"의 상황이 아니므로 체크리�
 """
 
 import argparse
+import hashlib
 import json
 import sys
 import time
@@ -28,6 +29,7 @@ PRICE_OUTPUT_PER_M = 0.60
 TOP_K_CHUNKS = 5
 MAX_CHUNK_CHARS_IN_PROMPT = 2000
 MAX_OUTPUT_TOKENS = 1200
+MAX_QUESTION_CHARS = 1000  # 외부 질문 파일의 비정상적으로 긴 질문이 비용을 키우지 못하게 막는다
 DEFAULT_BUDGET_USD = 1.0
 # 호출 전 추정(여유 포함): 입력 2,500토큰·출력 600토큰 (청크 평균 731자 × 5 + 지시문)
 EST_INPUT_TOKENS = 2500
@@ -42,7 +44,7 @@ INSTRUCTIONS = (
     "excerpt states none), check_method (how to confirm it is done, as stated in the excerpt, or null), "
     "chunk_no (the excerpt number), evidence_quote (an exact contiguous quote copied from that excerpt "
     "that supports the item). "
-    "Do not decide whether anything applies to the user. Do not invent conditions, deadlines, tools or "
+    "Do not decide whether anything applies to the user. Do not invent conditions, deadlines, tools or "  # principle-ok: 판정을 하지 말라는 지시문(출력 문구가 아님)
     "names that are not in the excerpt. If the excerpts contain nothing relevant, return an empty list. "
     "Write in English."
 )
@@ -73,8 +75,8 @@ OUTPUT_SCHEMA = {
 }
 
 # 판정으로 읽히는 영어 표현 — 출력에 나오는 횟수만 센다(제거하지 않는다)
-VERDICT_WORDING = (
-    "applies to you",
+JUDGMENT_PHRASES = (
+    "applies to you",  # principle-ok: 출력에서 판정 표현을 검출하기 위한 금지어 목록
     "does not apply",
     "do not apply",
     "not applicable",
@@ -107,7 +109,7 @@ def validate_items(
     """
     valid: list[dict] = []
     removed: dict[str, int] = {}
-    flags = {"criteria_outside_quote": 0, "check_method_outside_quote": 0, "verdict_wording": 0}
+    flags = {"criteria_outside_quote": 0, "check_method_outside_quote": 0, "judgment_wording": 0}
 
     def drop(reason: str) -> None:
         removed[reason] = removed.get(reason, 0) + 1
@@ -138,8 +140,8 @@ def validate_items(
         text = " ".join(
             str(it.get(k) or "") for k in ("item", "reason", "criteria", "check_method")
         ).lower()
-        if any(w in text for w in VERDICT_WORDING):
-            flags["verdict_wording"] += 1
+        if any(w in text for w in JUDGMENT_PHRASES):
+            flags["judgment_wording"] += 1
         valid.append(
             {
                 **it,
@@ -149,6 +151,24 @@ def validate_items(
             }
         )
     return valid, removed, flags
+
+
+def item_matches_schema(it: object) -> bool:
+    """모델 항목이 고정 스키마(필수 키 전부, 허용하지 않은 키 없음, 타입 일치)를 지키는지 로컬에서 검사한다."""
+    if not isinstance(it, dict) or set(it) != set(_ITEM_PROPS):
+        return False
+    return (
+        all(isinstance(it[k], str) for k in ("item", "reason", "evidence_quote"))
+        and all(it[k] is None or isinstance(it[k], str) for k in ("criteria", "check_method"))
+        and isinstance(it["chunk_no"], int)
+        and not isinstance(it["chunk_no"], bool)
+    )
+
+
+def max_call_cost(q: poc.EvalQuestion, shown: list[poc.Chunk]) -> float:
+    """다음 호출이 청구할 수 있는 최대 비용 — 입력은 UTF-8 바이트 수(토큰 수의 상한), 출력은 최대 출력 토큰."""
+    sent = INSTRUCTIONS + build_prompt(q.question, shown) + json.dumps(OUTPUT_SCHEMA)
+    return cost_usd(len(sent.encode("utf-8")), MAX_OUTPUT_TOKENS)
 
 
 def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
@@ -197,8 +217,8 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
     rec["output_tokens"] = getattr(usage, "output_tokens", 0) or 0
     try:
         items = json.loads(response.output_text)["items"]
-        if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
-            raise ValueError("items가 객체 목록이 아님")
+        if not isinstance(items, list) or not all(item_matches_schema(i) for i in items):
+            raise ValueError("items가 고정 스키마를 지키지 않음")
     except (ValueError, KeyError, TypeError):
         return rec
     rec["schema_ok"] = True
@@ -214,17 +234,65 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
     return rec
 
 
+def _rejected(q: poc.EvalQuestion, shown: list[poc.Chunk], reason: str) -> dict:
+    return {
+        "question_id": q.question_id,
+        "question": q.question[:80],
+        "shown_sections": [c.section_key for c in shown],
+        "schema_ok": False,
+        "n_raw": 0,
+        "n_valid": 0,
+        "removed": {},
+        "flags": {},
+        "gold_cited": False,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "latency_s": 0.0,
+        "error": reason,
+        "valid_items": [],
+    }
+
+
+def build_run_config(index_meta: dict, retrieval: str) -> dict:
+    """실행 요약에 남기는 재현 정보 — 모델·프롬프트·스키마·검색·데이터·색인이 무엇이었는지 파일만 보고 알 수 있게 한다."""
+    from importlib.metadata import version
+
+    def sha(text: str) -> str:
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+    return {
+        "model": MODEL,
+        "openai_version": version("openai"),
+        "temperature": 0,
+        "instructions_sha": sha(INSTRUCTIONS),
+        "schema_sha": sha(json.dumps(OUTPUT_SCHEMA, sort_keys=True)),
+        "top_k_chunks": TOP_K_CHUNKS,
+        "max_chunk_chars_in_prompt": MAX_CHUNK_CHARS_IN_PROMPT,
+        "max_output_tokens": MAX_OUTPUT_TOKENS,
+        "max_question_chars": MAX_QUESTION_CHARS,
+        "price_per_m_tokens": {"input": PRICE_INPUT_PER_M, "output": PRICE_OUTPUT_PER_M},
+        "retrieval": retrieval,
+        "data_commit_sha": index_meta.get("data_commit_sha"),
+        "index_chunks_digest": index_meta.get("chunks_digest"),
+        "index_embedding_model": index_meta.get("embedding_model"),
+        "chunk_key_recipe": index_meta.get("chunk_key_recipe"),
+    }
+
+
 def run_batch(client, jobs: list[tuple[poc.EvalQuestion, list[poc.Chunk]]], budget_usd: float):
     """질문을 차례로 보낸다. 누적 비용이 예산 이상이 되면 거기서 멈추고 (기록, 중단 여부)를 돌려준다."""
     records: list[dict] = []
     spent = 0.0
     for q, shown in jobs:
-        if spent >= budget_usd:
+        if len(q.question) > MAX_QUESTION_CHARS:
+            records.append(_rejected(q, shown, "question_too_long"))
+            continue
+        if spent + max_call_cost(q, shown) > budget_usd:  # 호출하기 전에 최대 비용으로 확인한다
             return records, True
         rec = run_question(client, q, shown)
         spent += cost_usd(rec["input_tokens"], rec["output_tokens"])
         records.append(rec)
-    return records, spent >= budget_usd and len(records) < len(jobs)
+    return records, False
 
 
 def summarize(records: list[dict]) -> dict:
@@ -232,7 +300,7 @@ def summarize(records: list[dict]) -> dict:
     ok = [r for r in records if r["schema_ok"]]
     raw = sum(r["n_raw"] for r in ok)
     removed: dict[str, int] = {}
-    flags = {"criteria_outside_quote": 0, "check_method_outside_quote": 0, "verdict_wording": 0}
+    flags = {"criteria_outside_quote": 0, "check_method_outside_quote": 0, "judgment_wording": 0}
     for r in ok:
         for k, v in r["removed"].items():
             removed[k] = removed.get(k, 0) + v
@@ -326,6 +394,8 @@ def main() -> None:
     summary["stopped_by_budget"] = stopped
     summary["retrieval"] = args.retrieval
     summary["question_set_digest"] = poc.question_set_digest(questions)
+    index_meta = json.loads((args.out_dir / poc.INDEX_META).read_text(encoding="utf-8"))
+    summary["run_config"] = build_run_config(index_meta, args.retrieval)
 
     run_dir = args.out_dir / "llm_runs"
     run_dir.mkdir(parents=True, exist_ok=True)
