@@ -27,6 +27,7 @@ PR #15 병합(main `e78fd44`, head `e72247a` 고정). PR #17 브랜치에 비교
 (2026-10-05, `git status`·`gh pr view`로 확인)
 - main = `e78fd44`(PR #15 병합). 열린 이슈 0개.
 - **PR #17** (`docs/sales-support-design-prd-erd`): **draft, 병합 보류**. 비교 코드가 추가돼 문서 PR이 아니게 됐다(분리 여부는 병합 전에 결정).
+- 영업·지원 LLM은 OpenAI `gpt-4o-mini`로 결정([[DEC-023]], 사용자 2026-10-05). 생성 단계 구현·호출은 호출 수·비용 확인 뒤.
 - **영업·지원 검색 3종 FAQ 평가(로컬, 2026-10-05, 동작 확인용 — 모델 선택 근거 아님)**: 청크 15,661개(파일 1,264개), FAQ 질문 297개(32개 파일, 문장 중복 제거), 모델 `BAAI/bge-small-en-v1.5`(fastembed), 전체 임베딩 약 10분. 섹션 단위 Hit@1/Hit@5/MRR — BM25 0.896/0.980/0.933, 벡터 0.549/0.737/0.631, 하이브리드(RRF k=60) 0.731/0.879/0.804. 파일 단위 Hit@1 — 0.939/0.636/0.791. **BM25가 높은 것은 질문 문장이 정답 청크에 그대로 들어 있기 때문**이다(297개 전부 확인) — 합성 질문 세트가 있어야 의미 있는 비교가 된다. 재현: `uv run python scripts/sales_support_poc.py index && ... eval`.
 - 사용자 작업 폴더의 로컬 브랜치 `docs/domains-and-eval-rules`는 원격보다 뒤처져 있고(병합 후 원격 브랜치는 삭제됨) PRD·ERD가 로컬에 남아 있다 — 그 폴더에서 `git pull` 하면 파일이 사라질 수 있으니 PRD·ERD는 `docs/sales-support-design-prd-erd` 브랜치에서 작업한다.
 - 로컬 `docs/onboarding-plan`·`docs/onboarding-plan-draft` 브랜치는 이전 작업 것이라 손대지 않음.
@@ -65,6 +66,7 @@ PR #15 병합(main `e78fd44`, head `e72247a` 고정). PR #17 브랜치에 비교
 - [[DEC-020]] 도메인 3개 + 공용 6개 + 제외 11개
 - [[DEC-021]] 합성 질문 세트 정식 추가(조건부, 최종 선택에도 사용)
 - [[DEC-022]] 질문 전 유형·새 부서 선택, 도메인 최대 2개, 규칙+LLM 분류 잠정
+- [[DEC-023]] 영업·지원 LLM은 OpenAI `gpt-4o-mini`(사용자 결정, 영업·지원 한정)
 
 ## Failed Attempts
 
