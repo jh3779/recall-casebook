@@ -231,3 +231,49 @@ def test_run_config_instructions_hash_changes_when_the_prompt_changes(monkeypatc
     before = llm.build_run_config(meta, "hybrid")["instructions_sha"]
     monkeypatch.setattr(llm, "INSTRUCTIONS", llm.INSTRUCTIONS + " Be brief.")
     assert llm.build_run_config(meta, "hybrid")["instructions_sha"] != before
+
+
+def test_schema_ok_is_false_when_top_level_has_extra_keys():
+    out = json.dumps({"items": [], "unexpected": True})
+    assert llm.run_question(FakeClient([out]), question(), CHUNKS[:2])["schema_ok"] is False
+    assert (
+        llm.run_question(FakeClient([json.dumps({"other": []})]), question(), CHUNKS[:2])[
+            "schema_ok"
+        ]
+        is False
+    )
+
+
+def test_run_config_has_embedding_file_hash_libraries_retrieval_settings_and_repo_commit(tmp_path):
+    emb = tmp_path / "embeddings.npz"
+    emb.write_bytes(b"vectors-v1")
+    meta_file = tmp_path / "index_meta.json"
+    meta_file.write_text("{}", encoding="utf-8")
+    meta = {"data_commit_sha": "a", "chunks_digest": "d", "embedding_model": "m"}
+    cfg = llm.build_run_config(meta, "hybrid", embeddings_path=emb, index_meta_path=meta_file)
+    assert cfg["embeddings_sha256"] == llm.file_sha256(emb)
+    assert cfg["index_meta_sha256"] == llm.file_sha256(meta_file)
+    for lib in ("fastembed", "rank_bm25", "numpy", "openai"):
+        assert lib in cfg["libraries"]
+    assert cfg["retrieval_settings"]["rrf_k"] == poc.RRF_K
+    assert cfg["retrieval_settings"]["candidates"] == poc.CANDIDATES
+    assert "repo_commit" in cfg
+    emb.write_bytes(b"vectors-v2")  # 임베딩 파일이 바뀌면 기록된 해시도 달라진다
+    assert (
+        llm.build_run_config(meta, "hybrid", embeddings_path=emb, index_meta_path=meta_file)[
+            "embeddings_sha256"
+        ]
+        != cfg["embeddings_sha256"]
+    )
+
+
+def test_question_sets_summary_separates_planned_from_processed_and_marks_incomplete():
+    qs = [poc.EvalQuestion(str(i), f"q{i}", [f"a.md#{i}"]) for i in range(3)]
+    done = llm.question_sets_summary(
+        qs, [{"question_id": "0"}, {"question_id": "1"}, {"question_id": "2"}]
+    )
+    assert done["complete"] is True and done["planned"] == done["processed"]
+    partial = llm.question_sets_summary(qs, [{"question_id": "0"}, {"question_id": "1"}])
+    assert partial["complete"] is False
+    assert partial["planned"]["n"] == 3 and partial["processed"]["n"] == 2
+    assert partial["planned"]["digest"] != partial["processed"]["digest"]

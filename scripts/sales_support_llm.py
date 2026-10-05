@@ -216,7 +216,10 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
     rec["input_tokens"] = getattr(usage, "input_tokens", 0) or 0
     rec["output_tokens"] = getattr(usage, "output_tokens", 0) or 0
     try:
-        items = json.loads(response.output_text)["items"]
+        parsed = json.loads(response.output_text)
+        if not isinstance(parsed, dict) or set(parsed) != {"items"}:
+            raise ValueError("최상위 객체가 {items}만 가진 형태가 아님")
+        items = parsed["items"]
         if not isinstance(items, list) or not all(item_matches_schema(i) for i in items):
             raise ValueError("items가 고정 스키마를 지키지 않음")
     except (ValueError, KeyError, TypeError):
@@ -253,8 +256,40 @@ def _rejected(q: poc.EvalQuestion, shown: list[poc.Chunk], reason: str) -> dict:
     }
 
 
-def build_run_config(index_meta: dict, retrieval: str) -> dict:
-    """실행 요약에 남기는 재현 정보 — 모델·프롬프트·스키마·검색·데이터·색인이 무엇이었는지 파일만 보고 알 수 있게 한다."""
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def git_commit() -> str | None:
+    """이 코드를 실행한 저장소 커밋 SHA (변경이 커밋되지 않았으면 `-dirty`를 붙인다). git이 없으면 None."""
+    import subprocess
+
+    try:
+        root = Path(__file__).resolve().parent.parent
+        sha = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        dirty = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain", "--", "scripts"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        return sha + ("-dirty" if dirty else "")
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def build_run_config(
+    index_meta: dict,
+    retrieval: str,
+    embeddings_path: Path | None = None,
+    index_meta_path: Path | None = None,
+) -> dict:
+    """실행 요약에 남기는 재현 정보 — 모델·프롬프트·스키마·검색·데이터·색인·라이브러리·코드가 무엇이었는지 파일만 보고 알 수 있게 한다."""
     from importlib.metadata import version
 
     def sha(text: str) -> str:
@@ -272,10 +307,34 @@ def build_run_config(index_meta: dict, retrieval: str) -> dict:
         "max_question_chars": MAX_QUESTION_CHARS,
         "price_per_m_tokens": {"input": PRICE_INPUT_PER_M, "output": PRICE_OUTPUT_PER_M},
         "retrieval": retrieval,
+        "retrieval_settings": {
+            "candidates": poc.CANDIDATES,
+            "rrf_k": poc.RRF_K,
+            "top_k_eval": list(poc.TOP_K),
+            "tokenizer": "lowercase [a-z0-9]+",
+        },
+        "libraries": {
+            lib: version(lib.replace("_", "-"))
+            for lib in ("fastembed", "rank_bm25", "numpy", "openai")
+        },
         "data_commit_sha": index_meta.get("data_commit_sha"),
         "index_chunks_digest": index_meta.get("chunks_digest"),
         "index_embedding_model": index_meta.get("embedding_model"),
         "chunk_key_recipe": index_meta.get("chunk_key_recipe"),
+        "embeddings_sha256": file_sha256(embeddings_path) if embeddings_path else None,
+        "index_meta_sha256": file_sha256(index_meta_path) if index_meta_path else None,
+        "repo_commit": git_commit(),
+    }
+
+
+def question_sets_summary(planned: list[poc.EvalQuestion], records: list[dict]) -> dict:
+    """계획한 질문과 실제 처리한 질문을 따로 기록한다 — 예산으로 중단되면 complete=False (완주 실행과 직접 비교하지 않는다)."""
+    done_ids = {r["question_id"] for r in records}
+    processed = [q for q in planned if q.question_id in done_ids]
+    return {
+        "planned": {"n": len(planned), "digest": poc.question_set_digest(planned)},
+        "processed": {"n": len(processed), "digest": poc.question_set_digest(processed)},
+        "complete": len(processed) == len(planned),
     }
 
 
@@ -393,9 +452,14 @@ def main() -> None:
     summary = summarize(records)
     summary["stopped_by_budget"] = stopped
     summary["retrieval"] = args.retrieval
-    summary["question_set_digest"] = poc.question_set_digest(questions)
-    index_meta = json.loads((args.out_dir / poc.INDEX_META).read_text(encoding="utf-8"))
-    summary["run_config"] = build_run_config(index_meta, args.retrieval)
+    summary["question_sets"] = question_sets_summary(questions, records)
+    meta_path = args.out_dir / poc.INDEX_META
+    summary["run_config"] = build_run_config(
+        json.loads(meta_path.read_text(encoding="utf-8")),
+        args.retrieval,
+        embeddings_path=args.out_dir / "embeddings.npz",
+        index_meta_path=meta_path,
+    )
 
     run_dir = args.out_dir / "llm_runs"
     run_dir.mkdir(parents=True, exist_ok=True)
