@@ -1,0 +1,3192 @@
+{
+ "raw": {
+  "downloaded_at": "2026-10-06T08:35:54+00:00",
+  "files": {
+   "FLAT_RCL_PRE_2010.zip": {
+    "url": "https://static.nhtsa.gov/odi/ffdd/rcl/FLAT_RCL_PRE_2010.zip",
+    "bytes": 7461173,
+    "sha256": "01a36cc92479f5c1142a0374432900e0555bdb54f1d1700e9fad6dfbe4f6b5aa",
+    "last_modified": "Tue, 06 Oct 2026 07:04:59 GMT"
+   },
+   "FLAT_RCL_POST_2010.zip": {
+    "url": "https://static.nhtsa.gov/odi/ffdd/rcl/FLAT_RCL_POST_2010.zip",
+    "bytes": 14950845,
+    "sha256": "3200bf8d930c9f3cf03d153b48f1860085fced581fa02ca111fc23753b0c95cf",
+    "last_modified": "Tue, 06 Oct 2026 07:04:59 GMT"
+   },
+   "FLAT_INV.zip": {
+    "url": "https://static.nhtsa.gov/odi/ffdd/inv/FLAT_INV.zip",
+    "bytes": 4300161,
+    "sha256": "54f689acac4d912afe9d62ccb7724afd9e68ff78b0ef96f09928054c593b49b0",
+    "last_modified": "Mon, 05 Oct 2026 09:04:24 GMT"
+   },
+   "RCL.txt": {
+    "url": "https://static.nhtsa.gov/odi/ffdd/rcl/RCL.txt",
+    "bytes": 3053,
+    "sha256": "3438cc7e4131efa401dfe6437dbe035607e092c129155dfb411d459d58802203",
+    "last_modified": "Tue, 06 Oct 2026 07:04:59 GMT"
+   },
+   "INV.txt": {
+    "url": "https://static.nhtsa.gov/odi/ffdd/inv/INV.txt",
+    "bytes": 2057,
+    "sha256": "04d3eef957004ff6d235ffbefe1ab270be27b72c1671ca5c3e8cfa96951bf8d2",
+    "last_modified": "Mon, 05 Oct 2026 09:04:24 GMT"
+   }
+  }
+ },
+ "build": {
+  "raw_manifest_sha256": "532a390eacb6f239a997ac8416f25095f58254dd0a88f0313fe79e5676247123",
+  "recalls_sha256": "d0e15aebf42b929eb5ca4844cefec9dcc0cc3136e8769e5154c6c0285f87f50d",
+  "eval_sha256": "fe5433db5c7864a01aaa98d6b5af0d8a211429bec7a24f0c5f8e19c2d959695c",
+  "snapshot_date": "2026-10-06"
+ },
+ "eval_action_nos": [
+  "EA00006",
+  "EA00009",
+  "EA00011",
+  "EA00015",
+  "EA00016",
+  "EA00019",
+  "EA00022",
+  "EA00023",
+  "EA01002",
+  "EA01006",
+  "EA01010",
+  "EA01012",
+  "EA01015",
+  "EA01017",
+  "EA02001",
+  "EA02003",
+  "EA02004",
+  "EA02005",
+  "EA02006",
+  "EA02008",
+  "EA02012",
+  "EA02013",
+  "EA02019",
+  "EA02020",
+  "EA02022",
+  "EA02026",
+  "EA02027",
+  "EA02030",
+  "EA02031",
+  "EA02033",
+  "EA02034",
+  "EA02035",
+  "EA02037",
+  "EA03001",
+  "EA03002",
+  "EA03003",
+  "EA03006",
+  "EA03007",
+  "EA03008",
+  "EA03009",
+  "EA03011",
+  "EA03012",
+  "EA03013",
+  "EA03015",
+  "EA03016",
+  "EA03017",
+  "EA03018",
+  "EA03019",
+  "EA03023",
+  "EA03025",
+  "EA04001",
+  "EA04002",
+  "EA04003",
+  "EA04005",
+  "EA04009",
+  "EA04011",
+  "EA04012",
+  "EA04013",
+  "EA04015",
+  "EA04017",
+  "EA04019",
+  "EA04020",
+  "EA04021",
+  "EA04023",
+  "EA04024",
+  "EA04025",
+  "EA04026",
+  "EA04028",
+  "EA04031",
+  "EA04032",
+  "EA04034",
+  "EA05003",
+  "EA05005",
+  "EA05006",
+  "EA05007",
+  "EA05010",
+  "EA05011",
+  "EA05012",
+  "EA05013",
+  "EA05014",
+  "EA05016",
+  "EA05020",
+  "EA05021",
+  "EA06003",
+  "EA06006",
+  "EA06008",
+  "EA06009",
+  "EA06012",
+  "EA06013",
+  "EA06014",
+  "EA06015",
+  "EA06016",
+  "EA06017",
+  "EA06020",
+  "EA06021",
+  "EA07001",
+  "EA07002",
+  "EA07004",
+  "EA07006",
+  "EA07007",
+  "EA07008",
+  "EA07010",
+  "EA07012",
+  "EA07014",
+  "EA07016",
+  "EA08001",
+  "EA08003",
+  "EA08004",
+  "EA08008",
+  "EA08010",
+  "EA08012",
+  "EA08014",
+  "EA08015",
+  "EA08016",
+  "EA08020",
+  "EA08021",
+  "EA08022",
+  "EA08023",
+  "EA08025",
+  "EA09001",
+  "EA09002",
+  "EA09003",
+  "EA09005",
+  "EA09006",
+  "EA09007",
+  "EA09011",
+  "EA09014",
+  "EA09016",
+  "EA09017",
+  "EA09018",
+  "EA09019",
+  "EA10001",
+  "EA10002",
+  "EA10005",
+  "EA10006",
+  "EA10007",
+  "EA11004",
+  "EA11005",
+  "EA11006",
+  "EA11007",
+  "EA11008",
+  "EA11009",
+  "EA11012",
+  "EA11013",
+  "EA11014",
+  "EA11015",
+  "EA12001",
+  "EA12002",
+  "EA12003",
+  "EA12004",
+  "EA12005",
+  "EA12006",
+  "EA12007",
+  "EA12008",
+  "EA12009",
+  "EA13001",
+  "EA13002",
+  "EA13004",
+  "EA13005",
+  "EA13006",
+  "EA13007",
+  "EA13008",
+  "EA14001",
+  "EA14003",
+  "EA15002",
+  "EA15003",
+  "EA15004",
+  "EA15007",
+  "EA16002",
+  "EA17003",
+  "EA18001",
+  "EA18002",
+  "EA18004",
+  "EA18005",
+  "EA19005",
+  "EA83013",
+  "EA84035",
+  "EA85008",
+  "EA85010",
+  "EA85029",
+  "EA85037",
+  "EA85045",
+  "EA86003",
+  "EA86010",
+  "EA86012",
+  "EA86020",
+  "EA86021",
+  "EA86026",
+  "EA86027",
+  "EA86029",
+  "EA86032",
+  "EA87005",
+  "EA87010",
+  "EA87018",
+  "EA87020",
+  "EA87023",
+  "EA88004",
+  "EA88005",
+  "EA88008",
+  "EA88009",
+  "EA88010",
+  "EA88013",
+  "EA88015",
+  "EA88017",
+  "EA88037",
+  "EA89016",
+  "EA89022",
+  "EA89027",
+  "EA89030",
+  "EA89032",
+  "EA89035",
+  "EA94018",
+  "EA94038",
+  "EA95002",
+  "EA95017",
+  "EA95018",
+  "EA95026",
+  "EA95029",
+  "EA95030",
+  "EA95033",
+  "EA96003",
+  "EA96008",
+  "EA96010",
+  "EA96014",
+  "EA96015",
+  "EA96016",
+  "EA96018",
+  "EA96019",
+  "EA96020",
+  "EA96027",
+  "EA96028",
+  "EA96030",
+  "EA97001",
+  "EA97003",
+  "EA97004",
+  "EA97006",
+  "EA97010",
+  "EA97012",
+  "EA97014",
+  "EA97016",
+  "EA97019",
+  "EA97020",
+  "EA97025",
+  "EA97026",
+  "EA97027",
+  "EA97028",
+  "EA98006",
+  "EA98007",
+  "EA98009",
+  "EA98010",
+  "EA98011",
+  "EA98012",
+  "EA98014",
+  "EA98015",
+  "EA98017",
+  "EA98022",
+  "EA98023",
+  "EA98024",
+  "EA99001",
+  "EA99005",
+  "EA99006",
+  "EA99019",
+  "EA99027",
+  "EA99029",
+  "EA99032",
+  "EA99033",
+  "EA99034",
+  "PE00008",
+  "PE00019",
+  "PE00020",
+  "PE00022",
+  "PE00026",
+  "PE00048",
+  "PE01003",
+  "PE01004",
+  "PE01007",
+  "PE01013",
+  "PE01014",
+  "PE01015",
+  "PE01016",
+  "PE01017",
+  "PE01018",
+  "PE01019",
+  "PE01027",
+  "PE01030",
+  "PE01037",
+  "PE01039",
+  "PE02004",
+  "PE02023",
+  "PE02027",
+  "PE02037",
+  "PE02051",
+  "PE02055",
+  "PE02073",
+  "PE02078",
+  "PE02083",
+  "PE02088",
+  "PE02090",
+  "PE02091",
+  "PE02092",
+  "PE02094",
+  "PE02095",
+  "PE03004",
+  "PE03006",
+  "PE03007",
+  "PE03009",
+  "PE03012",
+  "PE03020",
+  "PE03022",
+  "PE03023",
+  "PE03024",
+  "PE03030",
+  "PE03038",
+  "PE03039",
+  "PE03041",
+  "PE03043",
+  "PE03046",
+  "PE03047",
+  "PE03051",
+  "PE03053",
+  "PE03054",
+  "PE03055",
+  "PE03056",
+  "PE04003",
+  "PE04005",
+  "PE04006",
+  "PE04007",
+  "PE04009",
+  "PE04010",
+  "PE04015",
+  "PE04025",
+  "PE04026",
+  "PE04027",
+  "PE04028",
+  "PE04029",
+  "PE04034",
+  "PE04035",
+  "PE04037",
+  "PE04038",
+  "PE04041",
+  "PE04042",
+  "PE04044",
+  "PE04045",
+  "PE04047",
+  "PE04048",
+  "PE04049",
+  "PE04053",
+  "PE04056",
+  "PE04061",
+  "PE04063",
+  "PE04064",
+  "PE04066",
+  "PE04067",
+  "PE04069",
+  "PE04071",
+  "PE04072",
+  "PE04073",
+  "PE04074",
+  "PE04078",
+  "PE04079",
+  "PE05001",
+  "PE05002",
+  "PE05006",
+  "PE05010",
+  "PE05011",
+  "PE05012",
+  "PE05014",
+  "PE05015",
+  "PE05016",
+  "PE05017",
+  "PE05020",
+  "PE05022",
+  "PE05023",
+  "PE05024",
+  "PE05025",
+  "PE05026",
+  "PE05028",
+  "PE05030",
+  "PE05031",
+  "PE05032",
+  "PE05035",
+  "PE05036",
+  "PE05039",
+  "PE05040",
+  "PE05047",
+  "PE05049",
+  "PE05050",
+  "PE05051",
+  "PE05057",
+  "PE05062",
+  "PE05064",
+  "PE05065",
+  "PE05067",
+  "PE06001",
+  "PE06003",
+  "PE06008",
+  "PE06012",
+  "PE06013",
+  "PE06015",
+  "PE06020",
+  "PE06026",
+  "PE06030",
+  "PE06031",
+  "PE06032",
+  "PE06036",
+  "PE06037",
+  "PE06041",
+  "PE06047",
+  "PE06048",
+  "PE06049",
+  "PE06051",
+  "PE06052",
+  "PE06053",
+  "PE06056",
+  "PE06057",
+  "PE06058",
+  "PE07002",
+  "PE07004",
+  "PE07005",
+  "PE07008",
+  "PE07012",
+  "PE07015",
+  "PE07017",
+  "PE07026",
+  "PE07027",
+  "PE07029",
+  "PE07030",
+  "PE07034",
+  "PE07035",
+  "PE07037",
+  "PE07038",
+  "PE07039",
+  "PE07040",
+  "PE07043",
+  "PE07047",
+  "PE07053",
+  "PE07054",
+  "PE07056",
+  "PE07060",
+  "PE08001",
+  "PE08003",
+  "PE08006",
+  "PE08008",
+  "PE08011",
+  "PE08012",
+  "PE08018",
+  "PE08019",
+  "PE08020",
+  "PE08021",
+  "PE08023",
+  "PE08024",
+  "PE08034",
+  "PE08037",
+  "PE08038",
+  "PE08042",
+  "PE08043",
+  "PE08044",
+  "PE08046",
+  "PE08049",
+  "PE08050",
+  "PE08052",
+  "PE08054",
+  "PE08068",
+  "PE08071",
+  "PE09001",
+  "PE09003",
+  "PE09004",
+  "PE09005",
+  "PE09006",
+  "PE09007",
+  "PE09008",
+  "PE09009",
+  "PE09011",
+  "PE09014",
+  "PE09016",
+  "PE09018",
+  "PE09023",
+  "PE09024",
+  "PE09027",
+  "PE09029",
+  "PE09030",
+  "PE09035",
+  "PE09036",
+  "PE09037",
+  "PE09038",
+  "PE09039",
+  "PE09040",
+  "PE09041",
+  "PE09042",
+  "PE09046",
+  "PE09047",
+  "PE09048",
+  "PE09049",
+  "PE09050",
+  "PE09051",
+  "PE09052",
+  "PE09053",
+  "PE09054",
+  "PE09056",
+  "PE10001",
+  "PE10002",
+  "PE10003",
+  "PE10005",
+  "PE10007",
+  "PE10009",
+  "PE10011",
+  "PE10012",
+  "PE10016",
+  "PE10018",
+  "PE10021",
+  "PE10026",
+  "PE10029",
+  "PE10035",
+  "PE10037",
+  "PE10039",
+  "PE10041",
+  "PE10042",
+  "PE10043",
+  "PE10045",
+  "PE10046",
+  "PE10047",
+  "PE10050",
+  "PE11001",
+  "PE11002",
+  "PE11003",
+  "PE11004",
+  "PE11005",
+  "PE11006",
+  "PE11008",
+  "PE11009",
+  "PE11010",
+  "PE11011",
+  "PE11012",
+  "PE11015",
+  "PE11019",
+  "PE11022",
+  "PE11023",
+  "PE11027",
+  "PE11030",
+  "PE11031",
+  "PE11032",
+  "PE11034",
+  "PE11036",
+  "PE11038",
+  "PE11040",
+  "PE11041",
+  "PE12004",
+  "PE12006",
+  "PE12008",
+  "PE12009",
+  "PE12010",
+  "PE12011",
+  "PE12013",
+  "PE12014",
+  "PE12017",
+  "PE12018",
+  "PE12019",
+  "PE12021",
+  "PE12024",
+  "PE12026",
+  "PE12027",
+  "PE12032",
+  "PE12034",
+  "PE12037",
+  "PE13001",
+  "PE13002",
+  "PE13005",
+  "PE13006",
+  "PE13007",
+  "PE13008",
+  "PE13015",
+  "PE13017",
+  "PE13019",
+  "PE13020",
+  "PE13021",
+  "PE13022",
+  "PE13023",
+  "PE13024",
+  "PE13025",
+  "PE13028",
+  "PE13029",
+  "PE13030",
+  "PE13031",
+  "PE13033",
+  "PE13036",
+  "PE13038",
+  "PE13039",
+  "PE14003",
+  "PE14007",
+  "PE14009",
+  "PE14010",
+  "PE14013",
+  "PE14016",
+  "PE14017",
+  "PE14019",
+  "PE14022",
+  "PE14024",
+  "PE14025",
+  "PE14028",
+  "PE14030",
+  "PE14031",
+  "PE14035",
+  "PE15003",
+  "PE15004",
+  "PE15005",
+  "PE15007",
+  "PE15008",
+  "PE15009",
+  "PE15010",
+  "PE15011",
+  "PE15012",
+  "PE15013",
+  "PE15015",
+  "PE15018",
+  "PE15019",
+  "PE15022",
+  "PE15023",
+  "PE15028",
+  "PE15029",
+  "PE15033",
+  "PE16001",
+  "PE16002",
+  "PE16003",
+  "PE16004",
+  "PE16009",
+  "PE16013",
+  "PE16016",
+  "PE16018",
+  "PE17003",
+  "PE17005",
+  "PE17006",
+  "PE17007",
+  "PE17009",
+  "PE18002",
+  "PE18003",
+  "PE18006",
+  "PE18008",
+  "PE18009",
+  "PE18010",
+  "PE18011",
+  "PE18012",
+  "PE18015",
+  "PE18016",
+  "PE19003",
+  "PE19004",
+  "PE19008",
+  "PE19009",
+  "PE19016",
+  "PE20001",
+  "PE20002",
+  "PE20004",
+  "PE20007",
+  "PE20013",
+  "PE20014",
+  "PE20016",
+  "PE20017",
+  "PE20018",
+  "PE20019",
+  "PE21001",
+  "PE21003",
+  "PE21006",
+  "PE21009",
+  "PE21013",
+  "PE21014",
+  "PE21019",
+  "PE21022",
+  "PE22001",
+  "PE22004",
+  "PE22006",
+  "PE86050",
+  "PE86061",
+  "PE86067",
+  "PE86068",
+  "PE87005",
+  "PE87008",
+  "PE87010",
+  "PE87023",
+  "PE87024",
+  "PE87027",
+  "PE87034",
+  "PE87036",
+  "PE88013",
+  "PE88041",
+  "PE88061",
+  "PE88068",
+  "PE89037",
+  "PE89040",
+  "PE89121",
+  "PE89136",
+  "PE89140",
+  "PE89158",
+  "PE89159",
+  "PE91094",
+  "PE95050",
+  "PE95059",
+  "PE95061",
+  "PE96001",
+  "PE96015",
+  "PE96019",
+  "PE96027",
+  "PE96028",
+  "PE96030",
+  "PE96033",
+  "PE96034",
+  "PE96035",
+  "PE96047",
+  "PE96048",
+  "PE96049",
+  "PE96051",
+  "PE96054",
+  "PE96060",
+  "PE96064",
+  "PE96065",
+  "PE96066",
+  "PE96070",
+  "PE97002",
+  "PE97012",
+  "PE97019",
+  "PE97031",
+  "PE97043",
+  "PE98014",
+  "PE98026",
+  "PE98028",
+  "PE98030",
+  "PE98032",
+  "PE98037",
+  "PE98042",
+  "PE98043",
+  "PE98046",
+  "PE98047",
+  "PE98058",
+  "PE98063",
+  "PE98065",
+  "PE99001",
+  "PE99003",
+  "PE99007",
+  "PE99008",
+  "PE99017",
+  "PE99026",
+  "PE99032",
+  "PE99033",
+  "PE99041",
+  "PE99050",
+  "PE99053",
+  "PE99057",
+  "PE99058",
+  "PE99060",
+  "PE99064",
+  "PE99067"
+ ],
+ "rclrpt_sample": [
+  {
+   "campaign": "23V015",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V015-3660.PDF": "381b681725a9de0a6793d3468a72aa54697de0767c1230a3d5b8e3974f8fd358",
+    "odi/rcl/2023/RCLRPT-23V015-8456.PDF": "88575cbc48de28c1d402d4b0bc263847e5ffbdae6c71db3c7071fe20c2aa97cf"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V015-8456.PDF"
+  },
+  {
+   "campaign": "16V116",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V116-2161.PDF": "d38da9b6e58d745d76482f67def9122f9814123b01d040ec9031a9d40cc22b98"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V116-2161.PDF"
+  },
+  {
+   "campaign": "25V906",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V906-7035.pdf": "554df348ac00f96af1b76e86e3d993c74753c89544ad53965dc9693d4a26b6af"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V906-7035.pdf"
+  },
+  {
+   "campaign": "19V627",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V627-3511.PDF": "a756866bbca11481eea52fbd9ad2a0003c01db425f875dfb84ed79b64b281817",
+    "odi/rcl/2019/RCLRPT-19V627-7154.PDF": "9b83232b1c86c3509f01765af9afbce450ce9197d5380411abbfc082bd61629a",
+    "odi/rcl/2019/RCLRPT-19V627-7873.PDF": "8a4cfc41a1008fbb1881cf543ebad538e51ce16a0c8b6c3c6a0176882ca97722",
+    "odi/rcl/2019/RCLRPT-19V627-8462.PDF": "37aa0552db127fb28a0c3cc5ef11230b324106d33e83e614b42048649cd3a6d8"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V627-7873.PDF"
+  },
+  {
+   "campaign": "19V663",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V663-6147.PDF": "d17d0214d9dd53c2bfbb7a81ec1b14e5d062e53775978b25bfc81c051066e44c"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V663-6147.PDF"
+  },
+  {
+   "campaign": "23V261",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V261-3448.PDF": "10987103236a51d80ad73e111fc0851808833467ac75501196b001d2433998fa",
+    "odi/rcl/2023/RCLRPT-23V261-9035.PDF": "ac74fe73062458d9bacffb9d0a5e3982510efd69e6fa7d9619788f2ecb30c8a3"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V261-9035.PDF"
+  },
+  {
+   "campaign": "18V112",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V112-9230.PDF": "089ef839ef2382ea63429bd319f110f8eb6ef35d720a04a86768a220b1cf4646"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V112-9230.PDF"
+  },
+  {
+   "campaign": "24V052",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V052-1125.PDF": "308eefd48de409594352a9a4c75007aa7a4e4506fdd73afb84b3d9c011a1532e"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V052-1125.PDF"
+  },
+  {
+   "campaign": "18V728",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V728-3871.PDF": "4a7cd6b45bdbaede129ef41128652752a7b1270d279964ed27f6d75eec5c6a40",
+    "odi/rcl/2018/RCLRPT-18V728-6956.PDF": "ad2db52bf62dd8a1379fc59c4dfb146fd8083e546ead1ecd12ae6f3a7987d05a"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V728-3871.PDF"
+  },
+  {
+   "campaign": "23V489",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V489-8374.PDF": "0a0d202a53273dec2f3313fdd7c3782495fc31e4e12a294858ca5ad0fd4170e9"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V489-8374.PDF"
+  },
+  {
+   "campaign": "25V086",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V086-6622.PDF": "9908f75bb8f1f27e9fbf1be51d4b40e03b9f39238df7d4cda7261d160b434c34"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V086-6622.PDF"
+  },
+  {
+   "campaign": "23V511",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V511-3618.PDF": "f2122e518de429c74b9d69f43a602c036f08fe00bcde11afbf5ce542b1334c91",
+    "odi/rcl/2023/RCLRPT-23V511-6915.PDF": "2875fa44cc52942187d4b179f468a0a08d5f43776b9a72f0b5e9c25ec774abe6"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V511-3618.PDF"
+  },
+  {
+   "campaign": "26V500",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V500-4623.pdf": "29a9d8b642422dffa8526e0e79fa80be3b090064b86ca5bd48367b7ff5a14f69",
+    "odi/rcl/2026/RCLRPT-26V500-8724.pdf": "0203cd0aaed1188671308d1d17c5eb33e7eab9a154d0e68d1ee83e91a57a7662"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V500-4623.pdf"
+  },
+  {
+   "campaign": "23V847",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V847-5210.PDF": "5ccfae152a81d69ed3c61acf5d7e1baf615089b10b798109bb3763bdce502785",
+    "odi/rcl/2023/RCLRPT-23V847-6412.PDF": "1af770e3cc5e53ecd19906b6bc0c41e5a47449c84da6915a2072216b93e0cde9"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V847-6412.PDF"
+  },
+  {
+   "campaign": "15V236",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V236-5158.PDF": "a419d27358f2246b2718caf1495a13ba47cd14819211512602962fd178a48618"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V236-5158.PDF"
+  },
+  {
+   "campaign": "16V563",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V563-5583.PDF": "72e970429fa8545dd1ff10f9611e9a1257c863e565a7d35fd7e4a1779a9ef185"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V563-5583.PDF"
+  },
+  {
+   "campaign": "14V803",
+   "pdfs": {
+    "odi/rcl/2014/RCLRPT-14V803-5481.PDF": "6877290190fb6ffe7beb06c8beb7068db089d57814995173f4ec9525c7a88090"
+   },
+   "selected": "odi/rcl/2014/RCLRPT-14V803-5481.PDF"
+  },
+  {
+   "campaign": "18V765",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V765-3459.PDF": "6b1a2af18a4a09b14e89c0a2506f9d277ebf85927a0e2d8575ba30bb3bfe1311",
+    "odi/rcl/2018/RCLRPT-18V765-8745.PDF": "b173e6b0236059288628cb8e603a503b0c0e30a93524396562a007c9babf1355"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V765-3459.PDF"
+  },
+  {
+   "campaign": "16V713",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V713-2058.PDF": "da1b93d6d7cee414d66dd548d89628b0e7da5b32081246a601032b369d4394fc",
+    "odi/rcl/2016/RCLRPT-16V713-2109.PDF": "ade84d1336dfcd36ce7e679a985d0ce24612d1a9096b228348bbefec957d00b1"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V713-2109.PDF"
+  },
+  {
+   "campaign": "16V100",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V100-8801.pdf": "a02cb36f2301446f6cc27d5bb704d04c4de00e21118156b6bc9feb828440e55c"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V100-8801.pdf"
+  },
+  {
+   "campaign": "19V115",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V115-7702.PDF": "deca9a431a41ea9b0229616a4de8e9548578b71ceb2ce68ff2899010453671fb"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V115-7702.PDF"
+  },
+  {
+   "campaign": "22V523",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V523-2498.PDF": "0e611231fca607a429564006c79c8ef0637b1ae1cfdd7de6a0a2a7b125f49953",
+    "odi/rcl/2022/RCLRPT-22V523-3826.PDF": "b264c07d7118d1c1852d8477c50159b230cd42f7ff3aa6aafa53bd02d351582a",
+    "odi/rcl/2022/RCLRPT-22V523-7739.PDF": "32687e117f929a4acd443d09d706d6f326a54c3fd1909c324fef38bac55499dd",
+    "odi/rcl/2022/RCLRPT-22V523-7887.PDF": "7f59e7328b6ef0ad55393587c0c63586e1d7d21da4ca026fa1b5b5c0491e950a"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V523-2498.PDF"
+  },
+  {
+   "campaign": "24V326",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V326-4823.PDF": "68a4c732274e2603bd3328ec8d25513514cd99edb0fa3ee9d941a5e25dfdc033",
+    "odi/rcl/2024/RCLRPT-24V326-5202.PDF": "90dc1f9fa206d526db9fc091fe96549864bb4f00f0c8c978e6206111b9899a5a",
+    "odi/rcl/2024/RCLRPT-24V326-8066.PDF": "506013fb776133cc08ac84becef081f2fd768d34b9c3c8020c51682e34b020b4"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V326-8066.PDF"
+  },
+  {
+   "campaign": "22E055",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22E055-2160.PDF": "c50b8c3a4dd975fb498687d1b18ebb30b6900f3de25ae7e919d15917f0d87315",
+    "odi/rcl/2022/RCLRPT-22E055-9266.PDF": "be2ddd901740a6ed2e67852c6394de2ccc3e9d41ec4b8be209d9393d2be5dcaa"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22E055-9266.PDF"
+  },
+  {
+   "campaign": "21V078",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V078-8865.PDF": "b9320ef25147f79e7c47948180a10bdcedfab335b8cef9367d42ee4467e1647c"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V078-8865.PDF"
+  },
+  {
+   "campaign": "18V460",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V460-8351.PDF": "5d703fc31db3ec2cf3d8c860d5c69b710de1c7d01db7c8739ee039b6bc04284d"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V460-8351.PDF"
+  },
+  {
+   "campaign": "14V684",
+   "pdfs": {
+    "odi/rcl/2014/RCLRPT-14V684-9899.PDF": "60073d91053b6c3c37503b41e516ae9618cef7856710c98365be38712ffd341c"
+   },
+   "selected": "odi/rcl/2014/RCLRPT-14V684-9899.PDF"
+  },
+  {
+   "campaign": "16V191",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V191-1769.PDF": "ecda7b3afaa9e484680cf4cfa604eb6e95fb2fd5c2a67bc37ef48cfbe8cd7f69"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V191-1769.PDF"
+  },
+  {
+   "campaign": "17V509",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V509-2061.PDF": "aee26eeee85852d80791fc2a9fad6fc8e2dbff30338826be1968cceb445bb782",
+    "odi/rcl/2017/RCLRPT-17V509-2708.PDF": "223b2c6eba713991c85092cb073102564f94b0c2786d5afb3961198cda4cc58f",
+    "odi/rcl/2017/RCLRPT-17V509-4319.PDF": "c81a094f81083893573c5708c71741f6072d53dfbb66112a51f75a25375b529c",
+    "odi/rcl/2017/RCLRPT-17V509-7967.PDF": "74e379648be28918cc8bb26253b2c1fe01caff6f99b1aaa5ce22114d9bd4341f",
+    "odi/rcl/2017/RCLRPT-17V509-9817.PDF": "df957807a1c698f01fb60ced189e7fbf2d3044b91d35a493f8c007438753c5a7"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V509-2061.PDF"
+  },
+  {
+   "campaign": "23V078",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V078-4015.PDF": "af19d2712aee01e1e15b7230f0bc76a833a3800472b363df54b2559730c96fac",
+    "odi/rcl/2023/RCLRPT-23V078-6164.PDF": "c553e3bb37df4f50c796b1ca02598f0040ef8d9a1a43135a784db9c598227b97",
+    "odi/rcl/2023/RCLRPT-23V078-7416.PDF": "2ae8359b1208f7305abeb80549f48333b86d87398b7572335ae7d4f758403878"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V078-7416.PDF"
+  },
+  {
+   "campaign": "17E075",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17E075-1930.PDF": "7d31e171efaf2d37e1bb89a1f9bfb6248ae9ce6c8898623a5df9ba49571adf21",
+    "odi/rcl/2017/RCLRPT-17E075-3880.PDF": "9e8a542d3667f45c8db2ec0fc176e405ebf32de591f0fbcc6f5b9941e411221a"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17E075-1930.PDF"
+  },
+  {
+   "campaign": "18V361",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V361-5881.PDF": "7a22eacba96de6eb2e8ead4b5eab8d1a65f37c7af7934f575b7d85d31f173e43",
+    "odi/rcl/2018/RCLRPT-18V361-6855.PDF": "e5d29b9f031e925b1047198761eae54eb06949d79a3da517b646768e14899bd1"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V361-6855.PDF"
+  },
+  {
+   "campaign": "16V926",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V926-2875.PDF": "d5ac925787e76348e8ba57af2b69cd606b1f7d09f970e6800de0cfa27ba2c678",
+    "odi/rcl/2016/RCLRPT-16V926-8202.PDF": "8fe3d95cea38e69f95a5d925ae75f5182826ef8b63e430b027aff7f8d0a979c7",
+    "odi/rcl/2016/RCLRPT-16V926-8680.PDF": "28fb63efb743956e739523dc760e15a31f78c319763740ee60e7adfdfa7f5d20"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V926-8202.PDF"
+  },
+  {
+   "campaign": "17V553",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V553-4366.pdf": "f287cfeca2eedf71de2f27169f2ff2cdcd9bd349f2629b92a402f7258fd1a3d2"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V553-4366.pdf"
+  },
+  {
+   "campaign": "25V471",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V471-8176.pdf": "8ff1cd01f494f9c00eefeab2c44c7e1812313edb3c70aee6b1918b5636afbd29"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V471-8176.pdf"
+  },
+  {
+   "campaign": "22V456",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V456-2810.PDF": "d66e54d9765d24e7bb156f2884dca68b7f15241f450a9b3ff62f6ea4aa0dc880",
+    "odi/rcl/2022/RCLRPT-22V456-3267.PDF": "39aa7e3e1359f98c76412ef8bb95ef3825d1523f63540fdaa7cca4c6d6ed8750",
+    "odi/rcl/2022/RCLRPT-22V456-5424.PDF": "536d287ea6ce50f99aa87f5d9018c6f3cf1217e2c207cafac21c5134dfd332a7",
+    "odi/rcl/2022/RCLRPT-22V456-8124.PDF": "2ade93b76d4dcb72784eb92ded5929e8b159b2df480a41f6b69f38757495c75d",
+    "odi/rcl/2022/RCLRPT-22V456-9531.PDF": "af6b3f2554e7b0637327923ae49f17a8442b376432ee34036880cc3e5f3fc5f2"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V456-9531.PDF"
+  },
+  {
+   "campaign": "15V745",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V745-3514.PDF": "2d4bdfd448d10af4db8d4f26a25c2a41acb17db39a3709290ba21341be4df8e9",
+    "odi/rcl/2015/RCLRPT-15V745-7211.PDF": "41a00803d2424033652e38c1207d7f6bb868f860e8d47224ffb348de0cd83505"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V745-7211.PDF"
+  },
+  {
+   "campaign": "15V187",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V187-8807.PDF": "687898f74ec3d823e2c501f88d6e003904f46ed84148e1b93ec7de0426a0dc11"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V187-8807.PDF"
+  },
+  {
+   "campaign": "25V788",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V788-2581.pdf": "fb0e39e481bc878cae060ee8a462871401b73622957ea21671733a5f3c1415c5"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V788-2581.pdf"
+  },
+  {
+   "campaign": "16V391",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V391-2973.PDF": "3829224cd72bb67012f5bad4dd6d61a850527db1c64ed3747606cdf29cfd732c"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V391-2973.PDF"
+  },
+  {
+   "campaign": "26V540",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V540-2255.pdf": "8c695f5c0d180fd5f3ac1a33e612190e48d572812bb71c9045287b6b7092c7fd"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V540-2255.pdf"
+  },
+  {
+   "campaign": "22V094",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V094-6775.PDF": "06819d659f49613480fcaf0228d31337a70b80cc5a9636b08c6d1de6d03c9cb6"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V094-6775.PDF"
+  },
+  {
+   "campaign": "15V802",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V802-2964.PDF": "12c7961218c7384fd935009ef3ab8ca957df69601d8b89dfbcc51a27fe313d2f"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V802-2964.PDF"
+  },
+  {
+   "campaign": "17V838",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V838-9869.PDF": "358fa08beee0ee6bc4ccd6aabcfc41ce333d6277c85894a5ccc69b6e7c21d5e4"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V838-9869.PDF"
+  },
+  {
+   "campaign": "19V389",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V389-3969.PDF": "2fa55c0f00bdc4b8479fc11ef3181c58aff4b3fb631eaad74c147aa3ecba84fe",
+    "odi/rcl/2019/RCLRPT-19V389-5410.PDF": "8e6f36852b735c92e54b85e460b9bb04227cd4303998c61cdffd7fda216ab754"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V389-3969.PDF"
+  },
+  {
+   "campaign": "16V831",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V831-1473.PDF": "84e421e612dc998e5af51d1166aef6a14bc2c1778ffdcf8f64405ccb3292c591",
+    "odi/rcl/2016/RCLRPT-16V831-1913.PDF": "6d075ff27cc675aaf0f1e1156adb7136bf57b7f78c4c27feeafc6dc4bfb910cc"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V831-1473.PDF"
+  },
+  {
+   "campaign": "21V387",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V387-6066.PDF": "221a188a47ab5e6dc405b01e3543b1efd07e5074e240367d3960fd5192abacb0",
+    "odi/rcl/2021/RCLRPT-21V387-8391.PDF": "3de2bc7110cb097317f0d109b1966e3c8097d3ea516a7d4379c63efcf87206a9"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V387-8391.PDF"
+  },
+  {
+   "campaign": "22V907",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V907-5845.PDF": "11213ada39030c9e9bba6836ed00bcc025219e4fefb084bdfbf1f37f9b9faa77"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V907-5845.PDF"
+  },
+  {
+   "campaign": "18V635",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V635-6153.pdf": "5dc1d8f53f103d1dd09d388a3b01b06945b2dd64a0cd68c355426201b8a49b63"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V635-6153.pdf"
+  },
+  {
+   "campaign": "17V431",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V431-3860.PDF": "14bbc01afb3cb1b2aaaf67a24ffd3241242728567c588da72fb687d9fbd3d0df"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V431-3860.PDF"
+  },
+  {
+   "campaign": "20V803",
+   "pdfs": {
+    "odi/rcl/2020/RCLRPT-20V803-2096.PDF": "8bd8a601f19296403b38abd80c92a3c6f4dee9b8f28479cbc719820508381b53",
+    "odi/rcl/2020/RCLRPT-20V803-4701.PDF": "3220271c473161218f29df306615c535d959941768dd06ee15899f2933c5316b",
+    "odi/rcl/2020/RCLRPT-20V803-4708.PDF": "c2be1b8b94fcd19edb586f1766afddbbf476c2a25fc1a6684ddcfa2599db9075",
+    "odi/rcl/2020/RCLRPT-20V803-7433.PDF": "61762d732ced46655a47e40124251aa9bf324c65f9399127dd3f8bca45d0c8b0"
+   },
+   "selected": "odi/rcl/2020/RCLRPT-20V803-2096.PDF"
+  },
+  {
+   "campaign": "18V618",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V618-2392.PDF": "ef518658ac731f894d0605457727fc66a5e92ae3f5ecfbebfe70bed497e2c021",
+    "odi/rcl/2018/RCLRPT-18V618-3593.PDF": "865f788980056788fd61939bb8a8621e430a628ea999512d734743ba5c351ec6",
+    "odi/rcl/2018/RCLRPT-18V618-9664.PDF": "4cc4e8307922e99ea5958e599742866a5d9cc2aad8600ae375bc2509be7ffff0"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V618-9664.PDF"
+  },
+  {
+   "campaign": "15V355",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V355-4987.PDF": "5d3e77a82608d66d5e863f95e07a6acccd37d34fe99f8e437e19c95738012218",
+    "odi/rcl/2015/RCLRPT-15V355-5989.PDF": "9ab6a957bd0c57f842e382cca25a83211d96527e3b88335a25dc6b960535d4bf"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V355-4987.PDF"
+  },
+  {
+   "campaign": "23V267",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V267-6681.PDF": "a396fcbc894c59d6c2b322471e7047108e2ed173ffd1d2193dd9cd1e5662e8e2",
+    "odi/rcl/2023/RCLRPT-23V267-9881.PDF": "2b4f614f01c702bde00bdf49027853db866e1a77b69b8d46f23fc3db547f6ef3"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V267-9881.PDF"
+  },
+  {
+   "campaign": "23V034",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V034-6680.PDF": "bf135a8d3f4fae5377a13fb809f39c86f28d383b5976bc855d6d1dda10527819",
+    "odi/rcl/2023/RCLRPT-23V034-9300.PDF": "b6d6b95d3de93511d76cfb918cc1a71c8f8cae678ced15057eb0659e7fce453d"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V034-9300.PDF"
+  },
+  {
+   "campaign": "14E056",
+   "pdfs": {
+    "odi/rcl/2014/RCLRPT-14E056-1831.PDF": "6a07c8b3d266c5bccdbd962d4319ee652c9c6594787044554601c67b49668325"
+   },
+   "selected": "odi/rcl/2014/RCLRPT-14E056-1831.PDF"
+  },
+  {
+   "campaign": "25V162",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V162-1549.PDF": "b3cb61b12d9f2a632740e57320236f496ee1c457f62844b3a5b1a435f82b551d"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V162-1549.PDF"
+  },
+  {
+   "campaign": "26V137",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V137-6846.pdf": "ee9e0ce446b27f1a5705527569d5ac866b48b4fafecaffeb4703a2c26d40f0c1",
+    "odi/rcl/2026/RCLRPT-26V137-7473.pdf": "9b51d0095ca7d14ca4fc216a7cd279f6f3257f4a7354b6710ad41ea9cbf79a64"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V137-6846.pdf"
+  },
+  {
+   "campaign": "18V922",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V922-7211.PDF": "5065bf29034956eba32a33d2b87a819296b8b042e466a4a0d4d79cff2a9d61d1"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V922-7211.PDF"
+  },
+  {
+   "campaign": "25V581",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V581-3944.pdf": "85fa57c380ee27a5132091e5fec4d0dd66d4ef258b3c7e025d2c78eb4989140b",
+    "odi/rcl/2025/RCLRPT-25V581-8015.pdf": "994c156575cff0a9be0e45aa6c655dc78f37cc4f339704ed5ff7d8cf233fb2a9"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V581-3944.pdf"
+  },
+  {
+   "campaign": "18V316",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V316-3110.PDF": "47873a2a1c312e5d396425ae54e465beedfc7763336a0cca42a5b5850037fd84",
+    "odi/rcl/2018/RCLRPT-18V316-4280.PDF": "1908f763fefb98c45a9dd2f08ca8b33be4908efffaa20f9d14c6a87ea4b1e079",
+    "odi/rcl/2018/RCLRPT-18V316-5620.PDF": "28b1bc33d36b0059025613f08d249150af1ef0208e6ddb70e6e0194c6461e4a7"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V316-4280.PDF"
+  },
+  {
+   "campaign": "16V393",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V393-1214.PDF": "38bb0d903a2517c72df9e53618979ce09f5e419b5f0faf13afff443d87dc1dc8",
+    "odi/rcl/2016/RCLRPT-16V393-4267.PDF": "67619bfc2136a0b5f80fb2cfc5ae4f8e423eeeea458050a920cfd7addd2e5961"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V393-1214.PDF"
+  },
+  {
+   "campaign": "15V393",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V393-1730.PDF": "6f6036567697bb6bc8647b055ea206ea6b3c735e637f8950fe520d591c761f6e",
+    "odi/rcl/2015/RCLRPT-15V393-3783.PDF": "58232caa453dbd4359282a04ce6fd5c428441fe230306d6fa759bb31da5e86ea",
+    "odi/rcl/2015/RCLRPT-15V393-5507.PDF": "7b232e17a3b7d5492343a53555af71a7f484ed4e505a836e07751b6243dc7ac4",
+    "odi/rcl/2015/RCLRPT-15V393-7289.PDF": "8d0ab368fe8f135886be90f6a315675714124ef8ed7c8e70311b178251acc00f",
+    "odi/rcl/2015/RCLRPT-15V393-7380.PDF": "8d1e738bc3ce8183e2612532c8b6a9648d702ada8089a8d74911080ed8d5a3f7",
+    "odi/rcl/2015/RCLRPT-15V393-8638.PDF": "e587737bbebac8cb2e92d007ba4e1a73ed4583e225598eb9dbcb8942278c04d6",
+    "odi/rcl/2015/RCLRPT-15V393-9062.PDF": "b0ffcc461229bc9ee7d3cce9ac9580f76841bcfbb914f38db5ebdca88ab9b1cf"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V393-5507.PDF"
+  },
+  {
+   "campaign": "21V789",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V789-1556.PDF": "b13d72e7535d814bd20a2ece550e3561fbb7bf65fed10beaa35d23967533ab48",
+    "odi/rcl/2021/RCLRPT-21V789-6584.PDF": "b7aaef7c32fc699dedcbb7594150d564535077b08708f26d88d27e814e6b8192",
+    "odi/rcl/2021/RCLRPT-21V789-8783.PDF": "f202bb159864e709d8e60301a7c239c38eff130bcda679dcd417945a629d801e",
+    "odi/rcl/2021/RCLRPT-21V789-9855.PDF": "e2edcda364d1e43e79e43a08cc22293fd5ee867ddb29bb5c9a87cb4436cfaa9c"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V789-1556.PDF"
+  },
+  {
+   "campaign": "23V037",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V037-2350.PDF": "7e2495fe48f24488d6b8bff055a39ad5366b2ba7ce054f0f1c2276f6d4eda733",
+    "odi/rcl/2023/RCLRPT-23V037-5173.PDF": "c4739c0336a344594ff4b809564d2945c0ce511abe5091a4e6f8e7efd75c6dce"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V037-2350.PDF"
+  },
+  {
+   "campaign": "17V611",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V611-1558.PDF": "b7c6b0c9af8cadf3e22af377453f2f8f1cfc28d6d25dafc048345670a4e01bb5"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V611-1558.PDF"
+  },
+  {
+   "campaign": "15V396",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V396-3075.PDF": "d97149cc9f7f364b7ec804dfabd98dd5ed5cb49ff3e503ddcc8162532571cfa3",
+    "odi/rcl/2015/RCLRPT-15V396-4845.PDF": "95b014a47f20ccabe7c49cc0d268ca7f33b0e47550b811f725c84317df49d23f"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V396-3075.PDF"
+  },
+  {
+   "campaign": "22E054",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22E054-2468.PDF": "6b0983d839402adccaecbaf3c8fdcc15d175cf1660216d810f28f888a6a7796d",
+    "odi/rcl/2022/RCLRPT-22E054-3480.PDF": "fce6615b9f5f69f13277abd23ebb00e9d1b35e7566e4594f58e25afe1c53a029",
+    "odi/rcl/2022/RCLRPT-22E054-3694.PDF": "40b9fbc2cc625153e73fa75a33a1dca9d2ec7a6289f0867c138b1d0fe5ff5435"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22E054-3694.PDF"
+  },
+  {
+   "campaign": "26V574",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V574-4823.pdf": "c95408a5b6e227ed65ba2fb45c0935a779a8c46d7ee69fa9a3231814fc98137d",
+    "odi/rcl/2026/RCLRPT-26V574-6214.pdf": "3fdd680583cfae76834bc1612befa974f9a54e5c053e3fc6ff108f2c7e55384a"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V574-4823.pdf"
+  },
+  {
+   "campaign": "24V830",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V830-7473.PDF": "88de557f3b69b24b27a54247a9c54d92f84c9cbc5c9ae93c62d5961850908205",
+    "odi/rcl/2024/RCLRPT-24V830-9694.PDF": "f335d2955cf028043969cf9cc940dd8fd079ce4a20eddb5fcef7b84bb7a1de95"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V830-7473.PDF"
+  },
+  {
+   "campaign": "20V710",
+   "pdfs": {
+    "odi/rcl/2020/RCLRPT-20V710-4769.PDF": "e13b40afa628ae9f32ed3ed1a3f873da876bf9f195229c4767768b4a1192f835",
+    "odi/rcl/2020/RCLRPT-20V710-8186.PDF": "5da179e04e793c61349bc7701fe65b393d66a33863f93ad82a06d57fdd71cf3c",
+    "odi/rcl/2020/RCLRPT-20V710-9316.PDF": "a8b895dbd6c4a2a4198ba562bf3f63a13f62e42b79ef33ad9203cc90fb53dd10"
+   },
+   "selected": "odi/rcl/2020/RCLRPT-20V710-8186.PDF"
+  },
+  {
+   "campaign": "26T005",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26T005-3153.pdf": "f1c2969f01b28e79e5f8eba36fd5487ca9dc47ae74e2d9002ef75a219d223cbb"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26T005-3153.pdf"
+  },
+  {
+   "campaign": "16V723",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V723-1507.PDF": "c6777572374e153d7944ff94e6efd422f26d38e1655fe5e7386c49ecadffdaa0"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V723-1507.PDF"
+  },
+  {
+   "campaign": "23V611",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V611-6198.PDF": "9371251ad0d9913a982d935cc6ef027510d845c68858d9ad51c02f2ca79b688c"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V611-6198.PDF"
+  },
+  {
+   "campaign": "26V333",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V333-4875.pdf": "dab049380fb44dced2228b74982eb3365bdddc6f1ae65b7400caff11996648d2"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V333-4875.pdf"
+  },
+  {
+   "campaign": "20V354",
+   "pdfs": {
+    "odi/rcl/2020/RCLRPT-20V354-3516.PDF": "2ea2ed065d921f0e1c29472b7317bdb42d764f965f9b53347e9d9731ada88e6f",
+    "odi/rcl/2020/RCLRPT-20V354-8051.PDF": "4faf3521d1757e8fc120d28a7b73860facb92f11217993d4dc2b386eaba5fdbe"
+   },
+   "selected": "odi/rcl/2020/RCLRPT-20V354-8051.PDF"
+  },
+  {
+   "campaign": "24V401",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V401-3408.PDF": "a0168637b1f89bdc93643ac425063e1c32489647d838d8eb964d926e19773351",
+    "odi/rcl/2024/RCLRPT-24V401-4310.PDF": "186b186ea6ed9d531a161f6f5326b04a7c0d9fc440b590da2edb308c700f90ec",
+    "odi/rcl/2024/RCLRPT-24V401-8747.PDF": "f76c2720bc079a4fcbb68deb6aa51262656f42665eb60126bd10ef371e037ed5",
+    "odi/rcl/2024/RCLRPT-24V401-9535.PDF": "4b075201a393f3a27606eb71cc7be38e6b1175640cd241d3826cc70576908fa3",
+    "odi/rcl/2024/RCLRPT-24V401-9695.PDF": "a9b77b738734dcd8ab31032dddcc634e324f015cb4837636731c273e8c147090"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V401-3408.PDF"
+  },
+  {
+   "campaign": "15V342",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V342-0197.PDF": "c0dc4fa02f681921fdbdbd79f5e8e92087c581122b0466332fb7da14aae674f8",
+    "odi/rcl/2015/RCLRPT-15V342-2203.PDF": "cec29d096d942c59bb0bd5bcdd651103e28b810d195c011e0c61943a6f611273"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V342-2203.PDF"
+  },
+  {
+   "campaign": "20E079",
+   "pdfs": {
+    "odi/rcl/2020/RCLRPT-20E079-2396.PDF": "37c84a703636d6fb5d8106e882cc89904c38d1b9156d15adc4cc8295e4c03d9f"
+   },
+   "selected": "odi/rcl/2020/RCLRPT-20E079-2396.PDF"
+  },
+  {
+   "campaign": "19V744",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V744-3102.PDF": "7f3d69acd319be24b314d72f15ffa73d11dce09f4312ef06781850a3aaac1eac",
+    "odi/rcl/2019/RCLRPT-19V744-4403.PDF": "c99405ae02c7f96c70ccc03484e5a0defe26828322e80728751fa0ad31e261d1"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V744-4403.PDF"
+  },
+  {
+   "campaign": "22V878",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V878-2809.PDF": "b836b73026b5d9686727491ab102277c344ee183648b74101560c182f0599a42"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V878-2809.PDF"
+  },
+  {
+   "campaign": "18E028",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18E028-6263.PDF": "e5c2b516d9b3ebcbd6384f84eb6e73249d7976c1a8c590ac56734e0d5f662a69",
+    "odi/rcl/2018/RCLRPT-18E028-7040.PDF": "392ecb386a8c96901e7febda1466edaad0c3089454be3f86ba18d242a9d6f05f",
+    "odi/rcl/2018/RCLRPT-18E028-7562.PDF": "677d7fabc95892fdff1af833ce39eb544080ac064cba58fd512565562fb1b1cd",
+    "odi/rcl/2018/RCLRPT-18E028-9189.pdf": "42b9e19859326efea70d99e920fbc0905cd423ba3279c03a68bdae6bae17f46d"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18E028-6263.PDF"
+  },
+  {
+   "campaign": "24V186",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V186-8429.PDF": "de7f78c237e84a0cc4e29aec5680fbfb467bda7d582009e8bd3daf36b45667c1"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V186-8429.PDF"
+  },
+  {
+   "campaign": "23V054",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V054-4792.PDF": "f20aae190cb222729edef20f21c3f40c13c2fba93800ad15694c2d81622ffdfd"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V054-4792.PDF"
+  },
+  {
+   "campaign": "17V344",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V344-2601.PDF": "daf23f12e5eea75d5fa4d55e502b6da2327e7708b2d1bdd6a7449e5eed59ab1e",
+    "odi/rcl/2017/RCLRPT-17V344-3791.PDF": "5141da78454e35d051b0ccf648fae3e55f4401e7d2b934d59ac00e2d6f1f56c3",
+    "odi/rcl/2017/RCLRPT-17V344-4046.PDF": "8327e4ad6243499f6ac14c9c803704bbb21a9afbf8adb2024587bb1c59c2e12d",
+    "odi/rcl/2017/RCLRPT-17V344-6657.PDF": "05fdb11551195996f16c0f1301905ac3f9f0796f6f60e755ce5f5a03c4f9c847",
+    "odi/rcl/2017/RCLRPT-17V344-7933.PDF": "e57c5e0afc38854c863a87b488b85ab7d7f2651abed7bbfa9efa0dad84888b03"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V344-2601.PDF"
+  },
+  {
+   "campaign": "24E081",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24E081-6474.PDF": "96990c263f81965a60bec9a0d5db9437b9ef113175ca67d9d22f5befe5178065"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24E081-6474.PDF"
+  },
+  {
+   "campaign": "15V490",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V490-2248.PDF": "1824011aaac3e7ed3767d0ebd91e0c6d2646ab510f4d4ed98274776b2238fef2",
+    "odi/rcl/2015/RCLRPT-15V490-8246.PDF": "80dd25ba48d8b4afcb6acf1011ca07fe988dc363d71e4f00029d18099ff24e2d"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V490-8246.PDF"
+  },
+  {
+   "campaign": "16V951",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V951-6183.pdf": "ac139a91a3f3359da26a5482be2bf0b70fa022c2d097cc325dbc36822021799f"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V951-6183.pdf"
+  },
+  {
+   "campaign": "16V631",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V631-8701.PDF": "fdb5b31e01768336d9ca22e74d87df6c4fdbba5da360d0a151ae2cc78b72853b"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V631-8701.PDF"
+  },
+  {
+   "campaign": "22V560",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V560-1091.PDF": "82bf6ed252f071bedd5c9abeb9e120bc160ddc9a8ddeb9b43f54ab46e42735ba"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V560-1091.PDF"
+  },
+  {
+   "campaign": "15V264",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V264-7575.PDF": "7584f0b7d7ca0469c3285b4f7686e513d5a92f1daa299547f61dbaf9ed304123",
+    "odi/rcl/2015/RCLRPT-15V264-8204.PDF": "153b5e88d56ea08116d9182e58afb16c3399c881f88fe44b0d77eb7a6a12d5c6",
+    "odi/rcl/2015/RCLRPT-15V264-8601.PDF": "41e792df22b9dd1d285e961d6c4ad7ca8b1b256e7a299e60cb7c4f75e5585eaf"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V264-8601.PDF"
+  },
+  {
+   "campaign": "23V565",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V565-2232.PDF": "9225accff989947c3253206adc45fcfef8bc99a03afd360c27e9bb5d2294ea25"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V565-2232.PDF"
+  },
+  {
+   "campaign": "16V539",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V539-1117.PDF": "30f3ea887b95cb67eb113b5425b3510a2260f0b859eb061f26f32af7a4df6536",
+    "odi/rcl/2016/RCLRPT-16V539-4271.PDF": "4ec228a1dd5087554f22ee3b9c798068501615d6db12620a4ee6237a914a6dab",
+    "odi/rcl/2016/RCLRPT-16V539-7604.PDF": "ea40e11ba13ab8046684caddc8540709577c754224dd3dbe65d69dc29d8c73aa",
+    "odi/rcl/2016/RCLRPT-16V539-8669.PDF": "62de1a311a6c596a6ab0091a2f51a4f081683f7bb4610c9a77a55ef36df1990b"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V539-1117.PDF"
+  },
+  {
+   "campaign": "23V002",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V002-1889.PDF": "e402a67f8fc9565b792012a88e81d9801086618aef278c6e3c517ee9af48fe1d"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V002-1889.PDF"
+  },
+  {
+   "campaign": "25V398",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V398-6678.pdf": "8071fcf216cda732005c846b2d99605776df257b93242156ee7a99f3fdde386f"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V398-6678.pdf"
+  },
+  {
+   "campaign": "18V663",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V663-2176.PDF": "f698c468ea25d71c79fae73fad461f65f49600ac9547635139bb31cca8684581"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V663-2176.PDF"
+  },
+  {
+   "campaign": "22V888",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V888-9689.PDF": "a715b5f12a11b7974023dd24593c30e29655921798aa30faffc5cbb7f7410fcd",
+    "odi/rcl/2022/RCLRPT-22V888-9840.PDF": "54f7a5a255492faa77e730c3e7e39c9138cc6e3605c161bbdddf7e4abb052f1d"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V888-9689.PDF"
+  },
+  {
+   "campaign": "19V873",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V873-1247.PDF": "7572bb452bcaeb9ebb12bdfce62f59edeac60501e86441b91cd816710d46d3fd",
+    "odi/rcl/2019/RCLRPT-19V873-3616.PDF": "21e8e75d8030ed0ec3ab1763e31f1805c9492a44694bcf5ee6257545bb674e8f"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V873-3616.PDF"
+  },
+  {
+   "campaign": "17V114",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V114-5299.PDF": "e17053329ee32a89c88c1d469d06ef9d152454b3838eadba8c94b4d914123354",
+    "odi/rcl/2017/RCLRPT-17V114-6175.PDF": "089987d4f01f7d9c4ac867aa70b1d79e8cf5f8cb6b27864f300f2587b77529f5",
+    "odi/rcl/2017/RCLRPT-17V114-6749.PDF": "3b0fb2e97655ee4c9d15d4092ca0283fc5b4beb815d288834d938d8c93f33842",
+    "odi/rcl/2017/RCLRPT-17V114-7680.PDF": "0e2cf8780729df48d9eddb3e4ebe1820e3d80e9026b669e54658ed950e5d7468"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V114-5299.PDF"
+  },
+  {
+   "campaign": "23V755",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V755-1084.PDF": "ee613f7f8c7d072abaef0db899e75538fbfec9b587c1a73708e5ffad8efe6e1e"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V755-1084.PDF"
+  },
+  {
+   "campaign": "16E039",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16E039-2413.PDF": "e5cf414cf20dd846f4482fee3d8b604cc6f697c6bd01cf268eb15f0e2d32b597",
+    "odi/rcl/2016/RCLRPT-16E039-3791.PDF": "7ab2d0f619d712798a65face80cc2fd3596380aaf8cedb7307bf953d449c163a",
+    "odi/rcl/2016/RCLRPT-16E039-6706.PDF": "a70a14425527576e6b55fa098f9b2c43668cd04b98fa72b8c7385fc7047aaaf6",
+    "odi/rcl/2016/RCLRPT-16E039-8631.PDF": "d4ee60fa18e1d088b75513f35d08b6a72d411112508193f4045bc7875fb3fc54"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16E039-8631.PDF"
+  },
+  {
+   "campaign": "16E074",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16E074-4532.PDF": "0e476bfa2d58bd42bdacb852588cc8e30caeaa6fcfb00c126b46d02a8deb3a40",
+    "odi/rcl/2016/RCLRPT-16E074-7669.PDF": "de5cb12bd2322e30053b2eb03a248a7e6d8d00b468d641c08c0cf1f7e6437a69"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16E074-4532.PDF"
+  },
+  {
+   "campaign": "15V850",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V850-0981.PDF": "dfb972ccaa2a221824ddf5e47070a3b8aa7fd1954656a6d92493f34e5f288716"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V850-0981.PDF"
+  },
+  {
+   "campaign": "22V235",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V235-1744.PDF": "b7c7c9b34051d617428e61864c130be3f780b1978110e5f52c6d52afaee66389",
+    "odi/rcl/2022/RCLRPT-22V235-8842.PDF": "1965837f584a1875d3a2599ffa915a2448dc3717dd5fcfe66db15eec0167c4cc"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V235-1744.PDF"
+  },
+  {
+   "campaign": "24V532",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V532-1620.PDF": "f185b59eda7dbaa1e8f9655ec4dd88cb816e9d50e114511ff32eb52b2982d267",
+    "odi/rcl/2024/RCLRPT-24V532-1967.PDF": "e60fb7007aaed135eb7066c734daf5d9a740ed9ea7bb2b1038f0678925a5844f"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V532-1620.PDF"
+  },
+  {
+   "campaign": "24V630",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V630-1362.PDF": "9a7c4dbc6c5e95fa27065a22c0fd1ba30a0d7aecf127482be737219b0ff28a4e",
+    "odi/rcl/2024/RCLRPT-24V630-2166.PDF": "9ff7effa365728a9e5c9a857a53aa5573cf7794c8f950685becb4cbb88e4f1f3"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V630-1362.PDF"
+  },
+  {
+   "campaign": "16V661",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V661-3045.PDF": "fd172f4b1f4a0e7ae8325792b4904910e7705dc0567a4beb0b77275163a320b9",
+    "odi/rcl/2016/RCLRPT-16V661-5460.PDF": "c8cbf39d3a12f3ca84bbc2d50801f9a19604d98a649aabae12a3e2c54d102704"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V661-5460.PDF"
+  },
+  {
+   "campaign": "22V603",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V603-7511.PDF": "dd3d8bb4bab14fa7eecbad929e48586a06d3d5db58b658f3387501367ae7b8af"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V603-7511.PDF"
+  },
+  {
+   "campaign": "17V740",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V740-1368.PDF": "f9196a900964a6934373c52cf426525e846833f380524be527f91d2bdb2efdd6"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V740-1368.PDF"
+  },
+  {
+   "campaign": "18V458",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V458-3410.pdf": "c70760d1ad51ddbfe441ce0698985bf60002f75bdfa6d6bfa62a451cf4fd1a1d",
+    "odi/rcl/2018/RCLRPT-18V458-5987.PDF": "2286232ddd6800619cbe63705fd2b781748c6d93f21bda9a302eaf0f9f7fda30"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V458-5987.PDF"
+  },
+  {
+   "campaign": "24V892",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V892-6729.PDF": "07b5810907e102fa97889f5ead872c53a75fa3aed6d4db3b5641d5bf56b934f2"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V892-6729.PDF"
+  },
+  {
+   "campaign": "19V066",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V066-1481.PDF": "edd1c11d4509427938286d7661eeb2a22da64893228972ca904a0b4d7ffdcaed",
+    "odi/rcl/2019/RCLRPT-19V066-2618.PDF": "72fcbc6d5cf2fda86a1ac7fa6f6f8b499a79e740baa90f3f2b8fe792ad65fd46"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V066-1481.PDF"
+  },
+  {
+   "campaign": "16V520",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V520-3496.PDF": "faf99aa9b0cde0fe2663221e1bc2a0299aa64ec62d9d2ae8fe94d8723c4f3df2",
+    "odi/rcl/2016/RCLRPT-16V520-3496.pdf": "faf99aa9b0cde0fe2663221e1bc2a0299aa64ec62d9d2ae8fe94d8723c4f3df2"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V520-3496.PDF"
+  },
+  {
+   "campaign": "25V016",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V016-6466.PDF": "5600d306cfb47993c3a67785726222ee3ce1f2985f9b5e106fce977feff4ce3a"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V016-6466.PDF"
+  },
+  {
+   "campaign": "23V249",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V249-1092.PDF": "5059d2f1c4fde86ab726bd22e5808f386c4c433a92346704b4df3defe831d1ca",
+    "odi/rcl/2023/RCLRPT-23V249-7622.PDF": "db3c63c5cc7734b79768c23514dbbf7829783ac1ac8833c4469d3ddb3fee19fe"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V249-1092.PDF"
+  },
+  {
+   "campaign": "24V433",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V433-4351.PDF": "15d8198fed7cd8ce9b76eb5b788d536d87bc448cca26d6e595631f6bc543ebd7",
+    "odi/rcl/2024/RCLRPT-24V433-5124.PDF": "11032f19ac41c2d98f08bb017549755078477820b06be303210638c3162a9944"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V433-5124.PDF"
+  },
+  {
+   "campaign": "16V003",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V003-4428.PDF": "5b2d6ddb58333ba97576f6d63eca24053003bebb1a5e0538721c92eaea43fff2",
+    "odi/rcl/2016/RCLRPT-16V003-7137.PDF": "14f4bf4a75a37062acee4c0349daba2c9b4a9211c6cd93d56bf0f0a50a3005e8",
+    "odi/rcl/2016/RCLRPT-16V003-8161.PDF": "f26638d6b9755a5387c201a7e66999133d688dd0a477abe6cc8d30c118777a7c",
+    "odi/rcl/2016/RCLRPT-16V003-8335.PDF": "66559b9766d26a2058324b5018e19b09a77adaea92e0d350abdf5f303e5bbf09"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V003-8335.PDF"
+  },
+  {
+   "campaign": "21V851",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V851-4623.PDF": "10390533041325e99c766878a64afcf3fb81ec98b7be9a87d7ad9e6cc7f39147",
+    "odi/rcl/2021/RCLRPT-21V851-5770.PDF": "cf30ac26d748f5fb368ff7ba8f93fd901536e04db810ed78612fc482c4338068",
+    "odi/rcl/2021/RCLRPT-21V851-9259.PDF": "d2625b0633eb07093c281a1215a75c28f4692ed4023f4bef7b1e2b032efd242a"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V851-9259.PDF"
+  },
+  {
+   "campaign": "26V525",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V525-9403.pdf": "14cf62b49e1405ddd989a4c75ac636cbca25d22e45aa3cec4c0b22482ee5fd27"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V525-9403.pdf"
+  },
+  {
+   "campaign": "17V828",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V828-5647.PDF": "3844f28f1496d6b0c8e8796e4cd8b7007bd9b2b4a3150c172f1464a46714d358",
+    "odi/rcl/2017/RCLRPT-17V828-7541.PDF": "e2bf8c37589841e6128988e91a3dd09a7419263591c3c682a14bdb8a51c60bff",
+    "odi/rcl/2017/RCLRPT-17V828-9427.PDF": "0f178524040c49ff4d468a05b710e1a92cee484fc4ce59a0d3709aa5f16780fe"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V828-5647.PDF"
+  },
+  {
+   "campaign": "15V073",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V073-6226.PDF": "dce01fdcf7a3002c8dae2fdfe9211f8294249a4154332594d7eecc518048cb04"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V073-6226.PDF"
+  },
+  {
+   "campaign": "21V653",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V653-5351.PDF": "b9980769429e27061327b793c153e1bbe1622bfa6277db8e882189d7b7d8992a"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V653-5351.PDF"
+  },
+  {
+   "campaign": "14V734",
+   "pdfs": {
+    "odi/rcl/2014/RCLRPT-14V734-2514.PDF": "245627e6039863cd1506d310f6835eac2655067d1fa1ddacebb7f77b4bbe5d7d"
+   },
+   "selected": "odi/rcl/2014/RCLRPT-14V734-2514.PDF"
+  },
+  {
+   "campaign": "22V466",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V466-2742.PDF": "b78aec1be428945b6894f9873687d28bc794f1b7c1330fad66521a2cb845cbcd",
+    "odi/rcl/2022/RCLRPT-22V466-4232.PDF": "e0473c3373d9b04770245a1678b836b457a02829a8e07025450c50431b294950",
+    "odi/rcl/2022/RCLRPT-22V466-5674.PDF": "cf7213c4c685ec4156b90b22a4172f556298e11c191c5ece8e6c4782f696dec0",
+    "odi/rcl/2022/RCLRPT-22V466-6117.PDF": "32c96e99ca48fedd4dbe19d89f89f4b9f02f1940e4abaef48fb6433550c06969",
+    "odi/rcl/2022/RCLRPT-22V466-6423.PDF": "842979df6a09da9792c17a52640e218df093c05d0cce2ffef79e98432e451205"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V466-5674.PDF"
+  },
+  {
+   "campaign": "21V130",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V130-6260.PDF": "5d00d7f6fd06218f4f121b57cb2d91353ff31b4dbc199e4f1bb4a0fd646d1599",
+    "odi/rcl/2021/RCLRPT-21V130-6690.PDF": "5743af8c22acfb026fd7897583a630c5b8106bb90267b3b9dced55c1714ef837"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V130-6690.PDF"
+  },
+  {
+   "campaign": "16V685",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V685-4281.PDF": "c843fd303eae532a05c5019b54fa4f09acf19e3e233adc5d6eb46ca16ea48de5"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V685-4281.PDF"
+  },
+  {
+   "campaign": "22V699",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V699-2239.PDF": "7d0919224ac65977f7a6f19306f2f63054ca7218d60f36be858f12666d46ca8b",
+    "odi/rcl/2022/RCLRPT-22V699-3575.PDF": "61eae97fcbd316b8eb5cd83d01171223eac7869758a25edeac9eabb833cb3294",
+    "odi/rcl/2022/RCLRPT-22V699-5101.PDF": "54c36de9d023e8dcfd8c71cf4dd37d171f5d54c563fadcdb519106df2c4f0420",
+    "odi/rcl/2022/RCLRPT-22V699-5481.PDF": "8df7c8f5f94cc270365f9af983cfa7c2290e46a693aede8ec4d1673123a561e7"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V699-5481.PDF"
+  },
+  {
+   "campaign": "25T002",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25T002-1359.PDF": "e321428a887a491577089cfa60ac89f6b0577ef0366be4c5ffd3cd6f5e9e29b9",
+    "odi/rcl/2025/RCLRPT-25T002-2748.PDF": "763c1e1950c090c601b88e3803890a390e03ada98e391335ba92416ecbcf8f12",
+    "odi/rcl/2025/RCLRPT-25T002-4171.PDF": "9bb9781b8cc8a67503fc7799cfe4a513c3fe68608587ba183347cc06e9307abc"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25T002-1359.PDF"
+  },
+  {
+   "campaign": "15V837",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V837-6477.PDF": "0f27b592216159d9067efdb52788c84f43cf04cadd1f190951b0205e0f263dcd"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V837-6477.PDF"
+  },
+  {
+   "campaign": "26V177",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V177-3703.pdf": "9a9dbb1a03cadd5d3213b9bb941cdcded3dee27c9c30eb881e1572961e3a4814",
+    "odi/rcl/2026/RCLRPT-26V177-6649.pdf": "904a4f6396b2f18e20f62f4e10a42b0e1fb507256a69a5f5143aef9091f3ffdd"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V177-6649.pdf"
+  },
+  {
+   "campaign": "22V030",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V030-1052.PDF": "3185ec5eded30ffb68d4e69a12efad317f29a1e7f87c0093940ce86addb83cd6",
+    "odi/rcl/2022/RCLRPT-22V030-4417.PDF": "8c75fd782f62898adbb478e97c81559fefce170972449e0403ec76663b41b6ab"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V030-4417.PDF"
+  },
+  {
+   "campaign": "17V614",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V614-7158.PDF": "32b24a0753ff9f05e2e7aa69276c4e9b6dc091655dcb94b6607f69e17a43f33f"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V614-7158.PDF"
+  },
+  {
+   "campaign": "20V230",
+   "pdfs": {
+    "odi/rcl/2020/RCLRPT-20V230-7130.PDF": "c087a35f3f3278e8fabfbafcd1c8cbb41c5b1241f4d603a660b3cafd3d2bf5d1",
+    "odi/rcl/2020/RCLRPT-20V230-7958.PDF": "34734ba6e4352a4214f61d7f687463dcc33535b23e3b386e6a1d34c75bb8e614"
+   },
+   "selected": "odi/rcl/2020/RCLRPT-20V230-7130.PDF"
+  },
+  {
+   "campaign": "23E061",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23E061-3757.PDF": "350c88061971a86992e393761d79aa5841ba36fee24f06b6f44f0aea603b8281"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23E061-3757.PDF"
+  },
+  {
+   "campaign": "18V637",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V637-1838.pdf": "d16c52023870de82515c40215fb1cd0e97a54130babca93fe04b124aac00e24d"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V637-1838.pdf"
+  },
+  {
+   "campaign": "24E013",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24E013-2218.PDF": "5908495bc9ed3f4b754945a9f2c70c1316e098ad9aa6b631d9fc78ef30a928fc",
+    "odi/rcl/2024/RCLRPT-24E013-4528.PDF": "55f9e13cea59572cb1daeaaae119e1cb283bafcef87bf38b5e8a0823f2aa3d68"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24E013-2218.PDF"
+  },
+  {
+   "campaign": "16V006",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V006-6381.PDF": "f4a88c0141b5c42c1c6dd06a393c923af862976db8f99ecc85df7958c30e0cd7"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V006-6381.PDF"
+  },
+  {
+   "campaign": "21V828",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V828-5577.PDF": "89104f43bd2cfa56302814b0152be3e351290c15bf12cbd75e0dca5b1ded1475"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V828-5577.PDF"
+  },
+  {
+   "campaign": "22V951",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V951-2505.PDF": "aee962b25678f04efaf54fd8fd122b2929f8d9626057ddc37fa2a8a84b051c39",
+    "odi/rcl/2022/RCLRPT-22V951-7180.PDF": "11044aaa76609e60d55942e5cdca217893d1d4b5d2da090a696287d1833708c9",
+    "odi/rcl/2022/RCLRPT-22V951-7495.PDF": "25827175a5b810aec7643f96ea942af60f8575a31fd6797f87c82f92b277f0dc"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V951-2505.PDF"
+  },
+  {
+   "campaign": "24V613",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V613-1768.PDF": "f3c3e9924b3ae344f4067fc55b0bada4a37eddfc405467a03f7c53dcdb333ef8",
+    "odi/rcl/2024/RCLRPT-24V613-3023.PDF": "2d7e34e62ab3444b60116f1c0a0202241839c51a63ed42e7b879cead644c1ee0"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V613-3023.PDF"
+  },
+  {
+   "campaign": "23V133",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V133-2903.PDF": "e643d05dcd847910a0cfc7fffc0316540992415abc2ec15419f5464fa9c93bf5",
+    "odi/rcl/2023/RCLRPT-23V133-7401.PDF": "c3e598c6aaacc2f26b0abe28126d184fb8df650dd0f19e81e11f8dda6879001a",
+    "odi/rcl/2023/RCLRPT-23V133-8754.PDF": "ef52bce99db1568888e5643232aa44033725827c867715081f0db25044b4ae5b",
+    "odi/rcl/2023/RCLRPT-23V133-9152.PDF": "07d2e7d34851674a86d4bb6c8ff02521f94ffff1fc63fb5c1927274f61477111"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V133-2903.PDF"
+  },
+  {
+   "campaign": "23V725",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V725-5094.PDF": "50f68931f27dbffcee53278411c2eb689ad7a4aa772056c1b16c21b23bc685bd"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V725-5094.PDF"
+  },
+  {
+   "campaign": "22V397",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V397-1729.PDF": "1cb10674729ba56699a552db2e930766e6d7d1e11d64ba9aefcfb3b8d4ac0966",
+    "odi/rcl/2022/RCLRPT-22V397-4748.PDF": "46d4ebf743e990de5910cd3d5a964451691f64cf55b359ff62ab0d46726fb31e",
+    "odi/rcl/2022/RCLRPT-22V397-5182.PDF": "bdb994bbbe5a15a614c13b329ade0297853d241cc5e311d4965eb50b8dc2c87e"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V397-1729.PDF"
+  },
+  {
+   "campaign": "25V173",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V173-2157.PDF": "4458da1dbd5b94586185dc01024b02e6f259b1baadcd305d7ca6a7eb8ce0bebc"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V173-2157.PDF"
+  },
+  {
+   "campaign": "25V380",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V380-5556.pdf": "286fc0c00b490409ee22712373d7af5a54d5bfa660df9f472ee155d50b9c792d",
+    "odi/rcl/2025/RCLRPT-25V380-7349.pdf": "fbf6908605ad3ba92e6db56100720edf8880a7c31c646b99474d8130d45e7b04"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V380-7349.pdf"
+  },
+  {
+   "campaign": "21E017",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21E017-8635.PDF": "3ab87321cb04cb92500ac93352f186e2301f7e46d4c30dcd4c12b3375a099ae4"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21E017-8635.PDF"
+  },
+  {
+   "campaign": "15V642",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V642-6982.PDF": "5b18b06acd3980532060fca886c95552e5f284a8f7b900739280508d14a10f05"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V642-6982.PDF"
+  },
+  {
+   "campaign": "19V686",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V686-3187.PDF": "2505583422c16f80518e8d1dd8c42d4d8ea5c9d35cbd52c09cd9435c2f3060d9",
+    "odi/rcl/2019/RCLRPT-19V686-5006.PDF": "5adf972852b4021023636d07c4c5fa632031f402df7c166e7817293465473344"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V686-3187.PDF"
+  },
+  {
+   "campaign": "21V867",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V867-2536.PDF": "0325f15d131a06edda0a637a9676af75c3cd71eaf7f430f6a250cce0bf57c833",
+    "odi/rcl/2021/RCLRPT-21V867-4353.PDF": "0d53059b1f6cd4bf8bb0ccd1568b47646ad193ce330f4d6d319dad53529acc0b",
+    "odi/rcl/2021/RCLRPT-21V867-8879.PDF": "2d30c18fa928408620cee5107f0fb97153a60ca90046a11092c9e82020215011"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V867-2536.PDF"
+  },
+  {
+   "campaign": "15V825",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V825-5242.PDF": "7ad0f62522a681241d48f8ddece8cc7ea5d3543aee41b38e4eea7d7321688b18",
+    "odi/rcl/2015/RCLRPT-15V825-8404.PDF": "bc36a9b4a3e65d66e4b177f2ec07e48a8f5a98998a6f24cb00655189a0a7518d"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V825-5242.PDF"
+  },
+  {
+   "campaign": "18V336",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V336-3102.PDF": "42fb61186674582b2c1ef6d8b7aa3ebadd4bb9635e79053de2456559e5b624b5",
+    "odi/rcl/2018/RCLRPT-18V336-8000.pdf": "9ee6f6082d60730ee6c8402e7d80be048362bf7e2166367e5602fc5f7c1151fe",
+    "odi/rcl/2018/RCLRPT-18V336-8552.PDF": "003d13459e855186a8cfa6cb7ff2165b93a2ff71ec3ab2b162a4fd6e74554555"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V336-8552.PDF"
+  },
+  {
+   "campaign": "22V242",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V242-6390.PDF": "8f8270ffbe5f41f7c66845666c186bd09c532c4c11f1a6ebf22f0b0301550cd4"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V242-6390.PDF"
+  },
+  {
+   "campaign": "16V258",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V258-9611.pdf": "ce4c0d1b58a0167f28cd0410e8f5782b26f590c5f675e82f145b3e41826a0660"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V258-9611.pdf"
+  },
+  {
+   "campaign": "24V529",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V529-2117.PDF": "3b981f2bdfae829089dd0a3b2398f780c46f5f63b8b91ff3a94ea9f5eca73b84",
+    "odi/rcl/2024/RCLRPT-24V529-2962.PDF": "3ea927d428d2a935a1ed4f868328e1103292db9357192ddc27794c221708d1d8",
+    "odi/rcl/2024/RCLRPT-24V529-5689.PDF": "bde8ab29b2dbb035b86227e430039363d201cf9a3f52a7476cbd21edb3803cff"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V529-2117.PDF"
+  },
+  {
+   "campaign": "24E066",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24E066-7144.PDF": "c3aae58f9cad326c870a2d972416f263eca7dfa309a1e54c6364dfe2be801333"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24E066-7144.PDF"
+  },
+  {
+   "campaign": "23V220",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V220-1753.PDF": "7dfc6c9430f4e1741ffb1fc5560192f5baa24e6edf3685fd1a91fd54d42b3ce1",
+    "odi/rcl/2023/RCLRPT-23V220-8708.PDF": "6767475a590e80cbfed4f5e7d0bf26a0997cb848ec49da679b024bfd32ea4c0c"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V220-8708.PDF"
+  },
+  {
+   "campaign": "25V063",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V063-1234.pdf": "e05366649f8a9767c739ad960d0ccccdcf26f0e9c9b1da56ed6a98e62f7bedb7",
+    "odi/rcl/2025/RCLRPT-25V063-2190.PDF": "f8e8baf3d2f9c97a01810327964641afb987a171a90f38ce708a0712adaa527b",
+    "odi/rcl/2025/RCLRPT-25V063-2196.PDF": "d9786a7832d843138e4ad45578b02ee1cb7a9de70675cd87ce9ec0b99c5e8826",
+    "odi/rcl/2025/RCLRPT-25V063-6930.PDF": "cc9c3a8b2f3aee65409f310d024b52977662a2d77b6298542dbed1bfb7d4a774"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V063-2190.PDF"
+  },
+  {
+   "campaign": "16V156",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V156-3609.PDF": "1060500bc9b79d516965ea9428f0ba57127349df07c581b125f9539adfe5b45e",
+    "odi/rcl/2016/RCLRPT-16V156-3859.PDF": "eebccf56e14f6f3b3d3db1e7e3de003894ed5cc28735c1799e72e98b16801aca",
+    "odi/rcl/2016/RCLRPT-16V156-5540.PDF": "90a9a48925f060608f4ea2bc07d043fe86db9d499302daacdcef2fb214386058"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V156-3609.PDF"
+  },
+  {
+   "campaign": "25V690",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V690-8658.pdf": "cc00f7625452ad5a02af63e016e47ccd4adae32a3abd4d5f38dd3e2a1c2b5889",
+    "odi/rcl/2025/RCLRPT-25V690-9693.pdf": "34a3bf64459633c95f75bbb85885eec2618f471e90253a2419f43b4b2942f9ee"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V690-8658.pdf"
+  },
+  {
+   "campaign": "21V686",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V686-2127.PDF": "0de79ac3948939aaa26d02bb5de5e26be95cf9f57728393782cb585cb840ef23",
+    "odi/rcl/2021/RCLRPT-21V686-7705.PDF": "e711de355cf9d9c00de3fc125640c23ba7df4e1834e614776ca02cd3fa5b70b8"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V686-2127.PDF"
+  },
+  {
+   "campaign": "19V595",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V595-4766.PDF": "0e248ada0d4d9b80ece8e5bc0636f07e3174415dee55dbee31f3697753bb24f6"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V595-4766.PDF"
+  },
+  {
+   "campaign": "24V770",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V770-2912.PDF": "6e555e3b0bccbee733bc310c7e610ba80b6353086f8c0ce42abbb8a475e8cd72"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V770-2912.PDF"
+  },
+  {
+   "campaign": "22V766",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V766-2351.PDF": "e38cbac1f32eb1931a44d09ce6e8650472e8b8444d72dd7910fc4c9ebf5a1c45"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V766-2351.PDF"
+  },
+  {
+   "campaign": "22V020",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V020-8083.PDF": "41d310473c6aa4f679ca58d14c07cd9b6cdad6b6d1e86d5e111fe9ccef808ad3"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V020-8083.PDF"
+  },
+  {
+   "campaign": "16V670",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V670-2664.PDF": "e5034baf8173d29358be8d0f3bc2fe76259b8191d3ad61fa032665ce76fe8cf9",
+    "odi/rcl/2016/RCLRPT-16V670-3095.PDF": "1287a3c13ce99786b227847a56b9896c8c8c95de1d9beb2e1e9b58ec99a10631",
+    "odi/rcl/2016/RCLRPT-16V670-3775.PDF": "9ecb228d26d4b40a35c45ef0432c4a8fe34d831a1deef90f73a48a5293f41a1e"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V670-2664.PDF"
+  },
+  {
+   "campaign": "22V210",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V210-6836.PDF": "40c4fa89e6c09b6087221e04bf05b5a87f634d7984acf13faaf6935ff8f35862"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V210-6836.PDF"
+  },
+  {
+   "campaign": "17T014",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17T014-4648.PDF": "57220104e8d1ea34358d12feacf4d2b83780c18a5c6555bca629b62db4a87359",
+    "odi/rcl/2017/RCLRPT-17T014-6727.PDF": "b87cb483a918d91117e326b285e78c703faa17a729cc40c2a9db69dc92c2427d"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17T014-6727.PDF"
+  },
+  {
+   "campaign": "22V882",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V882-8775.PDF": "14e7d1566774b325a24bbde696e31e257b9d306ccbb477e0e173c8dd4c5a3c07"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V882-8775.PDF"
+  },
+  {
+   "campaign": "15E013",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15E013-3095.PDF": "bba474822459175ce892ce6adebe143d912afa61cc42802eecef3d4615dac8bb",
+    "odi/rcl/2015/RCLRPT-15E013-3460.PDF": "9dd8bbeff6d59c2131d2e9ba0f9f7e0033f26f4ccfdb0cfb1c62498300c5c3a7",
+    "odi/rcl/2015/RCLRPT-15E013-4521.PDF": "19f7e74be858eaa5babc9f6ba66fcbedfe0a00d5aa46faa70ea0b240119832b9",
+    "odi/rcl/2015/RCLRPT-15E013-5738.PDF": "8bebaec090a28973bbeadc3ecb475d1b66a98c71f7b766254befb41a88975c13",
+    "odi/rcl/2015/RCLRPT-15E013-8183.PDF": "5cc33fc621789d54ca36f97494322594637d807ec73cd9599975652fc516db85"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15E013-3460.PDF"
+  },
+  {
+   "campaign": "23V011",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V011-2198.PDF": "8fda1d776b0395bdaa3044586f2c3ce14f11fb8c354b032451ebfc17e926349e",
+    "odi/rcl/2023/RCLRPT-23V011-3383.PDF": "39f4ce8916e6760a7e5db567ebfc80a7c4c74bf4198e5e6e7370be45c682b64b",
+    "odi/rcl/2023/RCLRPT-23V011-8434.PDF": "7e0f3c89389fa7ae36e3a60df460545f202d535963905e397d536236ab4a62ea"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V011-2198.PDF"
+  },
+  {
+   "campaign": "14V707",
+   "pdfs": {
+    "odi/rcl/2014/RCLRPT-14V707-3435.PDF": "893a9292ffcdb504d3ad3c34821c9bbdd92f942982f78a6f1b62e9a12095a8e2"
+   },
+   "selected": "odi/rcl/2014/RCLRPT-14V707-3435.PDF"
+  },
+  {
+   "campaign": "22V412",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V412-2331.PDF": "c684921e75f990770191a1665a6c24b6085dc677446ee9017a32a51c619624b8",
+    "odi/rcl/2022/RCLRPT-22V412-9551.PDF": "7f9d6dfa847a251c02ef2fedb709c48402705aa5174aa0040380750cd3007aad",
+    "odi/rcl/2022/RCLRPT-22V412-9582.PDF": "a00f1a4fca1b47392060622d746491a828cb07ad916524487984e657f951e64e"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V412-9551.PDF"
+  },
+  {
+   "campaign": "17V340",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V340-2899.PDF": "147a7fef933734f03e6ef7787c2ea521ab75975ff9ae5521b443ad731d47053d",
+    "odi/rcl/2017/RCLRPT-17V340-6861.PDF": "adb63ddc1613f0dcfbeb35b26717d0a483cd4ee63d25122f9b5b99cf6cbffac2",
+    "odi/rcl/2017/RCLRPT-17V340-7106.PDF": "03db4d8785fe192652218651bfbb607420dfda6ca00f1a0cd7779a21648199ba",
+    "odi/rcl/2017/RCLRPT-17V340-8439.PDF": "1ed539b61cc0b976a9d2b4f42b4b1fd6e509c3320669979c4a0c85c5b5edc87a"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V340-7106.PDF"
+  },
+  {
+   "campaign": "24V077",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V077-1532.PDF": "f718799da3c58dc441519827e0e682afb65281b52e3ec50224e3c6bcd7ab6278"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V077-1532.PDF"
+  },
+  {
+   "campaign": "22V138",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V138-2930.PDF": "d5fcb2ad2209e32d595bba3dacbeff0543b2c98c37c2d2b7b21641afdff654c2",
+    "odi/rcl/2022/RCLRPT-22V138-9437.PDF": "8d45253f1e89947d69341d5e899d3c13183caa25d2e969e58bfd1e8f5daa36a0"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V138-2930.PDF"
+  },
+  {
+   "campaign": "22E066",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22E066-1785.PDF": "a77b8b824af4d1cede95e314f11c77bc2486379623144462b5de17a356d0b5e5"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22E066-1785.PDF"
+  },
+  {
+   "campaign": "20V790",
+   "pdfs": {
+    "odi/rcl/2020/RCLRPT-20V790-8285.PDF": "adc9a66e01d7116e6b52996b5b7f48b28fd128faf915e01c83237e8bd4b749b6"
+   },
+   "selected": "odi/rcl/2020/RCLRPT-20V790-8285.PDF"
+  },
+  {
+   "campaign": "26V625",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V625-5393.pdf": "346c64d449ce5d4fd0f45b2d9b6115d0549b4a8dabc63ac106fec5fd5eadcc03"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V625-5393.pdf"
+  },
+  {
+   "campaign": "25V143",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V143-1076.PDF": "07a68d4cbd32f12d94214ffdb5e3c066fd671ceecb93a926d847edf0824a1c76"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V143-1076.PDF"
+  },
+  {
+   "campaign": "16V398",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V398-5396.pdf": "908317a179b4339326dbe801e8e726a3bb2fae777604098656bdb2770a58aa70"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V398-5396.pdf"
+  },
+  {
+   "campaign": "26V263",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V263-6693.pdf": "e126efd0af742a7a5c7d6664ec7c3c1e2f865b87941810939eb8c2bfcc9890a2"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V263-6693.pdf"
+  },
+  {
+   "campaign": "17V413",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V413-5059.PDF": "7af24ba71a17fc3935114ea00abec3428a1894c66fe8312d58f9b8a04868d827"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V413-5059.PDF"
+  },
+  {
+   "campaign": "20E075",
+   "pdfs": {
+    "odi/rcl/2020/RCLRPT-20E075-7667.PDF": "1e968f91e510132905dc295e1a60887670995832c90bee667b81b5f0e0e1fbbb"
+   },
+   "selected": "odi/rcl/2020/RCLRPT-20E075-7667.PDF"
+  },
+  {
+   "campaign": "14V813",
+   "pdfs": {
+    "odi/rcl/2014/RCLRPT-14V813-9771.PDF": "81b9d4eb91427b70db34a1005dc02f469c783816ed08c6032352cc5653b5ad71"
+   },
+   "selected": "odi/rcl/2014/RCLRPT-14V813-9771.PDF"
+  },
+  {
+   "campaign": "21V884",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V884-1724.PDF": "97086efc06c837f986dba91d8be4ffd394ccc6834611e46e3681ecbca00359e4",
+    "odi/rcl/2021/RCLRPT-21V884-2886.PDF": "be88612d4e5dddc5e72171716b35f922d91eca2517693584a1e576eeb391fb6e",
+    "odi/rcl/2021/RCLRPT-21V884-9492.PDF": "509c211d088eb97bb3d57471c64a547a927bb74414c0e1cb28e25fd827f51bf7"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V884-2886.PDF"
+  },
+  {
+   "campaign": "15V352",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V352-7810.PDF": "97dfe6a895db99118cf2b16be470f0e7cd82547973fce02c1625987981c9b48d"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V352-7810.PDF"
+  },
+  {
+   "campaign": "24E069",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24E069-3007.PDF": "e0ce37971ca36edfbf62f9c03e7ec8a2d69b6ce524111a2cdce31760471d9d8a",
+    "odi/rcl/2024/RCLRPT-24E069-9803.PDF": "a45b215c2df319dd43f0450f8bd58c9c42e21f0d4e15040fd6ef2bd8ac978bb2"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24E069-3007.PDF"
+  },
+  {
+   "campaign": "22V010",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V010-3724.PDF": "13844d695a18fb22a69ba77ed7b3b38590c5338defe202023f180ceaef683af8",
+    "odi/rcl/2022/RCLRPT-22V010-5208.PDF": "626eb1f2491a2e374f6381e02f13f023a8eefa6c9cb16159f795176c64163ed7"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V010-5208.PDF"
+  },
+  {
+   "campaign": "15V213",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V213-0514.PDF": "e907f15ae9f82d95aed2cf621477d908d52dc642ff5e0c30bfb342f5c4c64f85",
+    "odi/rcl/2015/RCLRPT-15V213-4500.PDF": "76cb2ee412f148601b12acc198f3a1dc4200151dc1a677c2017ab32a1296395c"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V213-4500.PDF"
+  },
+  {
+   "campaign": "19V285",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V285-4155.PDF": "cbaf411d1a6be23e2e78b18a9b0d994f5a84840286fa5065bf5547723e257515"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V285-4155.PDF"
+  },
+  {
+   "campaign": "19V535",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V535-8797.PDF": "01fffc09b88e62e85ef8583c73ce833665367528de93006fcf207797bb779dc5"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V535-8797.PDF"
+  },
+  {
+   "campaign": "23V687",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V687-1334.PDF": "73e52250d3e2113ad91e11c663790264e217ea05fab74691e30b1580c9e9661e"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V687-1334.PDF"
+  },
+  {
+   "campaign": "24V061",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V061-1659.PDF": "fcb75de5019bbfc42e4debc4670a19c6275b633f4e5419c9a421709fbddbfb07"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V061-1659.PDF"
+  },
+  {
+   "campaign": "22V475",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V475-7403.PDF": "d57629af55b1ee543732d154622bcc86b6a1d0727bf30b62050596aae2c12655",
+    "odi/rcl/2022/RCLRPT-22V475-7819.PDF": "fb546e2c9a6485452b4e499ba87d0d785e570a91c086e17ab0005a189e5cb265"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V475-7403.PDF"
+  },
+  {
+   "campaign": "23V184",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V184-3832.pdf": "3080ac7380bcaf2f5752d2674ea9de827d9b20a0e459e4a52092d22a4ca54222",
+    "odi/rcl/2023/RCLRPT-23V184-8706.PDF": "3efeb5c2c473a638d859cb2653a76fd5fd50ef334c6dc7ce4333a9c9fb57f74f"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V184-8706.PDF"
+  },
+  {
+   "campaign": "23V535",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V535-9828.PDF": "f156307af2d531b73480da48f38fed47e3974d9771fa19a41632cec153c437ae"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V535-9828.PDF"
+  },
+  {
+   "campaign": "18V886",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V886-5512.PDF": "fc6633a85d7b2b240489cb621e97a3b674e309cc08a068134e48b7db853bb118"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V886-5512.PDF"
+  },
+  {
+   "campaign": "25V233",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V233-5862.PDF": "496db2eb4aa73e92c937fa47500ab6e4e7f9b86e408b5eb4c605422aee7ca853"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V233-5862.PDF"
+  },
+  {
+   "campaign": "26V364",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V364-2243.pdf": "80813333d3d3f5352f455749b9df6e3d5100d2bc14fa65ec75a9d886d195854f"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V364-2243.pdf"
+  },
+  {
+   "campaign": "24V115",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V115-4723.PDF": "2789c6a2b0ac8024169bd9b88c5cb708ec3feeafb4888b5cd05342edc2111e59",
+    "odi/rcl/2024/RCLRPT-24V115-6656.PDF": "5b743b62493bb151cd1656b3f581597276c66e485d74656d6ac050841a414f49",
+    "odi/rcl/2024/RCLRPT-24V115-8132.PDF": "38937d3a8a97e4046d375cedebb0e68d8f91a1901eabdc843ffda091c1a1bce8"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V115-4723.PDF"
+  },
+  {
+   "campaign": "16V636",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V636-9967.pdf": "0f714961849983b2269d8b84b189748cfdaadbb4e60cf9c1dfd12de1ef0967dd"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V636-9967.pdf"
+  },
+  {
+   "campaign": "23V618",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V618-1183.PDF": "f583b09a3a028be4543dc5e89766216ddc2c1173608e42f9255b46072ad8916a",
+    "odi/rcl/2023/RCLRPT-23V618-1923.PDF": "a4bbee9de78a53c60e8f78ab933455caa22a00d30e607bd3fd59c3559df62d3b",
+    "odi/rcl/2023/RCLRPT-23V618-2786.PDF": "e231eabbe19fd848cd2d3e9b81dd31dded759ca5698419083bad7ee3975d03c5"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V618-2786.PDF"
+  },
+  {
+   "campaign": "17V127",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V127-3840.PDF": "29064e7619c458afc98c649a9d020bfe74d0815935b71c051dfdca6f11eee5b0"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V127-3840.PDF"
+  },
+  {
+   "campaign": "21V609",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V609-1348.PDF": "9f8f847e6ba561adf6230d35e8a42ff44587871301c749ea487b24056f2a248e",
+    "odi/rcl/2021/RCLRPT-21V609-4527.PDF": "0e963a213c89d8d163906e1d392566f3a466d4355c9d38879ce7b1a779415e79"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V609-1348.PDF"
+  },
+  {
+   "campaign": "26V128",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V128-5701.pdf": "52189d384f19dfea72ed5e5d3759fa7466c49bf6724580f20fc97ecf0bca6cfe",
+    "odi/rcl/2026/RCLRPT-26V128-5963.pdf": "2d18e50556dd3e5d88a2530e519e2d00fcd8c2609ea38e2dbff6bc7305ede4ac"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V128-5963.pdf"
+  },
+  {
+   "campaign": "15V889",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V889-0365.PDF": "c11f6bb5ca454c434c1ce5724fc3f6de33bd47440ed0015628f6dd4e61b13a73",
+    "odi/rcl/2015/RCLRPT-15V889-3893.PDF": "16fffb12166c837afe147b3ada0bda1996ada2da9011d266c7e9f9500161ca28",
+    "odi/rcl/2015/RCLRPT-15V889-8424.PDF": "6c35d32fad8bce80809e5c493a78553de99407d88553a30bbf35a290ee8edf34",
+    "odi/rcl/2015/RCLRPT-15V889-8519.PDF": "6e1da59c763140e7bb81afc21e83d7a53b541ddf5a304f7d06eee6031613a768"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V889-8519.PDF"
+  },
+  {
+   "campaign": "17V784",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V784-1130.PDF": "6159c07860993d772ed18fb9dc54eea7f703e22d0f7f249559d4f31bc07f11c0"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V784-1130.PDF"
+  },
+  {
+   "campaign": "22V012",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V012-2852.PDF": "505a43fc0c50c9e7fbd667f9d04daa1b03e7bf926f49f29ce6fa8ce1271a6da9"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V012-2852.PDF"
+  },
+  {
+   "campaign": "21V028",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V028-2204.PDF": "f6196ec8a2d831941854f8caf3982da113736b0fc5e4a6dd10283084cab01d7c",
+    "odi/rcl/2021/RCLRPT-21V028-6783.PDF": "9b1ac35d63b19e8b8e220dae92359de718256f0282290e7284b92b1d3416d65c",
+    "odi/rcl/2021/RCLRPT-21V028-8086.PDF": "dbce27b8eab67d87001d41f2ce1e59357cee81d656f345f93957763009f87ec6",
+    "odi/rcl/2021/RCLRPT-21V028-8189.PDF": "c6f25c511d6d4be966b9be9ae4b4d5c64c95e351e4069ba6bf29ebfff4530544"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V028-8189.PDF"
+  },
+  {
+   "campaign": "15V114",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V114-0453.PDF": "6d8a6dc6204c5d5385e6ca594e68f7393df1995bad1ebe1d863a5ba24dad5bf2",
+    "odi/rcl/2015/RCLRPT-15V114-4292.PDF": "cf50676d17aaf812809f6eea0fd13d99ac971699931c2c12186aa020c94a0452",
+    "odi/rcl/2015/RCLRPT-15V114-7950.PDF": "bb374427ba5c9f81f374d901c772a40b57dc573ed0bfb2ecada1f76d54b44fa9"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V114-4292.PDF"
+  },
+  {
+   "campaign": "24V797",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V797-1282.PDF": "b50ddeeaeaa7af93be2847583f934644952edb75624b861cc49b511d4d4803d6",
+    "odi/rcl/2024/RCLRPT-24V797-2072.PDF": "ae0d73ac5f380e0f90f3ecec036c6b8f07e9b0e0b85264f3b0effcb569097c42",
+    "odi/rcl/2024/RCLRPT-24V797-7588.PDF": "9465053e5f67d58957a0721f60c4df933be12fd89b79f75bbc73468ced048f74",
+    "odi/rcl/2024/RCLRPT-24V797-7913.PDF": "c1144da1a3a6de40c81503b347de16b6da47a2b2f5c9f5b5af299a780d3b166c"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V797-1282.PDF"
+  },
+  {
+   "campaign": "19V336",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V336-2945.PDF": "ec27b075f82997e1eaaeff289e0fd7f49fa2543f764fc77a49d8585fc644ce21",
+    "odi/rcl/2019/RCLRPT-19V336-2945.pdf": "ec27b075f82997e1eaaeff289e0fd7f49fa2543f764fc77a49d8585fc644ce21"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V336-2945.PDF"
+  },
+  {
+   "campaign": "22V909",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V909-3880.PDF": "6a3e2b2477d29470fd0f2afeee71ad7e0457157b331057831c02405a055026ec",
+    "odi/rcl/2022/RCLRPT-22V909-5535.PDF": "4e1db0c5185a2eaf79e0506a6859143e08f1c664b5a703000316e452901b03c9"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V909-3880.PDF"
+  },
+  {
+   "campaign": "18V367",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V367-1726.pdf": "317b3fc01f249e70700e025d05178b2d8fb7cf07abb328ec24dd8356995a6b9e"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V367-1726.pdf"
+  },
+  {
+   "campaign": "21V793",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V793-4721.PDF": "bb67ce4bb97ba3af48aefa70cd58a45c0f59ef498695b2598fb1a35faf4f6d99",
+    "odi/rcl/2021/RCLRPT-21V793-4772.PDF": "0665c65f02608c326511c0404d8b3c8a5af491c9ac3f30940cee5f3754e3018d",
+    "odi/rcl/2021/RCLRPT-21V793-6084.PDF": "15e4480153e73bffa877166c7bb97a4066a804f68ec518f8ea27946deaf6df48",
+    "odi/rcl/2021/RCLRPT-21V793-6369.PDF": "811c278aea1bddd45fbc51922451772f53745135c15413fac82ef83215a60ee1"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V793-4772.PDF"
+  },
+  {
+   "campaign": "25V475",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V475-8326.pdf": "8fba6e3fb2570dcc3a45c4051c9a425ef5a70597ebf697df8592b3a9f6a42f19",
+    "odi/rcl/2025/RCLRPT-25V475-8579.pdf": "123035bab741666fa8de43e951ee54fb92e4688f0ef66db3c35155487f5a3de4"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V475-8579.pdf"
+  },
+  {
+   "campaign": "25V187",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V187-1646.PDF": "8c8863ec8f440c7a9231110265e805a6dd1d33c365e67a6874945b92e9d9820e",
+    "odi/rcl/2025/RCLRPT-25V187-4692.PDF": "43c2b331a0a38a208247b18e153de4e61ede5bdf72b5f1c12c1214c2d90866da",
+    "odi/rcl/2025/RCLRPT-25V187-4714.PDF": "d7816d8efdfbe63d4f284591c6d2f122ec7f42ae5a0c7c415faebfe4e5e9e58b",
+    "odi/rcl/2025/RCLRPT-25V187-9707.PDF": "042a9f00b019bf5c69c55836143987ce718d16a929f88d03fa749a9a4b51fe01"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V187-9707.PDF"
+  },
+  {
+   "campaign": "25V508",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V508-0485.pdf": "064209bc900f87474b9c4691ac168cdaf3e6096216b1034e20d8c43ac2055bc5"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V508-0485.pdf"
+  },
+  {
+   "campaign": "15V814",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V814-6408.PDF": "5dff64978273860d76f5878d2f539fc36f024d2eeeef742b1bdc01c87e93d054"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V814-6408.PDF"
+  },
+  {
+   "campaign": "24V031",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V031-7442.PDF": "90b4e57134c82251906bf408265f6a3200def5e2ae531e0a870ab9f2fa3f568c",
+    "odi/rcl/2024/RCLRPT-24V031-8781.PDF": "69f21356abb0e56cb7d07e606a593ee525e464ba0f67848eab2308cd960e00f1"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V031-7442.PDF"
+  },
+  {
+   "campaign": "20V592",
+   "pdfs": {
+    "odi/rcl/2020/RCLRPT-20V592-4036.PDF": "4d0582afcbf5d1addaa2a71f83f0dd1578188844daa0e95567b5961d90e261fa"
+   },
+   "selected": "odi/rcl/2020/RCLRPT-20V592-4036.PDF"
+  },
+  {
+   "campaign": "17V497",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V497-4134.PDF": "cab1a7e4a749fba0e96751d3d2ef396deb32dda1426c5de8fe0679f5193daf84"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V497-4134.PDF"
+  },
+  {
+   "campaign": "22E021",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22E021-1100.PDF": "e826399701eba2751cf94ab16805b81fc04ebacfe110091020570ff43cde329e",
+    "odi/rcl/2022/RCLRPT-22E021-4510.PDF": "75cbb1b8c5f7dee4725ba373f450a4ddcf850dfd8e4e90a6b135e074f9cb694c",
+    "odi/rcl/2022/RCLRPT-22E021-6059.PDF": "2f9ba826d94a355a8f4badf498d2d5b1b1c982f26a5a0e05b5d0100720e0f0fc",
+    "odi/rcl/2022/RCLRPT-22E021-7906.PDF": "584f3c0024f684d81061e77e94e3865d1bd1a75594e9bf9f9d08c71fdcb82653"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22E021-4510.PDF"
+  },
+  {
+   "campaign": "18V412",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V412-2576.pdf": "c39e8de81b9b911f8174a6a87435b32ab25c3416e64c965144a51864a8fd84ad"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V412-2576.pdf"
+  },
+  {
+   "campaign": "25V110",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V110-3779.PDF": "d262f6a226424a80989de885c9fcfb3d7e8449b3c0e9f4563c3dc6f9f7d87b36"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V110-3779.PDF"
+  },
+  {
+   "campaign": "23V650",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V650-5650.PDF": "c34d38a537f6967c7124e7c91c3ab4a316dba05639f4142486757cec8a086cf2"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V650-5650.PDF"
+  },
+  {
+   "campaign": "22E057",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22E057-9025.PDF": "2828ed0a18cd99f6ad137f54e2b3ef942107c0aa00c954d65db6e4e56419e13b"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22E057-9025.PDF"
+  },
+  {
+   "campaign": "24V291",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V291-1427.PDF": "322c4f4437c4b7b9b562db97d9f5e205a42d8135e5eefaf28216547b61b32d83",
+    "odi/rcl/2024/RCLRPT-24V291-7833.PDF": "61bfa65dd82d33400e74dba552643fb59c44508e5f9452b7ef8013205877c15e"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V291-1427.PDF"
+  },
+  {
+   "campaign": "22V706",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V706-1799.PDF": "3a1806c1ec9fae410ff27c6dbc19137f08bce2757f0aecf9c39e93e5fc74dcf2",
+    "odi/rcl/2022/RCLRPT-22V706-8975.PDF": "c085c054073b22f27192766a50a345b3817b6b61a7ee0695507453f70e8a2f71",
+    "odi/rcl/2022/RCLRPT-22V706-9632.PDF": "fc2914aefec51f4a8d62c3d0e6a22b4c154120b833f9890c6cb2455ae20b472e"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V706-8975.PDF"
+  },
+  {
+   "campaign": "17E052",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17E052-6642.PDF": "67f7cf6b513973c1b225c6da0108afbcc6abf49efdc4bc58a3b4a1268accf0df"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17E052-6642.PDF"
+  },
+  {
+   "campaign": "18V640",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V640-5207.pdf": "228fb63318e133b572a66fcc02d2fa7f6959374b3c1f3a4e1e12518cdeb77550"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V640-5207.pdf"
+  },
+  {
+   "campaign": "19V553",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V553-4766.PDF": "dd727493a700ee60c1eb557d9b5480e761595531e2b47c7f5a4ef2d4540f8dc2"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V553-4766.PDF"
+  },
+  {
+   "campaign": "23C005",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23C005-1002.PDF": "218a707b41b8d0ea21614f3836183f5459e93a8c5e0cbe3d0aa19d0c240a1de2",
+    "odi/rcl/2023/RCLRPT-23C005-8195.PDF": "0b113c3c30cf2b13ee0a3fdbf27ef22b7acd31d82cc284847d99d28cfe1b0d00",
+    "odi/rcl/2023/RCLRPT-23C005-8992.PDF": "e16925682243a9a40a710cb4333c3318c3c69b94b6e8d70cc78e782046c2cc37"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23C005-1002.PDF"
+  },
+  {
+   "campaign": "16V364",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V364-0780.pdf": "4c4b507c7aedae41aa1635268eb7c4ec6f218e3e8691ac2cb6c4b6f8eb9c3a6d",
+    "odi/rcl/2016/RCLRPT-16V364-2854.PDF": "3a9b246dc5975c4e0c89aeeb8bcfceba3af509847a171e50dc166fffa9f64f06",
+    "odi/rcl/2016/RCLRPT-16V364-3985.pdf": "1ea3ddba2196c36c7e578f60a570fb24e73d20f9ff2bc19e2ec984af1c590287",
+    "odi/rcl/2016/RCLRPT-16V364-4705.pdf": "83755b1d3b01417659b8e9484a82cb23a04f7540e01a526648c3a52c95285c6d",
+    "odi/rcl/2016/RCLRPT-16V364-4710.PDF": "94aa546d965f1c213ffd4cd22698a294286dd93a1ddfeb894b63f78add4ea86c",
+    "odi/rcl/2016/RCLRPT-16V364-5256.PDF": "a62105834173d18a7681ff0df752a6d31755f2622ffc8d884197ed19cf34252a",
+    "odi/rcl/2016/RCLRPT-16V364-5789.pdf": "8645432839b8a71dbb78de9497473ef5d0636b26fa7de79431f0d7849b2dc582",
+    "odi/rcl/2016/RCLRPT-16V364-6661.PDF": "33d91778653f4c59a015e0100f7abfc4374efc8f0dea95a243b5cad815572ae8",
+    "odi/rcl/2016/RCLRPT-16V364-7883.pdf": "fb4f95f97bf0da20040b85c5b19b527dc55c525599cc065a846171bf8c80476e",
+    "odi/rcl/2016/RCLRPT-16V364-8840.pdf": "753bb087fb60254c74241eb24f5045fc473bf793178b7d486b4aece6370688d1",
+    "odi/rcl/2016/RCLRPT-16V364-9503.PDF": "65091daa4683508ed431f68486b74dbed55e6b34ec1bf35b5d47e761015a857a",
+    "odi/rcl/2016/RCLRPT-16V364-9774.pdf": "e16d1470771c0c9e4f5baec2be58689426ef1e0a686c9c6b50365de29fdb1fa1"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V364-5789.pdf"
+  },
+  {
+   "campaign": "19V168",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V168-2182.PDF": "00e69de7a5c61c1e3f38146ce3eee698dc5f943cf51e558da48c560072608d4c",
+    "odi/rcl/2019/RCLRPT-19V168-5852.PDF": "6f0efdcd92f10338e224c3e66ee78af083be1bfabe2282a4b255ae76db400e6a",
+    "odi/rcl/2019/RCLRPT-19V168-9548.PDF": "6970eefc639a125e94d258451bf09a08a92e8caf0debc66869dfd5cca2fe7a98"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V168-9548.PDF"
+  },
+  {
+   "campaign": "26V367",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V367-0966.pdf": "131356cda32b37433e791424f61e9b9d70777a8a7fa5721d06443d69b08c1e4b",
+    "odi/rcl/2026/RCLRPT-26V367-9626.pdf": "2477e6a8a4b29ecb7d0f4cd875120310464d73afa3c3f10dc8a18f4154bc8f73"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V367-9626.pdf"
+  },
+  {
+   "campaign": "23V704",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V704-5349.PDF": "578c0126f12023194ae253f7d1d63fe6fae7ccfcfaac2c43d097674d93a8e3c1",
+    "odi/rcl/2023/RCLRPT-23V704-6233.PDF": "2fee501a920f9ba66ce968fc545d7f1bda64f386356ecba6defbb174bd756b77",
+    "odi/rcl/2023/RCLRPT-23V704-6251.PDF": "056de2efbf5d4b83440b91028da9f9d9876cb30b9159fe602b534c99bb233c65"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V704-6251.PDF"
+  },
+  {
+   "campaign": "21V985",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V985-6813.PDF": "2850b21658f0fc8704e6e8b3166618d77a1e39e9825a0e3b8430c922755613b7"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V985-6813.PDF"
+  },
+  {
+   "campaign": "20V010",
+   "pdfs": {
+    "odi/rcl/2020/RCLRPT-20V010-8702.PDF": "d62823a669327c0afbb32640902fa303aa5a62fce1983b8fa2ace76380aacbc1",
+    "odi/rcl/2020/RCLRPT-20V010-9981.PDF": "8d81b47539b9dc88c056e771d5ff257f7d274a0cd175c89533a3cc8c573e043f"
+   },
+   "selected": "odi/rcl/2020/RCLRPT-20V010-8702.PDF"
+  },
+  {
+   "campaign": "16V037",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V037-3446.PDF": "8331b2d53c665d7450fbc3819ff03e36f2fa1b9a126221f94e1350d8d6a23bcd"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V037-3446.PDF"
+  },
+  {
+   "campaign": "21V903",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V903-8691.PDF": "e51a2120afe240c43a71508140c877e3ae789371300db599e3a479059a3e3cdb",
+    "odi/rcl/2021/RCLRPT-21V903-8694.PDF": "03e535e743c2540df7452cf5efced9d1528e84486da91f62d6e2bab1a9877026"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V903-8691.PDF"
+  },
+  {
+   "campaign": "19V197",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V197-8961.PDF": "fb60f8847fc52186634f80229600659c5ec04715682727e0c4a85949dfbae0cb"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V197-8961.PDF"
+  },
+  {
+   "campaign": "21V448",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V448-2047.PDF": "9834902563bfd9210581824c57646482cce0d4f85598de90433777f2ef85d074",
+    "odi/rcl/2021/RCLRPT-21V448-2230.PDF": "0747ead3e4a0a86d95ae6328ae9d4c4ed671324b0ee24c876a1b7169a7891b46",
+    "odi/rcl/2021/RCLRPT-21V448-7369.PDF": "baba9e549cab32f095734eefa07e9055bb37d25b4ba4bc6963a5df26e534476c"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V448-2230.PDF"
+  },
+  {
+   "campaign": "15V220",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V220-4178.PDF": "c25bf82cf626befcfa2e3ccea0a6f09c66abd43ea25a65a7d055c10ef0d88e15"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V220-4178.PDF"
+  },
+  {
+   "campaign": "23V382",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V382-5161.PDF": "cab38bd1104a079bb22ad1c0a68a2a4a493d6eef54718f501645b068e7cdb4a9"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V382-5161.PDF"
+  },
+  {
+   "campaign": "26V276",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V276-4103.pdf": "75f2b86acbe3abc6741b0e54a77cda23ba2591e18a43422216289b906474cf6b",
+    "odi/rcl/2026/RCLRPT-26V276-9688.pdf": "89a0c829b6b18ec37067d19a0ced0519dacf20427fb1f4c04f5ec80dde2f1fc6"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V276-4103.pdf"
+  },
+  {
+   "campaign": "17V473",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V473-2607.PDF": "3b0f0b591e835a55e658b0cfbe36c9624b2ddd2e82da56728a1bce2c902dc9d0"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V473-2607.PDF"
+  },
+  {
+   "campaign": "19V335",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V335-1827.PDF": "3f2dfb21ace030fa422d8376318ab719e2fa0f8bbb8b5375d3bef13c2b6a9006",
+    "odi/rcl/2019/RCLRPT-19V335-5882.PDF": "4b6843288ce2d69e3d9371f1fd515da17959afd641ec98a7a464daf569798301",
+    "odi/rcl/2019/RCLRPT-19V335-8959.PDF": "805cc834bdf7faebc628dd7a1397fef626374e8ce1469587b11f42a586f7a09b"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V335-1827.PDF"
+  },
+  {
+   "campaign": "23V102",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V102-4427.PDF": "0c795cfc181c506338f32132b16fb41030ef64b30ddc2a0154aee5ebd7a606f4",
+    "odi/rcl/2023/RCLRPT-23V102-7156.PDF": "ed5adf83ba01d1ba35260c2e0094f295f3f86eb35a234fb5bc5e4538df3084a8"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V102-7156.PDF"
+  },
+  {
+   "campaign": "17V183",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V183-1376.PDF": "e6575a0198224288bf7395fdec520473593a236010a5643b83328f33cc77c80d",
+    "odi/rcl/2017/RCLRPT-17V183-5032.PDF": "faa779ebd75766ee26ec141c523e9080892da13df6a7c506ef486148e86a09f2",
+    "odi/rcl/2017/RCLRPT-17V183-5503.PDF": "74c49b4521c7821a117bff57343a7f7303b918936e13fc51bd1fc162e785779e",
+    "odi/rcl/2017/RCLRPT-17V183-8273.PDF": "30953348467beabe6f1adae1c65c31d7ffc65f4eeec04a886c1660ea51b3a08d",
+    "odi/rcl/2017/RCLRPT-17V183-8585.pdf": "cb9fc25778787c144eead464a4d7fc3ed5b96bf533446f5632f3f97a1a198c5a"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V183-1376.PDF"
+  },
+  {
+   "campaign": "23V193",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V193-7871.PDF": "52a7f5c61bc19c0b1f0ec6b3cb5f81bcd34b90be2ab4c95f49db26a22232fe2b"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V193-7871.PDF"
+  },
+  {
+   "campaign": "17V125",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V125-9036.PDF": "acdc611bbd85bac7cf291a6bcd29308f2f14b2d19909bae5bf4cbd5cf731624f"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V125-9036.PDF"
+  },
+  {
+   "campaign": "18V706",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V706-1674.PDF": "3a2bff852e4b058c3872e383f5730554c1298e3fae4d260ad778257de2fc6959",
+    "odi/rcl/2018/RCLRPT-18V706-1822.PDF": "d49ee8b77c980b14fd537f3fae324f7229f5b489ebef8f96890c578d4ff07a4a",
+    "odi/rcl/2018/RCLRPT-18V706-3362.PDF": "5483f468189dc640ee759f614a52f7401fb190a5401e10bb2817f8cdafd65f19"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V706-1674.PDF"
+  },
+  {
+   "campaign": "24V340",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V340-7551.PDF": "b3988620f81bf8dc6fc4892a7b592228359b0a46c2fb4e60682b858c9a3f08ad"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V340-7551.PDF"
+  },
+  {
+   "campaign": "17V595",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V595-7604.PDF": "712866115a688eaaa564614f9b9b6c7ee324b7269c31dd7b4d6624dfe14fda37"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V595-7604.PDF"
+  },
+  {
+   "campaign": "22V612",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V612-5624.PDF": "e47f12a08cbc10d7487b36cdcd69b0ff7d3060f8c0b61327f0a8f4bce0157c00"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V612-5624.PDF"
+  },
+  {
+   "campaign": "19V234",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19V234-8134.PDF": "5aa5e85bb897cf8858c1572c09be61304feb00da33df371fdb2f6c815586688f"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19V234-8134.PDF"
+  },
+  {
+   "campaign": "18V832",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V832-1400.PDF": "d3275bf6065c739ce999b241cbb79496e8f9c0ec8eacbd92afc7d2b96f343822"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V832-1400.PDF"
+  },
+  {
+   "campaign": "22V700",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V700-3973.PDF": "dc494deb531421c1bc5d732989a4c246391468c37c75f69b1891e91fdbff5ef3",
+    "odi/rcl/2022/RCLRPT-22V700-9927.PDF": "de90b246690fd394d562b08c737c2beec523b5f7dc516e012a0943bd29ff49f3"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V700-9927.PDF"
+  },
+  {
+   "campaign": "19C001",
+   "pdfs": {
+    "odi/rcl/2019/RCLRPT-19C001-1754.PDF": "dbe29a9658abc2503303af1829631c5a1f4168d6ed0503aceec556623095a41a",
+    "odi/rcl/2019/RCLRPT-19C001-4439.PDF": "9be514e6514ffa05de9917fc63f349249aac3422e6769009019c6bd6dc943c94",
+    "odi/rcl/2019/RCLRPT-19C001-5627.PDF": "dcf33f95c65c60d5f6acd4d3a22cec07b71d3a78d7c8769b4e429b9cd2c79b6d",
+    "odi/rcl/2019/RCLRPT-19C001-6612.PDF": "41c4b9ae0458589e058ab156375f1635f021eb0cbbfd6de33328ed1569a06430"
+   },
+   "selected": "odi/rcl/2019/RCLRPT-19C001-4439.PDF"
+  },
+  {
+   "campaign": "24V395",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V395-6882.PDF": "ad12afa801bdeafc6b41675ea1117053cbc83f84ddd48c4cca867cc76aae5cf6",
+    "odi/rcl/2024/RCLRPT-24V395-8839.PDF": "9b34ec2ac4d22b84232975823528bf9084fc7174e8a466aa009955df7990d756",
+    "odi/rcl/2024/RCLRPT-24V395-9297.PDF": "8bb68ec9765f303cb6c4dd67e108bcad56910aea8ef40cd8d39a2c838ca47bd9"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V395-9297.PDF"
+  },
+  {
+   "campaign": "18V554",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V554-6992.pdf": "bc81286d7599fe3dc2831f94d910140a968b080239acbfb7f8931be1911b96bf"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V554-6992.pdf"
+  },
+  {
+   "campaign": "22E078",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22E078-4424.PDF": "55e67c3569e94c1e13eda1203d79624e7d463f9ef809df18f83ebcd92c0fbaaf",
+    "odi/rcl/2022/RCLRPT-22E078-5508.PDF": "b6527ee5071ee34a6ec6854db5c1b1d95eed04c6f28830e3c5cf73cacc144a0b"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22E078-5508.PDF"
+  },
+  {
+   "campaign": "21V262",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V262-7079.PDF": "9d87e3a9d5cec614de93072bb557e15de62d7e391374294383144a6f53b8aa95"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V262-7079.PDF"
+  },
+  {
+   "campaign": "16V816",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V816-4282.PDF": "052f697859e97f56b3843e7fd5b923074ce46e632e787b96f1c9fc3b3da206bd",
+    "odi/rcl/2016/RCLRPT-16V816-7294.PDF": "b8d37df64cc99ee06d6c15ffbe828bc93a7b58a6a8d0be65160880c4f75318f7"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V816-7294.PDF"
+  },
+  {
+   "campaign": "14E085",
+   "pdfs": {
+    "odi/rcl/2014/RCLRPT-14E085-1531.PDF": "3c4c40ad0567290e8f1e6872458ae2d2f46aae4d06a0cc3c8afe310514806729",
+    "odi/rcl/2014/RCLRPT-14E085-7648.PDF": "275db2f5954506d90da925cc9e7921c369b61fd16881984c5c17b8c5046bebb2"
+   },
+   "selected": "odi/rcl/2014/RCLRPT-14E085-1531.PDF"
+  },
+  {
+   "campaign": "22V552",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V552-6231.PDF": "f4afd324139c4309abe52c098f357b63a87f3d6e98db1bf30fb989f2986b9fea",
+    "odi/rcl/2022/RCLRPT-22V552-6516.PDF": "6cefbdc576c3c5e5bfa02e73ced967a4b00cbfac215e3989d966f8a4da0dd324"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V552-6231.PDF"
+  },
+  {
+   "campaign": "16V617",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V617-8413.pdf": "312e26c9f4679dd60c2dd69825997d3e189eee415ba9cd5a0ca75ea5fcdf1471"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V617-8413.pdf"
+  },
+  {
+   "campaign": "25V494",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V494-3532.pdf": "8b069573a0f5a486b1858cccff7e1dbb880665dbaa600ba32ad462d605ea0b0d",
+    "odi/rcl/2025/RCLRPT-25V494-5788.pdf": "d2655808d579ffab5f2361aa2309bc587fe5a3a50d179387c32da1146dbce6cf"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V494-3532.pdf"
+  },
+  {
+   "campaign": "22V346",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V346-3365.PDF": "07e085a0a6ff70ed6b8fc87823a579cbaaa83ce39fd117f1619697abf19e8453"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V346-3365.PDF"
+  },
+  {
+   "campaign": "17V341",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V341-2185.PDF": "76c4700260380d7daf9c91cde035d4b8ae416e9ce005fca31f8e4ce045ceea3a",
+    "odi/rcl/2017/RCLRPT-17V341-3910.PDF": "583b58f0ba3679d2aa433e0ff6bec10ad13d0e4bd142f6896f2007ed85a9122d"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V341-3910.PDF"
+  },
+  {
+   "campaign": "26V512",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V512-9775.pdf": "97763bc959b5c90fbd3efacdf2d9438e1fe56d45a04f80059381daee91aa1dd7"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V512-9775.pdf"
+  },
+  {
+   "campaign": "16V146",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V146-9062.PDF": "9976f57dd50dff33973f6e6b8625f51caa892f80122acf6278ba3722682fb2f9"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V146-9062.PDF"
+  },
+  {
+   "campaign": "20V078",
+   "pdfs": {
+    "odi/rcl/2020/RCLRPT-20V078-4307.PDF": "ec1d4d12c04dd1c0c0410ca0e86b5b94ffd2a692cea70eadf8b06f0044d3a9b6",
+    "odi/rcl/2020/RCLRPT-20V078-5490.PDF": "fce90e9452fced2aa8b028db15bcb7093385033bbf418784f92fa25b38d1c884",
+    "odi/rcl/2020/RCLRPT-20V078-7003.PDF": "bdc1b44b49f912f575eb97b4ce6c7f52a9eeaa3f24521e13e45398b387ef7f94",
+    "odi/rcl/2020/RCLRPT-20V078-8923.PDF": "ee883ae27e978e1ef0531ab3a88506e9fbe889ae5efb76e625556536b1784991"
+   },
+   "selected": "odi/rcl/2020/RCLRPT-20V078-8923.PDF"
+  },
+  {
+   "campaign": "21V550",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V550-8159.PDF": "b1c630262ca841a3bb881d511a679851abf5bef389f32d9f2de1f4c6234fab7a"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V550-8159.PDF"
+  },
+  {
+   "campaign": "23V637",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V637-3734.PDF": "c4ae38e2b3400e357e0a64308c59b20b9232c5f036d3fd24bfffaedffac9a317",
+    "odi/rcl/2023/RCLRPT-23V637-7256.PDF": "bd2663d56e24d8ade5d4b3243c47d9fe06f127f1cf96c9ee66047f52c7cfb893",
+    "odi/rcl/2023/RCLRPT-23V637-7391.PDF": "176d2be9c77086a8910030942418b29187cedc9c9b4d2526c4c2433832f37ab9",
+    "odi/rcl/2023/RCLRPT-23V637-8044.PDF": "6c059d0061ded8911f32e005e8758ba4f17fd7430649832ec4ed734e30028b97",
+    "odi/rcl/2023/RCLRPT-23V637-9158.PDF": "e5f94b745f95bd78490fd6917bbd78970850a02fc046aef63d6cd377985bcc1f"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V637-7256.PDF"
+  },
+  {
+   "campaign": "14E074",
+   "pdfs": {
+    "odi/rcl/2014/RCLRPT-14E074-5923.PDF": "1767e2d7e281417ccdd0295aa8e596384647a85859906253331bce5a3950adea"
+   },
+   "selected": "odi/rcl/2014/RCLRPT-14E074-5923.PDF"
+  },
+  {
+   "campaign": "15V451",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V451-2187.pdf": "c0b4edb6fbc8b8a8cc26a95ef9a529ac5494ca665e14ce9b52ebde5006c71a6f"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V451-2187.pdf"
+  },
+  {
+   "campaign": "18V264",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V264-5278.pdf": "0975ec9168e7275007e41ccb0ead2f8a813ac8fe43b2487f481ec9c9f40c11dd"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V264-5278.pdf"
+  },
+  {
+   "campaign": "26V171",
+   "pdfs": {
+    "odi/rcl/2026/RCLRPT-26V171-5836.pdf": "6851543ab0b82a385c4fe445daa1f98fddbd31eddd628c97e0c74ea20b8570dd",
+    "odi/rcl/2026/RCLRPT-26V171-8807.pdf": "465ef521e79f2673770f4b78fec2f83347d954532db7758b3f2112ffb4289e2a"
+   },
+   "selected": "odi/rcl/2026/RCLRPT-26V171-5836.pdf"
+  },
+  {
+   "campaign": "18V737",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V737-1308.PDF": "29241740484493c37d82971c88753260edddfb0f51584924dc0540f9fb3d41d2",
+    "odi/rcl/2018/RCLRPT-18V737-2398.PDF": "d0993fbaa5019be882077447a973dd54fcc7b624e743fe019df112a93fbc9431",
+    "odi/rcl/2018/RCLRPT-18V737-2522.PDF": "c165793c543851125fe95db8b0fd7fb5b64168de1bf78a928385a9ff012bdf01",
+    "odi/rcl/2018/RCLRPT-18V737-4360.PDF": "103e39cb93003506e2f1c51dd8daf154c1a34ac2846ed929501d19d1bc5b1f58"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V737-2522.PDF"
+  },
+  {
+   "campaign": "24V415",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V415-1521.PDF": "af8d44a13c9498bdd1f5771cde90e8a32530f5c21b5d29b58ba6ffae66ec3ac5"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V415-1521.PDF"
+  },
+  {
+   "campaign": "16V027",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V027-9298.PDF": "e73a028758e23ae20a6c7adeec1be3230dba18f41328950f6dcb690212f7c0a4"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V027-9298.PDF"
+  },
+  {
+   "campaign": "18V136",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V136-4413.PDF": "d04398ebcc8a693bdaa9210a3d9ce41fd795d0eedb85fb1a67ec1febcb7d4c15"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V136-4413.PDF"
+  },
+  {
+   "campaign": "23V561",
+   "pdfs": {
+    "odi/rcl/2023/RCLRPT-23V561-2762.PDF": "0681626d032195f980be3bfa9d2d64632fcbc2b51968bc78f9a5d8ddcd6d2e42",
+    "odi/rcl/2023/RCLRPT-23V561-4775.PDF": "21d88a81c75e40f240a466d68b026283e5083686ca81f7555aadcd61339ed6bf",
+    "odi/rcl/2023/RCLRPT-23V561-6903.PDF": "089245a2d68b42678520fd3aac613b231a7313548af495aec47cfd3ae00aa89f"
+   },
+   "selected": "odi/rcl/2023/RCLRPT-23V561-4775.PDF"
+  },
+  {
+   "campaign": "17V258",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V258-2665.PDF": "50843f9bb463b6726411bfbe06458e27bda9dbb4534427ef832c0c32336af574"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V258-2665.PDF"
+  },
+  {
+   "campaign": "25V806",
+   "pdfs": {
+    "odi/rcl/2025/RCLRPT-25V806-4533.pdf": "df1c842f26c6acd961bfcc00e37a5bdfa1c22631bde049e5c9635cda4a3198b0"
+   },
+   "selected": "odi/rcl/2025/RCLRPT-25V806-4533.pdf"
+  },
+  {
+   "campaign": "21V016",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V016-2981.PDF": "8ebb487e808854b971d35581a60cafd42ff294258c0b5b18aa72c7aee8fe3bc2"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V016-2981.PDF"
+  },
+  {
+   "campaign": "22V131",
+   "pdfs": {
+    "odi/rcl/2022/RCLRPT-22V131-4462.PDF": "869ef467b128564f4b9e383ff46685ddc05942a26adae4175d9c06011d6240de",
+    "odi/rcl/2022/RCLRPT-22V131-5395.PDF": "bf0af14c137496673619736011afea856833c56b3e3fb020ae04d87b06fe2b51",
+    "odi/rcl/2022/RCLRPT-22V131-6058.PDF": "39f6cecd0d00b5ffc717cd933386121066293fdadd675305b4c72344699b6eb2",
+    "odi/rcl/2022/RCLRPT-22V131-7014.PDF": "ffb756c779047531dbaa86f759c952328ef2432b1209bf08ef51481d15e63c78"
+   },
+   "selected": "odi/rcl/2022/RCLRPT-22V131-7014.PDF"
+  },
+  {
+   "campaign": "17V062",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V062-1377.PDF": "d4b62e28d1c0a2738ed7c8cb885d984da9b858d590b6d7279870e9f18aca2956",
+    "odi/rcl/2017/RCLRPT-17V062-3192.PDF": "446e65d249f45570e2ce4ed2e1931a85cda2837614c6a7da4ca40e6fb1045f6d",
+    "odi/rcl/2017/RCLRPT-17V062-5679.PDF": "4c69a4852f6ce83d8fd1cc440ddc5b9d8e0c3c16f57a8ab1d58b1cd97e568233",
+    "odi/rcl/2017/RCLRPT-17V062-9074.PDF": "933723ee6bd81324d86f02ce36f73e10d2ac80d8456da966591367c26970c722"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V062-1377.PDF"
+  },
+  {
+   "campaign": "17V820",
+   "pdfs": {
+    "odi/rcl/2017/RCLRPT-17V820-4432.PDF": "cc26bd3ae75349a3e11abb0a1ce5d6c66c712b07238e033d75f80fddc3dfe4f4",
+    "odi/rcl/2017/RCLRPT-17V820-5331.pdf": "aebe420e24978f2ad279ed75820a5a962587ac0a194c0f97b593902eededc68c",
+    "odi/rcl/2017/RCLRPT-17V820-9190.PDF": "155c68c6f1fa53571216b3fd807c4517c90cd3d9b3dbff08e84a05926c3ef91e"
+   },
+   "selected": "odi/rcl/2017/RCLRPT-17V820-4432.PDF"
+  },
+  {
+   "campaign": "21V594",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V594-1432.PDF": "be048e2754ea87882be9200156134d2190207bf732b559b02a48fb0b5a5d8475",
+    "odi/rcl/2021/RCLRPT-21V594-2964.PDF": "7f46270ee728a20602b861a3d35c70014217baa2bd171f5b6893f6f8c299880d",
+    "odi/rcl/2021/RCLRPT-21V594-3212.PDF": "83e19960437da2ccb8d5c5e034052570a3db9ae1b6263e6ddd724650924d4586",
+    "odi/rcl/2021/RCLRPT-21V594-5730.PDF": "22e267227812b8388af995d1698592337a9c41573b9c58a3d2a061bac519861d",
+    "odi/rcl/2021/RCLRPT-21V594-6699.PDF": "b00ed98112cd00640edafc651896286640a5423079eb1c49d999ba44e0a9312a",
+    "odi/rcl/2021/RCLRPT-21V594-9249.PDF": "ed82b63c5acf1e6bf2e6c0f611a4b6cf201cb1a57e759099329c1281fbe775aa"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V594-6699.PDF"
+  },
+  {
+   "campaign": "14E070",
+   "pdfs": {
+    "odi/rcl/2014/RCLRPT-14E070-4520.PDF": "1ecfe7fb720e28bec3d3149e5a5191cfc130dcb6c41efac0470690c849acfa51"
+   },
+   "selected": "odi/rcl/2014/RCLRPT-14E070-4520.PDF"
+  },
+  {
+   "campaign": "14V731",
+   "pdfs": {
+    "odi/rcl/2014/RCLRPT-14V731-8896.PDF": "6eb673f50aa181358a9ce55eb81f74552f7e5d48e03b8732ff98151b9daf26c3"
+   },
+   "selected": "odi/rcl/2014/RCLRPT-14V731-8896.PDF"
+  },
+  {
+   "campaign": "24V314",
+   "pdfs": {
+    "odi/rcl/2024/RCLRPT-24V314-1073.PDF": "b3513d609daabdc59659ac749b85d0582251529f3b8297e83ecd6513f16f2a30"
+   },
+   "selected": "odi/rcl/2024/RCLRPT-24V314-1073.PDF"
+  },
+  {
+   "campaign": "18V200",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V200-6151.PDF": "52eff255203bc5f8eebcccd838fd1657391f2726f58fcb38e54593ad06e3931c"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V200-6151.PDF"
+  },
+  {
+   "campaign": "18V891",
+   "pdfs": {
+    "odi/rcl/2018/RCLRPT-18V891-6463.PDF": "16729835e626b1b647dd71395207022fcf002d13f87f5beb962dd752e713c2ed"
+   },
+   "selected": "odi/rcl/2018/RCLRPT-18V891-6463.PDF"
+  },
+  {
+   "campaign": "15V323",
+   "pdfs": {
+    "odi/rcl/2015/RCLRPT-15V323-0390.PDF": "cce0eb286ecb66b0886146c724d38848ee0e99ebb0b347bdfeb09d3eadd1b800",
+    "odi/rcl/2015/RCLRPT-15V323-0419.PDF": "1050137b2b77b4fcd96bf18507dccdc223e943412d6440ef5bbd2969cb0c73dd",
+    "odi/rcl/2015/RCLRPT-15V323-1466.PDF": "65868c9d2e91fd344e499a15f5a231386debe9a0ea4f5670477a7dd1db8d8988",
+    "odi/rcl/2015/RCLRPT-15V323-2885.PDF": "7719dda4c79882d97d616cf7145e479d96008533527b16d0f6eaeef6988f38fd",
+    "odi/rcl/2015/RCLRPT-15V323-4483.PDF": "e6f0fab0b4cfa6ebc9292c1c64e7fe4404f72b9e2b969266721ccb6010b396b2",
+    "odi/rcl/2015/RCLRPT-15V323-4497.PDF": "409269e132fa35e7d16ae406f2b590514553cb731712781ddbd5f72101e6c8c9",
+    "odi/rcl/2015/RCLRPT-15V323-6682.PDF": "0459bb16f0da78c56e5864ab25f811f186212cf33273264dfba3614eaacf4b44",
+    "odi/rcl/2015/RCLRPT-15V323-9376.PDF": "91d927692927f8af9fa2a562c288c37dbfcd1ca09d062b310fa390551721c0ca"
+   },
+   "selected": "odi/rcl/2015/RCLRPT-15V323-1466.PDF"
+  },
+  {
+   "campaign": "16V704",
+   "pdfs": {
+    "odi/rcl/2016/RCLRPT-16V704-1108.PDF": "bcd185e1935c35133c4b9239389b85f30b4092c3f07bc037ebdf2814a058bfdc",
+    "odi/rcl/2016/RCLRPT-16V704-7317.PDF": "7c414ac94dad5e52ae7afeca9f944dcf1c3f36bea43b1c3877db0d266e769cca"
+   },
+   "selected": "odi/rcl/2016/RCLRPT-16V704-7317.PDF"
+  },
+  {
+   "campaign": "21V211",
+   "pdfs": {
+    "odi/rcl/2021/RCLRPT-21V211-3036.PDF": "a12624dbc6623247a0aed0d1dbafce3b3062b988b574e4875a3d901b28636728"
+   },
+   "selected": "odi/rcl/2021/RCLRPT-21V211-3036.PDF"
+  }
+ ],
+ "note": "원본(NHTSA flat 파일)은 커밋하지 않는다. raw의 sha256과 같은 원본 사본(data/raw/nhtsa 또는 fetch가 보관한 data/raw/nhtsa.<받은 시각>)이 있어야 bm25_baseline --baseline이 '재현'으로 실행된다. 사본이 없으면 --allow-drift로 같은 질문 번호만 재평가한다. rclrpt_sample은 2026-10-06 당시 판본 목록(582개)과 각 PDF의 sha256이다 — --baseline은 이 목록만 받아 sha256을 확인한다.",
+ "expected": {
+  "recall_cards": 30350,
+  "eval_questions": 749,
+  "since2010": 214,
+  "rclrpt_range": 91,
+  "dup_recalls": 6404,
+  "bm25_hit10_any": 0.51,
+  "bm25_hit10_first": 0.503,
+  "rclrpt_sample_filled": 205,
+  "rclrpt_sample_empty": 95,
+  "rclrpt_sample_unresolved": 0,
+  "rclrpt_sample_manual_dates": 1
+ }
+}
