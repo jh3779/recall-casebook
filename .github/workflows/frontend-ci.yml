@@ -34,6 +34,12 @@ jobs:
         id: detect
         run: |
           if [ ! -f frontend/package.json ]; then
+            # 도입 전(frontend/에 .nvmrc 등 준비 파일만 있음)에는 건너뛰고, 다른 파일이 추적되는데 package.json이 없으면 설정 누락이다
+            others=$(git ls-files frontend | grep -vE '^frontend/(\.nvmrc|\.gitkeep|README\.md)$' || true)
+            if [ -n "$others" ]; then
+              echo "::error::frontend/에 파일이 있는데 frontend/package.json이 없습니다 - 삭제·이름 변경이 아닌지 확인하세요"
+              exit 1
+            fi
             echo "::notice::frontend/package.json 없음 - 프런트 검사를 건너뜁니다"
             echo "found=false" >> "$GITHUB_OUTPUT"
             exit 0
