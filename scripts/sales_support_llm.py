@@ -123,7 +123,7 @@ def validate_items(
 ) -> tuple[list[dict], dict[str, int], dict[str, int]]:
     """모델 항목을 코드로 검증한다 (기획v1 5절 ⑦). 통과 항목, 제거 사유별 개수, 경고 개수를 돌려준다.
 
-    제거: 필수 문자열 비어 있음 / 청크 번호가 범위 밖 / evidence_quote가 그 청크 안에 없음(공백 정리 기준).
+    제거: 필수 문자열 비어 있음 / 청크 번호가 범위 밖 / evidence_quote가 모델에게 보낸 청크 범위(앞 MAX_CHUNK_CHARS_IN_PROMPT자) 안에 없음(공백 정리 기준).
     `source`·`domains`·`commit_sha`는 모델이 아니라 검증된 청크에서 코드가 채운다.
     경고(제거하지 않고 센다): criteria·check_method가 evidence_quote 밖 글을 쓴 경우, 판정으로 읽히는 표현.
     """
@@ -147,8 +147,13 @@ def validate_items(
             continue
         chunk = shown[n - 1]
         quote = poc.collapse_whitespace(it["evidence_quote"])
-        if quote not in poc.collapse_whitespace(chunk.chunk_text):
-            drop("quote_not_in_chunk")
+        if quote not in poc.collapse_whitespace(chunk.chunk_text[:MAX_CHUNK_CHARS_IN_PROMPT]):
+            # 모델에게 보내지 않은 뒷부분에만 있으면 인용 확인으로 세지 않는다
+            drop(
+                "quote_outside_shown_text"
+                if quote in poc.collapse_whitespace(chunk.chunk_text)
+                else "quote_not_in_chunk"
+            )
             continue
         for key, flag in (
             ("criteria", "criteria_outside_quote"),
@@ -284,6 +289,10 @@ def shown_chunks(shown: list[poc.Chunk]) -> list[dict]:
             "chunk_hash": c.chunk_hash,
             "doc_id": c.doc_id,
             "section_key": c.section_key,
+            "shown_chars": len(c.chunk_text[:MAX_CHUNK_CHARS_IN_PROMPT]),
+            "shown_text_sha256": hashlib.sha256(
+                c.chunk_text[:MAX_CHUNK_CHARS_IN_PROMPT].encode("utf-8")
+            ).hexdigest(),
         }
         for n, c in enumerate(shown, start=1)
     ]
@@ -386,6 +395,9 @@ def build_run_config(
             for lib in ("fastembed", "rank_bm25", "numpy", "openai")
         },
         "data_commit_sha": index_meta.get("data_commit_sha"),
+        "pinned_snapshot_commit_sha": index_meta.get("pinned_snapshot_commit_sha"),
+        "data_fingerprint": index_meta.get("data_fingerprint"),
+        "data_status": index_meta.get("data_status"),
         "index_chunks_digest": index_meta.get("chunks_digest"),
         "index_embedding_model": index_meta.get("embedding_model"),
         "chunk_key_recipe": index_meta.get("chunk_key_recipe"),

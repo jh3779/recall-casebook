@@ -185,10 +185,12 @@ def split_long(body: str) -> list[str]:
     return parts
 
 
-def chunk_file(source_path: str, raw: str, first_id: int = 0) -> list[Chunk]:
+def chunk_file(
+    source_path: str, raw: str, first_id: int = 0, commit_sha: str = COMMIT_SHA
+) -> list[Chunk]:
     chunks: list[Chunk] = []
     meta = parse_frontmatter(raw)
-    doc_id = make_doc_id(source_path, COMMIT_SHA)
+    doc_id = make_doc_id(source_path, commit_sha)
     for heading_path, lines in split_sections(preprocess(raw)):
         body = "\n".join(lines).strip()
         if not body:
@@ -201,11 +203,11 @@ def chunk_file(source_path: str, raw: str, first_id: int = 0) -> list[Chunk]:
                     chunk_id=first_id + len(chunks),
                     source_path=source_path,
                     heading_path=heading_path,
-                    commit_sha=COMMIT_SHA,
+                    commit_sha=commit_sha,
                     chunk_text=part,
                     chunk_hash=chunk_hash,
                     doc_id=doc_id,
-                    chunk_key=make_chunk_key(source_path, COMMIT_SHA, heading_path, chunk_hash),
+                    chunk_key=make_chunk_key(source_path, commit_sha, heading_path, chunk_hash),
                     domains=[DOMAIN],
                     doc_title=meta["title"],
                     doc_description=meta["description"],
@@ -242,11 +244,19 @@ def data_status(fingerprint: str) -> str:
     )
 
 
+def effective_commit_sha(fingerprint: str) -> str:
+    """데이터가 고정 스냅샷과 같을 때만 공식 커밋 SHA를 쓴다. 수정된 데이터에는 `dirty`를 붙인다."""
+    return COMMIT_SHA if fingerprint == SNAPSHOT_FINGERPRINT else "dirty"
+
+
 def build_chunks(handbook_dir: Path) -> list[Chunk]:
     chunks: list[Chunk] = []
+    commit_sha = effective_commit_sha(data_fingerprint(handbook_dir))
     for path in list_files(handbook_dir):
         rel = path.relative_to(handbook_dir).as_posix()
-        chunks.extend(chunk_file(rel, path.read_text(encoding="utf-8"), len(chunks)))
+        chunks.extend(
+            chunk_file(rel, path.read_text(encoding="utf-8"), len(chunks), commit_sha=commit_sha)
+        )
     assert_unique_keys(chunks)
     return chunks
 
@@ -434,7 +444,10 @@ def build_meta(
     data_fingerprint: str = "",
 ) -> dict:
     return {
-        "data_commit_sha": COMMIT_SHA,
+        "data_commit_sha": effective_commit_sha(data_fingerprint)
+        if data_fingerprint
+        else COMMIT_SHA,
+        "pinned_snapshot_commit_sha": COMMIT_SHA,
         "data_fingerprint": data_fingerprint,
         "data_status": data_status(data_fingerprint) if data_fingerprint else "unknown",
         "embedding_model": EMBEDDING_MODEL,
@@ -459,7 +472,9 @@ def check_index(
     """저장된 색인 설명(meta)이 지금 설정·데이터와 같은지 비교해 다른 항목을 문장으로 돌려준다. 빈 목록이면 일치."""
     problems = []
     expected = {
-        "data_commit_sha": COMMIT_SHA,
+        "data_commit_sha": effective_commit_sha(data_fingerprint)
+        if data_fingerprint
+        else COMMIT_SHA,
         "embedding_model": EMBEDDING_MODEL,
         "fastembed_version": fastembed_version,
         "chunking": CHUNKING,

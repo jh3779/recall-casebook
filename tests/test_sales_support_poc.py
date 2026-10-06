@@ -454,3 +454,41 @@ def test_load_questions_rejects_an_empty_file(tmp_path):
     path.write_text("\n\n", encoding="utf-8")
     with pytest.raises(ValueError, match="비어"):
         poc.load_questions(path)
+
+
+# ---- PR #20 2차 리뷰: 수정된 데이터에는 공식 commit_sha를 붙이지 않는다 ----
+
+
+def _fake_hb(tmp_path, text="## A\n\nx\n"):
+    hb = tmp_path / "hb"
+    (hb / "sales").mkdir(parents=True)
+    (hb / "sales" / "a.md").write_text(text, encoding="utf-8")
+    return hb
+
+
+def test_chunks_from_data_that_differs_from_the_pinned_snapshot_get_dirty_commit_sha(tmp_path):
+    chunks = poc.build_chunks(_fake_hb(tmp_path))  # 가짜 핸드북은 고정 스냅샷과 지문이 다르다
+    assert chunks and all(c.commit_sha == "dirty" for c in chunks)
+    assert poc.effective_commit_sha(poc.SNAPSHOT_FINGERPRINT) == poc.COMMIT_SHA
+    assert poc.effective_commit_sha("0" * 64) == "dirty"
+
+
+def test_chunk_keys_differ_between_official_and_dirty_data():
+    official = poc.chunk_file("sales/a.md", "## A\n\nx\n")[0]
+    dirty = poc.chunk_file("sales/a.md", "## A\n\nx\n", commit_sha="dirty")[0]
+    assert official.commit_sha == poc.COMMIT_SHA and dirty.commit_sha == "dirty"
+    assert official.chunk_key != dirty.chunk_key
+
+
+def test_meta_separates_effective_commit_from_the_pinned_snapshot_commit():
+    chunks = poc.chunk_file("a.md", "## A\n\nx\n")
+    official = poc.build_meta(chunks, (1, 384), "9", data_fingerprint=poc.SNAPSHOT_FINGERPRINT)
+    assert (
+        official["data_commit_sha"] == poc.COMMIT_SHA
+        and official["data_status"] == "matches_pinned_snapshot"
+    )
+    dirty = poc.build_meta(chunks, (1, 384), "9", data_fingerprint="f" * 64)
+    assert (
+        dirty["data_commit_sha"] == "dirty"
+        and dirty["pinned_snapshot_commit_sha"] == poc.COMMIT_SHA
+    )

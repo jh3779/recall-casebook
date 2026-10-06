@@ -399,3 +399,34 @@ def test_budget_argument_must_be_a_positive_finite_number(bad):
     with pytest.raises(argparse.ArgumentTypeError):
         llm.positive_budget(bad)
     assert llm.positive_budget("0.5") == 0.5
+
+
+def test_quote_beyond_the_text_sent_to_the_model_is_not_counted_as_found():
+    body = "a" * llm.MAX_CHUNK_CHARS_IN_PROMPT + " Secret sentence beyond the cut."
+    long_chunk = poc.chunk_file("sales/c.md", f"## Long\n\n{body}\n")[0]
+    it = item(chunk_no=1, evidence_quote="Secret sentence beyond the cut.")
+    valid, removed, _ = llm.validate_items([it], [long_chunk])
+    assert valid == [] and removed == {"quote_outside_shown_text": 1}
+    inside = item(chunk_no=1, evidence_quote="a" * 50)
+    assert len(llm.validate_items([inside], [long_chunk])[0]) == 1
+
+
+def test_shown_chunks_record_how_much_text_was_actually_sent():
+    long_chunk = poc.chunk_file("sales/c.md", "## Long\n\n" + "x" * 5000 + "\n")[0]
+    rec = llm.shown_chunks([long_chunk])[0]
+    assert rec["shown_chars"] == llm.MAX_CHUNK_CHARS_IN_PROMPT
+    assert len(rec["shown_text_sha256"]) == 64
+
+
+def test_run_config_records_the_actual_data_fingerprint_and_status():
+    meta = {
+        "data_commit_sha": "dirty",
+        "chunks_digest": "d",
+        "embedding_model": "m",
+        "data_fingerprint": "fp",
+        "data_status": "differs_from_pinned_snapshot",
+        "pinned_snapshot_commit_sha": "0ab",
+    }
+    cfg = llm.build_run_config(meta, "hybrid")
+    assert cfg["data_fingerprint"] == "fp" and cfg["data_status"] == "differs_from_pinned_snapshot"
+    assert cfg["data_commit_sha"] == "dirty" and cfg["pinned_snapshot_commit_sha"] == "0ab"

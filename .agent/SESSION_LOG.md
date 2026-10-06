@@ -50,3 +50,4 @@
 - 2026-10-06: PR #19 2차 자동 리뷰 반영 — HANDOFF의 세션 분리 요약을 상세 규칙 범위(생성·추출·다듬기)와 맞춤
 - 2026-10-06: 영업·지원 검색 3종(BM25·벡터·하이브리드) 비교와 생성 단계(gpt-4o-mini) 테스트 코드를 PR #17에서 분리해 research/sales-support-baseline로 올림(사용자 결정, 상세 현황은 PR #17의 HANDOFF)
 - 2026-10-06: PR #20 1차 리뷰 반영 — 데이터 지문(공식 zip 스냅샷과 일치 확인 후 고정)·비교 조건 검사(--allow)·생성 기록에 청크 키·순위 보존·지표 이름을 quote_found로 변경·응답 모델/가격 확인일 기록·예산 인자 검증. 지문 필드가 늘어 재색인 필요(사용자 확인 대기)
+- 2026-10-06: PR #20 2차 리뷰 반영 — 수정된 데이터에는 commit_sha=dirty(공식 SHA는 pinned_snapshot_commit_sha로 분리), 생성 run_config에 data_fingerprint·data_status 저장, 인용 확인을 모델에게 보낸 앞 2,000자 범위로 제한하고 전달 범위·해시 기록
