@@ -54,3 +54,4 @@
 - 2026-10-06: PR #20 3차 리뷰 반영 — 고정 스냅샷과 다른(수정된) 데이터의 색인으로는 생성 실행을 거부(원문 복원 불가 문제)
 - 2026-10-06: 섹션 키 형식(source_path#heading_path, 제목을 >로 연결) 고정 예시 테스트 추가(PR #17 리뷰 선택 개선)
 - 2026-10-06: 생성 테스트에 제거된 인용문 원인 분류(markdown_stripped·case_or_punctuation·mostly_overlapping_reworded·not_in_text)와 제거 항목 기록 추가 — 같은 30개 재실행으로 원인 확인 예정
+- 2026-10-06: chunk_key 계산식 확정 표시(DEC-026) — provisional 제거, 색인 설명의 recipe 문자열이 바뀌어 재색인 필요

@@ -49,10 +49,10 @@ INDEX_META = "index_meta.json"
 # (`github.com/suuuuuuungho/GitLab_Data/archive/<COMMIT_SHA>.zip`)으로 계산한 값과 로컬 데이터셋의 값이 같음을 확인했다.
 SNAPSHOT_FINGERPRINT = "f7340fa1c07bf6e9432e7c661651bcaeb90a137343103b2435e66955e65f9a2f"
 DOMAIN = "sales-support"
-# 임시 chunk_key — 팀 합의 전 제안 A(HANDOFF 할 일 16). 합의되면 DEC로 확정하고 바뀌면 `index`를 다시 한다.
+# chunk_key 계산식 — DEC-026(2026-10-06, 단일 키 A안). 바꾸면 모든 도메인의 청크·임베딩을 다시 만든다.
 CHUNK_KEY_SEP = "\x1f"
 CHUNK_KEY_LEN = 32
-CHUNK_KEY_RECIPE = f"sha256(source_path|commit_sha|heading_path|chunk_hash joined by U+001F)[:{CHUNK_KEY_LEN}] (provisional)"
+CHUNK_KEY_RECIPE = f"sha256(source_path|commit_sha|heading_path|chunk_hash joined by U+001F)[:{CHUNK_KEY_LEN}] (DEC-026)"
 QUESTION_TYPES = ("doc_derived", "synthetic", "real")
 EQUIVALENT_DIFF = 0.03  # 기획v1 3절: 차이가 이보다 작으면 같다고 본다
 RRF_K = 60
@@ -90,7 +90,7 @@ def collapse_whitespace(text: str) -> str:
 
 
 def make_chunk_key(source_path: str, commit_sha: str, heading_path: str, chunk_hash: str) -> str:
-    """중복 제거 키 네 값(기획v1 3절)을 구분 문자로 이어 해시한 단일 키 — 임시안."""
+    """중복 제거 키 네 값(기획v1 3절)을 구분 문자로 이어 해시한 단일 키 (DEC-026)."""
     joined = CHUNK_KEY_SEP.join([source_path, commit_sha, heading_path, chunk_hash])
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:CHUNK_KEY_LEN]
 

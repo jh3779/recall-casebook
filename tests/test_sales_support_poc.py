@@ -299,7 +299,7 @@ def test_compare_reports_marks_differences_at_or_above_threshold():
     assert by_metric[("BM25", "section", "MRR")]["different"] is False
 
 
-# ---- 임시 chunk_key (팀 합의 전 제안 A: 네 값을 구분 문자로 이어 해시) ----
+# ---- chunk_key (DEC-026, A안: 네 값을 구분 문자로 이어 해시) ----
 
 
 def test_chunk_key_recipe_matches_the_documented_formula():
