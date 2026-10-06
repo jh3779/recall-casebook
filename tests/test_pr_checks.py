@@ -55,6 +55,8 @@ def test_principles_flags_defect_precedent_verdicts():
     # 결함 선례 주제(DEC-030)의 판정 필드·문구
     for text in (
         "    recall_required: bool",
+        "recall required",
+        "recall-required",
         '"recallRequired": true',
         '"리콜 대상입니다"',
         "원인은 이것입니다",

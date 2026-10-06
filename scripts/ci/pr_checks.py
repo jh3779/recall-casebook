@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # --- 서비스 원칙 (AGENTS.md 2절) -------------------------------------------------
 # 단어 경계 없이·대소문자 무시: applies_to, verdict_label, isApplicable, VERDICT 등 변형까지 잡는다
 PRINCIPLE_PATTERN = re.compile(
-    r"applies|verdict|is_?applicable|recall_?required|적용\s*(됩니다|되지\s*않습니다|안\s*됩니다)"
+    r"applies|verdict|is_?applicable|recall[_\s-]?required|적용\s*(됩니다|되지\s*않습니다|안\s*됩니다)"
     r"|리콜\s*대상(입니다|이\s*아닙니다)|원인은\s*이것입니다",
     re.IGNORECASE,
 )
