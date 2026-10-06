@@ -491,3 +491,27 @@ def test_summary_counts_quote_diagnoses_across_records():
     records, _ = llm.run_batch(client, [(question(), CHUNKS[:2])], budget_usd=1.0)
     assert records[0]["removed_items"][0]["diagnosis"] == "case_or_punctuation"
     assert llm.summarize(records)["removed_quote_diagnosis"] == {"case_or_punctuation": 1}
+
+
+# ---- 프롬프트 v2: 인용문과 criteria·check_method를 원문 그대로 (PR #20 실행 결과 후속) ----
+
+
+def test_instructions_v2_demand_character_for_character_quotes_and_verbatim_criteria():
+    text = llm.INSTRUCTIONS.lower()
+    assert "character-for-character" in text  # 인용문은 글자 그대로
+    for kept in (
+        "capitalization",
+        "punctuation",
+        "markdown",
+    ):  # 대소문자·구두점·마크다운을 바꾸지 말 것
+        assert kept in text
+    # criteria·check_method는 evidence_quote의 연속된 일부이거나 null (기획v1 5절 ⑥)
+    assert "criteria and check_method must each be copied verbatim from your evidence_quote" in text
+    assert "never rewrite" in text
+
+
+def test_prompt_version_is_recorded_in_run_config():
+    meta = {"data_commit_sha": "a", "chunks_digest": "d", "embedding_model": "m"}
+    cfg = llm.build_run_config(meta, "hybrid")
+    assert cfg["prompt_version"] == llm.PROMPT_VERSION == "v2"
+    assert llm.PROMPT_V1_SHA == "d178413ddcdb3fb3"  # v1 결과와 비교할 수 있게 해시를 남긴다

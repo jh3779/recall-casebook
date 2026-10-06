@@ -41,6 +41,9 @@ DEFAULT_BUDGET_USD = 1.0
 EST_INPUT_TOKENS = 2500
 EST_OUTPUT_TOKENS = 600
 
+PROMPT_VERSION = "v2"  # v1(지시문 해시 PROMPT_V1_SHA)은 인용문 제거 34건 중 88%가 대소문자·구두점·마크다운 차이였다
+PROMPT_V1_SHA = "d178413ddcdb3fb3"
+
 # 서비스 원칙 — 판정하지 않는다(AGENTS.md 2절 1항). 후보 항목과 근거만 낸다.
 INSTRUCTIONS = (
     "You prepare onboarding checklist candidates for a new employee from numbered excerpts of the "
@@ -48,8 +51,11 @@ INSTRUCTIONS = (
     "For each candidate give: item (what to do), reason (why, based on the excerpt), "
     "criteria (the condition stated in the excerpt that separates when it matters, or null if the "
     "excerpt states none), check_method (how to confirm it is done, as stated in the excerpt, or null), "
-    "chunk_no (the excerpt number), evidence_quote (an exact contiguous quote copied from that excerpt "
-    "that supports the item). "
+    "chunk_no (the excerpt number), evidence_quote (an exact contiguous quote copied "
+    "character-for-character from that excerpt that supports the item; keep the original capitalization, "
+    "punctuation, spacing and any markdown such as link syntax or bold markers, and do not paraphrase). "
+    "criteria and check_method must each be copied verbatim from your evidence_quote (a contiguous part of "
+    "it) or be null; never rewrite them in your own words. "
     "Do not decide whether anything applies to the user. Do not invent conditions, deadlines, tools or "  # principle-ok: 판정을 하지 말라는 지시문(출력 문구가 아님)
     "names that are not in the excerpt. If the excerpts contain nothing relevant, return an empty list. "
     "Write in English."
@@ -443,6 +449,7 @@ def build_run_config(
         "model": MODEL,
         "openai_version": version("openai"),
         "temperature": 0,
+        "prompt_version": PROMPT_VERSION,
         "instructions_sha": sha(INSTRUCTIONS),
         "schema_sha": sha(json.dumps(OUTPUT_SCHEMA, sort_keys=True)),
         "top_k_chunks": TOP_K_CHUNKS,

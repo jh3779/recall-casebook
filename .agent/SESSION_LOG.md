@@ -55,3 +55,4 @@
 - 2026-10-06: 섹션 키 형식(source_path#heading_path, 제목을 >로 연결) 고정 예시 테스트 추가(PR #17 리뷰 선택 개선)
 - 2026-10-06: 생성 테스트에 제거된 인용문 원인 분류(markdown_stripped·case_or_punctuation·mostly_overlapping_reworded·not_in_text)와 제거 항목 기록 추가 — 같은 30개 재실행으로 원인 확인 예정
 - 2026-10-06: chunk_key 계산식 확정 표시(DEC-026) — provisional 제거, 색인 설명의 recipe 문자열이 바뀌어 재색인 필요
+- 2026-10-06: 생성 테스트 2차 실행(인용문 제거 34건 분류: 대소문자·구두점 23·마크다운 7·의역 4·원문에 없음 0) → 프롬프트 v2(인용문 글자 그대로, criteria·check_method는 인용문의 일부 그대로 또는 null) 적용. 같은 입력인데 출력이 달라지므로(항목 83→91) before/after는 여러 번 반복
