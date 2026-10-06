@@ -55,7 +55,7 @@ _ABBR = re.compile(
     r"|\bOct\.|\bNov\.|\bDec\.)$",
     re.I,
 )
-_INITIAL = re.compile(r"(?<![A-Za-z])[A-Z]\.$")
+_INITIAL = re.compile(r"(?<![A-Za-z0-9])[A-Z]\.$")  # "V70S."는 이니셜이 아니다
 
 
 def split_first_sentence(text: str) -> tuple[str, str]:
@@ -188,16 +188,31 @@ def build_eval(inv_rows: list[dict], cards: dict[str, dict]) -> list[dict]:
     return questions
 
 
-def install_dir(new: Path, target: Path) -> None:
-    """new 폴더를 target으로 통째로 바꾼다. 교체 전에 실패하면 기존 target이 그대로 남는다."""
+def install_dir(new: Path, target: Path, keep_old_as: Path | None = None) -> None:
+    """new 폴더를 target으로 통째로 바꾼다.
+
+    - 교체 도중 실패하면 옛 target을 되돌린다.
+    - 지난번 교체가 중간에 멈춰 `.old`만 남아 있으면 지우지 않고 중단한다 (그것이 마지막 사본일 수 있다).
+    - keep_old_as를 주면 옛 target을 지우지 않고 그 이름으로 보관한다 (NHTSA 옛 스냅샷은 다시 받을 수 없다).
+    """
     old = target.with_name(target.name + ".old")
     if old.exists():
+        if not target.exists():
+            sys.exit(f"지난 교체가 중간에 멈췄다 — {old}를 {target}으로 되돌린 뒤 다시 실행한다")
         shutil.rmtree(old)
     if target.exists():
         target.rename(old)
-    new.rename(target)
+    try:
+        new.rename(target)
+    except OSError:
+        if old.exists():
+            old.rename(target)
+        raise
     if old.exists():
-        shutil.rmtree(old)
+        if keep_old_as is not None:
+            old.rename(keep_old_as)
+        else:
+            shutil.rmtree(old)
 
 
 def fetch() -> None:
@@ -221,7 +236,16 @@ def fetch() -> None:
             "last_modified": last_modified,
         }
     (tmp / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    install_dir(tmp, RAW_DIR)
+    keep = None
+    if (RAW_DIR / "manifest.json").exists():
+        # 옛 스냅샷은 받은 시각 이름으로 보관한다 (예: data/raw/nhtsa.2026-10-06T08-10-00+00-00)
+        prev = json.loads((RAW_DIR / "manifest.json").read_text(encoding="utf-8"))["downloaded_at"]
+        keep = RAW_DIR.with_name(f"{RAW_DIR.name}.{prev.replace(':', '-')}")
+        if keep.exists():
+            keep = None  # 같은 스냅샷이 이미 보관돼 있으면 옛 폴더는 지운다
+    install_dir(tmp, RAW_DIR, keep_old_as=keep)
+    if keep is not None:
+        print(f"이전 스냅샷 보관: {keep}")
     print(f"완료: {RAW_DIR}/manifest.json")
 
 
@@ -269,7 +293,7 @@ def build() -> None:
     print(f"스냅샷 {snapshot_date}")
     print(f"리콜 줄 {len(rcl_rows):,} → 리콜 카드 {len(cards):,} (2026-10-06: 327,429 → 30,350)")
     print(f"결함 조사 {len({r['ACTION'] for r in inv_rows}):,} (2026-10-06: 5,349)")
-    print(f"본문이 다른 리콜과 같은 리콜 {shared:,} (2026-10-06: 6,394)")
+    print(f"본문이 다른 리콜과 같은 리콜 {shared:,} (2026-10-06: 6,404)")
     print(f"시험 질문 {len(questions):,} (2026-10-06: 749)")
     for tag in ("since2010", "rclrpt_range"):
         print(f"  {tag}: {sum(tag in q['set'] for q in questions):,}")
@@ -282,14 +306,19 @@ def freeze(out_path: Path) -> None:
     원본 URL은 매일 덮어써져 옛 스냅샷을 다시 받을 수 없다 — 해시로 "같은 원본인지"만 확인할 수 있다.
     """
     manifest = verify_raw(RAW_DIR)
+    first_card = json.loads((OUT_DIR / "recalls.jsonl").open(encoding="utf-8").readline())
+    if first_card["snapshot_date"] != manifest["downloaded_at"][:10]:
+        sys.exit(
+            "recalls.jsonl·eval.jsonl이 지금 원본과 다른 날 만들어졌다 — 먼저 `... nhtsa build`를 다시 실행한다"
+        )
     eval_path = OUT_DIR / "eval.jsonl"
     questions = [json.loads(line) for line in eval_path.open(encoding="utf-8")]
-    sample_path = OUT_DIR / "causes_sample.jsonl"
-    sample = (
-        [json.loads(line)["campaign"] for line in sample_path.open(encoding="utf-8")]
-        if sample_path.exists()
-        else []
-    )
+    sample = []
+    # 표본 목록에는 읽지 못한 리콜도 넣는다 — 다음에 같은 표본으로 다시 잴 때 빠지지 않게
+    for name in ("causes_sample.jsonl", "causes_sample_failures.jsonl"):
+        path = OUT_DIR / name
+        if path.exists():
+            sample += [json.loads(line)["campaign"] for line in path.open(encoding="utf-8")]
     baseline = {
         "raw": manifest,
         "eval_sha256": hashlib.sha256(eval_path.read_bytes()).hexdigest(),

@@ -34,7 +34,7 @@
    }
   }
  },
- "eval_sha256": "55e5af414f1bb6ed48ce73b5ae9a82d1bd12b03b93874ea011d7374061246a29",
+ "eval_sha256": "fe5433db5c7864a01aaa98d6b5af0d8a211429bec7a24f0c5f8e19c2d959695c",
  "eval_action_nos": [
   "EA00006",
   "EA00009",
@@ -1094,9 +1094,9 @@
   "eval_questions": 749,
   "since2010": 214,
   "rclrpt_range": 91,
-  "dup_recalls": 6394,
-  "bm25_hit10_any": 0.511,
-  "bm25_hit10_first": 0.505,
+  "dup_recalls": 6404,
+  "bm25_hit10_any": 0.51,
+  "bm25_hit10_first": 0.503,
   "rclrpt_sample_filled": 205,
   "rclrpt_sample_empty": 95
  }

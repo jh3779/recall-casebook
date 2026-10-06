@@ -215,6 +215,7 @@ def test_latest_parsed_skips_image_only_version_and_picks_latest(monkeypatch):
     assert key == "c"
     assert parsed["cause_text"] == "new cause"
     assert parsed["image_only_versions"] == 1
+    assert parsed["latest_uncertain"] is True  # 이미지 판본이 실제 최신일 수 있다
 
 
 def test_latest_parsed_fails_when_no_readable_version(monkeypatch):
@@ -280,3 +281,39 @@ def test_bm25_negative_idf_uses_floor():
     mean = (raw["x"] + 3 * raw["a"]) / 4
     assert index.idf["x"] == pytest.approx(bm.EPSILON * mean)
     assert index.idf["a"] == pytest.approx(raw["a"])
+
+
+def test_install_dir_restores_old_when_swap_fails(tmp_path):
+    target = tmp_path / "nhtsa"
+    target.mkdir()
+    (target / "old.txt").write_text("old")
+    with pytest.raises(OSError):
+        nhtsa.install_dir(tmp_path / "missing", target)  # 새 폴더가 없어 교체 실패
+    assert (target / "old.txt").read_text() == "old"
+    assert not (tmp_path / "nhtsa.old").exists()
+
+
+def test_install_dir_stops_when_only_old_copy_is_left(tmp_path):
+    (tmp_path / "nhtsa.old").mkdir()  # 지난 교체가 중간에 멈춘 상태 — 이것이 마지막 사본
+    new = tmp_path / "nhtsa.partial"
+    new.mkdir()
+    with pytest.raises(SystemExit):
+        nhtsa.install_dir(new, tmp_path / "nhtsa")
+    assert (tmp_path / "nhtsa.old").exists()
+
+
+def test_install_dir_keeps_old_snapshot_when_asked(tmp_path):
+    target = tmp_path / "nhtsa"
+    target.mkdir()
+    (target / "old.txt").write_text("old")
+    new = tmp_path / "nhtsa.partial"
+    new.mkdir()
+    keep = tmp_path / "nhtsa.2026-10-06"
+    nhtsa.install_dir(new, target, keep_old_as=keep)
+    assert (keep / "old.txt").read_text() == "old"
+
+
+def test_first_sentence_model_name_ending_with_capital_is_boundary():
+    # EA05021: "MY 2002 V70S." 를 이니셜로 오인해 문단 전체가 질문이 되던 문제
+    text = "THE ALLEGED DEFECT AFFECTS MY 2002 V70S. ACCORDING TO VOLVO THE PART FAILED."
+    assert nhtsa.first_sentence(text) == "THE ALLEGED DEFECT AFFECTS MY 2002 V70S."

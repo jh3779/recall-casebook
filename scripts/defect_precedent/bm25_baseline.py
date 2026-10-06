@@ -8,6 +8,7 @@
 점수 공식은 rank_bm25의 BM25Okapi와 같게 맞췄다 (k1=1.5, b=0.75, 음수 idf는 평균 idf × 0.25로 대체).
 """
 
+import argparse
 import hashlib
 import json
 import math
@@ -90,9 +91,13 @@ def main(baseline: Path | None = None) -> None:
     ):
         scores = " · ".join(f"Hit@{k} {result[name][k]:.3f}" for k in KS)
         print(f"  {label}: {scores}")
-    print("  2026-10-06 기준값: Hit@10 0.511 (주) / 0.505 (참고)")
+    print("  2026-10-06 기준값: Hit@10 0.510 (주) / 0.503 (참고)")
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    main(Path(args[1]) if args[:1] == ["--baseline"] and len(args) == 2 else None)
+    parser = argparse.ArgumentParser(description="BM25 기준 점수 (대리 평가)")
+    parser.add_argument("--baseline", type=Path, help="기준 파일의 질문 목록만 쓴다")
+    args = parser.parse_args()
+    if args.baseline is not None and not args.baseline.exists():
+        parser.error(f"기준 파일이 없다: {args.baseline}")
+    main(args.baseline)

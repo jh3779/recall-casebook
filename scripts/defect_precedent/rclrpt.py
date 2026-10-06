@@ -14,6 +14,8 @@ PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew ins
 - 시점 평가에서는 질문 기준일 이전 판본만 써야 한다 (docs/기획_결함선례.md 6절) — 여기서는 최신 판본만 만든다.
 """
 
+import argparse
+import http.client
 import json
 import random
 import re
@@ -143,7 +145,7 @@ def _download(key: str) -> Path:
         part = path.with_name(path.name + ".part")
         try:
             part.write_bytes(urllib.request.urlopen(req, timeout=60).read())
-        except OSError as e:
+        except (OSError, http.client.HTTPException) as e:  # 응답이 중간에 끊기면 IncompleteRead
             raise ReportError(f"다운로드 실패: {key} ({e})") from e
         part.replace(path)
         time.sleep(REQUEST_GAP_SEC)
@@ -169,7 +171,12 @@ def latest_parsed(keys: list[str]) -> tuple[str, dict]:
             best = (rank, key, parsed)
     if best is None:
         raise ReportError(f"글자를 읽을 수 있는 판본 없음: {keys}")
-    return best[1], {**best[2], "image_only_versions": image_only}
+    # 이미지 판본의 제출일은 알 수 없다 — 그것이 실제 최신 수정본이면 고른 판본이 최신이 아닐 수 있다
+    return best[1], {
+        **best[2],
+        "image_only_versions": image_only,
+        "latest_uncertain": image_only > 0,
+    }
 
 
 def run(mode: str, n: int = 300, seed: int = DEFAULT_SEED, baseline: Path | None = None) -> None:
@@ -219,6 +226,11 @@ def run(mode: str, n: int = 300, seed: int = DEFAULT_SEED, baseline: Path | None
         )
     write_jsonl(out_path, rows)
     write_jsonl(out_path.with_name(out_path.stem + "_failures.jsonl"), failures)
+    uncertain = sum(1 for r in rows if r["latest_uncertain"])
+    if uncertain:
+        print(
+            f"주의: 글자 없는 이미지 판본이 있어 최신 판본이 불확실한 리콜 {uncertain}건 (latest_uncertain)"
+        )
     no_date = sum(1 for r in rows if not r["submission_date"])
     if no_date:
         print(f"주의: 제출일을 읽지 못한 최신 판본 {no_date}건 — 판본 선택·시점 평가에 쓸 수 없음")
@@ -232,17 +244,15 @@ def run(mode: str, n: int = 300, seed: int = DEFAULT_SEED, baseline: Path | None
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    base = None
-    if "--baseline" in args:
-        i = args.index("--baseline")
-        base = Path(args[i + 1])
-        args = args[:i] + args[i + 2 :]
-    if args[:1] == ["sample"]:
-        run("sample", n=int(args[1]) if len(args) > 1 else 300, baseline=base)
-    elif args == ["all"]:
-        run("all")
-    else:
-        sys.exit(
-            "사용법: uv run python -m scripts.defect_precedent.rclrpt {sample [N] [--baseline 파일]|all}"
-        )
+    parser = argparse.ArgumentParser(description="Part 573 원본 보고서 판독")
+    parser.add_argument("mode", choices=["sample", "all"])
+    parser.add_argument("n", nargs="?", type=int, default=300, help="sample 모드의 표본 수")
+    parser.add_argument(
+        "--baseline", type=Path, help="기준 파일의 표본 목록을 그대로 쓴다 (sample 전용)"
+    )
+    args = parser.parse_args()
+    if args.mode == "all" and args.baseline is not None:
+        parser.error("--baseline은 sample 모드에서만 쓴다")
+    if args.baseline is not None and not args.baseline.exists():
+        parser.error(f"기준 파일이 없다: {args.baseline}")
+    run(args.mode, n=args.n, baseline=args.baseline)
