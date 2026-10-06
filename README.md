@@ -1,31 +1,32 @@
 # LG_CNS_RAG
 
-LG CNS AI Campus RAG 팀 프로젝트 — **온보딩 체크리스트 RAG**.
+LG CNS AI Campus RAG 팀 프로젝트 — **결함 선례 찾기 도우미** (DEC-030).
 
-GitLab 공개 핸드북을 근거로, 신규 입사자·부서 이동자가 새 업무를 맡았을 때 적용될 수 있는 온보딩 체크리스트 항목과
-확인 기준을 **원문 근거(`source_path#heading_path`)와 함께** 정리해 주는 RAG 서비스.
-판정("적용됩니다")은 하지 않는다.
+한국 부품사에서 북미 수출 차종을 맡은 품질·제품안전 엔지니어가 원인 모를 결함을 받았을 때, 미국 정부(NHTSA) 공개 리콜·결함 조사에서
+같은 부품의 다른 회사 선례와 그 원인 서술을 **원문 그대로, 리콜 번호와 함께** 찾아 주는 RAG 서비스. 판정("리콜 대상입니다")은 하지 않는다. <!-- principle-ok: 금지 문구 인용 -->
 
-> 기획 상세: [`docs/기획v1.md`](docs/기획v1.md). 옛 주제(미국 제조업 공장 Compliance AI) 문서 [`docs/기획.md`](docs/기획.md)는 폐기된 참고용이다 (DEC-010).
-> 기술 스택이 확정되면 이 README에 실행 방법을 추가한다.
+> 기획 상세: [`docs/기획_결함선례.md`](docs/기획_결함선례.md). 데이터·시험지·기준 점수 재현: `scripts/defect_precedent/README.md` (PR #25).
+> 이전 주제 문서 — 온보딩 RAG [`docs/기획v1.md`](docs/기획v1.md)(DEC-010), Compliance AI [`docs/기획.md`](docs/기획.md) — 는 참고용이다.
 
 ## 지금 어디까지 왔나
 
-- **주제**: 온보딩 체크리스트 RAG (DEC-010). 데이터는 GitLab 공개 핸드북 스냅샷(34개 핵심 부서, md 4,612개).
-- **구조**: 인사 · 엔지니어링 · 영업·지원 **3개 도메인**이 각자 최소 DB + RAG PoC를 만들고, 모든 도메인이 쓰는 **공용 폴더 6개**와 색인에서 뺀 폴더 11개를 따로 둔다 (자세한 배정은 [`docs/기획v1.md`](docs/기획v1.md) 3절, DEC-020).
-- **서비스 흐름**: 사용자가 질문 전에 유형(신규/이동)과 새 부서를 고르면 → 질문 분류 → 도메인별 검색 → 근거 범위 고정 → 체크리스트 생성 → 인용 검증 순으로 답한다 (기획v1 5절, 초안).
+- **주제**: 결함 선례 찾기 도우미 (DEC-030, 2026-10-06 전환). 데이터는 NHTSA 공개 리콜 30,350건·결함 조사 5,349건과 리콜 원본 보고서(Part 573, 원인·공급사 칸).
+- **역할**: A 데이터·시험지 박예원 · B RAG 우지훈 · C 검사·화면·발표 박성호 · D 근거·품질 확인 이승노 (이슈 #24).
+- **기준선**: 시험 문제 749개(정부가 기록한 조사 → 리콜, 대리 평가)에서 단순 검색 Hit@10 0.510. 재현 방법은 `scripts/defect_precedent/README.md`.
 - **일정**: 발표 2026-10-20, 개발 10/12~14. 일정·역할·위험은 [`docs/진행계획.md`](docs/진행계획.md).
 - **지금 할 일·열린 결정**은 [`.agent/HANDOFF.md`](.agent/HANDOFF.md)에 있다. 이슈 대신 이 문서가 할 일 목록을 가진다.
 
 ## 데이터 받기
 
-핸드북 데이터셋(`docs/handbook/content/`)은 커밋하지 않는다. 지정 커밋에서 받아 4,612개 md를 검증한다:
+원본(NHTSA 공개 파일·리콜 원본 보고서 PDF)과 결과물은 커밋하지 않는다 (`data/raw/`, `data/processed/`는 `.gitignore`). 스크립트로 받아 만든다 (PR #25):
 
 ```bash
-uv run python scripts/fetch_handbook_dataset.py
+uv run python -m scripts.defect_precedent.nhtsa fetch      # 원본 받기 + manifest
+uv run python -m scripts.defect_precedent.nhtsa build      # 리콜 카드 · 시험지
+uv run python -m scripts.defect_precedent.bm25_baseline    # 기준 점수
 ```
 
-구조·실측·재현 방법은 [`docs/handbook/README.md`](docs/handbook/README.md).
+실행 순서·기준 파일·재현 조건은 `scripts/defect_precedent/README.md`. 이전 주제(온보딩)의 핸드북 데이터셋은 `uv run python scripts/fetch_handbook_dataset.py`로 받는다 ([`docs/handbook/README.md`](docs/handbook/README.md)).
 
 ## 시작하기
 
@@ -52,10 +53,10 @@ AI 에이전트로 작업할 때의 규칙은 [`AGENTS.md`](AGENTS.md)에 있다
 
 | 경로 | 용도 |
 |---|---|
-| `docs/` | 기획(`기획v1.md`, 대안 주제 재검토 안건 `기획_결함선례.md` — 현재 팀 주제 아님, DEC-030)·진행계획·개발환경·병합 전 검증 프로토콜(`MERGE_PROTOCOL.md`)·핸드북 데이터셋 안내(`handbook/README.md`) 등 문서 |
+| `docs/` | 기획(`기획_결함선례.md` — 현행, DEC-030 / 이전 주제 `기획v1.md`·`기획.md`)·진행계획·개발환경·병합 전 검증 프로토콜(`MERGE_PROTOCOL.md`)·핸드북 데이터셋 안내(`handbook/README.md`) 등 문서 |
 | `tests/` | pytest 테스트 |
 | `AGENTS.md` · `CLAUDE.md` | AI 에이전트 행동강령 (원본은 AGENTS.md) |
 | `.claude/settings.json` | Claude Code 팀 공유 권한 설정 |
 | `.agent/` | AI 에이전트 세션 인계 문서 (PROJECT_CONTEXT · HANDOFF · DECISIONS · SESSION_LOG) |
 | `.github/` | PR 템플릿, CODEOWNERS, CI 워크플로 |
-| `scripts/` | lefthook이 호출하는 검사 스크립트, CI 로직(`ci/`), 핸드북 데이터셋 재현 스크립트(`fetch_handbook_dataset.py`) |
+| `scripts/` | lefthook이 호출하는 검사 스크립트, CI 로직(`ci/`), 결함 선례 데이터·평가 스크립트(`defect_precedent/`), 이전 주제 핸드북 데이터셋 재현(`fetch_handbook_dataset.py`) |
