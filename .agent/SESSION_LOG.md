@@ -74,3 +74,4 @@
 - 2026-10-06: 공용 폴더 6개 색인은 우지훈, 웹 F·E는 박예원 담당으로 HANDOFF·PRD 반영(사용자 전달)
 - 2026-10-06: 웹 F·E 기술은 React로 HANDOFF·PRD 반영(사용자 전달)
 - 2026-10-06: DEC-029(React frontend/ + FastAPI api/, npm, 비필수 프런트 CI, 로컬 데모, 일정 A안) 기록, PRD 6-1 API 약속 초안, HANDOFF 할 일 21 추가(API 키·호출 상한은 차후 결정)
+- 2026-10-06: 프런트 규칙·CI는 PR #22(draft)로 분리, HANDOFF·DEC-029에 번호 기록
