@@ -73,7 +73,7 @@ leadership, ceo, board-meetings, eba, acquisitions, legal, finance, business-tec
 - 지표: Recall@k·Hit@k(k=1,3,5,10). 차이 0.03 미만이면 같다고 본다(`기획v1.md` 3절).
 - 질문 세트 3종 — **문서 유래**(FAQ, 동작 확인용), **합성**(역할극, 모델 최종 선택용, DEC-021), **실제**(확보되면 추가 비교용, DEC-013·016). 세 세트는 합산하지 않고 따로 보고한다.
 - 도메인당 최소 34개, `user_type`별 12개, `scenario_type`별 5개(DEC-021·022). 못 채운 도메인은 0.03 비교 대신 문항별 성공/실패로 보고.
-- 팀원이 임의로 지어 쓴 질문은 금지하고, AI가 만든 합성 질문은 DEC-021 조건(역할 정의 문서만 제공, 정답 문서 비제공 등)을 지킨 경우에만 허용한다(AGENTS.md 5절). 질문 출처(문서 유래는 FAQ 위치와 제목, 합성은 생성 모델·프롬프트·역할 문서, 실제는 `source_id`·출처 유형·수집 월)와 정답(`gold_source_path#heading`, 여러 개 가능)·`labeler_id`를 평가표에 기록.
+- 팀원이 임의로 지어 쓴 질문은 금지하고, AI가 만든 합성 질문은 DEC-021 조건(역할 정의 문서만 제공, 정답 문서 비제공 등)을 지킨 경우에만 허용한다(AGENTS.md 5절). 질문 출처(문서 유래는 FAQ 위치와 제목, 합성은 생성 모델·프롬프트·역할 문서, 실제는 `source_id`·출처 유형·수집 월)와 정답(`gold_source_path#gold_heading_path`, 여러 개 가능)·`labeler_id`를 평가표에 기록.
 
 ## 8. 일정 (`docs/진행계획.md`)
 

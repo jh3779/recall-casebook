@@ -66,3 +66,4 @@
 - 2026-10-06: 코드(검색 3종 비교·생성 단계 테스트·의존성)를 PR #17에서 분리해 PR #20(research/sales-support-baseline, draft)으로 이동 — PR #17은 문서만, 병합은 #20 먼저
 - 2026-10-06: PR #17 리뷰(81171d98) 반영 — HANDOFF 갱신일·PR #17(문서)/#20(코드) 상태 정정, 두 PR 모두 chunk_key DEC 전 병합 금지 명시, ERD 정답 섹션↔청크 연결과 chunk_key 추적 분리, DEC-023 문구(gpt-4o-mini 확정, 비교는 변경 실험) 통일
 - 2026-10-06: PR #17 리뷰(cb3bada1) 반영 — 병합 순서를 #17(문서·DEC-023)→#20(코드)로 바꾸고 chunk_key 확정 시 ERD·PRD도 확정안 하나로 갱신하는 조건 추가, ERD gold_heading을 gold_heading_path로 통일(CHUNKS.heading_path와 같은 규칙)
+- 2026-10-06: PR #17 리뷰(68b4a93f, 위험도 상) — '40 CFR 서비스 충돌'·'AI 합성 질문 금지'는 리뷰봇이 첫 커밋(edefe82) AGENTS.md를 읽은 오독이라 origin/main 근거로 반박, 섹션 키 표기 불일치(#·> 혼용)는 타당해 기획v1·PRD를 section_key=source_path#heading_path(제목을 > 로 연결)로 통일
