@@ -9,7 +9,6 @@
 """
 
 import argparse
-import hashlib
 import json
 import math
 import re
@@ -17,7 +16,7 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from scripts.defect_precedent.nhtsa import OUT_DIR
+from scripts.defect_precedent.nhtsa import OUT_DIR, verify_build
 
 K1, B, EPSILON = 1.5, 0.75, 0.25
 KS = (1, 3, 5, 10)
@@ -65,26 +64,36 @@ def evaluate(cards: list[dict], questions: list[dict]) -> dict[str, dict[int, fl
     return {name: {k: c[k] / len(questions) for k in KS} for name, c in hits.items()}
 
 
-def main(baseline: Path | None = None) -> None:
+def main(baseline: Path | None = None, allow_drift: bool = False) -> None:
     eval_path = OUT_DIR / "eval.jsonl"
     if not (OUT_DIR / "recalls.jsonl").exists() or not eval_path.exists():
         sys.exit("recalls.jsonl·eval.jsonl이 없다 — 먼저 `... nhtsa build`를 실행한다")
     cards = [json.loads(line) for line in (OUT_DIR / "recalls.jsonl").open(encoding="utf-8")]
     questions = [json.loads(line) for line in eval_path.open(encoding="utf-8")]
+    label = "대리 평가"
     if baseline is not None:
-        # 기준 실행과 같은 질문만 — 원본이 갱신돼 질문이 늘거나 줄어도 같은 시험지로 비교한다
         base = json.loads(baseline.read_text(encoding="utf-8"))
-        same_file = hashlib.sha256(eval_path.read_bytes()).hexdigest() == base["eval_sha256"]
         by_action = {q["action_no"]: q for q in questions}
         gone = [a for a in base["eval_action_nos"] if a not in by_action]
         if gone:
             sys.exit(f"기준 질문 중 지금 시험지에 없는 것 {len(gone)}개: {gone[:5]}")
         questions = [by_action[a] for a in base["eval_action_nos"]]
-        print(
-            f"기준 파일 {baseline.name}: eval.jsonl {'같음' if same_file else '달라짐 (질문 목록으로 맞춤)'}"
+        info = verify_build()
+        same = all(
+            info[k] == base["build"][k]
+            for k in ("raw_manifest_sha256", "recalls_sha256", "eval_sha256")
         )
+        if same:
+            label = f"대리 평가 · {baseline.name} 재현 (원본·카드·시험지 sha256 일치)"
+        elif allow_drift:
+            label = f"대리 평가 · {baseline.name}의 질문 번호로 현재 데이터 재평가 (재현 아님)"
+        else:
+            sys.exit(
+                "원본·카드·시험지가 기준 파일과 다르다 — 같은 원본 사본(data/raw/nhtsa.<받은 시각>)으로 build하거나,"
+                " 현재 데이터로 같은 질문 번호만 재평가하려면 --allow-drift를 붙인다"
+            )
     result = evaluate(cards, questions)
-    print(f"리콜 {len(cards):,}건 색인, 질문 {len(questions):,}개 (대리 평가)")
+    print(f"리콜 {len(cards):,}건 색인, 질문 {len(questions):,}개 ({label})")
     for name, label in (
         ("any", "연결 리콜 중 하나라도 (주 지표)"),
         ("first", "첫 번째 연결 리콜만 (참고)"),
@@ -96,8 +105,17 @@ def main(baseline: Path | None = None) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="BM25 기준 점수 (대리 평가)")
-    parser.add_argument("--baseline", type=Path, help="기준 파일의 질문 목록만 쓴다")
+    parser.add_argument(
+        "--baseline", type=Path, help="기준 파일의 질문 목록만 쓰고 입력 sha256을 확인한다"
+    )
+    parser.add_argument(
+        "--allow-drift",
+        action="store_true",
+        help="입력이 기준과 달라도 같은 질문 번호로 재평가한다",
+    )
     args = parser.parse_args()
     if args.baseline is not None and not args.baseline.exists():
         parser.error(f"기준 파일이 없다: {args.baseline}")
-    main(args.baseline)
+    if args.allow_drift and args.baseline is None:
+        parser.error("--allow-drift는 --baseline과 함께 쓴다")
+    main(args.baseline, args.allow_drift)

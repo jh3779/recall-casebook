@@ -1,7 +1,9 @@
 """scripts/defect_precedent 의 순수 함수 테스트 — 네트워크·원본 데이터 없이 작은 예시로 확인한다."""
 
+import hashlib
 import math
 import shutil
+import zipfile
 
 import pytest
 
@@ -203,26 +205,79 @@ def test_pdf_read_failure_is_error_not_missing_cause(tmp_path):
         rclrpt._pdf_text(bad)
 
 
-def test_latest_parsed_skips_image_only_version_and_picks_latest(monkeypatch):
-    texts = {
-        "a": "Submission Date : JAN 05, 2024\nDescription of the Cause : old cause\nChronology :",
-        "b": "",  # 글자 없는 이미지 판본
-        "c": "Submission Date : MAR 01, 2024\nDescription of the Cause : new cause\nChronology :",
-    }
-    monkeypatch.setattr(rclrpt, "_download", lambda key: key)
-    monkeypatch.setattr(rclrpt, "_pdf_text", lambda key: texts[key])
-    key, parsed = rclrpt.latest_parsed(["a", "b", "c"])
+def _fake_versions(monkeypatch, tmp_path, texts):
+    """판본 key → 텍스트. _download는 tmp 파일 경로를, _pdf_text는 그 텍스트를 돌려준다."""
+    paths = {}
+    for key in texts:
+        path = tmp_path / f"{key}.pdf"
+        path.write_bytes(f"pdf-{key}".encode())
+        paths[key] = path
+    monkeypatch.setattr(rclrpt, "_download", lambda key: paths[key])
+    monkeypatch.setattr(rclrpt, "_pdf_text", lambda path: texts[path.stem])
+    return {k: hashlib.sha256(p.read_bytes()).hexdigest() for k, p in paths.items()}
+
+
+OLD = "Submission Date : JAN 05, 2024\nDescription of the Cause : old cause\nChronology :"
+NEW = "Submission Date : MAR 01, 2024\nDescription of the Cause : new cause\nChronology :"
+
+
+def test_latest_parsed_picks_latest_and_records_hashes(monkeypatch, tmp_path):
+    sha = _fake_versions(monkeypatch, tmp_path, {"a": OLD, "c": NEW})
+    key, parsed = rclrpt.latest_parsed(["a", "c"])
     assert key == "c"
     assert parsed["cause_text"] == "new cause"
-    assert parsed["image_only_versions"] == 1
-    assert parsed["latest_uncertain"] is True  # 이미지 판본이 실제 최신일 수 있다
+    assert parsed["resolution"] == "auto"
+    assert parsed["pdfs"] == sha
 
 
-def test_latest_parsed_fails_when_no_readable_version(monkeypatch):
-    monkeypatch.setattr(rclrpt, "_download", lambda key: key)
-    monkeypatch.setattr(rclrpt, "_pdf_text", lambda key: "")
+def test_image_version_without_checked_date_is_unresolved(monkeypatch, tmp_path):
+    # 이미지 판본의 날짜를 모르면 그것이 최신일 수 있다 — 최신판을 짐작하지 않는다
+    _fake_versions(monkeypatch, tmp_path, {"a": OLD, "b": "", "c": NEW})
+    _, parsed = rclrpt.latest_parsed(["a", "b", "c"])
+    assert parsed["resolution"] == "unresolved"
+
+
+def test_image_version_with_human_checked_older_date_resolves(monkeypatch, tmp_path):
+    sha = _fake_versions(monkeypatch, tmp_path, {"a": OLD, "b": "", "c": NEW})
+    manual = {"b": {"submission_date": "20240101", "sha256": sha["b"]}}
+    key, parsed = rclrpt.latest_parsed(["a", "b", "c"], manual)
+    assert key == "c"
+    assert parsed["resolution"] == "manual"
+
+
+def test_human_checked_date_ignored_when_pdf_changed(monkeypatch, tmp_path):
+    _fake_versions(monkeypatch, tmp_path, {"a": OLD, "b": "", "c": NEW})
+    manual = {"b": {"submission_date": "20240101", "sha256": "다른 파일"}}
+    _, parsed = rclrpt.latest_parsed(["a", "b", "c"], manual)
+    assert parsed["resolution"] == "unresolved"
+
+
+def test_latest_image_version_is_unresolved_even_if_date_known(monkeypatch, tmp_path):
+    sha = _fake_versions(monkeypatch, tmp_path, {"a": OLD, "b": ""})
+    manual = {"b": {"submission_date": "20250101", "sha256": sha["b"]}}
+    key, parsed = rclrpt.latest_parsed(["a", "b"], manual)
+    assert key == "b"
+    assert parsed["resolution"] == "unresolved"  # 가장 늦은 판본의 원인 칸을 읽을 수 없다
+
+
+def test_version_without_date_is_unresolved(monkeypatch, tmp_path):
+    _fake_versions(monkeypatch, tmp_path, {"a": OLD, "b": "Description of the Cause : x"})
+    _, parsed = rclrpt.latest_parsed(["a", "b"])
+    assert parsed["resolution"] == "unresolved"
+
+
+def test_latest_parsed_fails_when_no_dated_version(monkeypatch, tmp_path):
+    _fake_versions(monkeypatch, tmp_path, {"a": ""})
     with pytest.raises(rclrpt.ReportError):
         rclrpt.latest_parsed(["a"])
+
+
+def test_read_flat_stops_on_column_count_mismatch(tmp_path):
+    zpath = tmp_path / "x.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
+        zf.writestr("x.txt", "a\tb\tc\r\na\tb\r\n")
+    with pytest.raises(SystemExit):
+        nhtsa.read_flat(zpath, ["A", "B", "C"])
 
 
 def test_first_sentence_abbreviation_before_capital_is_not_a_boundary():

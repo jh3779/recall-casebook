@@ -89,10 +89,13 @@ def _decode(raw: bytes) -> tuple[str, bool]:
 
 
 def read_flat(zip_path: Path, cols: list[str]) -> list[dict]:
-    """탭 구분 flat 파일을 압축을 풀지 않고 읽는다. 빈 줄은 건너뛴다. 칸 수가 다른 줄은 수를 세어 알린다."""
-    rows, fallback, bad_width = [], 0, 0
+    """탭 구분 flat 파일을 압축을 풀지 않고 읽는다. 빈 줄은 건너뛴다.
+
+    칸 수가 명세와 다른 줄이 있으면 값이 옆 칸으로 밀렸을 수 있으므로 그 자리에서 중단한다 (추측해 맞추지 않는다).
+    """
+    rows, fallback = [], 0
     with zipfile.ZipFile(zip_path) as zf, zf.open(zf.namelist()[0]) as raw:
-        for raw_line in raw:
+        for lineno, raw_line in enumerate(raw, 1):
             line, used_fallback = _decode(raw_line)
             fallback += used_fallback
             line = line.rstrip("\r\n")
@@ -100,11 +103,12 @@ def read_flat(zip_path: Path, cols: list[str]) -> list[dict]:
                 continue
             parts = line.split("\t")
             if len(parts) != len(cols):
-                bad_width += 1
-                parts = (parts + [""] * len(cols))[: len(cols)]
+                sys.exit(
+                    f"{zip_path.name} {lineno}번째 줄: 칸 {len(parts)}개 (명세 {len(cols)}개) — 원본을 확인한다"
+                )
             rows.append(dict(zip(cols, parts, strict=True)))
-    if fallback or bad_width:
-        print(f"주의: {zip_path.name} — cp1252로 읽은 줄 {fallback}, 칸 수가 다른 줄 {bad_width}")
+    if fallback:
+        print(f"주의: {zip_path.name} — UTF-8로 읽지 못해 cp1252로 읽은 줄 {fallback}")
     return rows
 
 
@@ -249,6 +253,10 @@ def fetch() -> None:
     print(f"완료: {RAW_DIR}/manifest.json")
 
 
+def sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def verify_raw(raw_dir: Path) -> dict:
     """manifest의 sha256과 실제 파일을 비교한다. 하나라도 다르면 중단한다."""
     manifest_path = raw_dir / "manifest.json"
@@ -281,9 +289,26 @@ def build() -> None:
     cards = build_cards(rcl_rows, snapshot_date)
     questions = build_eval(inv_rows, cards)
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    write_jsonl(OUT_DIR / "recalls.jsonl", cards.values())
-    write_jsonl(OUT_DIR / "eval.jsonl", questions)
+    # 카드·시험지·build.json을 한 폴더에 다 만든 뒤 폴더째 교체한다 — 서로 다른 실행 결과가 섞이지 않게.
+    # 573 판독 결과 등 이 단계가 만들지 않는 파일은 새 폴더로 옮겨 둔다.
+    tmp = OUT_DIR.with_name(OUT_DIR.name + ".partial")
+    if tmp.exists():
+        shutil.rmtree(tmp)
+    tmp.mkdir(parents=True)
+    write_jsonl(tmp / "recalls.jsonl", cards.values())
+    write_jsonl(tmp / "eval.jsonl", questions)
+    build_info = {
+        "raw_manifest_sha256": sha256_file(RAW_DIR / "manifest.json"),
+        "recalls_sha256": sha256_file(tmp / "recalls.jsonl"),
+        "eval_sha256": sha256_file(tmp / "eval.jsonl"),
+        "snapshot_date": snapshot_date,
+    }
+    (tmp / "build.json").write_text(json.dumps(build_info, indent=1) + "\n", encoding="utf-8")
+    if OUT_DIR.exists():
+        for old in OUT_DIR.iterdir():
+            if old.name not in ("recalls.jsonl", "eval.jsonl", "build.json"):
+                shutil.copy2(old, tmp / old.name)
+    install_dir(tmp, OUT_DIR)
 
     groups: dict[str, int] = {}
     for c in cards.values():
@@ -300,30 +325,53 @@ def build() -> None:
     print(f"출력: {OUT_DIR}")
 
 
-def freeze(out_path: Path) -> None:
-    """기준 실행을 고정하는 작은 파일을 만든다 (저장소에 커밋). 원본은 커밋하지 않지만 해시·질문 목록·표본 목록은 남긴다.
+def verify_build(raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR) -> dict:
+    """build.json이 지금 원본 manifest와 지금 카드·시험지 파일을 가리키는지 확인한다. 다르면 중단한다."""
+    verify_raw(raw_dir)
+    info_path = out_dir / "build.json"
+    if not info_path.exists():
+        sys.exit("build.json이 없다 — 먼저 `... nhtsa build`를 실행한다")
+    info = json.loads(info_path.read_text(encoding="utf-8"))
+    checks = {
+        "원본 manifest": (raw_dir / "manifest.json", info["raw_manifest_sha256"]),
+        "recalls.jsonl": (out_dir / "recalls.jsonl", info["recalls_sha256"]),
+        "eval.jsonl": (out_dir / "eval.jsonl", info["eval_sha256"]),
+    }
+    for label, (path, expected) in checks.items():
+        if sha256_file(path) != expected:
+            sys.exit(f"{label}이 build.json과 다르다 — `... nhtsa build`를 다시 실행한다")
+    return info
 
-    원본 URL은 매일 덮어써져 옛 스냅샷을 다시 받을 수 없다 — 해시로 "같은 원본인지"만 확인할 수 있다.
+
+def freeze(out_path: Path) -> None:
+    """기준 실행을 고정하는 작은 파일을 만든다 (저장소에 커밋).
+
+    원본은 커밋하지 않고 해시만 남긴다. NHTSA 원본 URL은 매일 덮어써지므로, 같은 원본 사본
+    (data/raw/nhtsa 또는 보관된 nhtsa.<받은 시각>)이 있어야 같은 점수를 "재현"할 수 있다.
+    사본이 없으면 같은 질문 번호로 "재평가"만 할 수 있다 (bm25_baseline --allow-drift).
     """
-    manifest = verify_raw(RAW_DIR)
-    first_card = json.loads((OUT_DIR / "recalls.jsonl").open(encoding="utf-8").readline())
-    if first_card["snapshot_date"] != manifest["downloaded_at"][:10]:
-        sys.exit(
-            "recalls.jsonl·eval.jsonl이 지금 원본과 다른 날 만들어졌다 — 먼저 `... nhtsa build`를 다시 실행한다"
-        )
-    eval_path = OUT_DIR / "eval.jsonl"
-    questions = [json.loads(line) for line in eval_path.open(encoding="utf-8")]
+    info = verify_build()
+    manifest = json.loads((RAW_DIR / "manifest.json").read_text(encoding="utf-8"))
+    questions = [json.loads(line) for line in (OUT_DIR / "eval.jsonl").open(encoding="utf-8")]
     sample = []
-    # 표본 목록에는 읽지 못한 리콜도 넣는다 — 다음에 같은 표본으로 다시 잴 때 빠지지 않게
+    # 573 표본: 리콜마다 당시 판본 목록과 각 PDF의 sha256, 고른 판본을 남긴다
     for name in ("causes_sample.jsonl", "causes_sample_failures.jsonl"):
         path = OUT_DIR / name
         if path.exists():
-            sample += [json.loads(line)["campaign"] for line in path.open(encoding="utf-8")]
+            for line in path.open(encoding="utf-8"):
+                row = json.loads(line)
+                sample.append(
+                    {
+                        "campaign": row["campaign"],
+                        "pdfs": row.get("pdfs", {}),
+                        "selected": row.get("source_file"),
+                    }
+                )
     baseline = {
         "raw": manifest,
-        "eval_sha256": hashlib.sha256(eval_path.read_bytes()).hexdigest(),
+        "build": info,
         "eval_action_nos": [q["action_no"] for q in questions],
-        "rclrpt_sample_campaigns": sample,
+        "rclrpt_sample": sample,
     }
     out_path.write_text(json.dumps(baseline, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"기준 파일: {out_path} (질문 {len(questions)}, 표본 {len(sample)})")

@@ -15,6 +15,7 @@ PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew ins
 """
 
 import argparse
+import hashlib
 import http.client
 import json
 import random
@@ -31,6 +32,8 @@ from pathlib import Path
 from scripts.defect_precedent.nhtsa import OUT_DIR, RCLRPT_FROM, REPO_ROOT, write_jsonl
 
 PDF_DIR = REPO_ROOT / "data" / "raw" / "rclrpt"
+# 사람이 이미지 판본을 열어 확인한 제출일 (저장소에 커밋)
+MANUAL_DATES = Path(__file__).with_name("manual_submission_dates.json")
 LIST_URL = "https://static.nhtsa.gov/"
 UA = {"User-Agent": "Mozilla/5.0"}
 DEFAULT_SEED = 20261006
@@ -152,94 +155,122 @@ def _download(key: str) -> Path:
     return path
 
 
-def latest_parsed(keys: list[str]) -> tuple[str, dict]:
-    """한 리콜의 모든 판본을 읽어 Submission Date가 가장 늦은 판본(같으면 더 긴 것)을 고른다.
+def load_manual_dates(path: Path | None = None) -> dict:
+    """사람이 이미지 판본을 직접 열어 확인한 제출일. 키 = PDF 주소, sha256이 같을 때만 쓴다."""
+    path = path or MANUAL_DATES
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
-    - 받기·변환이 실패한 판본이 있으면 최신판을 확정할 수 없으므로 ReportError를 낸다.
-    - 글자가 없는 이미지 판본(첨부 스캔 등)은 건너뛰고 그 수를 `image_only_versions`에 남긴다.
-      읽을 판본이 하나도 없으면 ReportError.
+
+def latest_parsed(keys: list[str], manual: dict | None = None) -> tuple[str, dict]:
+    """한 리콜의 모든 판본 중 Submission Date가 가장 늦은 판본(같으면 더 긴 것)을 고른다.
+
+    - 받기·변환이 실패한 판본이 있으면 ReportError (최신판을 확정할 수 없음).
+    - 글자가 없는 이미지 판본은 사람이 확인한 제출일(manual, sha256 일치)이 있을 때만 순서 비교에 넣는다.
+    - 날짜를 모르는 판본이 하나라도 있거나 가장 늦은 판본이 글자를 읽을 수 없는 이미지면
+      `resolution = "unresolved"` — 원인 칸 통계에서 뺀다 (짐작으로 최신판을 정하지 않는다).
     """
-    best, image_only = None, 0
+    manual = manual or {}
+    pdfs, dated, reasons, used_manual = {}, [], [], False
     for key in keys:
-        text = _pdf_text(_download(key))
+        path = _download(key)
+        sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        pdfs[key] = sha
+        text = _pdf_text(path)
         if not text.strip():
-            image_only += 1
+            note = manual.get(key)
+            if note and note["sha256"] == sha:
+                dated.append(((note["submission_date"], 0), key, None))
+                used_manual = True
+            else:
+                reasons.append(f"이미지 판본 제출일 미확인: {key}")
             continue
         parsed = parse_report(text)
-        rank = (parsed["submission_date"], len(text))
-        if best is None or rank > best[0]:
-            best = (rank, key, parsed)
-    if best is None:
-        raise ReportError(f"글자를 읽을 수 있는 판본 없음: {keys}")
-    # 이미지 판본의 제출일은 알 수 없다 — 그것이 실제 최신 수정본이면 고른 판본이 최신이 아닐 수 있다
-    return best[1], {
-        **best[2],
-        "image_only_versions": image_only,
-        "latest_uncertain": image_only > 0,
-    }
+        if not parsed["submission_date"]:
+            reasons.append(f"제출일 미판독: {key}")
+            continue
+        dated.append(((parsed["submission_date"], len(text)), key, parsed))
+    if not dated:
+        raise ReportError(f"날짜를 확인할 수 있는 판본 없음: {keys}")
+    _, key, parsed = max(dated, key=lambda d: d[0])
+    if parsed is None:
+        reasons.append(f"가장 늦은 판본이 글자 없는 이미지: {key}")
+        parsed = parse_report("")
+    resolution = "unresolved" if reasons else ("manual" if used_manual else "auto")
+    return key, {**parsed, "pdfs": pdfs, "resolution": resolution, "unresolved_reasons": reasons}
 
 
 def run(mode: str, n: int = 300, seed: int = DEFAULT_SEED, baseline: Path | None = None) -> None:
     if shutil.which("pdftotext") is None:
         sys.exit("pdftotext가 없다 — poppler를 설치한다 (macOS: brew install poppler)")
-    recalls_path = OUT_DIR / "recalls.jsonl"
-    if not recalls_path.exists():
-        sys.exit("recalls.jsonl이 없다 — 먼저 `... nhtsa build`를 실행한다")
-    received = {}
-    for line in recalls_path.open(encoding="utf-8"):
-        card = json.loads(line)
-        received[card["campno"][:6]] = card["received_date"]
-
-    reports = list_reports(range(2014, datetime.now().year + 1))
-    eligible = sorted(c for c in reports if received.get(c, "") >= RCLRPT_FROM)
-    missing = sum(1 for c in reports if c not in received)
-    print(
-        f"보고서가 있는 리콜 {len(reports):,}, 그중 {RCLRPT_FROM} 이후 접수·리콜 파일에 있음 {len(eligible):,}"
-    )
-    print(f"(리콜 파일에 없는 보고서 {missing:,} — 2026-10-06: 11,856 / 11,734 / 66)")
-
+    manual = load_manual_dates()
     if baseline is not None:
-        # 기준 실행과 같은 표본 — 목록이 매일 바뀌어도 같은 리콜을 다시 읽는다
-        picked = json.loads(baseline.read_text(encoding="utf-8"))["rclrpt_sample_campaigns"]
-        gone = [c for c in picked if c not in reports]
-        if gone:
-            sys.exit(f"기준 표본 중 보고서 목록에서 사라진 리콜: {gone}")
-    elif mode == "sample":
-        picked = random.Random(seed).sample(eligible, n)
+        # 기준 실행과 같은 입력: 당시 판본 목록만 쓰고, 각 PDF가 당시 sha256과 같은지 확인한다
+        base = json.loads(baseline.read_text(encoding="utf-8"))
+        sample = base["rclrpt_sample"]
+        reports = {s["campaign"]: list(s["pdfs"]) for s in sample}
+        expected_sha = {k: v for s in sample for k, v in s["pdfs"].items()}
+        picked = [s["campaign"] for s in sample]
+        print(
+            f"기준 파일 {baseline.name}: 표본 {len(picked)}건, 당시 판본 {len(expected_sha)}개만 사용"
+        )
     else:
-        picked = eligible
+        recalls_path = OUT_DIR / "recalls.jsonl"
+        if not recalls_path.exists():
+            sys.exit("recalls.jsonl이 없다 — 먼저 `... nhtsa build`를 실행한다")
+        received = {}
+        for line in recalls_path.open(encoding="utf-8"):
+            card = json.loads(line)
+            received[card["campno"][:6]] = card["received_date"]
+        reports = list_reports(range(2014, datetime.now().year + 1))
+        eligible = sorted(c for c in reports if received.get(c, "") >= RCLRPT_FROM)
+        missing = sum(1 for c in reports if c not in received)
+        print(
+            f"보고서가 있는 리콜 {len(reports):,}, 그중 {RCLRPT_FROM} 이후 접수·리콜 파일에 있음 {len(eligible):,}"
+        )
+        print(f"(리콜 파일에 없는 보고서 {missing:,} — 2026-10-06: 11,856 / 11,734 / 66)")
+        picked = random.Random(seed).sample(eligible, n) if mode == "sample" else eligible
+        expected_sha = {}
 
     PDF_DIR.mkdir(parents=True, exist_ok=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / ("causes.jsonl" if mode == "all" else "causes_sample.jsonl")
     counts = {"filled": 0, "empty": 0, "no_field": 0}
-    rows, failures = [], []
+    rows, failures, unresolved = [], [], 0
     for campaign in picked:
         try:
-            key, parsed = latest_parsed(reports[campaign])
+            key, parsed = latest_parsed(reports[campaign], manual)
         except ReportError as e:
-            failures.append({"campaign": campaign, "error": str(e)})
+            failures.append({"campaign": campaign, "keys": reports[campaign], "error": str(e)})
             continue
-        counts[parsed["cause_status"]] += 1
+        changed = [
+            k for k, v in parsed["pdfs"].items() if k in expected_sha and expected_sha[k] != v
+        ]
+        if changed:
+            failures.append(
+                {
+                    "campaign": campaign,
+                    "keys": reports[campaign],
+                    "error": f"기준과 sha256 다름: {changed}",
+                }
+            )
+            continue
+        if parsed["resolution"] == "unresolved":
+            unresolved += 1
+        else:
+            counts[parsed["cause_status"]] += 1
         rows.append(
             {"campaign": campaign, "versions": len(reports[campaign]), "source_file": key, **parsed}
         )
     write_jsonl(out_path, rows)
     write_jsonl(out_path.with_name(out_path.stem + "_failures.jsonl"), failures)
-    uncertain = sum(1 for r in rows if r["latest_uncertain"])
-    if uncertain:
-        print(
-            f"주의: 글자 없는 이미지 판본이 있어 최신 판본이 불확실한 리콜 {uncertain}건 (latest_uncertain)"
-        )
-    no_date = sum(1 for r in rows if not r["submission_date"])
-    if no_date:
-        print(f"주의: 제출일을 읽지 못한 최신 판본 {no_date}건 — 판본 선택·시점 평가에 쓸 수 없음")
+    manual_used = sum(1 for r in rows if r["resolution"] == "manual")
     print(
         f"원인 칸: 채워짐 {counts['filled']} / 비어 있음 {counts['empty']} / 칸 없음 {counts['no_field']}"
-        f" / 읽지 못함 {len(failures)} (총 {len(picked)})"
+        f" / 최신판 미확정 {unresolved} / 읽지 못함 {len(failures)} (총 {len(picked)},"
+        f" 그중 사람 확인 제출일 사용 {manual_used})"
     )
     if mode == "sample":
-        print("  2026-10-06 표본 300건 (--baseline): 채워짐 205 (68.3%)")
+        print("  2026-10-06 표본 300건 (--baseline): 채워짐 205 (68.3%) · 비어 있음 95 · 미확정 0")
     print(f"출력: {out_path}")
 
 
@@ -248,7 +279,7 @@ if __name__ == "__main__":
     parser.add_argument("mode", choices=["sample", "all"])
     parser.add_argument("n", nargs="?", type=int, default=300, help="sample 모드의 표본 수")
     parser.add_argument(
-        "--baseline", type=Path, help="기준 파일의 표본 목록을 그대로 쓴다 (sample 전용)"
+        "--baseline", type=Path, help="기준 파일의 표본·판본 목록을 그대로 쓴다 (sample 전용)"
     )
     args = parser.parse_args()
     if args.mode == "all" and args.baseline is not None:
