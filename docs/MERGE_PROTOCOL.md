@@ -62,7 +62,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 | 필수 체크 | 워크플로 → 스크립트 | 강제하는 게이트 | 판정 |
 |---|---|---|---|
 | `lint-and-test` | `ci.yml` | G-01, G-09 일부 | ruff · pytest · `uv sync --locked`(pyproject와 uv.lock 불일치) |
-| `pr-verify` | `pr-verify.yml` → `scripts/ci/pr_checks.py` | G-07, G-08 + 저장소 정합성 | 코드·프롬프트에 판정 필드·문구(`applies`·`verdict`·`is_applicable` 변형 포함, 대소문자 무시 / `docs/`·루트 `*.md`·테스트·CI 제외 / 줄에 `principle-ok: <이유>` 주석으로 예외) · 커밋별 추가 줄 + 최종 diff의 비밀값 패턴·`.env` · RAG 경로 변경 시 "검증 방법"에 **지표 이름 + before → after 수치** · PR 본문 필수 항목(섹션 존재 포함) · 브랜치 type 목록 6곳 일치 · 문서 상대 링크 · `CLAUDE.md`의 `@AGENTS.md` |
+| `pr-verify` | `pr-verify.yml` → `scripts/ci/pr_checks.py` | G-07, G-08 + 저장소 정합성 | 코드·프롬프트에 판정 필드·문구(`applies`·`verdict`·`is_applicable`·`recall_required` 변형, "리콜 대상입니다"·"원인은 이것입니다" 포함, 대소문자 무시 / `docs/`·루트 `*.md`·테스트·CI 제외 / 줄에 `principle-ok: <이유>` 주석으로 예외) · 커밋별 추가 줄 + 최종 diff의 비밀값 패턴·`.env` · RAG 경로 변경 시 "검증 방법"에 **지표 이름 + before → after 수치** · PR 본문 필수 항목(섹션 존재 포함) · 브랜치 type 목록 6곳 일치 · 문서 상대 링크 · `CLAUDE.md`의 `@AGENTS.md` |
 | `merge-gate` ⏸️ | `merge-gate.yml` → `scripts/ci/merge_gate.py` | **G-03**, G-05 + 결과 코멘트 | 현재 head 기준 자동 리뷰 존재(리뷰 에이전트 `## 🤖 자동 리뷰 (head …)` · 리뷰봇 `### 🤖 자동 리뷰 (Codex) — 커밋 …` · 본문 있는 GitHub 리뷰) · 미해결 스레드 0 · 리뷰어별 마지막 상태가 `CHANGES_REQUESTED`가 아님 · 현재 head의 가장 최근 결과 코멘트가 ✅ **그리고 그 뒤에 새 리뷰가 없음**. 없으면 pending, ❌·미해결 스레드·변경 요청이면 failure |
 
 ⏸️ `merge-gate`는 **2단계 도입 중**이라 지금은 필수 체크가 아니다 (DEC-009). 아래 "🔒 실행 위치"로 바꾸면서, 이 워크플로가 main에 들어가기 전에는 PR에서 돌 수 없게 됐기 때문이다.
