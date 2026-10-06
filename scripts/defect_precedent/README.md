@@ -1,7 +1,9 @@
 # 결함 선례 데이터·시험지 스크립트
 
-결함 선례 기획(`docs/기획_결함선례.md`, DEC-030 — 현재 팀 주제 아님, 재검토 안건, PR #23)의 수치를 저장소에서 재현한다.
-원본과 결과물은 커밋하지 않는다 (`data/raw/`, `data/processed/`는 `.gitignore`). 기준 실행을 고정하는 작은 파일(`baseline_2026-10-06.json`)만 커밋한다.
+결함 선례 찾기 도우미(현행 팀 주제, DEC-030, 기획 `docs/기획_결함선례.md`)의 데이터·시험지·기준 점수를 만드는 스크립트다.
+원본과 결과물은 커밋하지 않는다 (`data/raw/`, `data/processed/`는 `.gitignore`). 기준 실행을 고정하는 작은 파일(`baseline_2026-10-06.json` — 원본·카드·시험지·573 판본의 sha256)만 커밋한다.
+
+> **재현 범위**: 2026-10-06 기준 점수(0.510)와 573 표본(205/95)은 **그날의 원본 사본이 있을 때만** 같은 값으로 다시 만들 수 있다. NHTSA는 같은 주소에 매일 새 파일을 덮어쓰고 옛 파일을 주지 않으며, 원본은 저장소에 커밋하지 않는다(AGENTS.md 7절). 지금 사본은 작업자 로컬(`data/raw/nhtsa/`, `data/raw/rclrpt/`)에만 있다 — **팀 공용 보관 위치는 아직 정하지 않았다**(후속). 사본이 없으면 `fetch`로 받은 새 원본에서 `--allow-drift`로 같은 질문 번호만 "재평가"할 수 있고, 그 값은 기준 점수와 다를 수 있다.
 
 ## 실행 순서
 
@@ -55,6 +57,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 | BM25 Hit@10 (전체 749) | **0.510** (주 지표: 연결 리콜 중 하나라도) / 0.503 (첫 번째 연결 리콜만) |
 | BM25 Hit@10 (2010년 이후 214 / 573 범위 91) | 0.706 / 0.736 |
 | 573 표본 300건 원인 칸 | 채워짐 205 (68.3%) · 비어 있음 95 · 미확정 0 · 읽지 못함 0 (25V063은 이미지 판본 제출일을 사람이 확인 — `manual`) |
+| PDF 텍스트 변환 | poppler `pdftotext` 26.08.0 (`-layout`) — 다른 버전이면 판독 결과가 달라질 수 있다 |
 
 - 이 점수는 **대리 평가**다 — 정답 리콜의 99.6%가 조사 시작 뒤 접수라 "과거 선례 찾기"는 재지 못한다.
 - 알려진 한계: 시험 질문 중 내용이 없는 문구가 몇 개 남아 있다 (예: `A`, `DD`, `SEE ATTACHED SUMMARY.`, `See attached closing resume summary.` — 35자 미만 10개 중 다수). 749개 정의를 유지하려고 걸러내지 않았다.
@@ -63,3 +66,4 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
   - `freeze`는 `causes_sample*.jsonl`이 이번 build와 같은 입력·시드에서 나왔는지 확인하지 않는다 → `causes_sample`에 build 해시와 시드를 함께 적고 freeze에서 대조한다.
   - `rclrpt sample --baseline`은 일반 `sample`과 같은 파일명에 덮어쓰고, 고른 판본(`selected`)·기대값(`expected`)을 자동 비교하지 않는다. 실패 행은 `pdfs`가 비어 저장되어, 실패가 있는 표본으로 기준을 만들면 그 리콜의 판본 해시가 고정되지 않는다 (2026-10-06 기준은 실패 0건).
   - `rclrpt all`용 재시도·이어받기가 없다.
+  - 기준 원본(NHTSA zip·명세·573 PDF)의 팀 공용 보관 위치와 받는 절차를 정한다 (위 "재현 범위").
