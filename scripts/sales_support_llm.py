@@ -26,6 +26,12 @@ MODEL = "gpt-4o-mini"
 # OpenAI 공식 모델 페이지(gpt-4o-mini) 기준 100만 토큰당 가격($). 실제 청구액은 대시보드로 확인한다.
 PRICE_INPUT_PER_M = 0.15
 PRICE_OUTPUT_PER_M = 0.60
+PRICE_CHECKED_ON = "2026-10-05 (OpenAI 모델 페이지 gpt-4o-mini)"
+# 요약에 항상 붙이는 해석 주의 — 이 값은 "근거 품질"이 아니다
+QUOTE_FOUND_NOTE = (
+    "items_quote_found*는 evidence_quote가 해당 청크 안에 실제로 있는지만 확인한 값이다. "
+    "item·reason이 인용문의 주장을 뒷받침하는지는 확인하지 않으므로 사람 표본 평가로 따로 측정해야 한다."
+)
 TOP_K_CHUNKS = 5
 MAX_CHUNK_CHARS_IN_PROMPT = 2000
 MAX_OUTPUT_TOKENS = 1200
@@ -84,6 +90,20 @@ JUDGMENT_PHRASES = (
     "you are eligible",
     "you are not eligible",
 )
+
+
+def positive_budget(text: str) -> float:
+    """비용 상한 인자 — 0 이하·NaN·무한대는 거부한다."""
+    import argparse
+    import math
+
+    try:
+        value = float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"숫자가 아닙니다: {text}") from None
+    if not math.isfinite(value) or value <= 0:
+        raise argparse.ArgumentTypeError(f"비용 상한은 0보다 큰 유한한 숫자여야 합니다: {text}")
+    return value
 
 
 def cost_usd(input_tokens: int, output_tokens: int) -> float:
@@ -146,6 +166,8 @@ def validate_items(
             {
                 **it,
                 "source": chunk.section_key,
+                "chunk_key": chunk.chunk_key,
+                "doc_id": chunk.doc_id,
                 "domains": chunk.domains,
                 "commit_sha": chunk.commit_sha,
             }
@@ -187,10 +209,10 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
     rec: dict = {
         "question_id": q.question_id,
         "question": q.question,
-        "shown_sections": [c.section_key for c in shown],
+        "shown_chunks": shown_chunks(shown),
         "schema_ok": False,
         "n_raw": 0,
-        "n_valid": 0,
+        "n_quote_found": 0,
         "removed": {},
         "flags": {},
         "gold_cited": False,
@@ -200,7 +222,8 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
         "error": None,
         "rejected_before_processing": False,
         "fatal": False,
-        "valid_items": [],
+        "response_model": None,
+        "quote_found_items": [],
     }
     start = time.time()
     try:
@@ -226,6 +249,7 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
         rec["latency_s"] = time.time() - start
         return rec
     rec["latency_s"] = time.time() - start
+    rec["response_model"] = getattr(response, "model", None)
     usage = getattr(response, "usage", None)
     rec["input_tokens"] = getattr(usage, "input_tokens", 0) or 0
     rec["output_tokens"] = getattr(usage, "output_tokens", 0) or 0
@@ -242,23 +266,37 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
     valid, removed, flags = validate_items(items, shown)
     rec.update(
         n_raw=len(items),
-        n_valid=len(valid),
+        n_quote_found=len(valid),
         removed=removed,
         flags=flags,
-        valid_items=valid,
+        quote_found_items=valid,
         gold_cited=any(v["source"] in q.gold_section_keys for v in valid),
     )
     return rec
+
+
+def shown_chunks(shown: list[poc.Chunk]) -> list[dict]:
+    """모델에게 보여 준 청크를 순위와 함께 기록한다 — 같은 섹션이 여러 청크로 나뉘어도 정확한 조각을 되짚을 수 있다."""
+    return [
+        {
+            "rank": n,
+            "chunk_key": c.chunk_key,
+            "chunk_hash": c.chunk_hash,
+            "doc_id": c.doc_id,
+            "section_key": c.section_key,
+        }
+        for n, c in enumerate(shown, start=1)
+    ]
 
 
 def _rejected(q: poc.EvalQuestion, shown: list[poc.Chunk], reason: str) -> dict:
     return {
         "question_id": q.question_id,
         "question": q.question[:80],
-        "shown_sections": [c.section_key for c in shown],
+        "shown_chunks": shown_chunks(shown),
         "schema_ok": False,
         "n_raw": 0,
-        "n_valid": 0,
+        "n_quote_found": 0,
         "removed": {},
         "flags": {},
         "gold_cited": False,
@@ -266,7 +304,7 @@ def _rejected(q: poc.EvalQuestion, shown: list[poc.Chunk], reason: str) -> dict:
         "output_tokens": 0,
         "latency_s": 0.0,
         "error": reason,
-        "valid_items": [],
+        "quote_found_items": [],
     }
 
 
@@ -335,6 +373,7 @@ def build_run_config(
         "max_output_tokens": MAX_OUTPUT_TOKENS,
         "max_question_chars": MAX_QUESTION_CHARS,
         "price_per_m_tokens": {"input": PRICE_INPUT_PER_M, "output": PRICE_OUTPUT_PER_M},
+        "price_checked_on": PRICE_CHECKED_ON,
         "retrieval": retrieval,
         "retrieval_settings": {
             "candidates": poc.CANDIDATES,
@@ -427,7 +466,7 @@ def summarize(records: list[dict]) -> dict:
             removed[k] = removed.get(k, 0) + v
         for k, v in r["flags"].items():
             flags[k] += v
-    valid = sum(r["n_valid"] for r in ok)
+    valid = sum(r["n_quote_found"] for r in ok)
     in_tok = sum(r["input_tokens"] for r in records)
     out_tok = sum(r["output_tokens"] for r in records)
     lat = sorted(r["latency_s"] for r in records)
@@ -437,13 +476,19 @@ def summarize(records: list[dict]) -> dict:
         "n_local_rejected": sum(r["error"] == "question_too_long" for r in records),
         "n_cost_unknown": sum(bool(r.get("cost_unknown")) for r in records),
         "aborted_on_fatal_error": any(r.get("fatal") for r in records),
+        "response_models": sorted(
+            {r["response_model"] for r in records if r.get("response_model")}
+        ),
+        "notes": [QUOTE_FOUND_NOTE],
         "schema_ok_rate": len(ok) / n if n else 0.0,
         "items_raw": raw,
-        "items_valid": valid,
-        "items_valid_rate": valid / raw if raw else 0.0,
+        "items_quote_found": valid,
+        "items_quote_found_rate": valid / raw if raw else 0.0,
         "removed_by_reason": removed,
         "warnings": flags,
-        "questions_with_valid_item_rate": sum(r["n_valid"] > 0 for r in ok) / n if n else 0.0,
+        "questions_with_quote_found_item_rate": sum(r["n_quote_found"] > 0 for r in ok) / n
+        if n
+        else 0.0,
         "gold_cited_rate": sum(r["gold_cited"] for r in records) / n if n else 0.0,
         "input_tokens": in_tok,
         "output_tokens": out_tok,
@@ -473,7 +518,9 @@ def main() -> None:
         help="질문 JSONL (없으면 FAQ에서 뽑는다, 형식은 sales_support_poc.py 참고)",
     )
     parser.add_argument("--retrieval", choices=["bm25", "vector", "hybrid"], default="hybrid")
-    parser.add_argument("--budget", type=float, default=DEFAULT_BUDGET_USD, help="비용 상한($)")
+    parser.add_argument(
+        "--budget", type=positive_budget, default=DEFAULT_BUDGET_USD, help="비용 상한($)"
+    )
     parser.add_argument(
         "--run", action="store_true", help="실제로 API를 호출한다 (없으면 계획만 출력)"
     )

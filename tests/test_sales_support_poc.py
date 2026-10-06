@@ -369,3 +369,88 @@ def test_chunk_key_fixed_literal_test_vector():
         "sales/a.md", "0ab0299ce073b847558867ae5abbc42c570bc8d5", "A>B", "abc123"
     )
     assert key == "5203c258dd38e5392a58755a62840ae0"
+
+
+# ---- PR #20 1차 리뷰: 데이터 지문·비교 조건 검사·입력 검증 ----
+
+
+def test_data_fingerprint_changes_when_any_indexed_file_changes(tmp_path):
+    hb = tmp_path / "hb"
+    (hb / "sales").mkdir(parents=True)
+    (hb / "sales" / "a.md").write_text("## A\n\nx\n", encoding="utf-8")
+    (hb / "support").mkdir()
+    (hb / "support" / "b.md").write_text("## B\n\ny\n", encoding="utf-8")
+    before = poc.data_fingerprint(hb)
+    assert before == poc.data_fingerprint(hb)  # 같은 파일이면 같다
+    (hb / "support" / "b.md").write_text("## B\n\ny changed\n", encoding="utf-8")
+    assert poc.data_fingerprint(hb) != before
+    (hb / "support" / "b.md").write_text("## B\n\ny\n", encoding="utf-8")
+    (hb / "sales" / "new.md").write_text("## N\n\nz\n", encoding="utf-8")  # 파일이 늘어도 달라진다
+    assert poc.data_fingerprint(hb) != before
+
+
+def test_data_status_marks_data_that_differs_from_the_pinned_snapshot():
+    assert poc.data_status(poc.SNAPSHOT_FINGERPRINT) == "matches_pinned_snapshot"
+    assert poc.data_status("0" * 64) == "differs_from_pinned_snapshot"
+
+
+def test_check_index_reports_a_changed_data_fingerprint():
+    chunks = poc.chunk_file("a.md", "## A\n\nx\n")
+    meta = poc.build_meta(chunks, (1, 384), fastembed_version="9.9.9", data_fingerprint="aaa")
+    assert poc.check_index(meta, chunks, chunks, (1, 384), "9.9.9", data_fingerprint="aaa") == []
+    problems = poc.check_index(meta, chunks, chunks, (1, 384), "9.9.9", data_fingerprint="bbb")
+    assert any("data_fingerprint" in p for p in problems)
+
+
+def _report(**over):
+    base = {
+        "question_set": {"digest": "same"},
+        "index_meta": {
+            "data_commit_sha": "sha",
+            "data_fingerprint": "fp",
+            "chunks_digest": "cd",
+            "chunking": {"max_chunk_chars": 2000},
+            "excluded_dirs": ["x"],
+            "embedding_model": "m1",
+        },
+        "retrieval_settings": {"top_k": [1], "candidates": 100, "rrf_k": 60, "tokenizer": "t"},
+        "results": {"BM25": {"section": {"Hit@1": 0.5}}},
+    }
+    for key, value in over.items():
+        if key in base["index_meta"]:
+            base["index_meta"][key] = value
+        else:
+            base[key] = value
+    return base
+
+
+def test_compare_refuses_runs_with_different_data_or_chunking_conditions():
+    for key, value in (
+        ("data_fingerprint", "other"),
+        ("chunks_digest", "other"),
+        ("chunking", {"max_chunk_chars": 500}),
+        ("excluded_dirs", []),
+    ):
+        with pytest.raises(ValueError, match=key):
+            poc.compare_reports(_report(), _report(**{key: value}))
+
+
+def test_compare_allows_only_explicitly_permitted_differences():
+    other_model = _report(embedding_model="m2")
+    with pytest.raises(ValueError, match="embedding_model"):
+        poc.compare_reports(_report(), other_model)
+    rows = poc.compare_reports(_report(), other_model, allow=("embedding_model",))
+    assert rows and rows[0]["config"] == "BM25"
+    settings = _report(
+        retrieval_settings={"top_k": [1], "candidates": 50, "rrf_k": 60, "tokenizer": "t"}
+    )
+    with pytest.raises(ValueError, match="retrieval_settings"):
+        poc.compare_reports(_report(), settings)
+    assert poc.compare_reports(_report(), settings, allow=("retrieval_settings",))
+
+
+def test_load_questions_rejects_an_empty_file(tmp_path):
+    path = tmp_path / "empty.jsonl"
+    path.write_text("\n\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="비어"):
+        poc.load_questions(path)

@@ -77,7 +77,7 @@ def test_quote_matching_ignores_whitespace_differences():
         ),
     ],
 )
-def test_invalid_items_are_removed_with_a_reason(bad, reason):
+def test_inquote_found_items_are_removed_with_a_reason(bad, reason):
     valid, removed, _ = llm.validate_items([bad], CHUNKS[:2])
     assert valid == [] and removed == {reason: 1}
 
@@ -128,7 +128,7 @@ def test_run_question_records_validation_gold_hit_and_usage():
     client = FakeClient([json.dumps({"items": [item(), item(chunk_no=9)]})])
     rec = llm.run_question(client, question(), CHUNKS[:2])
     assert rec["schema_ok"] is True
-    assert rec["n_raw"] == 2 and rec["n_valid"] == 1 and rec["removed"] == {"bad_chunk_no": 1}
+    assert rec["n_raw"] == 2 and rec["n_quote_found"] == 1 and rec["removed"] == {"bad_chunk_no": 1}
     assert rec["gold_cited"] is True
     assert rec["input_tokens"] == 1000 and rec["output_tokens"] == 500
     sent = client.calls[0]
@@ -138,7 +138,7 @@ def test_run_question_records_validation_gold_hit_and_usage():
 
 def test_run_question_marks_invalid_json_and_api_errors_without_crashing():
     bad_json = llm.run_question(FakeClient(["not json"]), question(), CHUNKS[:2])
-    assert bad_json["schema_ok"] is False and bad_json["n_valid"] == 0
+    assert bad_json["schema_ok"] is False and bad_json["n_quote_found"] == 0
     failed = llm.run_question(FakeClient([RuntimeError("boom")]), question(), CHUNKS[:2])
     assert failed["error"] == "RuntimeError: boom" and failed["schema_ok"] is False
 
@@ -158,7 +158,7 @@ def test_summary_aggregates_rates_and_cost():
     summary = llm.summarize(records)
     assert summary["n_questions"] == 2
     assert summary["schema_ok_rate"] == 0.5
-    assert summary["items_valid_rate"] == 1.0  # 구조가 맞은 응답의 항목만 센다
+    assert summary["items_quote_found_rate"] == 1.0  # 구조가 맞은 응답의 항목만 센다
     assert summary["gold_cited_rate"] == 0.5
     assert summary["cost_usd"] > 0
 
@@ -175,10 +175,10 @@ def test_summary_aggregates_rates_and_cost():
 )
 def test_schema_ok_is_false_when_an_item_breaks_the_fixed_schema(bad_item):
     rec = llm.run_question(FakeClient([json.dumps({"items": [bad_item]})]), question(), CHUNKS[:2])
-    assert rec["schema_ok"] is False and rec["n_valid"] == 0
+    assert rec["schema_ok"] is False and rec["n_quote_found"] == 0
 
 
-def test_schema_ok_is_true_for_an_empty_item_list_and_for_valid_items():
+def test_schema_ok_is_true_for_an_empty_item_list_and_for_quote_found_items():
     empty = llm.run_question(FakeClient([json.dumps({"items": []})]), question(), CHUNKS[:2])
     assert empty["schema_ok"] is True and empty["n_raw"] == 0
 
@@ -350,3 +350,52 @@ def test_auth_error_is_not_charged_and_stops_the_batch_immediately():
     assert stopped is False  # 예산 때문이 아니라 인증 오류로 중단
     summary = llm.summarize(records)
     assert summary["n_cost_unknown"] == 0 and summary["aborted_on_fatal_error"] is True
+
+
+def test_records_keep_rank_chunk_key_and_hash_of_every_chunk_shown_to_the_model():
+    client = FakeClient([json.dumps({"items": [item()]})])
+    rec = llm.run_question(client, question(), CHUNKS[:2])
+    shown = rec["shown_chunks"]
+    assert [s["rank"] for s in shown] == [1, 2]
+    for s, c in zip(shown, CHUNKS[:2], strict=True):
+        assert s["chunk_key"] == c.chunk_key and s["chunk_hash"] == c.chunk_hash
+        assert s["doc_id"] == c.doc_id and s["section_key"] == c.section_key
+
+
+def test_quote_found_items_carry_chunk_key_and_doc_id_as_evidence_location():
+    valid, _, _ = llm.validate_items([item()], CHUNKS[:2])
+    assert valid[0]["chunk_key"] == CHUNKS[0].chunk_key and valid[0]["doc_id"] == CHUNKS[0].doc_id
+
+
+def test_summary_names_the_metric_for_what_it_checks_not_as_grounding_quality():
+    client = FakeClient([json.dumps({"items": [item()]})])
+    records, _ = llm.run_batch(client, [(question(), CHUNKS[:2])], budget_usd=1.0)
+    summary = llm.summarize(records)
+    assert "items_quote_found_rate" in summary
+    for old in ("items_valid_rate", "items_valid", "questions_with_valid_item_rate"):
+        assert old not in summary
+    assert "사람 표본" in llm.QUOTE_FOUND_NOTE  # 근거가 주장을 뒷받침하는지는 사람이 본다
+
+
+def test_response_model_and_price_date_are_recorded():
+    class Resp:
+        output_text = json.dumps({"items": []})
+        usage = SimpleNamespace(input_tokens=1, output_tokens=1)
+        model = "gpt-4o-mini-2024-07-18"
+
+    class C:
+        responses = SimpleNamespace(create=lambda **kw: Resp())
+
+    rec = llm.run_question(C(), question(), CHUNKS[:2])
+    assert rec["response_model"] == "gpt-4o-mini-2024-07-18"
+    assert llm.summarize([rec])["response_models"] == ["gpt-4o-mini-2024-07-18"]
+    assert llm.PRICE_CHECKED_ON  # 가격을 확인한 날짜를 남긴다
+
+
+@pytest.mark.parametrize("bad", ["-1", "nan", "inf", "0"])
+def test_budget_argument_must_be_a_positive_finite_number(bad):
+    import argparse
+
+    with pytest.raises(argparse.ArgumentTypeError):
+        llm.positive_budget(bad)
+    assert llm.positive_budget("0.5") == 0.5

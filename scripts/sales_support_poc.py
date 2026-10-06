@@ -45,6 +45,9 @@ CHUNKING = {"heading_levels": "H2-H4", "max_chunk_chars": MAX_CHUNK_CHARS, "prep
 # 색인에서 뺄 폴더 — 신규 "고객"(제품 구독자)용 온보딩이라 직원 질문에 섞이면 안 된다 (기획v1 4절 데이터 처리 설계 4번)
 EXCLUDE_DIRS = ["customer-experience/customer-onboarding"]
 INDEX_META = "index_meta.json"
+# 커밋 `COMMIT_SHA` 스냅샷에서 영업·지원 색인 대상 파일(1,263개)로 계산한 지문. 2026-10-06에 공식 zip
+# (`github.com/suuuuuuungho/GitLab_Data/archive/<COMMIT_SHA>.zip`)으로 계산한 값과 로컬 데이터셋의 값이 같음을 확인했다.
+SNAPSHOT_FINGERPRINT = "f7340fa1c07bf6e9432e7c661651bcaeb90a137343103b2435e66955e65f9a2f"
 DOMAIN = "sales-support"
 # 임시 chunk_key — 팀 합의 전 제안 A(HANDOFF 할 일 16). 합의되면 DEC로 확정하고 바뀌면 `index`를 다시 한다.
 CHUNK_KEY_SEP = "\x1f"
@@ -221,6 +224,24 @@ def list_files(handbook_dir: Path) -> list[Path]:
     return files
 
 
+def data_fingerprint(handbook_dir: Path) -> str:
+    """색인 대상 원본 파일 전체의 지문 — 경로와 파일 내용 해시를 정렬해 이어 해시한다. 파일이 하나라도 바뀌거나 늘면 달라진다."""
+    lines = [
+        f"{p.relative_to(handbook_dir).as_posix()}\t{hashlib.sha256(p.read_bytes()).hexdigest()}"
+        for p in list_files(handbook_dir)
+    ]
+    return hashlib.sha256("\n".join(sorted(lines)).encode("utf-8")).hexdigest()
+
+
+def data_status(fingerprint: str) -> str:
+    """고정 커밋 `COMMIT_SHA`의 스냅샷으로 고정해 둔 지문과 같은지 — 다르면 수정된 데이터로 만든 색인이다."""
+    return (
+        "matches_pinned_snapshot"
+        if fingerprint == SNAPSHOT_FINGERPRINT
+        else "differs_from_pinned_snapshot"
+    )
+
+
 def build_chunks(handbook_dir: Path) -> list[Chunk]:
     chunks: list[Chunk] = []
     for path in list_files(handbook_dir):
@@ -336,6 +357,8 @@ def load_questions(path: Path) -> list[EvalQuestion]:
             raise ValueError(f"{n}번째 줄: question_id 중복 ({qid})")
         seen.add(qid)
         questions.append(EvalQuestion(qid, text, list(golds), qtype))
+    if not questions:
+        raise ValueError(f"질문 파일이 비어 있습니다: {path}")
     return questions
 
 
@@ -404,9 +427,16 @@ def chunks_digest(chunks: list[Chunk]) -> str:
     return hashlib.sha256(lines.encode("utf-8")).hexdigest()
 
 
-def build_meta(chunks: list[Chunk], vector_shape: tuple[int, ...], fastembed_version: str) -> dict:
+def build_meta(
+    chunks: list[Chunk],
+    vector_shape: tuple[int, ...],
+    fastembed_version: str,
+    data_fingerprint: str = "",
+) -> dict:
     return {
         "data_commit_sha": COMMIT_SHA,
+        "data_fingerprint": data_fingerprint,
+        "data_status": data_status(data_fingerprint) if data_fingerprint else "unknown",
         "embedding_model": EMBEDDING_MODEL,
         "fastembed_version": fastembed_version,
         "chunking": CHUNKING,
@@ -424,6 +454,7 @@ def check_index(
     saved_chunks: list[Chunk],
     vector_shape: tuple[int, ...],
     fastembed_version: str,
+    data_fingerprint: str = "",
 ) -> list[str]:
     """저장된 색인 설명(meta)이 지금 설정·데이터와 같은지 비교해 다른 항목을 문장으로 돌려준다. 빈 목록이면 일치."""
     problems = []
@@ -435,6 +466,8 @@ def check_index(
         "excluded_dirs": EXCLUDE_DIRS,
         "chunk_key_recipe": CHUNK_KEY_RECIPE,
     }
+    if data_fingerprint:
+        expected["data_fingerprint"] = data_fingerprint
     for key, now in expected.items():
         if meta.get(key) != now:
             problems.append(f"{key}: 색인 {meta.get(key)!r} != 현재 {now!r}")
@@ -504,7 +537,13 @@ def cmd_index(args: argparse.Namespace) -> None:
         vectors=vectors,
     )
     _write_chunks(chunks, args.out_dir / "chunks.jsonl")
-    meta = build_meta(chunks, vectors.shape, version("fastembed"))
+    meta = build_meta(
+        chunks, vectors.shape, version("fastembed"), data_fingerprint(args.handbook_dir)
+    )
+    if meta["data_status"] != "matches_pinned_snapshot":
+        print(
+            f"주의: 데이터가 고정 스냅샷({COMMIT_SHA[:7]})과 다릅니다 — 수정된 데이터로 만든 색인입니다."
+        )
     (args.out_dir / INDEX_META).write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -531,6 +570,7 @@ def load_checked_index(handbook_dir: Path, out_dir: Path) -> tuple[list[Chunk], 
         chunks,
         stored.shape,
         version("fastembed"),
+        data_fingerprint(handbook_dir),
     )
     if problems:
         sys.exit(
@@ -590,10 +630,34 @@ def build_report(questions: list[EvalQuestion], n_chunks: int, results: dict) ->
     }
 
 
-def compare_reports(a: dict, b: dict) -> list[dict]:
-    """두 평가 결과를 지표별로 비교한다. 질문 세트 지문이 다르면 비교하지 않고 오류를 낸다."""
+COMPARE_INDEX_KEYS = (
+    "data_commit_sha",
+    "data_fingerprint",
+    "chunks_digest",
+    "chunking",
+    "excluded_dirs",
+    "embedding_model",
+)
+
+
+def _condition_differences(a: dict, b: dict) -> list[str]:
+    ia, ib = a.get("index_meta") or {}, b.get("index_meta") or {}
+    diffs = [k for k in COMPARE_INDEX_KEYS if ia.get(k) != ib.get(k)]
+    if (a.get("retrieval_settings") or {}) != (b.get("retrieval_settings") or {}):
+        diffs.append("retrieval_settings")
+    return diffs
+
+
+def compare_reports(a: dict, b: dict, allow: tuple[str, ...] = ()) -> list[dict]:
+    """두 평가 결과를 지표별로 비교한다. 질문 세트 지문이 다르거나, 허용하지 않은 조건(데이터·청킹·검색 설정·모델)이
+    다르면 비교하지 않고 오류를 낸다. 의도적으로 바꾼 조건만 `allow`로 명시한다 (AGENTS.md 5절 — 같은 조건의 before/after)."""
     if a["question_set"]["digest"] != b["question_set"]["digest"]:
         raise ValueError("서로 다른 질문 세트의 결과는 비교할 수 없습니다 (질문 세트 지문이 다름)")
+    blocked = [k for k in _condition_differences(a, b) if k not in allow]
+    if blocked:
+        raise ValueError(
+            "비교 조건이 다릅니다: " + ", ".join(blocked) + " (의도한 차이면 --allow로 명시하세요)"
+        )
     rows = []
     for config, units in a["results"].items():
         for unit, metrics in units.items():
@@ -620,7 +684,7 @@ def cmd_compare(args: argparse.Namespace) -> None:
     a = json.loads(args.before.read_text(encoding="utf-8"))
     b = json.loads(args.after.read_text(encoding="utf-8"))
     try:
-        rows = compare_reports(a, b)
+        rows = compare_reports(a, b, tuple(args.allow))
     except ValueError as e:
         sys.exit(str(e))
     print(
@@ -694,6 +758,12 @@ def main() -> None:
     p_cmp = sub.add_parser("compare", help="같은 질문 세트로 만든 두 eval_result.json을 비교")
     p_cmp.add_argument("before", type=Path)
     p_cmp.add_argument("after", type=Path)
+    p_cmp.add_argument(
+        "--allow",
+        action="append",
+        default=[],
+        help="의도적으로 바꾼 조건(예: embedding_model, retrieval_settings)만 비교를 허용",
+    )
     p_cmp.set_defaults(func=cmd_compare)
     args = parser.parse_args()
     if args.cmd != "compare" and not args.handbook_dir.is_dir():
