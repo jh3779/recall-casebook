@@ -69,6 +69,7 @@ erDiagram
         string criteria
         string check_method
         string source
+        string chunk_key
         string evidence_quote
         string[] domains
     }
@@ -80,8 +81,8 @@ erDiagram
     QUESTIONS ||--o| SYNTHETIC_SOURCE : "합성일 때"
     QUESTIONS ||--o| REAL_SOURCE : "실제일 때"
     QUESTIONS ||--|{ GOLD_LABEL : "정답 1개 이상"
-    GOLD_LABEL }o--|| CHUNKS : "gold_source_path#heading (논리적 참조)"
-    RESPONSE_ITEM }o--|| CHUNKS : "source (검증된 chunk_key)"
+    GOLD_LABEL }o--o{ CHUNKS : "정답 섹션(source_path#heading_path)의 모든 청크 (논리적 참조)"
+    RESPONSE_ITEM }o--|| CHUNKS : "chunk_key (내부 근거 추적)"
 ```
 
 ## 핵심 규칙 (근거)
@@ -108,7 +109,7 @@ erDiagram
 | 합성 | `SYNTHETIC_SOURCE` | `generator_model`, `prompt`, `role_source_path` | **예** (조건부, DEC-021) |
 | 실제 | `REAL_SOURCE` | `source_id`(비식별), `collection_month` | 확보되면 추가 비교 (DEC-016) |
 
-`GOLD_LABEL`은 세 유형 모두 공통이며 **질문 하나에 정답 행이 여러 개**일 수 있다(체크리스트 질문은 여러 문서가 근거일 수 있다). 정답은 **섹션 단위**(`gold_source_path#gold_heading`)이고, 한 섹션이 여러 청크로 나뉘어도 그 섹션의 어느 청크든 정답으로 인정한다. Recall@k는 "찾은 서로 다른 정답 섹션 수 ÷ 정답 섹션 전체 수", Hit@k는 "정답이 하나라도 있으면 1"이다. 정답이 정말 하나뿐인 질문만 허용하려면 그 제한을 질문 생성·검수 규칙에 적고 두 지표를 함께 쓰는 이유를 다시 정리한다. 또한 정답은 **질문 출처와 분리**(`role_source_path`와 `gold_source_path`가 같으면 그 문항은 최종 점수에서 뺀다 — 역할 설명 문서 자체가 정답이면 검색이 유리해지는 걸 막는다).
+`GOLD_LABEL`은 세 유형 모두 공통이며 **질문 하나에 정답 행이 여러 개**일 수 있다(체크리스트 질문은 여러 문서가 근거일 수 있다). 정답은 **섹션 단위**(`gold_source_path#gold_heading`)이고, 한 섹션이 여러 청크로 나뉘어도 그 섹션의 어느 청크든 정답으로 인정한다. Recall@k는 "찾은 서로 다른 정답 섹션 수 ÷ 정답 섹션 전체 수", Hit@k는 "정답이 하나라도 있으면 1"이다. 정답이 정말 하나뿐인 질문만 허용하려면 그 제한을 질문 생성·검수 규칙에 적고 두 지표를 함께 쓰는 이유를 다시 정리한다. 또한 정답은 **질문 출처와 분리**(`role_source_path`와 `gold_source_path`가 같으면 그 문항은 최종 점수에서 뺀다 — 역할 설명 문서 자체가 정답이면 검색이 유리해지는 걸 막는다). 그림의 `GOLD_LABEL`은 한 청크가 아니라 **정답 섹션 전체(그 섹션의 모든 청크)**에 연결되고, `RESPONSE_ITEM`은 사람이 읽는 `source`(`path#heading`, 여러 청크가 공유할 수 있음)와 별도로 내부 `chunk_key`(사용자에게 노출하지 않는 검증·추적용)를 보존해 정확한 근거 청크를 가리킨다.
 
 ### 5. 개인정보 — 저장소에 넣지 않는 것 (DEC-016)
 
