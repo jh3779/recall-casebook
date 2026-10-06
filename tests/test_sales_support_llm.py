@@ -430,3 +430,11 @@ def test_run_config_records_the_actual_data_fingerprint_and_status():
     cfg = llm.build_run_config(meta, "hybrid")
     assert cfg["data_fingerprint"] == "fp" and cfg["data_status"] == "differs_from_pinned_snapshot"
     assert cfg["data_commit_sha"] == "dirty" and cfg["pinned_snapshot_commit_sha"] == "0ab"
+
+
+def test_generation_run_is_refused_on_data_that_differs_from_the_pinned_snapshot():
+    llm.require_pinned_data({"data_status": "matches_pinned_snapshot"})  # 통과
+    for status in ("differs_from_pinned_snapshot", "unknown", None):
+        with pytest.raises(SystemExit) as e:
+            llm.require_pinned_data({"data_status": status})
+        assert "고정 스냅샷" in str(e.value) and "원문" in str(e.value)

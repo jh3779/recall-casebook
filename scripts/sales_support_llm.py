@@ -92,6 +92,19 @@ JUDGMENT_PHRASES = (
 )
 
 
+def require_pinned_data(index_meta: dict) -> None:
+    """수정된 핸드북(고정 스냅샷과 지문이 다른 데이터)으로는 생성 실행을 하지 않는다.
+
+    수정된 데이터는 공식 커밋으로 복원할 수 없어, 실행 기록에 해시만 남으면 나중에 모델이 본 원문을 확인할 수 없다.
+    """
+    if index_meta.get("data_status") != "matches_pinned_snapshot":
+        sys.exit(
+            "색인이 고정 스냅샷과 같은 데이터가 아닙니다(data_status="
+            f"{index_meta.get('data_status')!r}). 수정된 원문으로 만든 생성 실행은 나중에 모델이 본 원문을 "
+            "복원할 수 없어 거부합니다. 공식 스냅샷 데이터로 `index`를 다시 만든 뒤 실행하세요."
+        )
+
+
 def positive_budget(text: str) -> float:
     """비용 상한 인자 — 0 이하·NaN·무한대는 거부한다."""
     import argparse
@@ -541,6 +554,7 @@ def main() -> None:
         sys.exit(f"핸드북 데이터가 없습니다: {args.handbook_dir}")
 
     chunks, vectors = poc.load_checked_index(args.handbook_dir, args.out_dir)
+    require_pinned_data(json.loads((args.out_dir / poc.INDEX_META).read_text(encoding="utf-8")))
     keys = {c.section_key for c in chunks}
     if args.questions:
         loaded = poc.load_questions(args.questions)
