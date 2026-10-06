@@ -59,7 +59,7 @@ GitLab 공개 핸드북을 근거로, 신규 입사자·부서 이동자가 새 
 - `pip install`, `python -m venv`, `requirements.txt` 생성은 하지 않는다.
 - `pyproject.toml`을 바꾸면 `uv.lock`도 같이 커밋한다.
 - 프런트는 npm만 쓴다(`yarn`·`pnpm`으로 락 파일이 둘이 되지 않게). `package.json`의 의존성을 바꾸면 npm으로 `package-lock.json`을 갱신해 같이 커밋한다(실행 스크립트·설명만 바꿨다면 락 파일은 그대로이고 직접 고치지 않는다). Node 버전은 `frontend/.nvmrc`가 정본이다.
-- 작업을 끝냈다고 말하기 전에 `uv run ruff check . && uv run ruff format --check . && uv run pytest`를 돌리고 결과를 보고한다. `frontend/`를 바꿨다면 `cd frontend && npm ci && npm run lint --if-present && npm run build --if-present && npm test --if-present`도 돌리고 결과를 보고한다. 건너뛴(없는) 스크립트는 없어서 못 돌렸다고 적는다.
+- 작업을 끝냈다고 말하기 전에 `uv run ruff check . && uv run ruff format --check . && uv run pytest`를 돌리고 결과를 보고한다. `frontend/package.json`이 있는 상태에서 `frontend/`를 바꿨다면(`.nvmrc`·`.gitkeep`·`README.md`만 추가한 준비 단계는 제외, 그 사실을 보고한다) `cd frontend && npm ci && npm run lint --if-present && npm run build --if-present && npm test --if-present`도 돌리고 결과를 보고한다. 건너뛴(없는) 스크립트는 없어서 못 돌렸다고 적는다.
 
 ## 5. RAG 실험 규칙
 
