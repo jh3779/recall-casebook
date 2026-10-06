@@ -438,3 +438,56 @@ def test_generation_run_is_refused_on_data_that_differs_from_the_pinned_snapshot
         with pytest.raises(SystemExit) as e:
             llm.require_pinned_data({"data_status": status})
         assert "고정 스냅샷" in str(e.value) and "원문" in str(e.value)
+
+
+# ---- 제거된 인용문 원인 분류 (PR #20 실행 결과 후속) ----
+
+
+@pytest.mark.parametrize(
+    ("chunk", "quote", "expected"),
+    [
+        (
+            "Open the [Zuora Fields](/handbook/x/) page.",
+            "Open the Zuora Fields page.",
+            "markdown_stripped",
+        ),
+        ("Use **bold** text and `code`.", "Use bold text and code.", "markdown_stripped"),
+        (
+            "Request Access through the Portal.",
+            "request access through the portal",
+            "case_or_punctuation",
+        ),
+        (
+            "Managers approve within three days of the request.",
+            "Managers approve within three days of request.",
+            "mostly_overlapping_reworded",
+        ),
+        (
+            "Totally different sentence here.",
+            "Quarterly revenue grew sharply overseas.",
+            "not_in_text",
+        ),
+        ("Exact sentence stays.", "Exact sentence stays.", "found"),
+    ],
+)
+def test_diagnose_quote_classifies_why_a_quote_was_not_found(chunk, quote, expected):
+    assert llm.diagnose_quote(quote, chunk) == expected
+
+
+def test_removed_quotes_are_logged_with_diagnosis_for_later_inspection():
+    log: list[dict] = []
+    bad = item(evidence_quote="Request Access through the Portal.")  # 대소문자만 다름
+    valid, removed, _ = llm.validate_items([bad], CHUNKS[:2], removed_log=log)
+    assert valid == [] and removed == {"quote_not_in_chunk": 1}
+    assert log[0]["reason"] == "quote_not_in_chunk" and log[0]["diagnosis"] == "case_or_punctuation"
+    assert log[0]["evidence_quote"] == "Request Access through the Portal."
+    assert log[0]["chunk_key"] == CHUNKS[0].chunk_key
+
+
+def test_summary_counts_quote_diagnoses_across_records():
+    client = FakeClient(
+        [json.dumps({"items": [item(evidence_quote="request ACCESS through the portal.")]})]
+    )
+    records, _ = llm.run_batch(client, [(question(), CHUNKS[:2])], budget_usd=1.0)
+    assert records[0]["removed_items"][0]["diagnosis"] == "case_or_punctuation"
+    assert llm.summarize(records)["removed_quote_diagnosis"] == {"case_or_punctuation": 1}

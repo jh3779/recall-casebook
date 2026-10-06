@@ -131,8 +131,43 @@ def build_prompt(question: str, chunks: list[poc.Chunk]) -> str:
     return "\n\n".join(parts)
 
 
+def strip_markdown(text: str) -> str:
+    """인용 불일치 원인 분류용 — 링크·강조·코드·표 기호를 걷어 낸다."""
+    import re
+
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"[*`]", "", text)  # 강조·코드 기호는 글자에 붙어 있으므로 공백 없이 지운다
+    text = re.sub(r"[|>]", " ", text)
+    return re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
+
+
+def diagnose_quote(quote: str, chunk_text: str) -> str:
+    """청크에 그대로 없던 인용문이 왜 안 맞는지 분류한다 (측정용, 판정에는 쓰지 않는다).
+
+    found / markdown_stripped(마크다운을 걷어 내면 일치) / case_or_punctuation(대소문자·구두점만 다름) /
+    mostly_overlapping_reworded(단어 80% 이상이 겹치는데 말이 바뀜) / not_in_text(청크에 없는 내용).
+    """
+    import re
+
+    q, c = poc.collapse_whitespace(quote), poc.collapse_whitespace(chunk_text)
+    if q in c:
+        return "found"
+    if q in poc.collapse_whitespace(strip_markdown(chunk_text)):
+        return "markdown_stripped"
+
+    def norm(t: str) -> str:
+        return re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
+
+    if norm(q) in norm(chunk_text) or norm(q) in norm(strip_markdown(chunk_text)):
+        return "case_or_punctuation"
+    q_tokens, c_tokens = set(norm(q).split()), set(norm(chunk_text).split())
+    if q_tokens and len(q_tokens & c_tokens) / len(q_tokens) >= 0.8:
+        return "mostly_overlapping_reworded"
+    return "not_in_text"
+
+
 def validate_items(
-    items: list[dict], shown: list[poc.Chunk]
+    items: list[dict], shown: list[poc.Chunk], removed_log: list[dict] | None = None
 ) -> tuple[list[dict], dict[str, int], dict[str, int]]:
     """모델 항목을 코드로 검증한다 (기획v1 5절 ⑦). 통과 항목, 제거 사유별 개수, 경고 개수를 돌려준다.
 
@@ -144,8 +179,23 @@ def validate_items(
     removed: dict[str, int] = {}
     flags = {"criteria_outside_quote": 0, "check_method_outside_quote": 0, "judgment_wording": 0}
 
-    def drop(reason: str) -> None:
+    def drop(reason: str, it: dict | None = None, chunk: poc.Chunk | None = None) -> None:
         removed[reason] = removed.get(reason, 0) + 1
+        if removed_log is not None and it is not None:
+            removed_log.append(
+                {
+                    "reason": reason,
+                    "chunk_no": it.get("chunk_no"),
+                    "chunk_key": chunk.chunk_key if chunk else None,
+                    "item": str(it.get("item"))[:200],
+                    "evidence_quote": str(it.get("evidence_quote"))[:500],
+                    "diagnosis": diagnose_quote(
+                        str(it.get("evidence_quote") or ""), chunk.chunk_text
+                    )
+                    if chunk and reason in ("quote_not_in_chunk", "quote_outside_shown_text")
+                    else None,
+                }
+            )
 
     for it in items:
         if not all(
@@ -165,7 +215,9 @@ def validate_items(
             drop(
                 "quote_outside_shown_text"
                 if quote in poc.collapse_whitespace(chunk.chunk_text)
-                else "quote_not_in_chunk"
+                else "quote_not_in_chunk",
+                it,
+                chunk,
             )
             continue
         for key, flag in (
@@ -241,6 +293,7 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
         "rejected_before_processing": False,
         "fatal": False,
         "response_model": None,
+        "removed_items": [],
         "quote_found_items": [],
     }
     start = time.time()
@@ -281,7 +334,9 @@ def run_question(client, q: poc.EvalQuestion, shown: list[poc.Chunk]) -> dict:
     except (ValueError, KeyError, TypeError):
         return rec
     rec["schema_ok"] = True
-    valid, removed, flags = validate_items(items, shown)
+    removed_log: list[dict] = []
+    valid, removed, flags = validate_items(items, shown, removed_log)
+    rec["removed_items"] = removed_log
     rec.update(
         n_raw=len(items),
         n_quote_found=len(valid),
@@ -480,6 +535,15 @@ def run_batch(client, jobs: list[tuple[poc.EvalQuestion, list[poc.Chunk]]], budg
     return records, False
 
 
+def quote_diagnosis_counts(records: list[dict]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for r in records:
+        for x in r.get("removed_items", []):
+            if x.get("diagnosis"):
+                counts[x["diagnosis"]] = counts.get(x["diagnosis"], 0) + 1
+    return counts
+
+
 def summarize(records: list[dict]) -> dict:
     n = len(records)
     ok = [r for r in records if r["schema_ok"]]
@@ -501,6 +565,7 @@ def summarize(records: list[dict]) -> dict:
         "n_local_rejected": sum(r["error"] == "question_too_long" for r in records),
         "n_cost_unknown": sum(bool(r.get("cost_unknown")) for r in records),
         "aborted_on_fatal_error": any(r.get("fatal") for r in records),
+        "removed_quote_diagnosis": quote_diagnosis_counts(records),
         "response_models": sorted(
             {r["response_model"] for r in records if r.get("response_model")}
         ),

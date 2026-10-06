@@ -53,3 +53,4 @@
 - 2026-10-06: PR #20 2차 리뷰 반영 — 수정된 데이터에는 commit_sha=dirty(공식 SHA는 pinned_snapshot_commit_sha로 분리), 생성 run_config에 data_fingerprint·data_status 저장, 인용 확인을 모델에게 보낸 앞 2,000자 범위로 제한하고 전달 범위·해시 기록
 - 2026-10-06: PR #20 3차 리뷰 반영 — 고정 스냅샷과 다른(수정된) 데이터의 색인으로는 생성 실행을 거부(원문 복원 불가 문제)
 - 2026-10-06: 섹션 키 형식(source_path#heading_path, 제목을 >로 연결) 고정 예시 테스트 추가(PR #17 리뷰 선택 개선)
+- 2026-10-06: 생성 테스트에 제거된 인용문 원인 분류(markdown_stripped·case_or_punctuation·mostly_overlapping_reworded·not_in_text)와 제거 항목 기록 추가 — 같은 30개 재실행으로 원인 확인 예정
