@@ -172,6 +172,52 @@ def diagnose_quote(quote: str, chunk_text: str) -> str:
     return "not_in_text"
 
 
+MIN_TRIMMED_QUOTE_CHARS = 12  # 경계 정리 뒤 이보다 짧으면 아무 데나 맞을 수 있어 인정하지 않는다
+FLAG_KEYS = (
+    "criteria_outside_quote",
+    "check_method_outside_quote",
+    "judgment_wording",
+    "quote_boundary_adjusted",
+)
+_QUOTE_CHARS = "\"'\u201c\u201d\u2018\u2019"
+
+
+def trim_quote_boundaries(quote: str) -> str:
+    """인용문 **양 끝**의 경계 문자만 정리한다 — 목록 기호(`- `·`* `·`1. `), 감싼 따옴표, 줄임표, 끝 구두점.
+
+    가운데의 글자·대소문자·구두점은 건드리지 않는다 (DEC-028).
+    """
+    import re
+
+    q = poc.collapse_whitespace(quote)
+    for _ in range(3):  # 겹겹이 감싼 경우(예: `- "..."`)를 위해 몇 번 반복
+        before = q
+        q = re.sub(r"^(?:[-*\u2022]\s+|\d+[.)]\s+)", "", q)
+        q = q.lstrip(_QUOTE_CHARS + "\u2026 ")
+        q = re.sub(r"^\.{3,}\s*", "", q)
+        q = re.sub(r"\s*\.{3,}$", "", q)
+        q = q.rstrip(_QUOTE_CHARS + "\u2026 ")
+        q = re.sub(r"[\s.,;:!?\u2014\u2013-]+$", "", q)
+        if q == before:
+            break
+    return q.strip()
+
+
+def locate_quote(quote: str, visible_collapsed: str) -> str | None:
+    """모델이 낸 인용문을 원문(공백 정리한 보낸 구간)에서 찾아 **원문의 정확한 구간**을 돌려준다. 없으면 None.
+
+    1) 그대로(공백 정리만) 있으면 그 구간, 2) 아니면 양 끝 경계 문자만 정리해 다시 찾는다(가운데는 정확히 같아야 하고,
+    정리 뒤 MIN_TRIMMED_QUOTE_CHARS자 미만이면 거부). 대소문자는 구분한다.
+    """
+    exact = poc.collapse_whitespace(quote)
+    if exact and exact in visible_collapsed:
+        return exact
+    trimmed = trim_quote_boundaries(quote)
+    if len(trimmed) >= MIN_TRIMMED_QUOTE_CHARS and trimmed in visible_collapsed:
+        return trimmed
+    return None
+
+
 def validate_items(
     items: list[dict], shown: list[poc.Chunk], removed_log: list[dict] | None = None
 ) -> tuple[list[dict], dict[str, int], dict[str, int]]:
@@ -183,7 +229,7 @@ def validate_items(
     """
     valid: list[dict] = []
     removed: dict[str, int] = {}
-    flags = {"criteria_outside_quote": 0, "check_method_outside_quote": 0, "judgment_wording": 0}
+    flags = dict.fromkeys(FLAG_KEYS, 0)
 
     def drop(reason: str, it: dict | None = None, chunk: poc.Chunk | None = None) -> None:
         removed[reason] = removed.get(reason, 0) + 1
@@ -215,17 +261,16 @@ def validate_items(
             drop("bad_chunk_no")
             continue
         chunk = shown[n - 1]
-        quote = poc.collapse_whitespace(it["evidence_quote"])
-        if quote not in poc.collapse_whitespace(chunk.chunk_text[:MAX_CHUNK_CHARS_IN_PROMPT]):
+        visible = poc.collapse_whitespace(chunk.chunk_text[:MAX_CHUNK_CHARS_IN_PROMPT])
+        quote = locate_quote(it["evidence_quote"], visible)
+        if quote is None:
             # 모델에게 보내지 않은 뒷부분에만 있으면 인용 확인으로 세지 않는다
-            drop(
-                "quote_outside_shown_text"
-                if quote in poc.collapse_whitespace(chunk.chunk_text)
-                else "quote_not_in_chunk",
-                it,
-                chunk,
-            )
+            beyond = locate_quote(it["evidence_quote"], poc.collapse_whitespace(chunk.chunk_text))
+            drop("quote_outside_shown_text" if beyond else "quote_not_in_chunk", it, chunk)
             continue
+        adjusted = quote != poc.collapse_whitespace(it["evidence_quote"])
+        if adjusted:
+            flags["quote_boundary_adjusted"] += 1
         for key, flag in (
             ("criteria", "criteria_outside_quote"),
             ("check_method", "check_method_outside_quote"),
@@ -241,6 +286,9 @@ def validate_items(
         valid.append(
             {
                 **it,
+                # 경계 문자를 정리해 통과했으면 사용자에게 보이는 인용문은 코드가 찾은 원문 구간으로 바꾼다
+                "evidence_quote": quote,
+                **({"model_quote": it["evidence_quote"]} if adjusted else {}),
                 "source": chunk.section_key,
                 "chunk_key": chunk.chunk_key,
                 "doc_id": chunk.doc_id,
@@ -556,7 +604,7 @@ def summarize(records: list[dict]) -> dict:
     ok = [r for r in records if r["schema_ok"]]
     raw = sum(r["n_raw"] for r in ok)
     removed: dict[str, int] = {}
-    flags = {"criteria_outside_quote": 0, "check_method_outside_quote": 0, "judgment_wording": 0}
+    flags = dict.fromkeys(FLAG_KEYS, 0)
     for r in ok:
         for k, v in r["removed"].items():
             removed[k] = removed.get(k, 0) + v

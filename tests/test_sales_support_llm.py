@@ -515,3 +515,80 @@ def test_prompt_version_is_recorded_in_run_config():
     cfg = llm.build_run_config(meta, "hybrid")
     assert cfg["prompt_version"] == llm.PROMPT_VERSION == "v2"
     assert llm.PROMPT_V1_SHA == "d178413ddcdb3fb3"  # v1 결과와 비교할 수 있게 해시를 남긴다
+
+
+# ---- B안(DEC-028): 인용문 양 끝의 경계 문자만 무시하고, 표시는 원문 구간으로 교체 ----
+
+ORIG = "Managers approve within 3 days of the request — see the policy page."
+BCHUNK = poc.chunk_file(
+    "sales/p.md", f"## Rules\n\n{ORIG}\n\n- **Prepare your setup**: Ensure the tools run.\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ('"Managers approve within 3 days."', "Managers approve within 3 days"),
+        ("- Managers approve within 3 days.", "Managers approve within 3 days"),
+        ("* Managers approve within 3 days,", "Managers approve within 3 days"),
+        ("1. Managers approve within 3 days;", "Managers approve within 3 days"),
+        ("“Managers approve within 3 days”", "Managers approve within 3 days"),
+        ("...Managers approve within 3 days...", "Managers approve within 3 days"),
+    ],
+)
+def test_trim_quote_boundaries_removes_only_edge_characters(raw, expected):
+    assert llm.trim_quote_boundaries(raw) == expected
+
+
+def test_trim_keeps_interior_punctuation_and_case():
+    assert llm.trim_quote_boundaries('"It\'s 3.5 days, not 35."') == "It's 3.5 days, not 35"
+
+
+def test_locate_quote_returns_the_exact_original_span():
+    visible = poc.collapse_whitespace(ORIG)
+    span = llm.locate_quote('"Managers approve within 3 days."', visible)
+    assert span == "Managers approve within 3 days"
+    assert span in visible  # 반드시 원문의 연속 구간
+
+
+def test_locate_quote_rejects_interior_differences_and_too_short_trims():
+    visible = poc.collapse_whitespace(ORIG)
+    assert llm.locate_quote("Managers approve within three days.", visible) is None  # 가운데가 다름
+    assert (
+        llm.locate_quote("managers approve within 3 days.", visible) is None
+    )  # 대소문자는 무시하지 않는다
+    assert llm.locate_quote('"The."', "The cat sat. The end.") is None  # 정리 후 너무 짧음
+
+
+def test_boundary_adjusted_quote_is_accepted_and_replaced_by_the_original_span():
+    it = item(chunk_no=1, evidence_quote='- "Managers approve within 3 days."')
+    valid, removed, flags = llm.validate_items([it], BCHUNK[:2])
+    assert removed == {} and len(valid) == 1
+    assert valid[0]["evidence_quote"] == "Managers approve within 3 days"  # 사용자에게는 원문 구간
+    assert valid[0]["model_quote"] == '- "Managers approve within 3 days."'
+    assert flags["quote_boundary_adjusted"] == 1
+
+
+def test_exact_quote_is_unchanged_and_not_counted_as_adjusted():
+    it = item(chunk_no=1, evidence_quote="Managers approve within 3 days of the request")
+    valid, _, flags = llm.validate_items([it], BCHUNK[:2])
+    assert valid[0]["evidence_quote"] == "Managers approve within 3 days of the request"
+    assert flags["quote_boundary_adjusted"] == 0 and "model_quote" not in valid[0]
+
+
+def test_interior_difference_is_still_removed_with_a_diagnosis():
+    log: list[dict] = []
+    it = item(chunk_no=1, evidence_quote='"Managers approve within three days."')
+    valid, removed, _ = llm.validate_items([it], BCHUNK[:2], removed_log=log)
+    assert valid == [] and removed == {"quote_not_in_chunk": 1}
+    assert log[0]["diagnosis"] in ("mostly_overlapping_reworded", "case_or_punctuation")
+
+
+def test_criteria_is_checked_against_the_original_span_after_adjustment():
+    it = item(
+        chunk_no=1,
+        evidence_quote='"Managers approve within 3 days."',
+        criteria="Managers approve within 3 days",  # 원문 구간과 같다 → 경고 없음
+    )
+    _, _, flags = llm.validate_items([it], BCHUNK[:2])
+    assert flags["criteria_outside_quote"] == 0
