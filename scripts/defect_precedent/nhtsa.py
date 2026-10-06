@@ -5,7 +5,8 @@
     uv run python -m scripts.defect_precedent.nhtsa build   # recalls.jsonl·eval.jsonl 만들기 (data/processed/defect/)
     uv run python -m scripts.defect_precedent.nhtsa freeze scripts/defect_precedent/baseline_<날짜>.json  # 기준 고정
 
-결함 선례 기획(docs/기획_결함선례.md, DEC-030)의 수치를 저장소에서 재현하기 위한 스크립트다.
+결함 선례 기획(docs/기획_결함선례.md, DEC-030)의 수치를 다시 계산하는 스크립트다.
+같은 값의 재현은 기준일 원본 사본이 있을 때만 가능하다 (README "재현 범위").
 AGENTS.md 7절: 원본 데이터는 커밋하지 않고(data/raw·data/processed는 .gitignore), 다시 만드는 스크립트를 커밋한다.
 NHTSA 파일은 매일 갱신되므로 fetch가 남기는 manifest.json(받은 시각·크기·sha256)으로 스냅샷을 구분한다.
 """
