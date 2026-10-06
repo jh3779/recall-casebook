@@ -68,6 +68,53 @@ leadership, ceo, board-meetings, eba, acquisitions, legal, finance, business-tec
 
 `criteria`·`check_method`는 **키를 항상 보내고 값만 `null`일 수 있다**(키 생략 금지 — 도메인마다 형태가 갈리지 않게). `null` 허용은 이 두 필드뿐이고, 화면에는 "확인 필요"로만 표시(저장 값은 항상 `null`). 상세 규칙·검증 테스트 사례는 `.agent/DECISIONS.md` DEC-019.
 
+### 6-1. 웹 ↔ 서버 API 약속 (초안 — 10/10 확정 대상, DEC-029)
+
+React 화면(`frontend/`)과 서버(FastAPI, `api/`)가 주고받는 JSON이다. 화면은 아래 목업으로 먼저 만들고 10/14에 서버에 연결한다. **제안 단계**이므로 바꾸려면 10/10까지 이 절을 고친다.
+
+**요청** — `POST /api/checklist` (경로는 제안)
+
+```json
+{ "user_type": "new_hire", "domain": "sales-support", "question": "How do I know if my customer has turned off Auto Renew?" }
+```
+
+| 필드 | 값 | 비고 |
+|---|---|---|
+| `user_type` | `new_hire` \| `transfer` | DEC-022 사용자 유형. 평가표의 `user_type`과 같은 값 |
+| `domain` | 사용자가 고른 새 부서 | `sales-support`는 코드에서 이미 쓰는 값. 나머지는 제안 `hr`·`engineering`·`finance` — 도메인 담당이 확정 |
+| `question` | string | 영어(출력도 영어, 해석은 후처리 — 2026-10-05 결정). 이름·사번 등 개인 식별 정보와 이동자의 이전 부서는 받지 않는다(DEC-022) |
+
+**성공 응답 200** — 6절 스키마 그대로. 사용자에게 보이지 않는 `chunk_key`·`model_*`는 응답에 넣지 않는다.
+
+```json
+{
+  "commit_sha": "0ab0299ce073b847558867ae5abbc42c570bc8d5",
+  "items": [
+    {
+      "item": "Check the *Turn On AutoRenew* field in Salesforce.",
+      "reason": "If it's set to No, then they have cancelled/ turned off Auto Renew.",
+      "criteria": "If it's set to No",
+      "check_method": null,
+      "source": "sales/commercial/renewals-faq.md#Customer Renewals FAQ>GitLab Employee Focused Questions",
+      "evidence_quote": "If it's set to No, then they have cancelled/ turned off Auto Renew.",
+      "domains": ["sales-support"]
+    }
+  ]
+}
+```
+
+위 항목은 영업·지원 실제 실행 결과(2026-10-06, `gpt-4o-mini`, 같은 질문) 1건이다. 모델이 쓴 `check_method`("Navigate to their active Subscription…")는 인용문에 없어서 기획v1 5절 ⑦ 규칙(인용문 밖이면 `null`)에 따라 `null`로 표시했다.
+
+**화면이 지킬 것**
+- `criteria`·`check_method`가 `null`이면 "확인 필요"로 표시한다(6절).
+- `items`가 빈 배열이면 "근거를 찾지 못했습니다 — 확인 필요"로 표시한다(기획v1 5절 ⑦).
+- `source`와 `commit_sha`(데이터 버전)를 항목에서 볼 수 있게 한다(AGENTS.md 2절 4항 추적 가능성).
+- **판정·점수 표시를 만들지 않는다** — "적용됨/안 됨"류 문구, 적합도·신뢰도 점수를 화면에 넣지 않는다(AGENTS.md 2절 1항).
+
+**오류 응답** — 4xx/5xx, 본문 `{ "error": { "code": "...", "message": "..." } }`(제안). `code`는 `invalid_request`(필드 누락·알 수 없는 `user_type`/`domain`), `upstream_unavailable`(LLM·DB 오류). 화면은 항목 없이 메시지만 보여 준다.
+
+**미결(10/10까지)**: ① 도메인 키 값(인사·엔지니어링·금융). ② 질문 분류 결과(선택 도메인과 다르게 분류됨, "확인 필요")를 응답에 넣을지 — 지금 스키마에는 필드가 없고(`domains`는 근거 청크의 도메인 합집합), 넣으려면 6절·DEC-019를 바꾸는 별도 결정이 필요하다. ③ 요청 제한 시간 — 영업·지원 생성 호출만 중앙값 3.9초였고 분류·검색을 더하면 늘어난다. ④ **API 키 보호와 호출 상한은 사용자가 차후 결정**(DEC-029 미결 ①).
+
 ## 7. 평가 (성공 기준)
 
 - 지표: Recall@k·Hit@k(k=1,3,5,10). 차이 0.03 미만이면 같다고 본다(`기획v1.md` 3절).
