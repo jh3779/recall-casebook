@@ -54,6 +54,7 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 ## 자동 검증
 - `.github/workflows/ci.yml` — uv로 설치 후 ruff lint·format 검사 + pytest (`uv sync --locked`라 `uv.lock` 누락도 잡음)
 - `.github/workflows/pr-verify.yml` — PR 내용 상세 검증: 판정 필드·비밀값·RAG 수치 근거·PR 본문 필수 항목 + 저장소 정합성(type 목록 일치·문서 링크·AGENTS import). `scripts/ci/pr_checks.py`
+- `.github/workflows/frontend-ci.yml` — React 화면(`frontend/`) 검사(`npm ci`·lint·build·test). **필수 체크가 아님**, `frontend/**`가 바뀐 PR에서만 돌고 `frontend/package.json`이 있을 때만 검사한다. 있는데 `.nvmrc`·`package-lock.json`이 없으면 실패 (DEC-029)
 - `.github/workflows/merge-gate.yml` — 병합 게이트: 현재 head 기준 자동 리뷰·미해결 스레드 0·변경 요청 없음·✅ 검증 결과 코멘트(그 뒤 새 리뷰 없음) → 커밋 상태 `merge-gate`. **main 코드로만 실행** (DEC-009). `scripts/ci/merge_gate.py`. ⏸️ 2단계 도입 중이라 아직 필수 체크 아님
 - `.github/workflows/branch-name-check.yml` — 브랜치명 규칙 CI 검증
 - `.github/workflows/pr-title-check.yml` — PR 제목 Conventional Commits 검증

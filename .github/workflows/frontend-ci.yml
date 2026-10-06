@@ -60,6 +60,18 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # 없는 스크립트는 --if-present 때문에 조용히 통과하므로, 어떤 검사가 생략됐는지 로그에 남긴다.
+      # 비필수 도입 단계의 선택이다 — 필수 체크로 올리기 전에는 누락을 실패로 바꾼다.
+      - name: Report missing scripts
+        if: steps.detect.outputs.found == 'true'
+        working-directory: frontend
+        run: |
+          for s in lint build test; do
+            if ! node -e "process.exit(require('./package.json').scripts?.['$s'] ? 0 : 1)"; then
+              echo "::warning::package.json에 '$s' 스크립트가 없어 이 검사는 건너뜁니다 (실제로 검사되지 않았음)"
+            fi
+          done
+
       # --if-present: package.json에 정의된 스크립트만 돌린다 (AGENTS.md 4절)
       - name: Lint
         if: steps.detect.outputs.found == 'true'
