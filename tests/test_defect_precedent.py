@@ -1,7 +1,12 @@
 """scripts/defect_precedent 의 순수 함수 테스트 — 네트워크·원본 데이터 없이 작은 예시로 확인한다."""
 
+import math
+import shutil
+
+import pytest
+
 from scripts.defect_precedent import bm25_baseline as bm
-from scripts.defect_precedent import nhtsa
+from scripts.defect_precedent import nhtsa, rclrpt
 from scripts.defect_precedent.rclrpt import parse_report
 
 
@@ -32,19 +37,48 @@ def _rcl(campno, maker, defect, comp="BRAKES", rcdate="20200101"):
 
 def test_build_cards_merges_rows_and_groups_copied_text():
     body = "The bolt that attaches the gear assembly may fracture allowing the gear to disengage."
+    # 회사명에 마침표가 있어도("Inc.", "Co.") 첫 문장 끝을 잘못 잡지 않아야 같은 본문으로 묶인다
+    first_a = "Acme Inc. is recalling certain 2020 Ranger trucks."
     rows = [
-        _rcl("20V001000", "A Corp", f"A Corp is recalling model X. {body}", comp="BRAKES"),
-        _rcl("20V001000", "A Corp", f"A Corp is recalling model X. {body}", comp="STEERING"),
-        _rcl("20V002000", "B Inc", f"B Inc is recalling model Y. {body}"),
+        _rcl("20V001000", "Acme Inc.", f"{first_a} {body}", comp="BRAKES"),
+        _rcl("20V001000", "Acme Inc.", f"{first_a} {body}", comp="STEERING"),
+        _rcl("20V002000", "Beta Co.", f"Beta Co. is recalling certain 2021 Pilot SUVs. {body}"),
         _rcl("20V003000", "C Ltd", "Short text."),
     ]
     cards = nhtsa.build_cards(rows, "2026-10-06")
     assert list(cards) == ["20V001000", "20V002000", "20V003000"]
     assert cards["20V001000"]["components"] == ["BRAKES", "STEERING"]
-    # 첫 문장(회사·차종)만 다르고 본문이 같으면 같은 묶음
     assert cards["20V001000"]["dup_group"] == cards["20V002000"]["dup_group"]
     # 본문이 짧으면 자기 리콜 번호가 곧 묶음
     assert cards["20V003000"]["dup_group"] == "20V003000"
+
+
+def test_install_dir_keeps_old_until_swap(tmp_path):
+    target = tmp_path / "nhtsa"
+    target.mkdir()
+    (target / "old.txt").write_text("old")
+    new = tmp_path / "nhtsa.partial"
+    new.mkdir()
+    (new / "new.txt").write_text("new")
+    nhtsa.install_dir(new, target)
+    assert [p.name for p in target.iterdir()] == ["new.txt"]
+    assert not (tmp_path / "nhtsa.old").exists()
+
+
+def test_write_jsonl_replaces_only_after_complete(tmp_path):
+    path = tmp_path / "x.jsonl"
+    path.write_text("old\n")
+
+    def broken_rows():
+        yield {"a": 1}
+        raise RuntimeError("중간 실패")
+
+    try:
+        nhtsa.write_jsonl(path, broken_rows())
+    except RuntimeError:
+        pass
+    assert path.read_text() == "old\n"  # 기존 완성본은 그대로
+    assert (tmp_path / "x.jsonl.partial").exists()
 
 
 def _inv(action, campno, summary, odate="20150101"):
@@ -158,3 +192,91 @@ def test_bm25_ranks_matching_doc_first_and_hit_counts():
     result = bm.evaluate(cards, questions)
     assert result["any"][1] == 1.0
     assert result["first"][1] == 0.5
+
+
+@pytest.mark.skipif(shutil.which("pdftotext") is None, reason="pdftotext(poppler) 없음")
+def test_pdf_read_failure_is_error_not_missing_cause(tmp_path):
+    # 깨진 PDF를 "원인 칸 없음"으로 세지 않고 실패로 분리해야 한다
+    bad = tmp_path / "broken.pdf"
+    bad.write_bytes(b"not a pdf")
+    with pytest.raises(rclrpt.ReportError):
+        rclrpt._pdf_text(bad)
+
+
+def test_latest_parsed_skips_image_only_version_and_picks_latest(monkeypatch):
+    texts = {
+        "a": "Submission Date : JAN 05, 2024\nDescription of the Cause : old cause\nChronology :",
+        "b": "",  # 글자 없는 이미지 판본
+        "c": "Submission Date : MAR 01, 2024\nDescription of the Cause : new cause\nChronology :",
+    }
+    monkeypatch.setattr(rclrpt, "_download", lambda key: key)
+    monkeypatch.setattr(rclrpt, "_pdf_text", lambda key: texts[key])
+    key, parsed = rclrpt.latest_parsed(["a", "b", "c"])
+    assert key == "c"
+    assert parsed["cause_text"] == "new cause"
+    assert parsed["image_only_versions"] == 1
+
+
+def test_latest_parsed_fails_when_no_readable_version(monkeypatch):
+    monkeypatch.setattr(rclrpt, "_download", lambda key: key)
+    monkeypatch.setattr(rclrpt, "_pdf_text", lambda key: "")
+    with pytest.raises(rclrpt.ReportError):
+        rclrpt.latest_parsed(["a"])
+
+
+def test_first_sentence_abbreviation_before_capital_is_not_a_boundary():
+    # 다음 글자가 대문자여야 약어 처리가 실제로 필요하다 ("U.S. The" 는 문장 경계처럼 보임)
+    text = "Vehicles sold in the U.S. The agency closed it. Next part."
+    assert nhtsa.first_sentence(text) == "Vehicles sold in the U.S. The agency closed it."
+
+
+def test_first_sentence_splits_uppercase_old_summary():
+    # 옛 요약은 전부 대문자이고 마침표 뒤 공백이 없다 ("PE99-076.THE")
+    text = "THIS INVESTIGATION WAS UPGRADED FROM PE99-076.THE ALLEGED DEFECT IS A LEAK."
+    assert nhtsa.first_sentence(text) == "THIS INVESTIGATION WAS UPGRADED FROM PE99-076."
+
+
+def test_first_sentence_lowercase_single_letter_is_boundary():
+    assert nhtsa.first_sentence("It failed at point a. The agency closed it.") == (
+        "It failed at point a."
+    )
+
+
+def test_parse_report_reads_varied_date_formats():
+    assert parse_report("Submission Date : NOV 18,2014")["submission_date"] == "20141118"
+    assert parse_report("Submission Date : Sep 14, 2015")["submission_date"] == "20150914"
+    assert parse_report("Submission Date: OCT 1, 2025")["submission_date"] == "20251001"
+
+
+def test_parse_report_removes_page_footer_inside_cause():
+    text = (
+        "Description of the Cause : The seal was installed\n"
+        "The information contained in this report was submitted pursuant to 49 CFR §573\n"
+        "Part 573 Safety Recall Report 15V-396 Page 4\n"
+        "                            in the wrong direction.\n"
+        "Identification of Any Warning : none\n"
+        "Supplier Identification :\n Name : Acme\n Country : NR\nChronology :"
+    )
+    r = parse_report(text)
+    assert r["cause_text"] == "The seal was installed in the wrong direction."
+    # 다른 꼬리말 형식 (16V364): "§ 573 Page 3 of 5 Part 573 Safety Recall Report 16V364"
+    other = (
+        "Description of the Cause : inflators may experience an\n"
+        "The information contained in this report was submitted pursuant to 49 CFR § 573\n"
+        "Page 3 of 5 Part 573 Safety Recall Report 16V364\n"
+        "alteration over time.\nIdentification of Any Warning : none"
+    )
+    assert parse_report(other)["cause_text"] == "inflators may experience an alteration over time."
+    assert r["supplier_countries"] == []
+
+
+def test_bm25_negative_idf_uses_floor():
+    # 모든 문서에 나오는 단어는 idf가 음수 → rank_bm25처럼 평균 idf × 0.25로 바꾼다
+    index = bm.BM25([["x", "a"], ["x", "b"], ["x", "c"]])
+    raw = {
+        "x": math.log(0.5) - math.log(3.5),
+        "a": math.log(2.5) - math.log(1.5),
+    }
+    mean = (raw["x"] + 3 * raw["a"]) / 4
+    assert index.idf["x"] == pytest.approx(bm.EPSILON * mean)
+    assert index.idf["a"] == pytest.approx(raw["a"])

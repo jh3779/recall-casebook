@@ -3,6 +3,7 @@
 사용법:
     uv run python -m scripts.defect_precedent.nhtsa fetch   # 원본 zip 받기 (data/raw/nhtsa/)
     uv run python -m scripts.defect_precedent.nhtsa build   # recalls.jsonl·eval.jsonl 만들기 (data/processed/defect/)
+    uv run python -m scripts.defect_precedent.nhtsa freeze scripts/defect_precedent/baseline_<날짜>.json  # 기준 고정
 
 결함 선례 기획(docs/기획_결함선례.md, DEC-030)의 수치를 저장소에서 재현하기 위한 스크립트다.
 AGENTS.md 7절: 원본 데이터는 커밋하지 않고(data/raw·data/processed는 .gitignore), 다시 만드는 스크립트를 커밋한다.
@@ -10,9 +11,9 @@ NHTSA 파일은 매일 갱신되므로 fetch가 남기는 manifest.json(받은 �
 """
 
 import hashlib
-import io
 import json
 import re
+import shutil
 import sys
 import urllib.request
 import zipfile
@@ -47,49 +48,70 @@ PLACEHOLDER = re.compile(r"^(There is no summary currently available|=+)$")
 # 원본 보고서(Part 573) 정형 양식이 시작된 날 — 이 이후 접수 리콜만 573 원인 칸을 기대할 수 있다
 RCLRPT_FROM = "20140820"
 
-# 문장 끝처럼 보이지만 끝이 아닌 약어
+# 문장 끝처럼 보이지만 끝이 아닌 약어. 한 글자 이니셜("J.")은 대문자일 때만 본다 (re.I로 "a."까지 잡지 않게).
 _ABBR = re.compile(
-    r"(\bU\.S\.|\bU\.S\.A\.|\b[A-Z]\.|\bNo\.|\bInc\.|\bCo\.|\bCorp\.|\bLtd\.|\bMr\.|\bMs\.|\bDr\."
+    r"(\bU\.S\.|\bU\.S\.A\.|\bNo\.|\bInc\.|\bCo\.|\bCorp\.|\bLtd\.|\bMr\.|\bMs\.|\bDr\."
     r"|\bapprox\.|\bvs\.|\be\.g\.|\bi\.e\.|\bSt\.|\bMfg\.|\bJan\.|\bFeb\.|\bAug\.|\bSept?\."
     r"|\bOct\.|\bNov\.|\bDec\.)$",
     re.I,
 )
+_INITIAL = re.compile(r"(?<![A-Za-z])[A-Z]\.$")
 
 
-def first_sentence(text: str) -> str:
-    """조사 요약의 첫 문장. 시험 질문으로 쓴다.
+def split_first_sentence(text: str) -> tuple[str, str]:
+    """(첫 문장, 나머지). 조사 요약의 첫 문장은 시험 질문, 리콜 결함 설명의 나머지는 복사본 판단에 쓴다.
 
     마침표마다 자르면 "approximately 2.5 million"이 "approximately 2."에서 잘리고(EA12006),
     마침표 뒤 공백만 보면 "fourteen.During"처럼 공백이 빠진 경계를 놓친다 — 둘 다 처리한다.
+    "Inc.", "U.S." 같은 약어 뒤에서는 자르지 않는다. 옛 요약은 전부 대문자라 대문자 경계도 본다.
     """
-    text = text.strip()
-    joined = re.sub(r"(?<=[a-z0-9\)])\.(?=[A-Z][a-z])", ". ", text)
+    # 공백이 빠진 경계: "fourteen.During", 옛 대문자 요약의 "PE99-076.THE"
+    joined = re.sub(r"(?<=[a-z0-9\)])\.(?=[A-Z][a-z])", ". ", text.strip())
+    joined = re.sub(r"(?<=[A-Z0-9\)])\.(?=[A-Z]{2,})", ". ", joined)
     for m in re.finditer(r"(?<=[.!?])\s+(?=[A-Z\"(])", joined):
         candidate = joined[: m.start()].rstrip()
-        if _ABBR.search(candidate):
+        if _ABBR.search(candidate) or _INITIAL.search(candidate):
             continue
-        return candidate
-    return joined
+        return candidate, joined[m.end() :]
+    return joined, ""
+
+
+def first_sentence(text: str) -> str:
+    return split_first_sentence(text)[0]
+
+
+def _decode(raw: bytes) -> tuple[str, bool]:
+    """원본은 UTF-8이다. UTF-8로 읽지 못하는 줄만 cp1252로 읽고 그 사실을 알린다 (조용히 글자를 깨지 않게)."""
+    try:
+        return raw.decode("utf-8"), False
+    except UnicodeDecodeError:
+        return raw.decode("cp1252", errors="replace"), True
 
 
 def read_flat(zip_path: Path, cols: list[str]) -> list[dict]:
-    """탭 구분·cp1252 flat 파일을 압축을 풀지 않고 읽는다. 빈 줄은 건너뛴다."""
-    rows = []
+    """탭 구분 flat 파일을 압축을 풀지 않고 읽는다. 빈 줄은 건너뛴다. 칸 수가 다른 줄은 수를 세어 알린다."""
+    rows, fallback, bad_width = [], 0, 0
     with zipfile.ZipFile(zip_path) as zf, zf.open(zf.namelist()[0]) as raw:
-        for line in io.TextIOWrapper(raw, encoding="cp1252", errors="replace", newline=""):
+        for raw_line in raw:
+            line, used_fallback = _decode(raw_line)
+            fallback += used_fallback
             line = line.rstrip("\r\n")
             if not line.strip():
                 continue
-            parts = (line.split("\t") + [""] * len(cols))[: len(cols)]
+            parts = line.split("\t")
+            if len(parts) != len(cols):
+                bad_width += 1
+                parts = (parts + [""] * len(cols))[: len(cols)]
             rows.append(dict(zip(cols, parts, strict=True)))
+    if fallback or bad_width:
+        print(f"주의: {zip_path.name} — cp1252로 읽은 줄 {fallback}, 칸 수가 다른 줄 {bad_width}")
     return rows
 
 
 def _defect_body(defect: str) -> str:
     """결함 설명에서 첫 문장(회사·차종 나열)을 뗀 본문. 같은 본문이면 복사된 리콜로 본다."""
-    text = re.sub(r"\s+", " ", defect.strip())
-    parts = re.split(r"(?<=\.)\s", text, maxsplit=1)
-    return parts[1] if len(parts) > 1 else text
+    first, rest = split_first_sentence(re.sub(r"\s+", " ", defect))
+    return rest or first
 
 
 def build_cards(rcl_rows: list[dict], snapshot_date: str) -> dict[str, dict]:
@@ -166,37 +188,67 @@ def build_eval(inv_rows: list[dict], cards: dict[str, dict]) -> list[dict]:
     return questions
 
 
+def install_dir(new: Path, target: Path) -> None:
+    """new 폴더를 target으로 통째로 바꾼다. 교체 전에 실패하면 기존 target이 그대로 남는다."""
+    old = target.with_name(target.name + ".old")
+    if old.exists():
+        shutil.rmtree(old)
+    if target.exists():
+        target.rename(old)
+    new.rename(target)
+    if old.exists():
+        shutil.rmtree(old)
+
+
 def fetch() -> None:
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    """모든 파일을 임시 폴더에 받고 전부 성공했을 때만 data/raw/nhtsa를 교체한다 (서로 다른 시점의 파일이 섞이지 않게)."""
+    tmp = RAW_DIR.with_name(RAW_DIR.name + ".partial")
+    if tmp.exists():
+        shutil.rmtree(tmp)
+    tmp.mkdir(parents=True)
     manifest = {"downloaded_at": datetime.now(UTC).isoformat(timespec="seconds"), "files": {}}
     for name, url in FILES.items():
         print(f"다운로드: {url}")
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310 — 고정된 정부 공개 URL
+        with urllib.request.urlopen(req, timeout=300) as resp:  # 고정된 정부 공개 URL
             data = resp.read()
             last_modified = resp.headers.get("Last-Modified")
-        (RAW_DIR / name).write_bytes(data)
+        (tmp / name).write_bytes(data)
         manifest["files"][name] = {
             "url": url,
             "bytes": len(data),
             "sha256": hashlib.sha256(data).hexdigest(),
             "last_modified": last_modified,
         }
-    (RAW_DIR / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    (tmp / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    install_dir(tmp, RAW_DIR)
     print(f"완료: {RAW_DIR}/manifest.json")
 
 
-def _write_jsonl(path: Path, rows) -> None:
-    with path.open("w", encoding="utf-8") as f:
+def verify_raw(raw_dir: Path) -> dict:
+    """manifest의 sha256과 실제 파일을 비교한다. 하나라도 다르면 중단한다."""
+    manifest_path = raw_dir / "manifest.json"
+    if not manifest_path.exists():
+        sys.exit("원본이 없다 — 먼저 `... nhtsa fetch`를 실행한다")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for name, info in manifest["files"].items():
+        path = raw_dir / name
+        if not path.exists() or hashlib.sha256(path.read_bytes()).hexdigest() != info["sha256"]:
+            sys.exit(f"{name}이 manifest와 다르다 — 다시 fetch한다")
+    return manifest
+
+
+def write_jsonl(path: Path, rows) -> None:
+    """임시 파일에 다 쓴 뒤 교체한다 — 중간에 멈추면 기존 파일이 남고 잘린 파일은 .partial로 남는다."""
+    tmp = path.with_name(path.name + ".partial")
+    with tmp.open("w", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    tmp.replace(path)
 
 
 def build() -> None:
-    manifest_path = RAW_DIR / "manifest.json"
-    if not manifest_path.exists():
-        sys.exit("원본이 없다 — 먼저 `... nhtsa fetch`를 실행한다")
-    snapshot_date = json.loads(manifest_path.read_text(encoding="utf-8"))["downloaded_at"][:10]
+    snapshot_date = verify_raw(RAW_DIR)["downloaded_at"][:10]
 
     rcl_rows = read_flat(RAW_DIR / "FLAT_RCL_PRE_2010.zip", RCL_COLS) + read_flat(
         RAW_DIR / "FLAT_RCL_POST_2010.zip", RCL_COLS
@@ -206,8 +258,8 @@ def build() -> None:
     questions = build_eval(inv_rows, cards)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    _write_jsonl(OUT_DIR / "recalls.jsonl", cards.values())
-    _write_jsonl(OUT_DIR / "eval.jsonl", questions)
+    write_jsonl(OUT_DIR / "recalls.jsonl", cards.values())
+    write_jsonl(OUT_DIR / "eval.jsonl", questions)
 
     groups: dict[str, int] = {}
     for c in cards.values():
@@ -215,17 +267,45 @@ def build() -> None:
     shared = sum(n for n in groups.values() if n > 1)
     # 기준값: 2026-10-06 스냅샷 (docs/기획_결함선례.md) — 매일 갱신되므로 조금씩 달라질 수 있다
     print(f"스냅샷 {snapshot_date}")
-    print(f"리콜 줄 {len(rcl_rows):,} → 리콜 카드 {len(cards):,} (2026-10-06: 327,429 → 30,347)")
+    print(f"리콜 줄 {len(rcl_rows):,} → 리콜 카드 {len(cards):,} (2026-10-06: 327,429 → 30,350)")
     print(f"결함 조사 {len({r['ACTION'] for r in inv_rows}):,} (2026-10-06: 5,349)")
-    print(f"본문이 다른 리콜과 같은 리콜 {shared:,} (2026-10-06: 4,761)")
+    print(f"본문이 다른 리콜과 같은 리콜 {shared:,} (2026-10-06: 6,394)")
     print(f"시험 질문 {len(questions):,} (2026-10-06: 749)")
     for tag in ("since2010", "rclrpt_range"):
         print(f"  {tag}: {sum(tag in q['set'] for q in questions):,}")
     print(f"출력: {OUT_DIR}")
 
 
+def freeze(out_path: Path) -> None:
+    """기준 실행을 고정하는 작은 파일을 만든다 (저장소에 커밋). 원본은 커밋하지 않지만 해시·질문 목록·표본 목록은 남긴다.
+
+    원본 URL은 매일 덮어써져 옛 스냅샷을 다시 받을 수 없다 — 해시로 "같은 원본인지"만 확인할 수 있다.
+    """
+    manifest = verify_raw(RAW_DIR)
+    eval_path = OUT_DIR / "eval.jsonl"
+    questions = [json.loads(line) for line in eval_path.open(encoding="utf-8")]
+    sample_path = OUT_DIR / "causes_sample.jsonl"
+    sample = (
+        [json.loads(line)["campaign"] for line in sample_path.open(encoding="utf-8")]
+        if sample_path.exists()
+        else []
+    )
+    baseline = {
+        "raw": manifest,
+        "eval_sha256": hashlib.sha256(eval_path.read_bytes()).hexdigest(),
+        "eval_action_nos": [q["action_no"] for q in questions],
+        "rclrpt_sample_campaigns": sample,
+    }
+    out_path.write_text(json.dumps(baseline, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"기준 파일: {out_path} (질문 {len(questions)}, 표본 {len(sample)})")
+
+
 if __name__ == "__main__":
-    commands = {"fetch": fetch, "build": build}
-    if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        sys.exit("사용법: uv run python -m scripts.defect_precedent.nhtsa {fetch|build}")
-    commands[sys.argv[1]]()
+    if sys.argv[1:2] == ["freeze"] and len(sys.argv) == 3:
+        freeze(Path(sys.argv[2]))
+    elif len(sys.argv) == 2 and sys.argv[1] in ("fetch", "build"):
+        {"fetch": fetch, "build": build}[sys.argv[1]]()
+    else:
+        sys.exit(
+            "사용법: uv run python -m scripts.defect_precedent.nhtsa {fetch|build|freeze 파일}"
+        )

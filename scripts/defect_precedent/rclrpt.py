@@ -2,6 +2,7 @@
 
 사용법:
     uv run python -m scripts.defect_precedent.rclrpt sample 300   # 무작위 표본 N건 (기본 시드 20261006)
+    uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defect_precedent/baseline_2026-10-06.json  # 기준 표본 그대로
     uv run python -m scripts.defect_precedent.rclrpt all          # 전체 (약 1.2만 건, 수 시간 — 팀 확인 후)
 
 먼저 `scripts.defect_precedent.nhtsa build`로 recalls.jsonl을 만들어 둔다.
@@ -25,7 +26,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-from scripts.defect_precedent.nhtsa import OUT_DIR, RCLRPT_FROM, REPO_ROOT
+from scripts.defect_precedent.nhtsa import OUT_DIR, RCLRPT_FROM, REPO_ROOT, write_jsonl
 
 PDF_DIR = REPO_ROOT / "data" / "raw" / "rclrpt"
 LIST_URL = "https://static.nhtsa.gov/"
@@ -49,17 +50,30 @@ _SUPPLIER_BLOCK = re.compile(
     r"(?:Involved Components|Chronology|Description of Remedy|\Z)",
     re.S,
 )
-_SUBMISSION = re.compile(r"Submission Date\s*:\s*([A-Z]{3} \d{2}, \d{4})")
+# "JUN 05, 2024", "NOV 18,2014", "Sep 14, 2015" 모두 있다
+_SUBMISSION = re.compile(r"Submission Date\s*:\s*([A-Za-z]{3})\s+(\d{1,2})\s*,\s*(\d{4})")
+# 원인 칸이 쪽을 넘으면 pdftotext가 쪽 꼬리말·머리말을 본문 사이에 끼운다
+_PAGE_NOISE = re.compile(
+    r"The information contained in this report was submitted pursuant to 49 CFR\s*§\s*573"
+    r"|Part 573 Safety Recall Report\s+\d\d[A-Z]-?\d{3}"
+    r"|\bPage \d+(?: of \d+)?\b"
+)
 
 
 def parse_report(text: str) -> dict:
     """pdftotext -layout 결과에서 제출일·원인·공급사를 뽑는다."""
     flat = re.sub(r"[ \t]+", " ", text)
     m = _SUBMISSION.search(flat)
-    submission = datetime.strptime(m.group(1), "%b %d, %Y").strftime("%Y%m%d") if m else ""
+    submission = (
+        datetime.strptime(f"{m.group(1).title()} {m.group(2)} {m.group(3)}", "%b %d %Y").strftime(
+            "%Y%m%d"
+        )
+        if m
+        else ""
+    )
 
     m = _CAUSE.search(flat)
-    cause = re.sub(r"\s+", " ", m.group(1)).strip() if m else None
+    cause = re.sub(r"\s+", " ", _PAGE_NOISE.sub(" ", m.group(1))).strip() if m else None
     if m is None:
         cause_status = "no_field"
     elif not cause or _EMPTY_CAUSE.match(cause):
@@ -75,7 +89,7 @@ def parse_report(text: str) -> dict:
         ]
         names = [n for n in names if n and not re.match(r"^(NR|N/A)\b", n, re.I)]
         countries = [c.strip() for c in re.findall(r"Country\s*:[ \t]*([^\n]*)", block.group(1))]
-        countries = [c for c in countries if c]
+        countries = [c for c in countries if c and not re.match(r"^(NR|N/A)\b", c, re.I)]
     return {
         "submission_date": submission,
         "cause_text": cause if cause_status == "filled" else "",
@@ -96,7 +110,7 @@ def list_reports(years: range) -> dict[str, list[str]]:
             if token:
                 query["continuation-token"] = token
             req = urllib.request.Request(LIST_URL + "?" + urllib.parse.urlencode(query), headers=UA)
-            body = urllib.request.urlopen(req, timeout=60).read().decode()  # noqa: S310 — 고정된 정부 공개 URL
+            body = urllib.request.urlopen(req, timeout=60).read().decode()  # 고정된 정부 공개 URL
             for key in re.findall(r"<Key>([^<]*)</Key>", body):
                 m = re.search(r"RCLRPT-(\d\d[A-Z]\d{3})", key)
                 if m:
@@ -108,30 +122,57 @@ def list_reports(years: range) -> dict[str, list[str]]:
     return by_campaign
 
 
+class ReportError(Exception):
+    """PDF를 받거나 읽지 못한 경우 — "원인 칸 없음"과 구분해 실패 목록에 남긴다."""
+
+
 def _pdf_text(path: Path) -> str:
-    return subprocess.run(
+    result = subprocess.run(
         ["pdftotext", "-layout", str(path), "-"], capture_output=True, text=True, check=False
-    ).stdout
+    )
+    if result.returncode != 0:
+        raise ReportError(f"pdftotext 실패({result.returncode}): {path.name}")
+    return result.stdout  # 글자 없는 이미지 PDF면 빈 문자열
+
+
+def _download(key: str) -> Path:
+    """받은 PDF는 .part로 쓴 뒤 이름을 바꾼다 — 중간에 끊긴 파일이 완성본 이름으로 남지 않게."""
+    path = PDF_DIR / key.split("/")[-1]
+    if not path.exists():
+        req = urllib.request.Request(LIST_URL + key, headers=UA)
+        part = path.with_name(path.name + ".part")
+        try:
+            part.write_bytes(urllib.request.urlopen(req, timeout=60).read())
+        except OSError as e:
+            raise ReportError(f"다운로드 실패: {key} ({e})") from e
+        part.replace(path)
+        time.sleep(REQUEST_GAP_SEC)
+    return path
 
 
 def latest_parsed(keys: list[str]) -> tuple[str, dict]:
-    """한 리콜의 모든 판본을 받아 Submission Date가 가장 늦은 판본(같으면 더 긴 것)을 고른다."""
-    best = None
+    """한 리콜의 모든 판본을 읽어 Submission Date가 가장 늦은 판본(같으면 더 긴 것)을 고른다.
+
+    - 받기·변환이 실패한 판본이 있으면 최신판을 확정할 수 없으므로 ReportError를 낸다.
+    - 글자가 없는 이미지 판본(첨부 스캔 등)은 건너뛰고 그 수를 `image_only_versions`에 남긴다.
+      읽을 판본이 하나도 없으면 ReportError.
+    """
+    best, image_only = None, 0
     for key in keys:
-        path = PDF_DIR / key.split("/")[-1]
-        if not path.exists():
-            req = urllib.request.Request(LIST_URL + key, headers=UA)
-            path.write_bytes(urllib.request.urlopen(req, timeout=60).read())  # noqa: S310
-            time.sleep(REQUEST_GAP_SEC)
-        text = _pdf_text(path)
+        text = _pdf_text(_download(key))
+        if not text.strip():
+            image_only += 1
+            continue
         parsed = parse_report(text)
         rank = (parsed["submission_date"], len(text))
         if best is None or rank > best[0]:
             best = (rank, key, parsed)
-    return best[1], best[2]
+    if best is None:
+        raise ReportError(f"글자를 읽을 수 있는 판본 없음: {keys}")
+    return best[1], {**best[2], "image_only_versions": image_only}
 
 
-def run(mode: str, n: int = 300, seed: int = DEFAULT_SEED) -> None:
+def run(mode: str, n: int = 300, seed: int = DEFAULT_SEED, baseline: Path | None = None) -> None:
     if shutil.which("pdftotext") is None:
         sys.exit("pdftotext가 없다 — poppler를 설치한다 (macOS: brew install poppler)")
     recalls_path = OUT_DIR / "recalls.jsonl"
@@ -150,35 +191,58 @@ def run(mode: str, n: int = 300, seed: int = DEFAULT_SEED) -> None:
     )
     print(f"(리콜 파일에 없는 보고서 {missing:,} — 2026-10-06: 11,856 / 11,734 / 66)")
 
-    picked = random.Random(seed).sample(eligible, n) if mode == "sample" else eligible
+    if baseline is not None:
+        # 기준 실행과 같은 표본 — 목록이 매일 바뀌어도 같은 리콜을 다시 읽는다
+        picked = json.loads(baseline.read_text(encoding="utf-8"))["rclrpt_sample_campaigns"]
+        gone = [c for c in picked if c not in reports]
+        if gone:
+            sys.exit(f"기준 표본 중 보고서 목록에서 사라진 리콜: {gone}")
+    elif mode == "sample":
+        picked = random.Random(seed).sample(eligible, n)
+    else:
+        picked = eligible
+
     PDF_DIR.mkdir(parents=True, exist_ok=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = OUT_DIR / ("causes_sample.jsonl" if mode == "sample" else "causes.jsonl")
+    out_path = OUT_DIR / ("causes.jsonl" if mode == "all" else "causes_sample.jsonl")
     counts = {"filled": 0, "empty": 0, "no_field": 0}
-    with out_path.open("w", encoding="utf-8") as f:
-        for campaign in picked:
+    rows, failures = [], []
+    for campaign in picked:
+        try:
             key, parsed = latest_parsed(reports[campaign])
-            counts[parsed["cause_status"]] += 1
-            row = {
-                "campaign": campaign,
-                "versions": len(reports[campaign]),
-                "source_file": key,
-                **parsed,
-            }
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
-    total = len(picked)
+        except ReportError as e:
+            failures.append({"campaign": campaign, "error": str(e)})
+            continue
+        counts[parsed["cause_status"]] += 1
+        rows.append(
+            {"campaign": campaign, "versions": len(reports[campaign]), "source_file": key, **parsed}
+        )
+    write_jsonl(out_path, rows)
+    write_jsonl(out_path.with_name(out_path.stem + "_failures.jsonl"), failures)
+    no_date = sum(1 for r in rows if not r["submission_date"])
+    if no_date:
+        print(f"주의: 제출일을 읽지 못한 최신 판본 {no_date}건 — 판본 선택·시점 평가에 쓸 수 없음")
     print(
-        f"원인 칸: 채워짐 {counts['filled']} / 비어 있음 {counts['empty']} / 칸 없음 {counts['no_field']} (총 {total})"
+        f"원인 칸: 채워짐 {counts['filled']} / 비어 있음 {counts['empty']} / 칸 없음 {counts['no_field']}"
+        f" / 읽지 못함 {len(failures)} (총 {len(picked)})"
     )
     if mode == "sample":
-        print("  2026-10-06 표본 300건: 채워짐 205 (68.3%, 시드 20261006)")
+        print("  2026-10-06 표본 300건 (--baseline): 채워짐 205 (68.3%)")
     print(f"출력: {out_path}")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 2 and sys.argv[1] == "sample":
-        run("sample", n=int(sys.argv[2]) if len(sys.argv) > 2 else 300)
-    elif len(sys.argv) == 2 and sys.argv[1] == "all":
+    args = sys.argv[1:]
+    base = None
+    if "--baseline" in args:
+        i = args.index("--baseline")
+        base = Path(args[i + 1])
+        args = args[:i] + args[i + 2 :]
+    if args[:1] == ["sample"]:
+        run("sample", n=int(args[1]) if len(args) > 1 else 300, baseline=base)
+    elif args == ["all"]:
         run("all")
     else:
-        sys.exit("사용법: uv run python -m scripts.defect_precedent.rclrpt {sample [N]|all}")
+        sys.exit(
+            "사용법: uv run python -m scripts.defect_precedent.rclrpt {sample [N] [--baseline 파일]|all}"
+        )

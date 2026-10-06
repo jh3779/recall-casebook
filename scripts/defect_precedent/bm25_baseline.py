@@ -1,6 +1,6 @@
 """시험지(eval.jsonl)로 BM25 기준 점수(Hit@1·3·5·10)를 잰다. 외부 패키지 없이 표준 라이브러리만 쓴다.
 
-사용법: uv run python -m scripts.defect_precedent.bm25_baseline
+사용법: uv run python -m scripts.defect_precedent.bm25_baseline [--baseline scripts/defect_precedent/baseline_2026-10-06.json]
 
 색인 대상은 리콜 카드의 결함·결과·시정 텍스트만이다 (조사 요약은 시험 질문의 출처라 넣지 않는다 — 누수 방지).
 주 지표는 "연결 리콜 중 하나라도 상위 k개 안"이고, "첫 번째 연결 리콜만"은 참고값이다.
@@ -8,10 +8,13 @@
 점수 공식은 rank_bm25의 BM25Okapi와 같게 맞췄다 (k1=1.5, b=0.75, 음수 idf는 평균 idf × 0.25로 대체).
 """
 
+import hashlib
 import json
 import math
 import re
+import sys
 from collections import Counter, defaultdict
+from pathlib import Path
 
 from scripts.defect_precedent.nhtsa import OUT_DIR
 
@@ -61,9 +64,24 @@ def evaluate(cards: list[dict], questions: list[dict]) -> dict[str, dict[int, fl
     return {name: {k: c[k] / len(questions) for k in KS} for name, c in hits.items()}
 
 
-def main() -> None:
+def main(baseline: Path | None = None) -> None:
+    eval_path = OUT_DIR / "eval.jsonl"
+    if not (OUT_DIR / "recalls.jsonl").exists() or not eval_path.exists():
+        sys.exit("recalls.jsonl·eval.jsonl이 없다 — 먼저 `... nhtsa build`를 실행한다")
     cards = [json.loads(line) for line in (OUT_DIR / "recalls.jsonl").open(encoding="utf-8")]
-    questions = [json.loads(line) for line in (OUT_DIR / "eval.jsonl").open(encoding="utf-8")]
+    questions = [json.loads(line) for line in eval_path.open(encoding="utf-8")]
+    if baseline is not None:
+        # 기준 실행과 같은 질문만 — 원본이 갱신돼 질문이 늘거나 줄어도 같은 시험지로 비교한다
+        base = json.loads(baseline.read_text(encoding="utf-8"))
+        same_file = hashlib.sha256(eval_path.read_bytes()).hexdigest() == base["eval_sha256"]
+        by_action = {q["action_no"]: q for q in questions}
+        gone = [a for a in base["eval_action_nos"] if a not in by_action]
+        if gone:
+            sys.exit(f"기준 질문 중 지금 시험지에 없는 것 {len(gone)}개: {gone[:5]}")
+        questions = [by_action[a] for a in base["eval_action_nos"]]
+        print(
+            f"기준 파일 {baseline.name}: eval.jsonl {'같음' if same_file else '달라짐 (질문 목록으로 맞춤)'}"
+        )
     result = evaluate(cards, questions)
     print(f"리콜 {len(cards):,}건 색인, 질문 {len(questions):,}개 (대리 평가)")
     for name, label in (
@@ -72,8 +90,9 @@ def main() -> None:
     ):
         scores = " · ".join(f"Hit@{k} {result[name][k]:.3f}" for k in KS)
         print(f"  {label}: {scores}")
-    print("  2026-10-06 기준값: Hit@10 0.613 (주) / 0.605 (참고)")
+    print("  2026-10-06 기준값: Hit@10 0.511 (주) / 0.505 (참고)")
 
 
 if __name__ == "__main__":
-    main()
+    args = sys.argv[1:]
+    main(Path(args[1]) if args[:1] == ["--baseline"] and len(args) == 2 else None)
