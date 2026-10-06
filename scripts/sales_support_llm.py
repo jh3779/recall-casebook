@@ -271,6 +271,9 @@ def validate_items(
         adjusted = quote != poc.collapse_whitespace(it["evidence_quote"])
         if adjusted:
             flags["quote_boundary_adjusted"] += 1
+        # 기획v1 5절 ⑦: criteria·check_method는 인용문의 부분 문자열이어야 하고, 아니면 그 필드를 null로 비운다
+        # (인용문 밖의 조건·기한·도구를 사용자에게 보이지 않는다). 모델 원문은 감사용으로 보관한다.
+        nulled: dict[str, str] = {}
         for key, flag in (
             ("criteria", "criteria_outside_quote"),
             ("check_method", "check_method_outside_quote"),
@@ -278,6 +281,7 @@ def validate_items(
             value = it.get(key)
             if value and poc.collapse_whitespace(value) not in quote:
                 flags[flag] += 1
+                nulled[key] = value
         text = " ".join(
             str(it.get(k) or "") for k in ("item", "reason", "criteria", "check_method")
         ).lower()
@@ -289,6 +293,8 @@ def validate_items(
                 # 경계 문자를 정리해 통과했으면 사용자에게 보이는 인용문은 코드가 찾은 원문 구간으로 바꾼다
                 "evidence_quote": quote,
                 **({"model_quote": it["evidence_quote"]} if adjusted else {}),
+                **{key: None for key in nulled},
+                **{f"model_{key}": value for key, value in nulled.items()},
                 "source": chunk.section_key,
                 "chunk_key": chunk.chunk_key,
                 "doc_id": chunk.doc_id,

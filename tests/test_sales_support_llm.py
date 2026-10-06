@@ -592,3 +592,33 @@ def test_criteria_is_checked_against_the_original_span_after_adjustment():
     )
     _, _, flags = llm.validate_items([it], BCHUNK[:2])
     assert flags["criteria_outside_quote"] == 0
+
+
+# ---- 기획v1 5절 ⑦: criteria·check_method가 인용문 밖이면 그 필드를 null로 비운다 ----
+
+
+def test_criteria_and_check_method_outside_the_quote_are_nulled_but_the_item_is_kept():
+    it = item(
+        chunk_no=1,
+        evidence_quote="Managers approve within 3 days of the request",
+        criteria="Approval takes a week",  # 인용문에 없음
+        check_method="Ask the manager",  # 인용문에 없음
+    )
+    valid, removed, flags = llm.validate_items([it], BCHUNK[:2])
+    assert removed == {} and len(valid) == 1
+    assert valid[0]["criteria"] is None and valid[0]["check_method"] is None
+    assert valid[0]["model_criteria"] == "Approval takes a week"  # 감사용으로 모델 원문 보관
+    assert valid[0]["model_check_method"] == "Ask the manager"
+    assert flags["criteria_outside_quote"] == 1 and flags["check_method_outside_quote"] == 1
+
+
+def test_criteria_inside_the_quote_is_kept_as_is():
+    it = item(
+        chunk_no=1,
+        evidence_quote="Managers approve within 3 days of the request",
+        criteria="approve within 3 days",
+        check_method=None,
+    )
+    valid, _, flags = llm.validate_items([it], BCHUNK[:2])
+    assert valid[0]["criteria"] == "approve within 3 days" and "model_criteria" not in valid[0]
+    assert flags["criteria_outside_quote"] == 0
