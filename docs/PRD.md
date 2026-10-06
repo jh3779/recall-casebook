@@ -21,19 +21,20 @@ GitLab 공개 핸드북을 근거로, 신규 입사자·부서 이동자가 새 
 
 ## 4. 범위
 
-### 포함 — 도메인 3개 (DEC-020, `기획v1.md` 3절)
+### 포함 — 도메인 4개 (DEC-020·DEC-025, `기획v1.md` 3절)
 
 | 도메인 | 배정 부서 |
 |---|---|
 | 인사 (People) | people-group, hiring, people-policies, total-rewards, labor-and-employment-notices, entity |
 | 엔지니어링 (Engineering) | engineering, security, product, product-development |
 | 영업·지원 (Sales·Support) | sales, support, customer-experience, marketing, solutions-architects, resellers, alliances |
+| 금융 (Finance) | finance (DEC-025 — 병합 순서상 PR #21이 먼저 main에 들어간다) |
 
-**공용 폴더 6개**(세 도메인이 모두 색인 가능): company, about, values, communication, tools-and-tips, upstream-studios.
+**공용 폴더 6개**(네 도메인이 모두 색인 가능, 색인 담당은 우지훈): company, about, values, communication, tools-and-tips, upstream-studios.
 
-### 제외 — 11개 폴더 (DEC-020)
+### 제외 — 10개 폴더 (DEC-020, `finance`는 DEC-025로 도메인에 올림)
 
-leadership, ceo, board-meetings, eba, acquisitions, legal, finance, business-technology, eta, enterprise-data, it — 경영진 운영·내부 지원 조직 자료라 온보딩 체크리스트 범위 밖. 질문에서 필요가 확인되면 공용으로 옮길 수 있다.
+leadership, ceo, board-meetings, eba, acquisitions, legal, business-technology, eta, enterprise-data, it — 경영진 운영·내부 지원 조직 자료라 온보딩 체크리스트 범위 밖. 질문에서 필요가 확인되면 공용으로 옮길 수 있다.
 
 세부 제외 사례(폴더 단위 매핑보다 촘촘함): `customer-experience/customer-onboarding/`은 GitLab **고객**(제품 구독자) 대상 콘텐츠라 영업·지원 도메인에서 추가 제외(`기획v1.md` 4절 "영업·지원 — 데이터 처리 설계" 4번).
 
@@ -138,7 +139,7 @@ React 화면(`frontend/`)과 서버(FastAPI, `api/`)가 주고받는 JSON이다.
 
 ## 9. 미결 — 팀 확인 필요
 
-- 도메인 3개 vs 팀원 4명 배치 (`기획v1.md` 5절 미결, DEC-020 영향). 공용 폴더 6개 색인은 우지훈 담당으로 확정(2026-10-06), 평가 통합과 웹 F·E는 박예원 담당(2026-10-06, 금융 먼저, F·E는 React, 화면 범위·백엔드 API 미정)
+- 도메인 4개 중 이승노 님의 역할·나머지 공통 업무(공용 계약·인용 검증·질문 분류) 분배 (`기획v1.md` 5절 미결, DEC-025). 공용 폴더 6개 색인은 우지훈 담당으로 확정(2026-10-06), 평가 통합과 웹 F·E는 박예원 담당(2026-10-06, 금융 먼저, F·E는 React, 화면 범위·백엔드 API 미정)
 - 질문 분류 방식(규칙/임베딩/LLM)과 그 평가셋
 - 도메인별 기술 스택 — 인사·엔지니어링은 미정, 영업·지원은 초안 제안됨(`기획v1.md` 4절)
 - `user_type`(신규/이동)이 검색·생성을 바꾸는 방식의 가설 확인

@@ -31,6 +31,11 @@ erDiagram
         string embedding_model
         blob embedding
     }
+    EMBEDDINGS_FINANCE {
+        string chunk_key FK
+        string embedding_model
+        blob embedding
+    }
     QUESTIONS {
         string question_id PK
         string question
@@ -77,6 +82,7 @@ erDiagram
     CHUNKS ||--o{ EMBEDDINGS_PEOPLE : "chunk_key"
     CHUNKS ||--o{ EMBEDDINGS_ENGINEERING : "chunk_key"
     CHUNKS ||--o{ EMBEDDINGS_SALES_SUPPORT : "chunk_key"
+    CHUNKS ||--o{ EMBEDDINGS_FINANCE : "chunk_key"
     QUESTIONS ||--o| DOC_DERIVED_SOURCE : "문서 유래일 때"
     QUESTIONS ||--o| SYNTHETIC_SOURCE : "합성일 때"
     QUESTIONS ||--o| REAL_SOURCE : "실제일 때"
