@@ -95,7 +95,7 @@ erDiagram
 
 ### 1. `chunk_key` — 중복 제거·조인의 기준 (DEC-013·014·015)
 
-`CHUNKS`의 중복 제거 기준은 **네 값의 조합** `(source_path, commit_sha, heading_path, chunk_hash)`다(기획v1 3절). 임베딩 표가 원문 청크를 가리키도록 그 조합으로 계산한 **단일 `chunk_key`** 를 `CHUNKS`의 유일 키로 둔다(**DEC-026으로 확정**). 계산식: `sha256(UTF-8(source_path ␟ commit_sha ␟ heading_path ␟ chunk_hash)).hexdigest()[:32]`(`␟`=U+001F). 모든 도메인이 같은 식으로 계산해야 합칠 때 임베딩이 원문을 찾는다. 임베딩 표(`EMBEDDINGS_*`)는 `chunk_key` 한 칸으로 `CHUNKS`와 연결한다. (네 컬럼 복합키는 비교 배경으로만 검토했고 탈락했다 — 임베딩 표마다 네 칸이 반복된다.) 기획v1 3절 최소 구조의 `doc_id`는 문서 단위 식별자(`sha256(source_path ␟ commit_sha)[:16]`)로 `CHUNKS`에 유지한다. `chunk_hash`는 "공백 정리"(연속 공백·탭·줄바꿈을 한 칸으로, 앞뒤 제거, 구두점·대소문자는 보존 — DEC-019)를 적용한 `chunk_text`의 해시. 도메인이 같은 텍스트를 다르게 청킹하면 `chunk_hash`가 달라져 둘 다 남는다 — **의도된 동작**이다.
+`CHUNKS`의 중복 제거 기준은 **네 값의 조합** `(source_path, commit_sha, heading_path, chunk_hash)`다(기획v1 3절). 임베딩 표(`EMBEDDINGS_*`)는 반복 적재해도 같은 벡터가 두 행이 되지 않도록 **`(chunk_key, embedding_model)`에 `UNIQUE` 규칙**을 두고(도메인이 모델을 하나만 보관하면 사실상 `chunk_key`가 유일), 적재는 이 키 기준으로 갱신(upsert)한다. 임베딩 표가 원문 청크를 가리키도록 그 조합으로 계산한 **단일 `chunk_key`** 를 `CHUNKS`의 유일 키로 둔다(**DEC-026으로 확정**). 계산식: `sha256(UTF-8(source_path ␟ commit_sha ␟ heading_path ␟ chunk_hash)).hexdigest()[:32]`(`␟`=U+001F). 모든 도메인이 같은 식으로 계산해야 합칠 때 임베딩이 원문을 찾는다. 임베딩 표(`EMBEDDINGS_*`)는 `chunk_key` 한 칸으로 `CHUNKS`와 연결한다. (네 컬럼 복합키는 비교 배경으로만 검토했고 탈락했다 — 임베딩 표마다 네 칸이 반복된다.) 기획v1 3절 최소 구조의 `doc_id`는 문서 단위 식별자(`sha256(source_path ␟ commit_sha)[:16]`)로 `CHUNKS`에 유지한다. `chunk_hash`는 "공백 정리"(연속 공백·탭·줄바꿈을 한 칸으로, 앞뒤 제거, 구두점·대소문자는 보존 — DEC-019)를 적용한 `chunk_text`의 해시. 도메인이 같은 텍스트를 다르게 청킹하면 `chunk_hash`가 달라져 둘 다 남는다 — **의도된 동작**이다.
 
 ### 2. 임베딩은 왜 도메인별로 분리하나 (`기획v1.md` 3절)
 
