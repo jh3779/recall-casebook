@@ -492,3 +492,20 @@ def test_meta_separates_effective_commit_from_the_pinned_snapshot_commit():
         dirty["data_commit_sha"] == "dirty"
         and dirty["pinned_snapshot_commit_sha"] == poc.COMMIT_SHA
     )
+
+
+def test_gold_section_key_format_matches_chunk_section_key_with_a_fixed_example():
+    raw = (
+        "## How-Tos for the Inbound and Outbound Processes\n\nintro\n\n"
+        "### SLAs and KPIs\n\n1. **What is the SLA?**\n\nanswer\n"
+    )
+    chunks = poc.chunk_file("sales/sales-development/_index.md", raw)
+    expected = "sales/sales-development/_index.md#How-Tos for the Inbound and Outbound Processes>SLAs and KPIs"
+    assert expected in {
+        c.section_key for c in chunks
+    }  # section_key = source_path#heading_path (제목을 >로 연결)
+    assert chunks[1].source_path == "sales/sales-development/_index.md"
+    assert chunks[1].heading_path == "How-Tos for the Inbound and Outbound Processes>SLAs and KPIs"
+    faq = poc.extract_faq("sales/sales-development/_index.md", raw)
+    # FAQ 정답 키가 청크의 section_key와 한 글자도 다르지 않다 — 검색이 맞아도 문자열이 달라 틀리는 일이 없다
+    assert faq[0].gold_section_keys == [expected]
