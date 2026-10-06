@@ -412,3 +412,20 @@ def test_verify_build_stops_when_raw_changed(tmp_path):
     (raw / "a.zip").write_bytes(b"other day")
     with pytest.raises(SystemExit):
         nhtsa.verify_build(raw, out)
+
+
+def test_verify_build_stops_when_recalls_changed(tmp_path):
+    raw, out, _ = _fake_build(tmp_path)
+    (out / "recalls.jsonl").write_text('{"changed": true}\n')
+    with pytest.raises(SystemExit):
+        nhtsa.verify_build(raw, out)
+
+
+def test_verify_build_stops_when_manifest_changed(tmp_path):
+    # 원본 파일은 그대로여도 manifest가 다른 날 것이면 build.json과 맞지 않는다
+    raw, out, _ = _fake_build(tmp_path)
+    manifest = json.loads((raw / "manifest.json").read_text())
+    manifest["downloaded_at"] = "2026-10-07T00:00:00+00:00"
+    (raw / "manifest.json").write_text(json.dumps(manifest))
+    with pytest.raises(SystemExit):
+        nhtsa.verify_build(raw, out)
