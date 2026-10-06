@@ -29,7 +29,9 @@ ROOT = Path(__file__).resolve().parents[2]
 # --- 서비스 원칙 (AGENTS.md 2절) -------------------------------------------------
 # 단어 경계 없이·대소문자 무시: applies_to, verdict_label, isApplicable, VERDICT 등 변형까지 잡는다
 PRINCIPLE_PATTERN = re.compile(
-    r"applies|verdict|is_?applicable|적용\s*(됩니다|되지\s*않습니다|안\s*됩니다)", re.IGNORECASE
+    r"applies|verdict|is_?applicable|recall_?required|적용\s*(됩니다|되지\s*않습니다|안\s*됩니다)"
+    r"|리콜\s*대상(입니다|이\s*아닙니다)|원인은\s*이것입니다",
+    re.IGNORECASE,
 )
 # 원칙을 "설명"하는 문서·테스트·CI 자체는 검사하지 않는다.
 # .md 전체를 빼면 prompts/*.md 같은 프롬프트 파일이 빠지므로, docs/와 루트 문서만 뺀다.
