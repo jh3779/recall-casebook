@@ -76,3 +76,4 @@
 - 2026-10-06: DEC-029(React frontend/ + FastAPI api/, npm, 비필수 프런트 CI, 로컬 데모, 일정 A안) 기록, PRD 6-1 API 약속 초안, HANDOFF 할 일 21 추가(API 키·호출 상한은 차후 결정)
 - 2026-10-06: 프런트 규칙·CI는 PR #22(draft)로 분리, HANDOFF·DEC-029에 번호 기록
 - 2026-10-06: 평가 통합=박예원 확정, 박예원 작업 순서는 금융 먼저로 HANDOFF·PRD 반영
+- 2026-10-06: Codex 지적 반영(HANDOFF 모순 정리, ERD GOLD_LABEL 중복 방지 규칙, PRD 생성 지표 추가), 병합 순서를 #21→#17→#22로 갱신(#20 보류)
