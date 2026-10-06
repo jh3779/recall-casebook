@@ -34,7 +34,9 @@ GitLab 공개 핸드북을 근거로, 신규 입사자·부서 이동자가 새 
 4. **목표를 먼저 정하고 확인한다.** "버그 수정" → 재현하는 테스트를 먼저 쓰고 통과시킨다. "다 됐다"는 말 대신 통과한 테스트·명령 결과를 보여준다.
 5. **테스트를 코드에 맞춰 고치지 않는다.** 테스트가 실패하면 코드를 고친다. 테스트가 틀렸다고 판단되면 고치기 전에 이유를 보고하고 확인을 받는다.
 
-## 4. 개발 명령 — uv만 쓴다
+## 4. 개발 명령 — Python은 uv만, 프런트(`frontend/`)는 npm만
+
+**Python**
 
 | 할 일 | 명령 |
 |---|---|
@@ -44,9 +46,20 @@ GitLab 공개 핸드북을 근거로, 신규 입사자·부서 이동자가 새 
 | 린트·포맷 | `uv run ruff check --fix .` · `uv run ruff format .` |
 | 실행 | `uv run python <script>` |
 
+**프런트엔드**(React, 저장소 루트 `frontend/`, DEC-029) — `frontend/`에서 실행한다.
+
+| 할 일 | 명령 |
+|---|---|
+| 의존성 설치(락 파일 그대로) | `npm ci` |
+| 패키지 추가 | `npm install <pkg>` / 개발용 `npm install -D <pkg>` |
+| 린트·빌드·테스트 | `npm run lint` · `npm run build` · `npm test` |
+| 개발 서버 | `npm run dev` |
+
+- `package.json`에 없는 스크립트는 만들어 쓰지 말고 없다고 보고한다. 스크립트 이름은 `frontend/package.json`이 정본이다.
 - `pip install`, `python -m venv`, `requirements.txt` 생성은 하지 않는다.
 - `pyproject.toml`을 바꾸면 `uv.lock`도 같이 커밋한다.
-- 작업을 끝냈다고 말하기 전에 `uv run ruff check . && uv run ruff format --check . && uv run pytest`를 돌리고 결과를 보고한다.
+- 프런트는 npm만 쓴다(`yarn`·`pnpm`으로 락 파일이 둘이 되지 않게). `package.json`을 바꾸면 `package-lock.json`도 같이 커밋한다. Node 버전은 `frontend/.nvmrc`가 정본이다.
+- 작업을 끝냈다고 말하기 전에 `uv run ruff check . && uv run ruff format --check . && uv run pytest`를 돌리고 결과를 보고한다. `frontend/`를 바꿨다면 `cd frontend && npm ci && npm run lint && npm run build && npm test`(정의된 스크립트만)도 돌리고 결과를 보고한다.
 
 ## 5. RAG 실험 규칙
 
