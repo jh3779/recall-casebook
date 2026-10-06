@@ -1,6 +1,7 @@
 """scripts/defect_precedent 의 순수 함수 테스트 — 네트워크·원본 데이터 없이 작은 예시로 확인한다."""
 
 import hashlib
+import json
 import math
 import shutil
 import zipfile
@@ -372,3 +373,42 @@ def test_first_sentence_model_name_ending_with_capital_is_boundary():
     # EA05021: "MY 2002 V70S." 를 이니셜로 오인해 문단 전체가 질문이 되던 문제
     text = "THE ALLEGED DEFECT AFFECTS MY 2002 V70S. ACCORDING TO VOLVO THE PART FAILED."
     assert nhtsa.first_sentence(text) == "THE ALLEGED DEFECT AFFECTS MY 2002 V70S."
+
+
+def _fake_build(tmp_path):
+    """가짜 원본 폴더(manifest + 파일 1개)와 build 결과 폴더(build.json + 카드·시험지)를 만든다."""
+    raw, out = tmp_path / "raw", tmp_path / "out"
+    raw.mkdir()
+    out.mkdir()
+    (raw / "a.zip").write_bytes(b"zip")
+    manifest = {"files": {"a.zip": {"sha256": hashlib.sha256(b"zip").hexdigest()}}}
+    (raw / "manifest.json").write_text(json.dumps(manifest))
+    (out / "recalls.jsonl").write_text("{}\n")
+    (out / "eval.jsonl").write_text("{}\n")
+    info = {
+        "raw_manifest_sha256": nhtsa.sha256_file(raw / "manifest.json"),
+        "recalls_sha256": nhtsa.sha256_file(out / "recalls.jsonl"),
+        "eval_sha256": nhtsa.sha256_file(out / "eval.jsonl"),
+    }
+    (out / "build.json").write_text(json.dumps(info))
+    return raw, out, info
+
+
+def test_verify_build_accepts_matching_files(tmp_path):
+    raw, out, info = _fake_build(tmp_path)
+    assert nhtsa.verify_build(raw, out) == info
+
+
+def test_verify_build_stops_when_eval_changed(tmp_path):
+    # 기준과 다른 시험지로 점수를 내면 "재현"이 아니다 — 중단해야 한다
+    raw, out, _ = _fake_build(tmp_path)
+    (out / "eval.jsonl").write_text('{"changed": true}\n')
+    with pytest.raises(SystemExit):
+        nhtsa.verify_build(raw, out)
+
+
+def test_verify_build_stops_when_raw_changed(tmp_path):
+    raw, out, _ = _fake_build(tmp_path)
+    (raw / "a.zip").write_bytes(b"other day")
+    with pytest.raises(SystemExit):
+        nhtsa.verify_build(raw, out)
