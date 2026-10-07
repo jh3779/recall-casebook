@@ -383,6 +383,43 @@ def test_the_same_failure_on_a_different_source_file_is_not_accepted(env, monkey
     assert (env / "causes.jsonl").exists()
 
 
+def test_a_failure_on_another_file_of_the_same_campaign_is_not_accepted(env, monkeypatch):
+    # 한 캠페인에 판본 A·B가 있다. 사람이 확인한 것은 A의 HTML 응답인데, 다음 실행에서는 A가 정상이고 B가 HTML을 돌려준다
+    file_a, file_b = "odi/rcl/2024/RCLRPT-24V003-0001.PDF", "odi/rcl/2024/RCLRPT-24V003-0002.PDF"
+    monkeypatch.setattr(
+        rclrpt,
+        "list_reports",
+        lambda years: {
+            c: [file_a, file_b] if c == "24V003" else [f"odi/rcl/2024/RCLRPT-{c}-0001.PDF"]
+            for c in CAMPAIGNS
+        },
+    )
+
+    def failing(bad):
+        def fake(keys, manual=None):
+            name = keys[0].split("-")[1]
+            if name == "24V003":
+                raise rclrpt.ReportError(f"PDF가 아닌 응답: {bad} (4,628바이트)", [bad])
+            return keys[0], parsed(name)
+
+        return fake
+
+    monkeypatch.setattr(rclrpt, "latest_parsed", failing(file_a))
+    token_a = tok("24V003", "non_pdf_response", [file_a])
+    token_b = tok("24V003", "non_pdf_response", [file_b])
+    assert token_a != token_b  # 캠페인의 전체 파일 목록은 같아도 실패한 파일이 다르면 토큰이 다르다
+    monkeypatch.setattr(rclrpt, "latest_parsed", failing(file_b))
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5, accept_failures=[token_a])  # A를 확인했는데 B가 실패
+    assert not (env / "causes.jsonl").exists()
+    rclrpt.run("all", expect_campaigns=5, accept_failures=[token_b])  # B를 확인했다면 통과
+    assert (env / "causes.jsonl").exists()
+    manifest = json.loads((env / "causes.manifest.json").read_text(encoding="utf-8"))
+    assert manifest["failed_sources"] == {
+        "24V003": [file_b]
+    }  # 명세에는 실제로 실패한 파일만 남는다
+
+
 def test_previous_failures_file_is_archived_with_the_complete_file_and_stays_verifiable(
     env, monkeypatch
 ):

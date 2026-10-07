@@ -169,7 +169,14 @@ def list_reports(years: range) -> dict[str, list[str]]:
 
 
 class ReportError(Exception):
-    """PDF를 받거나 읽지 못한 경우 — "원인 칸 없음"과 구분해 실패 목록에 남긴다."""
+    """PDF를 받거나 읽지 못한 경우 — "원인 칸 없음"과 구분해 실패 목록에 남긴다.
+
+    source_files: 실제로 실패한 원본 파일(없으면 캠페인의 모든 판본). `--accept-failures` 토큰이 이 파일로 만들어진다.
+    """
+
+    def __init__(self, message: str, source_files: list[str] | None = None):
+        super().__init__(message)
+        self.source_files = list(source_files or [])
 
 
 def require_poppler() -> str:
@@ -210,12 +217,15 @@ def _pdf_text(path: Path) -> str:
     if result.returncode != 0:
         _quarantine(path)
         raise ReportError(
-            f"pdftotext 실패({result.returncode}): {path.name} — 파일을 .bad로 옮겼다 (다시 실행하면 다시 받는다)"
+            f"pdftotext 실패({result.returncode}): {path.name} — 파일을 .bad로 옮겼다 (다시 실행하면 다시 받는다)",
+            [path.name],
         )
     try:
         return result.stdout.decode("utf-8")  # 글자 없는 이미지 PDF면 빈 문자열
     except UnicodeDecodeError as e:
-        raise ReportError(f"pdftotext 출력을 UTF-8로 읽지 못함: {path.name} ({e.reason})") from e
+        raise ReportError(
+            f"pdftotext 출력을 UTF-8로 읽지 못함: {path.name} ({e.reason})", [path.name]
+        ) from e
 
 
 def _download(key: str) -> Path:
@@ -230,11 +240,11 @@ def _download(key: str) -> Path:
             OSError,
             http.client.HTTPException,
         ) as e:  # 다시 시도해도 안 되면 (IncompleteRead 포함)
-            raise ReportError(f"다운로드 실패: {key} ({e})") from e
+            raise ReportError(f"다운로드 실패: {key} ({e})", [key]) from e
         if not data.startswith(
             b"%PDF"
         ):  # 서버가 오류 문서(HTML 등)를 200으로 돌려주면 PDF 이름으로 저장하지 않는다
-            raise ReportError(f"PDF가 아닌 응답: {key} ({len(data):,}바이트)")
+            raise ReportError(f"PDF가 아닌 응답: {key} ({len(data):,}바이트)", [key])
         part.write_bytes(data)
         part.replace(path)
         time.sleep(REQUEST_GAP_SEC)
@@ -276,7 +286,7 @@ def latest_parsed(keys: list[str], manual: dict | None = None) -> tuple[str, dic
             continue
         dated.append(((parsed["submission_date"], len(text)), key, parsed))
     if not dated:
-        raise ReportError(f"날짜를 확인할 수 있는 판본 없음: {keys}")
+        raise ReportError(f"날짜를 확인할 수 있는 판본 없음: {keys}", keys)  # 모든 판본이 근거다
     _, key, parsed = max(dated, key=lambda d: d[0])
     if parsed is None:
         reasons.append(f"가장 늦은 판본이 글자 없는 이미지: {key}")
@@ -304,13 +314,14 @@ def failure_kind(error: str) -> str:
 
 
 def keys_digest(keys: list[str]) -> str:
-    """실패한 캠페인의 원본 파일 목록 지문(앞 8자리) — 같은 캠페인이라도 다른 파일이면 다른 실패로 본다."""
-    return hashlib.sha256("\n".join(sorted(keys)).encode()).hexdigest()[:8]
+    """실제로 실패한 원본 파일(이름)의 지문(앞 8자리) — 같은 캠페인이라도 실패한 파일이 다르면 다른 실패로 본다."""
+    names = sorted({k.split("/")[-1] for k in keys})
+    return hashlib.sha256("\n".join(names).encode()).hexdigest()[:8]
 
 
 def failure_token(f: dict) -> str:
     """`--accept-failures`에 적는 값: 캠페인:실패종류:원본파일지문."""
-    return f"{f['campaign']}:{failure_kind(f['error'])}:{keys_digest(f['keys'])}"
+    return f"{f['campaign']}:{failure_kind(f['error'])}:{keys_digest(f.get('source_files') or f['keys'])}"
 
 
 def with_kind(failures: list[dict]) -> list[dict]:
@@ -408,13 +419,21 @@ def run(
             try:
                 key, parsed = latest_parsed(reports[campaign], manual)
             except ReportError as e:
-                failures.append({"campaign": campaign, "keys": reports[campaign], "error": str(e)})
+                failures.append(
+                    {
+                        "campaign": campaign,
+                        "keys": reports[campaign],
+                        "source_files": e.source_files or reports[campaign],
+                        "error": str(e),
+                    }
+                )
                 key = None
             except Exception as e:  # 몇 시간짜리 실행이 한 건 때문에 멈추지 않게 기록하고 계속한다
                 failures.append(
                     {
                         "campaign": campaign,
                         "keys": reports[campaign],
+                        "source_files": reports[campaign],
                         "error": f"예상 못 한 오류 {type(e).__name__}: {e}",
                     }
                 )
@@ -430,6 +449,7 @@ def run(
                         {
                             "campaign": campaign,
                             "keys": reports[campaign],
+                            "source_files": changed,
                             "error": f"기준과 sha256 다름: {changed}",
                         }
                     )
@@ -508,7 +528,9 @@ def run(
             "failures": len(failures),
             "failed_campaigns": sorted(f["campaign"] for f in failures),
             "failed_kinds": {f["campaign"]: failure_kind(f["error"]) for f in failures},
-            "failed_sources": {f["campaign"]: sorted(f["keys"]) for f in failures},
+            "failed_sources": {
+                f["campaign"]: sorted(f.get("source_files") or f["keys"]) for f in failures
+            },
             "failures_sha256": hashlib.sha256(failures_path.read_bytes()).hexdigest()
             if failures
             else None,
