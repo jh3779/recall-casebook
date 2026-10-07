@@ -274,7 +274,9 @@ def verify_raw(raw_dir: Path) -> dict:
 def write_jsonl(path: Path, rows) -> None:
     """임시 파일에 다 쓴 뒤 교체한다 — 중간에 멈추면 기존 파일이 남고 잘린 파일은 .partial로 남는다."""
     tmp = path.with_name(path.name + ".partial")
-    with tmp.open("w", encoding="utf-8") as f:
+    with tmp.open(
+        "w", encoding="utf-8", newline="\n"
+    ) as f:  # Windows에서도 LF — 줄바꿈이 다르면 파일 sha256이 달라진다
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
     tmp.replace(path)
