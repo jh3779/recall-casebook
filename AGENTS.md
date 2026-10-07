@@ -46,7 +46,7 @@
 | 린트·포맷 | `uv run ruff check --fix .` · `uv run ruff format .` |
 | 실행 | `uv run python <script>` |
 
-**프런트엔드**(React, 저장소 루트 `frontend/`, DEC-029) — `frontend/`에서 실행한다.
+**프런트엔드**(React, 저장소 루트 `frontend/`, DEC-032) — `frontend/`에서 실행한다.
 
 | 할 일 | 명령 |
 |---|---|

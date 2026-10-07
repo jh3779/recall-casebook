@@ -1,6 +1,6 @@
 name: Frontend CI
 
-# React 화면(frontend/, DEC-029)을 검사한다.
+# React 화면(frontend/, DEC-032)을 검사한다.
 # - 필수 체크가 아니다: main 보호 룰셋의 필수 체크는 lint-and-test 등 4개 그대로이고, 이 잡은 올리지 않는다.
 # - frontend/ 또는 이 파일이 바뀐 PR에서만 돈다. 그 안에서도 frontend/package.json이 있을 때만 검사한다.
 #   frontend/가 없거나 .nvmrc·.gitkeep·README.md만 있으면 도입 전으로 보고 "건너뜀" 안내만 남기고 통과하고,
