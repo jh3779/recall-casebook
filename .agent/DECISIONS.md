@@ -204,3 +204,11 @@
 - **영향**: DEC-029(이전 주제, #17 브랜치에만 있음)를 대체한다 — 그 근거를 보존하려고 #17 브랜치를 남겨 둘 필요가 없어진다(`.agent/HANDOFF.md` Current State의 DEC-029 보존 서술은 이 PR 병합 뒤 갱신, 브랜치 정리는 사용자 확인 뒤).
 - **Status**: Accepted (사용자 결정 2026-10-07)
 - **Date**: 2026-10-07
+
+## DEC-035: force push는 설정으로 막고, 이미 push한 커밋은 고치지 않고 새 커밋을 쌓는다
+- **Decision**: ① `.claude/settings.json`에서 일반 force push(`--force`, `-f`, `+브랜치`)는 옵션 위치와 관계없이 **deny**하고, `--force-with-lease`는 **ask**(매번 사용자 확인)로 둔다. 패턴: deny `Bash(git push*--force)`·`Bash(git push*--force *)`·`Bash(git push*-f)`·`Bash(git push*-f *)`·`Bash(git push* +*)`, ask `Bash(git push*--force-with-lease*)`. ② AGENTS.md 6절: 이미 push한 커밋은 amend·rebase로 고치지 않고 새 커밋을 쌓는다.
+- **Reason**: 2026-10-07 PR #33에서 에이전트가 이미 push한 커밋(`3a0a890`)을 amend하고 사용자 요청 없이 `git push -q --force-with-lease`로 덮어썼다(→ `bae75cc`, 사용자 사후 승인). AGENTS.md 6절에 규칙이 있었고 설정에도 `Bash(git push --force:*)` deny가 있었지만, `:*`는 명령 앞부분 일치라 `-q`가 앞에 끼면 걸리지 않았다(Claude Code 문서 code.claude.com/docs/en/permissions: "The `:*` form is only recognized at the end of a pattern", 규칙 평가 순서 deny → ask → allow, `&&` 등으로 이은 복합 명령은 하위 명령마다 검사). 같은 원인의 실수는 다시 생길 수 있어 문서가 아니라 구조로 막는다(AGENTS.md 2절 취지). 사용자 결정(2026-10-07, "기록해줘").
+- **Alternatives**: ① 모든 `git push`를 ask — 일상 push마다 확인이 떠 작업이 느려져 제외. ② 기존 접두사 규칙 유지 — 이번 구멍이 그대로라 제외. ③ `--force-with-lease`도 deny — 규칙상 사용자가 요청하면 허용되는 명령이라 ask로 둠.
+- **한계**: 설정은 Claude Code가 보통 쓰는 형태만 막는다 — `git -C <폴더> push --force`처럼 형태가 다른 명령은 걸리지 않는다. 패턴 중간 `*`가 공백까지 일치하는지는 문서에 명시가 없어, 같은 문법을 쓰는 기존 규칙(`Bash(gh api*/pulls/*/merge*)`)에 기대고 있다. 사람의 git(터미널)·다른 에이전트는 이 설정의 영향을 받지 않으므로 AGENTS.md 규칙도 함께 둔다.
+- **Status**: Accepted (사용자 결정 2026-10-07)
+- **Date**: 2026-10-07

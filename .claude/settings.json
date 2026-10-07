@@ -19,13 +19,17 @@
       "Read(./.env)",
       "Read(./.env.local)",
       "Read(./.env.*.local)",
-      "Bash(git push --force:*)",
-      "Bash(git push -f:*)",
+      "Bash(git push*--force)",
+      "Bash(git push*--force *)",
+      "Bash(git push*-f)",
+      "Bash(git push*-f *)",
+      "Bash(git push* +*)",
       "Bash(pip install:*)",
       "Bash(gh api*/pulls/*/merge*)",
       "Bash(gh api*mergePullRequest*)"
     ],
     "ask": [
+      "Bash(git push*--force-with-lease*)",
       "Bash(gh pr merge:*)"
     ]
   }
