@@ -23,6 +23,11 @@
       "Bash(git push* --force *)",
       "Bash(git push* -f*)",
       "Bash(git push* +*)",
+      "Bash(git push* --mirror*)",
+      "Bash(git push* -uf*)",
+      "Bash(git push* -qf*)",
+      "Bash(git push* -vf*)",
+      "Bash(git push* -nf*)",
       "Bash(pip install:*)",
       "Bash(gh api*/pulls/*/merge*)",
       "Bash(gh api*mergePullRequest*)"
