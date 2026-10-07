@@ -107,24 +107,101 @@ def test_compute_converts_the_sample_rate_by_campaigns_and_flags_when_recalls_ar
     assert one["post_one_to_one"] is True
 
 
-def test_input_label_says_reproduction_only_when_the_inputs_match_the_baseline():
+def sample_row(campaign, status="filled", resolution="auto", pdf_sha="aa"):
+    return {
+        "campaign": campaign,
+        "cause_status": status,
+        "resolution": resolution,
+        "submission_date": "20240101",
+        "pdfs": {f"odi/rcl/2024/RCLRPT-{campaign}-0001.PDF": pdf_sha},
+    }
+
+
+def make_base(sample, with_digest=True):
     base = {
         "build": {"raw_manifest_sha256": "r", "recalls_sha256": "c", "eval_sha256": "e"},
-        "rclrpt_sample": [{"campaign": "20V001"}],
+        "rclrpt_sample": [{"campaign": r["campaign"], "pdfs": r["pdfs"]} for r in sample],
+        "expected": {
+            "rclrpt_sample_filled": sum(r["cause_status"] == "filled" for r in sample),
+            "rclrpt_sample_empty": sum(r["cause_status"] == "empty" for r in sample),
+            "rclrpt_sample_unresolved": sum(r["resolution"] == "unresolved" for r in sample),
+        },
     }
-    same = {"raw_manifest_sha256": "r", "recalls_sha256": "c", "eval_sha256": "e"}
-    sample = [{"campaign": "20V001"}]
-    assert "재현" in why_stats.input_label("b.json", base, same, sample, False)
+    if with_digest:
+        base["causes_sample"] = {
+            "rows": len(sample),
+            "content_sha256": why_stats.sample_digest(sample),
+        }
+    return base
+
+
+SAME = {"raw_manifest_sha256": "r", "recalls_sha256": "c", "eval_sha256": "e"}
+
+
+def test_input_label_says_reproduction_only_when_the_inputs_match_the_baseline():
+    sample = [sample_row("20V001"), sample_row("20V002", "empty")]
+    base = make_base(sample)
+    assert "재현" in why_stats.input_label("b.json", base, SAME, sample, False)
     # 카드가 다르면 멈추고, --allow-drift를 주면 재계산이라고 표시한다
-    drift = {**same, "recalls_sha256": "x"}
+    drift = {**SAME, "recalls_sha256": "x"}
     with pytest.raises(SystemExit) as e:
         why_stats.input_label("b.json", base, drift, sample, False)
     assert "원본·카드·시험지 sha256" in str(e.value)
     assert "재현 아님" in why_stats.input_label("b.json", base, drift, sample, True)
     # 573 표본 캠페인 목록이 다르면 입력이 같아 보여도 멈춘다
     with pytest.raises(SystemExit) as e:
-        why_stats.input_label("b.json", base, same, [{"campaign": "99V999"}], False)
-    assert "573 표본 캠페인 목록" in str(e.value)
+        why_stats.input_label("b.json", base, SAME, [sample_row("99V999")], False)
+    assert "573 표본 캠페인·원인 칸 내용" in str(e.value)
+
+
+def test_input_label_stops_when_only_the_cause_status_or_row_count_of_the_sample_changed():
+    sample = [sample_row("20V001"), sample_row("20V002", "empty")]
+    base = make_base(sample)
+    # 같은 캠페인인데 원인 칸 판독 결과만 바뀜 — 205/95 같은 숫자가 달라지는데 캠페인 목록은 같다
+    changed = [sample_row("20V001", "empty"), sample_row("20V002", "empty")]
+    with pytest.raises(SystemExit):
+        why_stats.input_label("b.json", base, SAME, changed, False)
+    # 판본 sha256이 바뀜
+    with pytest.raises(SystemExit):
+        why_stats.input_label(
+            "b.json", base, SAME, [sample[0], sample_row("20V002", "empty", pdf_sha="bb")], False
+        )
+    # 같은 캠페인을 한 줄 더 넣음(중복)
+    with pytest.raises(SystemExit):
+        why_stats.input_label("b.json", base, SAME, [*sample, sample_row("20V002", "empty")], False)
+    # 내용 지문이 없는 옛 형식의 기준 파일이면 건수와 판본 sha256만 대조한다
+    old = make_base(sample, with_digest=False)
+    assert "재현" in why_stats.input_label("b.json", old, SAME, sample, False)
+    with pytest.raises(SystemExit):
+        why_stats.input_label("b.json", old, SAME, changed, False)
+
+
+def test_sample_digest_ignores_row_order_and_dict_order():
+    a, b = sample_row("20V001"), sample_row("20V002", "empty")
+    assert why_stats.sample_digest([a, b]) == why_stats.sample_digest([b, a])
+    assert why_stats.sample_digest([a, b]) != why_stats.sample_digest(
+        [a, {**b, "cause_status": "filled"}]
+    )
+
+
+def test_main_stops_instead_of_printing_a_mixed_unit_estimate_when_recalls_are_not_one_to_one(
+    monkeypatch,
+):
+    recalls = [
+        recall("20V001000", "Brake may fail"),
+        recall("20V001001", "Brake may fail"),  # 같은 캠페인에 리콜 2건
+        recall("20V002000", "Brake may fail"),
+    ]
+    data = {
+        "recalls.jsonl": recalls,
+        "causes_sample.jsonl": [sample_row("20V001"), sample_row("20V002")],
+        "eval.jsonl": [],
+    }
+    monkeypatch.setattr(why_stats, "read_jsonl", lambda path: data[path.name])
+    monkeypatch.setattr(why_stats.nhtsa, "read_flat", lambda *a, **k: [])
+    with pytest.raises(SystemExit) as e:
+        why_stats.main()
+    assert "단위가 섞여서" in str(e.value)
 
 
 def test_compute_counts_a_campaign_with_several_recalls_once_per_sample_row():

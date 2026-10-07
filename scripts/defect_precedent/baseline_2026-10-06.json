@@ -3175,6 +3175,11 @@
    "selected": "odi/rcl/2021/RCLRPT-21V211-3036.PDF"
   }
  ],
+ "causes_sample": {
+  "rows": 300,
+  "content_sha256": "2e945be45d922e7d6cb63d3c265dbdcf28be7c6db0d346d7858bae73343aa7d0",
+  "note": "causes_sample.jsonl의 줄마다 [캠페인, cause_status, resolution, submission_date, 정렬한 (판본 주소, sha256)]을 정렬해 JSON으로 만든 문자열의 sha256 — 줄바꿈·칸 순서와 무관하다. why_stats --baseline이 대조한다."
+ },
  "note": "원본(NHTSA flat 파일)은 커밋하지 않는다. raw의 sha256과 같은 원본 사본(data/raw/nhtsa 또는 fetch가 보관한 data/raw/nhtsa.<받은 시각>)이 있어야 bm25_baseline --baseline이 '재현'으로 실행된다. 사본이 없으면 --allow-drift로 같은 질문 번호만 재평가한다. rclrpt_sample은 2026-10-06 당시 판본 목록(582개)과 각 PDF의 sha256이다 — --baseline은 이 목록만 받아 sha256을 확인한다.",
  "expected": {
   "recall_cards": 30350,

@@ -16,9 +16,9 @@
 
 - 집계 단위: 573 표본은 **캠페인**(리콜 번호 앞 6자리) 단위라서 표본 비율은 캠페인 비율이다. 2014-08-20 이후 리콜은 리콜 번호와
   캠페인이 1:1이라(앞 6자리가 겹치는 리콜이 없다) 캠페인 수와 리콜 수가 같다 — 이 전제를 `post_one_to_one`으로 확인해 출력하고,
-  1:1이 아니면 환산을 캠페인 수에 곱하므로 리콜 수와 달라질 수 있다는 경고를 띄운다.
+  1:1이 아니면 단위가 섞이므로 전체 추정을 내지 않고 멈춘다.
 
-재현할 때는 기준 파일을 넘긴다. 입력(원본·카드·시험지 sha256, 573 표본 캠페인 목록)이 기준과 같을 때만 "재현"이고, 다르면
+재현할 때는 기준 파일을 넘긴다. 입력(원본·카드·시험지 sha256, 573 표본의 캠페인·원인 칸 내용)이 기준과 같을 때만 "재현"이고, 다르면
 멈춘다(`--allow-drift`를 주면 현재 데이터로 "재계산"한다). 입력 사본은 `docs/환경셋팅.md` 4절(2026-10-06 원본 사본)을 따른다.
 
     uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json
@@ -26,6 +26,7 @@
 """
 
 import argparse
+import hashlib
 import json
 import math
 import re
@@ -135,6 +136,54 @@ def compute(recalls: list[dict], inv_rows: list[dict], causes_sample: list[dict]
     }
 
 
+def sample_digest(rows: list[dict]) -> str:
+    """573 표본의 내용 지문 — 줄마다 [캠페인, cause_status, resolution, submission_date, 정렬한 (판본, sha256)]을 정렬해 해시한다.
+
+    줄바꿈 방식·칸 순서와 무관하고, 원인 칸 판독 결과(205/95)를 정하는 값이 바뀌면 달라진다.
+    """
+    items = [
+        [
+            r["campaign"],
+            r["cause_status"],
+            r["resolution"],
+            r["submission_date"],
+            sorted(r["pdfs"].items()),
+        ]
+        for r in rows
+    ]
+    return hashlib.sha256(
+        json.dumps(sorted(items), ensure_ascii=False, sort_keys=True).encode()
+    ).hexdigest()
+
+
+def sample_matches(base: dict, causes_sample: list[dict]) -> bool:
+    """573 표본이 기준과 같은가: 중복 없이 같은 캠페인 300개이고, 기준 파일에 내용 지문이 있으면 그것과도 같아야 한다.
+
+    지문이 없는 기준 파일(옛 형식)이면 원인 칸 건수(채워짐·비어 있음·미확정)와 판본 sha256만 대조한다.
+    """
+    campaigns = [r["campaign"] for r in causes_sample]
+    if len(set(campaigns)) != len(campaigns) or set(campaigns) != {
+        s["campaign"] for s in base["rclrpt_sample"]
+    }:
+        return False
+    spec = base.get("causes_sample")
+    if spec:
+        return (
+            len(causes_sample) == spec["rows"]
+            and sample_digest(causes_sample) == spec["content_sha256"]
+        )
+    expected = base["expected"]
+    got = {
+        "rclrpt_sample_filled": sum(r["cause_status"] == "filled" for r in causes_sample),
+        "rclrpt_sample_empty": sum(r["cause_status"] == "empty" for r in causes_sample),
+        "rclrpt_sample_unresolved": sum(r["resolution"] == "unresolved" for r in causes_sample),
+    }
+    same_pdfs = {r["campaign"]: r["pdfs"] for r in causes_sample} == {
+        s["campaign"]: s["pdfs"] for s in base["rclrpt_sample"]
+    }
+    return same_pdfs and all(got[k] == expected[k] for k in got)
+
+
 def input_label(
     baseline_name: str, base: dict, info: dict, causes_sample: list[dict], allow_drift: bool
 ) -> str:
@@ -143,18 +192,16 @@ def input_label(
         info[k] == base["build"][k]
         for k in ("raw_manifest_sha256", "recalls_sha256", "eval_sha256")
     )
-    same_sample = {r["campaign"] for r in causes_sample} == {
-        s["campaign"] for s in base["rclrpt_sample"]
-    }
+    same_sample = sample_matches(base, causes_sample)
     if same_files and same_sample:
-        return f"{baseline_name} 재현 (원본·카드·시험지 sha256 일치, 573 표본 캠페인 목록 일치)"
+        return f"{baseline_name} 재현 (원본·카드·시험지 sha256 일치, 573 표본 캠페인·원인 칸 내용 일치)"
     if allow_drift:
         return f"{baseline_name}와 다른 입력으로 재계산 (재현 아님)"
     what = []
     if not same_files:
         what.append("원본·카드·시험지 sha256")
     if not same_sample:
-        what.append("573 표본 캠페인 목록")
+        what.append("573 표본 캠페인·원인 칸 내용")
     sys.exit(
         f"{', '.join(what)}이 기준 파일과 다르다 — 같은 원본 사본(data/raw/nhtsa.<받은 시각>)과 표본으로 다시 만들거나, "
         "현재 데이터로 재계산만 하려면 --allow-drift를 붙인다"
@@ -171,6 +218,11 @@ def main(baseline: Path | None = None, allow_drift: bool = False) -> None:
     s = compute(
         recalls, nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS), causes_sample
     )
+    if not s["post_one_to_one"]:
+        sys.exit(
+            f"2014-08-20 이후 리콜 {s['post_recalls']:,}건이 캠페인 {s['post_campaigns']:,}개에 걸려 있다 — 표본 비율(캠페인 단위)을 "
+            "리콜 건수에 곱하는 전체 추정은 단위가 섞여서 내지 않는다. 캠페인 단위로 다시 정의한 뒤에 계산한다"
+        )
     total = s["recalls"]
     overlap = maker_overlap(read_jsonl(nhtsa.OUT_DIR / "eval.jsonl"), recalls)
 
@@ -185,15 +237,9 @@ def main(baseline: Path | None = None, allow_drift: bool = False) -> None:
     print(
         f"2014-08-20 이후 {s['post_recalls']:,}건 중 기존 방식 {pct(s['post_either'], s['post_recalls'])}"
     )
-    if s["post_one_to_one"]:
-        print(
-            f"  (이 리콜 {s['post_recalls']:,}건은 캠페인 {s['post_campaigns']:,}개와 1:1 — 표본 비율을 그대로 곱해도 단위가 같다)"
-        )
-    else:
-        print(
-            f"  주의: 리콜 {s['post_recalls']:,}건이 캠페인 {s['post_campaigns']:,}개에 걸려 있다 — 표본 비율은 캠페인 단위라 "
-            "아래 환산은 캠페인 수에 곱한 값이고, 리콜 수로 바꾸면 달라질 수 있다"
-        )
+    print(
+        f"  (이 리콜 {s['post_recalls']:,}건은 캠페인 {s['post_campaigns']:,}개와 1:1 — 표본 비율을 그대로 곱해도 단위가 같다)"
+    )
     print(
         f"2014-08-20 이전 {s['pre_recalls']:,}건 중 기존 방식 {pct(s['pre_either'], s['pre_recalls'])}"
     )
