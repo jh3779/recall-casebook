@@ -61,6 +61,8 @@
 - 2026-10-07: PR #23 병합(3db9846), 온보딩 PR #17·#20·#21 닫음, HANDOFF에 시점 평가 결정 기한·부품 트리 규칙(할 일 22) 추가
 - 2026-10-07: PR #26 병합(3e35593), 학습 ① 진행, 팀 공지 초안 작성, 체크포인트(할 일 23~25 추가)
 - 2026-10-07: PR #22 병합(d1019a5, DEC-032), HANDOFF에 #22 후속(할 일 25 갱신·26 추가)·DEC-032 인용 정정
+- 2026-10-07: 기준 재현 확인(0.510) 후 PR #29 회사명 대응표 초안 — maker·maker_group 두 칸(DEC-033), 확인 필요 25줄(리뷰 반영 후 31줄), 이승노 님용 안내문(docs/회사명_대응표_안내.md)
+- 2026-10-07: PR #29 Codex 리뷰 반영 — 대표 회사명 선택 규칙(마침표 오타 회피, Piaggio 회귀 테스트), review 상태 4종·review_note·unreviewed(), 초안(maker_aliases_draft.csv)/확인본(maker_aliases.csv) 분리
 - 2026-10-07: 573 전체 수집 하기로 결정(사용자) — rclrpt 보강(재시도·중간 저장·불완전 파일 차단·poppler 확인, 테스트 12개 추가). 이 PC의 pdftotext가 xpdf라 poppler 설치 전에는 실행 불가
 - 2026-10-07: poppler 25.07.0 설치(winget)·기준 표본 재현(205/95/0, 행 동일), write_jsonl을 LF로 고정(Windows CRLF 해시 불일치 방지)
 - 2026-10-07: PR #32 Codex 리뷰 반영 — all은 --expect-campaigns 필수, pdftotext -enc UTF-8·바이트 해독, 손상 PDF 격리·비PDF 응답 거부, 실패 시 이전 완성본 구분. 파일럿 1,000건(15.5분, 읽음 999·실패 1)
