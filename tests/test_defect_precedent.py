@@ -429,3 +429,343 @@ def test_verify_build_stops_when_manifest_changed(tmp_path):
     (raw / "manifest.json").write_text(json.dumps(manifest))
     with pytest.raises(SystemExit):
         nhtsa.verify_build(raw, out)
+
+
+def test_maker_alias_maker_and_group():
+    from collections import Counter
+
+    from scripts.defect_precedent.maker_aliases import build_table
+
+    counts = Counter(
+        {
+            "FORD MOTOR COMPANY": 986,
+            "Ford Motor Company": 758,
+            "GENERAL MOTORS CORP.": 1217,
+            "General Motors LLC": 276,
+            "Hyundai Motor America": 202,
+            "Hyundai Motor Company": 35,
+            "Hyundai Translead": 10,
+            "CHRYSLER CORPORATION": 654,
+            "Chrysler Group LLC": 73,
+            "Chrysler (FCA US, LLC)": 271,
+            "Kia Motors America": 82,
+            "KIA MOTORS AMERICA, INC.": 38,
+        }
+    )
+    rows = {r["raw_maker"]: r for r in build_table(counts)}
+    # 대소문자 차이는 표기 통일 (소문자가 섞인 표기가 대표)
+    assert rows["FORD MOTOR COMPANY"]["maker"] == "Ford Motor Company"
+    assert rows["FORD MOTOR COMPANY"]["maker_basis"] == "표기 통일"
+    # 법인 형태(Corp ↔ LLC)가 달라도 maker는 한 이름
+    assert rows["GENERAL MOTORS CORP."]["maker"] == rows["General Motors LLC"]["maker"]
+    assert rows["GENERAL MOTORS CORP."]["maker_basis"] == "법인 형태 통일"
+    # 미국 법인과 본사는 maker는 따로, maker_group은 같다
+    america, company = rows["Hyundai Motor America"], rows["Hyundai Motor Company"]
+    assert america["maker"] != company["maker"]
+    assert america["maker_group"] == company["maker_group"]
+    assert america["group_basis"] == "자동"
+    # 이름이 비슷해도 다른 회사(트레일러 제조사)는 묶지 않는다
+    assert rows["Hyundai Translead"]["maker_group"] != america["maker_group"]
+    # 후신 관계는 이름 목록으로 묶고 maker는 신고 당시 이름을 유지한다 (초안 → 확인 필요)
+    names = ("CHRYSLER CORPORATION", "Chrysler Group LLC", "Chrysler (FCA US, LLC)")
+    assert len({rows[n]["maker_group"] for n in names}) == 1
+    assert rows["Chrysler Group LLC"]["maker"] == "Chrysler Group LLC"
+    assert rows["Chrysler Group LLC"]["review"] == "확인 필요"
+    # 목록에 없는 표기도 같은 maker로 합쳐지면 그 maker의 묶음을 따른다
+    assert (
+        rows["KIA MOTORS AMERICA, INC."]["maker_group"] == rows["Kia Motors America"]["maker_group"]
+    )
+    # 모든 줄이 maker_group을 가진다
+    assert all(r["maker_group"] for r in rows.values())
+
+
+def test_maker_alias_representative_avoids_period_typo():
+    from collections import Counter
+
+    from scripts.defect_precedent.maker_aliases import build_table
+
+    # 신고서 원문에 오타(마침표)가 더 많이 쓰여도 대표 이름은 쉼표 표기를 고르고, 사람이 보게 표시한다
+    counts = Counter(
+        {
+            "Piaggio Group Americas. Inc.": 16,
+            "Piaggio Group Americas, Inc.": 4,
+            "MACK TRUCKS, INC.": 1,
+            "Mack Trucks, Inc.": 122,
+        }
+    )
+    rows = {r["raw_maker"]: r for r in build_table(counts)}
+    for raw in ("Piaggio Group Americas. Inc.", "Piaggio Group Americas, Inc."):
+        assert rows[raw]["maker"] == "Piaggio Group Americas, Inc."
+        assert rows[raw]["review"] == "확인 필요"
+        assert "마침표 오타" in rows[raw]["review_note"]
+    # 오타가 없는 묶음은 표시하지 않는다
+    assert rows["MACK TRUCKS, INC."]["review"] == ""
+    # 약어 마침표(MFG. CORP.)는 오타로 보지 않는다
+    abbr = {r["raw_maker"]: r for r in build_table(Counter({"UTILITY TRAILER MFG. CO.": 14}))}
+    assert abbr["UTILITY TRAILER MFG. CO."]["review"] == ""
+
+
+def test_maker_alias_dotted_abbreviations_join_the_same_company():
+    from collections import Counter
+
+    from scripts.defect_precedent.maker_aliases import build_table, strict_key
+
+    assert strict_key("PORSCHE CARS N.A. INC.") == strict_key("Porsche Cars NA, Inc.")
+    assert strict_key("Kawasaki Motors Corp., U.S.A.") == strict_key("KAWASAKI MOTORS CORP USA")
+    rows = {
+        r["raw_maker"]: r
+        for r in build_table(
+            Counter({"PORSCHE CARS N.A. INC.": 73, "Porsche Cars North America, Inc.": 135})
+        )
+    }
+    # N.A.가 N·A로 갈라지면 핵심 이름이 달라 묶이지 않았다 — 이제 같은 maker_group이다 (maker는 지역 표기가 달라 따로 둔다)
+    assert (
+        rows["PORSCHE CARS N.A. INC."]["maker_group"]
+        == rows["Porsche Cars North America, Inc."]["maker_group"]
+    )
+
+
+def test_maker_alias_automatic_groups_of_customer_makers_need_a_human_check():
+    from collections import Counter
+
+    from scripts.defect_precedent.maker_aliases import build_table
+
+    rows = {
+        r["raw_maker"]: r
+        for r in build_table(
+            Counter(
+                {
+                    "Hyundai Motor America": 202,
+                    "Hyundai Motor Company": 35,
+                    "Ford Motor Company": 500,
+                    "Ford Motor Co": 5,
+                }
+            )
+        )
+    }
+    # 현대는 두 단어 이상 자동 묶음이어도 확인 대상이다. 같은 방식으로 묶인 비고객사(Ford)는 아니다
+    for name in ("Hyundai Motor America", "Hyundai Motor Company"):
+        assert rows[name]["review"] == "확인 필요" and "고객사" in rows[name]["review_note"]
+    assert rows["Ford Motor Co"]["review"] == "" and rows["Ford Motor Company"]["review"] == ""
+
+
+def _row(name, review="", required="", **over):
+    row = {
+        "raw_maker": name,
+        "maker": name,
+        "maker_group": name,
+        "count": "1",
+        "maker_basis": "없음",
+        "group_basis": "없음",
+        "review": review,
+        "review_required": required,
+        "review_note": "",
+    }
+    return {**row, **over}
+
+
+# 스크립트가 만든 초안: A는 볼 필요 없음, B·C·D는 검토가 필요한 줄
+DRAFT = [
+    _row("A"),
+    _row("B", "확인 필요", "필요"),
+    _row("C", "확인 필요", "필요"),
+    _row("D", "확인 필요", "필요"),
+]
+
+
+def test_maker_alias_unreviewed_blocks_until_every_row_is_confirmed():
+    from scripts.defect_precedent.maker_aliases import unreviewed
+
+    rows = [
+        _row("A"),
+        _row("B", "확인 완료", "필요"),
+        _row("C", "보류", "필요"),
+        _row("D", "확인 필요", "필요"),
+    ]
+    assert [r["raw_maker"] for r in unreviewed(rows, DRAFT)] == ["C", "D"]
+    done = [
+        _row("A"),
+        _row("B", "확인 완료", "필요"),
+        _row("C", "확인 완료", "필요"),
+        _row("D", "확인 완료", "필요"),
+    ]
+    assert unreviewed(done, DRAFT) == []  # 모든 검토 대상이 확인 완료면 비어 있다
+
+
+def test_maker_alias_unreviewed_does_not_let_blank_or_typo_pass_as_confirmed():
+    from scripts.defect_precedent.maker_aliases import unreviewed
+
+    # 검토가 필요했던 줄의 review를 지우면 통과하지 못하고 미확인으로 남는다
+    blanked = [
+        _row("A"),
+        _row("B", "", "필요"),
+        _row("C", "확인 완료", "필요"),
+        _row("D", "확인 완료", "필요"),
+    ]
+    assert [r["raw_maker"] for r in unreviewed(blanked, DRAFT)] == ["B"]
+    # 띄어쓰기 오타 `확인완료`는 확인한 것으로 보지 않고 오류로 멈춘다
+    typo = [
+        _row("A"),
+        _row("B", "확인완료", "필요"),
+        _row("C", "확인 완료", "필요"),
+        _row("D", "확인 완료", "필요"),
+    ]
+    with pytest.raises(ValueError, match="알 수 없는 검토 상태"):
+        unreviewed(typo, DRAFT)
+
+
+def test_maker_alias_unreviewed_compares_with_the_draft_so_deleted_rows_and_columns_cannot_pass():
+    from scripts.defect_precedent.maker_aliases import unreviewed
+
+    full = [
+        _row("A"),
+        _row("B", "확인 완료", "필요"),
+        _row("C", "확인 완료", "필요"),
+        _row("D", "확인 완료", "필요"),
+    ]
+    # 검토 대상 줄을 통째로 지움 — 남은 줄이 모두 완료여도 통과하지 못한다
+    with pytest.raises(ValueError, match="사라진 줄 1개"):
+        unreviewed([r for r in full if r["raw_maker"] != "C"], DRAFT)
+    # review와 review_required를 함께 지움 — 초안의 review_required와 달라져 멈춘다
+    both_cleared = [
+        _row("A"),
+        _row("B", "확인 완료", "필요"),
+        _row("C", "", ""),
+        _row("D", "확인 완료", "필요"),
+    ]
+    with pytest.raises(ValueError, match="review_required가 초안과 다르다"):
+        unreviewed(both_cleared, DRAFT)
+    # review_required를 엉뚱한 값으로 고침
+    with pytest.raises(ValueError, match="review_required가 초안과 다르다"):
+        unreviewed([*full[:3], _row("D", "확인 완료", "불필요")], DRAFT)
+    # 줄을 새로 넣거나 같은 줄을 복사해 붙임
+    with pytest.raises(ValueError, match="늘어난 줄 1개"):
+        unreviewed([*full, _row("E")], DRAFT)
+    with pytest.raises(ValueError, match="겹치는 줄"):
+        unreviewed([*full, _row("B", "확인 완료", "필요")], DRAFT)
+
+
+def test_maker_alias_unreviewed_checks_company_name_columns_against_the_draft():
+    from scripts.defect_precedent.maker_aliases import unreviewed
+
+    ok = [
+        _row("A"),
+        _row("B", "확인 완료", "필요"),
+        _row("C", "확인 완료", "필요"),
+        _row("D", "확인 완료", "필요"),
+    ]
+
+    def with_row(name, **over):
+        return [{**r, **over} if r["raw_maker"] == name else r for r in ok]
+
+    # 칸을 지움 (검토가 필요 없던 줄도)
+    with pytest.raises(ValueError, match="빈 줄"):
+        unreviewed(with_row("A", maker_group=""), DRAFT)
+    with pytest.raises(ValueError, match="빈 줄"):
+        unreviewed(with_row("B", maker=" "), DRAFT)
+    # 열 하나만 정렬이 어긋남 — maker_group이 다른 줄 것으로 바뀌고 count도 어긋난다
+    shifted = [{**r, "maker_group": ok[(i + 1) % 4]["maker_group"]} for i, r in enumerate(ok)]
+    with pytest.raises(ValueError, match="초안과 다르다|고친 줄"):
+        unreviewed(shifted, DRAFT)
+    with pytest.raises(ValueError, match="고치지 않는 칸"):
+        unreviewed(with_row("C", count="9"), DRAFT)
+    # 검토 대상이 아니던 줄을 기록 없이 고침 / 확인 완료만 하고 이유를 안 적음
+    with pytest.raises(ValueError, match="이유를 적어야"):
+        unreviewed(with_row("A", maker_group="X"), DRAFT)
+    with pytest.raises(ValueError, match="이유를 적어야"):
+        unreviewed(with_row("B", maker_group="X"), DRAFT)
+    # 고치고 확인 완료 + 이유를 적으면 통과
+    fixed = with_row("B", maker_group="X", review_note="같은 계열로 확인")
+    assert unreviewed(fixed, DRAFT) == []
+    fixed_a = with_row("A", maker_group="X", review="확인 완료", review_note="계열사 연결")
+    assert unreviewed(fixed_a, DRAFT) == []
+
+
+def test_maker_alias_unreviewed_needs_a_real_reason_kept_after_the_draft_note():
+    from scripts.defect_precedent.maker_aliases import reason_added, unreviewed
+
+    draft = [
+        _row("A"),
+        _row("B", "확인 필요", "필요", review_note="maker_group: 이름 목록으로 지정한 초안"),
+    ]
+    note = draft[1]["review_note"]
+
+    def changed(note_value, **over):
+        row = _row("B", "확인 완료", "필요", maker_group="X", review_note=note_value, **over)
+        return [_row("A"), row]
+
+    # 초안 메모를 지우거나 빈칸·공백·`;`만 덧붙이면 이유를 적은 것으로 보지 않는다
+    for bad in ("", "   ", None, note + "; ", note + " ;; ", "다른 설명만 적고 초안 메모는 지움"):
+        with pytest.raises(ValueError, match="이유를 적어야"):
+            unreviewed(changed(bad), draft)
+    # 초안 메모를 그대로 두고 설명을 덧붙이면 통과한다
+    assert unreviewed(changed(note + "; 같은 계열로 확인"), draft) == []
+    assert reason_added("초안; 설명", "초안") and not reason_added("초안", "초안")
+    # 초안 메모가 없던 줄은 설명만 있으면 된다
+    assert reason_added("설명", "") and not reason_added(None, None)
+
+
+def test_maker_alias_unreviewed_blocks_one_maker_split_into_two_groups():
+    from scripts.defect_precedent.maker_aliases import unreviewed
+
+    # 같은 maker(Kia Motors America)로 정리되는 원문 두 줄 중 하나만 다른 묶음으로 바꾸고 이유를 적어도 통과하지 못한다
+    draft = [
+        _row("KIA MOTORS AMERICA, INC.", maker="Kia Motors America", maker_group="Kia"),
+        _row("Kia Motors America", maker="Kia Motors America", maker_group="Kia"),
+    ]
+    split = [
+        draft[0],
+        {**draft[1], "maker_group": "Kia Group", "review": "확인 완료", "review_note": "묶음 변경"},
+    ]
+    with pytest.raises(ValueError, match="같은 maker가 서로 다른 maker_group"):
+        unreviewed(split, draft)
+    # 두 줄을 함께 바꾸면 통과한다
+    both = [
+        {**r, "maker_group": "Kia Group", "review": "확인 완료", "review_note": "묶음 변경"}
+        for r in draft
+    ]
+    assert unreviewed(both, draft) == []
+
+
+def test_maker_alias_committed_draft_is_a_valid_input_for_unreviewed():
+    from scripts.defect_precedent.maker_aliases import OUT, read_table, unreviewed
+
+    draft = read_table(OUT)
+    pending = unreviewed(draft, draft)  # 초안 그대로면 검토 대상 31줄이 모두 미확인이다
+    assert pending and all(r["review_required"] == "필요" for r in pending)
+    confirmed = [
+        {**r, "review": "확인 완료"} if r["review_required"] == "필요" else r for r in draft
+    ]
+    assert unreviewed(confirmed, draft) == []  # 검토 대상을 모두 확인 완료로 바꾸면 통과한다
+
+
+def test_maker_alias_every_pending_row_in_the_draft_is_marked_required():
+    from collections import Counter
+
+    from scripts.defect_precedent.maker_aliases import build_table
+
+    rows = build_table(
+        Counter(
+            {
+                "Piaggio Group Americas. Inc.": 16,
+                "Piaggio Group Americas, Inc.": 4,
+                "PIAGGIO USA, INC.": 15,
+            }
+        )
+    )
+    pending = [r for r in rows if r["review"] == "확인 필요"]
+    assert pending and all(r["review_required"] == "필요" for r in pending)
+    assert all(r["review_required"] == "" for r in rows if r["review"] == "")
+
+
+def test_maker_alias_draft_csv_is_read_with_bom_aware_encoding():
+    import csv
+
+    from scripts.defect_precedent.maker_aliases import OUT
+
+    # 엑셀용 BOM이 붙은 파일이라 utf-8-sig로 읽어야 첫 칸 이름이 맞다
+    with OUT.open(encoding="utf-8-sig", newline="") as f:
+        header = next(csv.reader(f))
+    assert header[0] == "raw_maker"
+    assert {"review", "review_required", "review_note"} <= set(header)
+    assert OUT.read_bytes().startswith(b"\xef\xbb\xbf")
