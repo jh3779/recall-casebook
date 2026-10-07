@@ -395,8 +395,14 @@ def describe_changes(summary: dict) -> list[str]:
             lines.append(f"  {table}: {d['skipped']}")
             continue
         cols = ", ".join(f"{c} {n:,}" for c, n in d["changed_columns"].items())
+        # 원인은 같은 종류의 직전 build와 비교하므로 위의 직전 날짜와 다를 수 있다 — 실제 비교 대상을 줄에 적는다
+        basis = (
+            f" [{d['vs']}, build {d['vs_build']} 대비]"
+            if d.get("vs_build") not in (None, summary["vs_build"])
+            else ""
+        )
         lines.append(
-            f"  {table}: 새로 생김 {d['new']:,} · 바뀜 {d['changed']:,} · 사라짐 {d['removed']:,} · 그대로 {d['unchanged']:,}"
+            f"  {table}{basis}: 새로 생김 {d['new']:,} · 바뀜 {d['changed']:,} · 사라짐 {d['removed']:,} · 그대로 {d['unchanged']:,}"
             + (f" (바뀐 칸: {cols})" if cols else "")
         )
     return lines

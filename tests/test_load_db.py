@@ -454,6 +454,25 @@ def test_check_command_reports_the_build_and_the_spec(tmp_path, capsys, monkeypa
 # build 비교
 
 
+def test_describe_changes_names_the_build_the_causes_were_compared_with():
+    counts = {"new": 0, "changed": 0, "removed": 0, "unchanged": 2, "changed_columns": {}}
+    summary = {
+        "vs": "2026-10-06",
+        "vs_build": "bbbb",
+        "recalls": counts,
+        "eval_questions": counts,
+        # 10/5 전체본 → 10/6 표본 → 10/7 전체본: 리콜은 10/6과, 원인은 같은 종류인 10/5 전체본과 비교한다
+        "causes": {**counts, "vs": "2026-10-05", "vs_build": "aaaa"},
+    }
+    lines = load_db.describe_changes(summary)
+    assert lines[0].startswith("직전 날짜(2026-10-06, build bbbb)")
+    assert "  recalls: 새로 생김" in lines[1]  # 직전 날짜와 같은 기준이면 따로 적지 않는다
+    assert any(x.startswith("  causes [2026-10-05, build aaaa 대비]:") for x in lines)
+    # 같은 build와 비교했다면 따로 적지 않는다
+    same = {**summary, "causes": {**counts, "vs": "2026-10-06", "vs_build": "bbbb"}}
+    assert any(x.startswith("  causes: 새로 생김") for x in load_db.describe_changes(same))
+
+
 def test_diff_rows_counts_new_changed_removed_unchanged_and_columns():
     cols = ["campno", "defect", "remedy"]
 
