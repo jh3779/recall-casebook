@@ -37,7 +37,7 @@ WHITE MOTOR CORPORATION,WHITE MOTOR CORPORATION,WHITE MOTOR CORPORATION,143,원�
 DAIMLER TRUCKS NORTH AMERICA,Daimler Trucks North America LLC,Daimler Trucks North America LLC,138,법인 형태 통일,없음,,,
 COOPER TIRE & RUBBER CO.,Cooper Tire & Rubber Co.,Cooper Tire & Rubber Co.,132,표기 통일,없음,,,
 AMERICAN HONDA MOTOR CO.,AMERICAN HONDA MOTOR CO.,Honda (American Honda Motor Co.),127,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 데이터: AMERICAN HONDA MOTOR CO.(1966~2003) → HONDA (AMERICAN HONDA MOTOR CO.)(2004~12) → 현재 표기(2012~), 같은 법인 표기 차이"
-"Daimler Vans USA, LLC","Daimler Vans USA, LLC","Daimler Vans USA, LLC",126,원문,없음,,,
+"Daimler Vans USA, LLC","Daimler Vans USA, LLC","Daimler Vans USA, LLC",126,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Daimler AG의 다른 법인(Sprinter 미국 법인), Mercedes-Benz USA와 형제 법인(사용자 결정 2026-10-07)"
 "WINNEBAGO INDUSTRIES, INC.","Winnebago Industries, Inc.","Winnebago Industries, Inc.",126,표기 통일,없음,,,
 Thor Motor Coach,Thor Motor Coach,Thor Motor Coach,124,표기 통일,없음,,,
 "Mack Trucks, Inc.","Mack Trucks, Inc.","Mack Trucks, Inc.",122,표기 통일,없음,,,
@@ -48,8 +48,8 @@ PACCAR INCORPORATED,PACCAR Incorporated,PACCAR Incorporated,114,표기 통일,�
 "JAYCO, INC.","Jayco, Inc.","Jayco, Inc.",112,표기 통일,없음,,,
 "Porsche Cars North America, Inc.","Porsche Cars North America, Inc.","Porsche Cars North America, Inc.",111,표기 통일,자동,,,
 Volvo Trucks North America,Volvo Trucks North America,Volvo Trucks North America,109,법인 형태 통일,없음,,,
-JAGUAR CARS,JAGUAR CARS,JAGUAR CARS,102,법인 형태 통일,없음,,,
-"THOMAS BUILT BUSES, INC.","THOMAS BUILT BUSES, INC.","THOMAS BUILT BUSES, INC.",101,원문,없음,,,
+JAGUAR CARS,JAGUAR CARS,JAGUAR CARS,102,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 소유주가 바뀐 브랜드(과거 Ford 등), JLR NA(2009~)와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
+"THOMAS BUILT BUSES, INC.","THOMAS BUILT BUSES, INC.","THOMAS BUILT BUSES, INC.",101,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 1998년부터 Daimler Trucks NA 자회사(출처 확인)지만 다른 브랜드(사용자 결정 2026-10-07: 같은 모회사의 다른 브랜드는 묶지 않음)"
 HONDA (AMERICAN HONDA MOTOR CO.),Honda (American Honda Motor Co.),Honda (American Honda Motor Co.),100,표기 통일,없음,,,
 INTERNATIONAL TRUCK AND ENGINE,INTERNATIONAL TRUCK AND ENGINE,"Navistar, Inc.",100,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): International Truck and Engine Corp. → Navistar, Inc.(2008)(출처: ttnews.com 2008-04-10). 데이터: ~2008 → NAVISTAR, INC(2008~)"
 "Subaru of America, Inc.","Subaru of America, Inc.","Subaru of America, Inc.",100,표기 통일,없음,,,
@@ -88,8 +88,8 @@ OSHKOSH TRUCK CORPORATION,OSHKOSH TRUCK CORPORATION,Oshkosh Corporation,64,원�
 "Heartland Recreational Vehicles, LLC","Heartland Recreational Vehicles, LLC","Heartland Recreational Vehicles, LLC",62,표기 통일,없음,,,
 ISUZU MOTORS LIMITED,Isuzu Motors Limited,Isuzu Motors Limited,61,표기 통일,없음,,,
 "MAZDA (NORTH AMERICA),INC","MAZDA (NORTH AMERICA),INC",Mazda North American Operations,61,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 데이터: MAZDA (NORTH AMERICA)(1971~99) → MAZDA NORTH AMERICAN OPERATIONS(2000~)로 이어짐, MNAO는 1997년 북미 조직을 통합(출처: Wikipedia). 'Mazda (North America), Inc.' 법인 기록 자체는 출처로 확인 못 함"
-Nova Bus (US) Inc.,Nova Bus (US) Inc.,Nova Bus,60,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: Nova Bus(~2021) → Nova Bus (US)(2021~) 이름 승계"
-VOLVO OF AMERICA CORP.,VOLVO OF AMERICA CORP.,VOLVO OF AMERICA CORP.,59,원문,없음,,,
+Nova Bus (US) Inc.,Nova Bus (US) Inc.,Nova Bus,60,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — Nova Bus(캐나다)의 미국 법인으로 보임(이름의 (US), 데이터 2021~). 법인 관계는 출처로 확인 못 함 — 미국 법인↔본사 같은 묶음 규칙"
+VOLVO OF AMERICA CORP.,VOLVO OF AMERICA CORP.,VOLVO OF AMERICA CORP.,59,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 1975~86 법인 기록만 확인(Florida 등록), 승용차 수입사였는지·Volvo Cars of N.A.로 이어졌는지 출처로 확인 못 함. 데이터상 1990~91 겹침"
 VOLVO TRUCKS NORTH AMERICA INC,Volvo Trucks North America,Volvo Trucks North America,59,법인 형태 통일,없음,,,
 NEWMAR CORPORATION,Newmar Corporation,Newmar Corporation,58,표기 통일,없음,,,
 "MERCEDES-BENZ USA, LLC.","Mercedes-Benz USA, LLC.","Mercedes-Benz USA, LLC.",57,법인 형태 통일,없음,,,
@@ -100,20 +100,20 @@ DUCATI NORTH AMERICA,Ducati North America,Ducati North America,55,표기 통일,
 Spartan Motors USA,Spartan Motors USA,Spartan Motors USA,55,원문,자동,,,
 VOLVO GM HEAVY TRUCK CORP,VOLVO GM HEAVY TRUCK CORP,Volvo Trucks North America,55,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Volvo GM Heavy Truck → Volvo Trucks North America(1997)(출처: Wikipedia Volvo Trucks, 판결문 'now known as'). 데이터: ~1995 → 1996~"
 Pierce Manufacturing,Pierce Manufacturing,Pierce Manufacturing,54,법인 형태 통일,없음,,,
-AM GENERAL CORPORATION,AM GENERAL CORPORATION,AM GENERAL CORPORATION,53,법인 형태 통일,없음,,,
+AM GENERAL CORPORATION,AM GENERAL CORPORATION,AM GENERAL CORPORATION,53,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — General Motors와 다른 회사"
 HOLIDAY RAMBLER CORP.,HOLIDAY RAMBLER CORP.,HOLIDAY RAMBLER CORP.,53,원문,없음,,,
 E-One Incorporated,E-One Incorporated,E-One Incorporated,51,표기 통일,없음,,,
 GILLIG CORPORATION,Gillig LLC,Gillig LLC,51,법인 형태 통일,없음,,,
 "KZRV, L.P.","KZRV, L.P.","KZRV, L.P.",51,원문,없음,,,
 "PREVOST CAR, INCORPORATED","PREVOST CAR, INCORPORATED","Prevost Cars, Inc.",51,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: PREVOST CAR(1973~2004) → Prevost Cars(2005~21) 이름 승계"
-"SPARTAN CHASSIS, INC.","Spartan Chassis, Inc.",Spartan Motors USA,51,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Spartan Chassis는 Spartan Motors의 자회사 Spartan Motors Chassis, Inc.의 약칭(출처: SEC 10-K). 데이터: SPARTAN MOTORS(~2003) → CHASSIS(2004~12) → Spartan Motors(2011~)"
+"SPARTAN CHASSIS, INC.","Spartan Chassis, Inc.",Spartan Motors USA,51,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Spartan Chassis는 Spartan Motors의 자회사 Spartan Motors Chassis, Inc.의 약칭(출처: SEC 10-K, 조사 에이전트 확인) — 이름 승계가 아니라 모자 관계(데이터상 2011~12 겹침). 그 시기 Spartan Motors 계열이라 같은 묶음"
 Triple E Recreational Vehicles,Triple E Recreational Vehicles,Triple E Recreational Vehicles,50,표기 통일,없음,,,
 "Winnebago Industries, Inc.","Winnebago Industries, Inc.","Winnebago Industries, Inc.",50,표기 통일,없음,,,
 "FOREST RIVER, INC.","Forest River, Inc.","Forest River, Inc.",49,표기 통일,없음,,,
 HYUNDAI MOTOR COMPANY,Hyundai Motor Company,Hyundai Motor America,49,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): 리콜 데이터에서 같은 신고 주체가 HYUNDAI MOTOR AMERICA(1986~98) → HYUNDAI MOTOR COMPANY(1999~2014) → Hyundai Motor America(2014~)로 이어짐. 미국 법인↔본사 같은 묶음 규칙. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
 Harley-Davidson Motor Company,Harley-Davidson Motor Company,Harley-Davidson Motor Company,49,표기 통일,없음,,,
 INTERNATIONAL HARVESTER,INTERNATIONAL HARVESTER,INTERNATIONAL HARVESTER,49,원문,없음,,,
-MITSUBISHI AMERICA,MITSUBISHI AMERICA,MITSUBISHI AMERICA,49,원문,없음,,,
+MITSUBISHI AMERICA,MITSUBISHI AMERICA,"Mitsubishi Motors North America, Inc.",49,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 리뷰 반영 — 데이터: MITSUBISHI AMERICA(1990~2003-05, 승용·SUV) → MMNA(2003-11~, 03V429)로 같은 신고 주체가 이어짐. Mitsubishi Fuso(트럭)와는 별도"
 "Winnebago Industries, Inc","Winnebago Industries, Inc.","Winnebago Industries, Inc.",49,표기 통일,없음,,,
 "Corp. Micro Bird, Inc.","Corp. Micro Bird, Inc.","Corp. Micro Bird, Inc.",48,표기 통일,자동,,,
 FERRARI NORTH AMERICA,"Ferrari North America, Inc.","Ferrari North America, Inc.",48,법인 형태 통일,없음,,,
@@ -151,7 +151,7 @@ Great Dane Trailers,Great Dane Trailers,Great Dane Trailers,39,법인 형태 통
 FOUR WINDS INTERNATIONAL,FOUR WINDS INTERNATIONAL,FOUR WINDS INTERNATIONAL,38,원문,없음,,,
 GENERAL TIRE & RUBBER CO.,GENERAL TIRE & RUBBER CO.,GENERAL TIRE & RUBBER CO.,38,원문,없음,,,
 "KIA MOTORS AMERICA, INC.",Kia Motors America,Kia,38,법인 형태 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01)(출처: PR Newswire 2021-05-18). 묶음 맞음, 현대와는 별도 유지"
-Prevost Car (US) Inc.,Prevost Car (US) Inc.,"Prevost Cars, Inc.",38,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: Prevost Cars(~2021) → Prevost Car (US)(2021~) 이름 승계"
+Prevost Car (US) Inc.,Prevost Car (US) Inc.,"Prevost Cars, Inc.",38,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — Prevost(캐나다)의 미국 법인으로 보임(이름의 (US), 데이터 2021~). 법인 관계는 출처로 확인 못 함 — 미국 법인↔본사 같은 묶음 규칙"
 Starcraft RV,Starcraft RV,Starcraft RV,38,법인 형태 통일,없음,,,
 CHRYSLER GROUP LLC,Chrysler Group LLC,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),37,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 회사의 이름 변천 — Chrysler Corp. → DaimlerChrysler(1998 합병) → Chrysler LLC(2007) → Chrysler Group LLC(2009) → FCA US LLC(2014 개명). 미국 법인은 지금도 FCA US LLC이고 Stellantis(2021)는 모회사(출처: en.wikipedia.org/wiki/Chrysler, Stellantis 2021-01 발표). 묶음 맞음"
 "Kawasaki Motors Corp., U.S.A.","Kawasaki Motors Corp., U.S.A.",KAWASAKI MOTORS CORP.,37,표기 통일,자동,,,
@@ -160,13 +160,13 @@ ROCKWELL INTERNATIONAL,ROCKWELL INTERNATIONAL,ROCKWELL INTERNATIONAL,37,원문,�
 SKYLINE CORPORATION,Skyline Corporation,Skyline Corporation,36,표기 통일,없음,,,
 "CHAMPION BUS, INC.","Champion Bus, Inc.","Champion Bus, Inc.",35,표기 통일,없음,,,
 Hyundai Motor Company,Hyundai Motor Company,Hyundai Motor America,35,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): 리콜 데이터에서 같은 신고 주체가 HYUNDAI MOTOR AMERICA(1986~98) → HYUNDAI MOTOR COMPANY(1999~2014) → Hyundai Motor America(2014~)로 이어짐. 미국 법인↔본사 같은 묶음 규칙. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
-"MOTOR COACH IND., INC.","MOTOR COACH IND., INC.","MOTOR COACH IND., INC.",35,원문,없음,,,
+"MOTOR COACH IND., INC.","MOTOR COACH IND., INC.",Motor Coach Industries,35,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 리뷰 반영 — IND.는 INDUSTRIES 약어, 데이터 1968~2002 → 2003~ 이어짐(Winnebago IND.·Fleetwood ENT.와 같은 기준)"
 NEW FLYER INDUSTRIES LTD,New Flyer Industries Ltd.,New Flyer Industries Ltd.,35,법인 형태 통일,없음,,,
 "WINNEBAGO IND., INC.","WINNEBAGO IND., INC.","Winnebago Industries, Inc.",35,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — IND.는 INDUSTRIES 약어, 같은 법인"
 Nova Bus,Nova Bus,Nova Bus,34,법인 형태 통일,없음,,,
 Oshkosh Corporation,Oshkosh Corporation,Oshkosh Corporation,34,표기 통일,없음,,,
 SHELLER-GLOBE CORPORATION,SHELLER-GLOBE CORPORATION,SHELLER-GLOBE CORPORATION,34,원문,없음,,,
-"Suzuki Motor of America, Inc.","Suzuki Motor of America, Inc.",American Suzuki Motor Corp.,34,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: American Suzuki(~2012) → Suzuki Motor of America(2013~20) → Suzuki Motor USA(2021~) 이름 승계"
+"Suzuki Motor of America, Inc.","Suzuki Motor of America, Inc.",American Suzuki Motor Corp.,34,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 이름 승계가 아님: American Suzuki Motor Corp.가 2012~13년 파산 절차 중 Suzuki 본사의 완전 자회사 Suzuki Motor of America, Inc.로 자산을 넘김(출처: Wikipedia Suzuki 2013 연표). 둘 다 Suzuki 본사의 미국 법인이라 미국 법인↔본사 같은 묶음 규칙"
 "Triumph Motorcycles America, LTD","Triumph Motorcycles America, LTD","Triumph Motorcycles America, LTD",34,표기 통일,자동,,,
 "CHANCE COACH, INC.","CHANCE COACH, INC.","CHANCE COACH, INC.",33,원문,없음,,,
 DANA CORPORATION,Dana Incorporated,Dana Incorporated,33,법인 형태 통일,없음,,,
@@ -181,14 +181,14 @@ Daimler Trucks North America,Daimler Trucks North America LLC,Daimler Trucks Nor
 "Gillig, LLC",Gillig LLC,Gillig LLC,32,법인 형태 통일,없음,,,
 "Gulf Stream Coach, Inc.","Gulf Stream Coach, Inc.","Gulf Stream Coach, Inc.",32,표기 통일,없음,,,
 Vermeer Manufacturing Company,Vermeer Manufacturing Company,Vermeer Manufacturing Company,32,표기 통일,없음,,,
-Winnebago Towable,Winnebago Towable,Winnebago Towable,32,원문,없음,,,
+Winnebago Towable,Winnebago Towable,Winnebago Towable,32,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Winnebago의 다른 사업 단위(사용자 결정 2026-10-07)"
 "YAMAHA MOTOR CORPORATION, USA","Yamaha Motor Corporation, USA","Yamaha Motor Corporation, USA",32,표기 통일,없음,,,
 Arcimoto Inc,Arcimoto Inc,Arcimoto Inc,31,원문,없음,,,
 "Bentley Motors, Inc.","Bentley Motors, Inc.","Bentley Motors, Inc.",31,법인 형태 통일,없음,,,
 ELDORADO NATIONAL,ELDORADO NATIONAL,ELDORADO NATIONAL,31,법인 형태 통일,없음,,,
 GLAVAL BUS DIVISION,Glaval Bus Division,Glaval Bus Division,31,표기 통일,없음,,,
 Indian Motorcycle Company,Indian Motorcycle Company,Indian Motorcycle Company,31,표기 통일,없음,,,
-"MITSUBISHI FUSO TRUCK OF AMERICA, INC.","Mitsubishi Fuso Truck of America, Inc.","Mitsubishi Fuso Truck of America, Inc.",31,표기 통일,없음,,,
+"MITSUBISHI FUSO TRUCK OF AMERICA, INC.","Mitsubishi Fuso Truck of America, Inc.","Mitsubishi Fuso Truck of America, Inc.",31,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Mitsubishi Motors와 다른 회사(트럭, Daimler Truck 계열)"
 "NORTH AMERICAN BUS INDUSTRIES, INC.","North American Bus Industries, Inc.","North American Bus Industries, Inc.",31,법인 형태 통일,없음,,,
 "AIRSTREAM, INC.","Airstream, Inc.","Airstream, Inc.",30,표기 통일,없음,,,
 "Cummins, Inc.","Cummins, Inc.","Cummins, Inc.",30,표기 통일,없음,,,
@@ -202,9 +202,9 @@ CRANE CARRIER COMPANY,Crane Carrier Company,Crane Carrier Company,29,표기 통�
 "Halcore Group, Inc.","Halcore Group, Inc.","Halcore Group, Inc.",29,원문,없음,,,
 "KTM North America, Inc.","KTM North America, Inc.","KTM North America, Inc.",29,표기 통일,없음,,,
 NEOPLAN USA CORP.,NEOPLAN USA CORP.,NEOPLAN USA CORP.,29,표기 통일,없음,,,
-"NISSAN DIESEL AMERICA, INC","NISSAN DIESEL AMERICA, INC","NISSAN DIESEL AMERICA, INC",29,원문,없음,,,
+"NISSAN DIESEL AMERICA, INC","NISSAN DIESEL AMERICA, INC","NISSAN DIESEL AMERICA, INC",29,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Nissan Motor와 다른 회사(UD Trucks)"
 "PREVOST CARS, INC.","Prevost Cars, Inc.","Prevost Cars, Inc.",29,표기 통일,없음,,,
-"Spartan Fire, LLC","Spartan Fire, LLC","Spartan Fire, LLC",29,원문,없음,,,
+"Spartan Fire, LLC","Spartan Fire, LLC","Spartan Fire, LLC",29,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 2020년 REV Group에 매각된 뒤의 회사(출처: REV Group), Spartan Motors와 다른 회사"
 ALTEC INDUSTRIES INC.,Altec Industries Inc.,Altec Industries Inc.,28,표기 통일,없음,,,
 "BIG DOG MOTORCYCLES, LLC","BIG DOG MOTORCYCLES, LLC","BIG DOG MOTORCYCLES, LLC",28,원문,없음,,,
 GENERAL MOTORS LLC,General Motors LLC,General Motors LLC,28,법인 형태 통일,없음,,,
@@ -231,14 +231,14 @@ Cruiser RV,Cruiser RV,Cruiser RV,24,표기 통일,없음,,,
 "NEW FLYER OF AMERICA, INC.","New Flyer of America, Inc.","New Flyer of America, Inc.",24,표기 통일,없음,,,
 "PORSCHE CARS NORTH AMERICA, INC.","Porsche Cars North America, Inc.","Porsche Cars North America, Inc.",24,표기 통일,자동,,,
 "Ferrara Fire Apparatus, Inc.","Ferrara Fire Apparatus, Inc.","Ferrara Fire Apparatus, Inc.",23,표기 통일,없음,,,
-"Forest River Bus, LLC","Forest River Bus, LLC","Forest River Bus, LLC",23,원문,없음,,,
+"Forest River Bus, LLC","Forest River Bus, LLC","Forest River Bus, LLC",23,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Forest River의 다른 사업 단위(사용자 결정 2026-10-07)"
 "GULF STREAM COACH, INC.","Gulf Stream Coach, Inc.","Gulf Stream Coach, Inc.",23,표기 통일,없음,,,
-"Isuzu Technical Center of America, Inc.","Isuzu Technical Center of America, Inc.","Isuzu Technical Center of America, Inc.",23,원문,없음,,,
+"Isuzu Technical Center of America, Inc.","Isuzu Technical Center of America, Inc.","Isuzu Technical Center of America, Inc.",23,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Isuzu의 미국 기술 법인, 다른 법인(사용자 결정 2026-10-07)"
 Lamborghini (Automobili Lamborghini),Lamborghini (Automobili Lamborghini),Lamborghini (Automobili Lamborghini),23,원문,없음,,,
 "ELDORADO NATIONAL - CALIFORNIA, INC.","Eldorado National- California, Inc.","Eldorado National- California, Inc.",22,표기 통일,없음,,,
 "Eldorado National- California, Inc.","Eldorado National- California, Inc.","Eldorado National- California, Inc.",22,표기 통일,없음,,,
 KELLY SPRINGFIELD TIRE CO,KELLY SPRINGFIELD TIRE CO,KELLY SPRINGFIELD TIRE CO,22,원문,없음,,,
-"Mitsubishi Fuso Truck of America, Inc.","Mitsubishi Fuso Truck of America, Inc.","Mitsubishi Fuso Truck of America, Inc.",22,표기 통일,없음,,,
+"Mitsubishi Fuso Truck of America, Inc.","Mitsubishi Fuso Truck of America, Inc.","Mitsubishi Fuso Truck of America, Inc.",22,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Mitsubishi Motors와 다른 회사(트럭, Daimler Truck 계열)"
 "NATIONAL RV, INC.","NATIONAL RV, INC.","NATIONAL RV, INC.",22,표기 통일,없음,,,
 "PEUGEOT, INC.","PEUGEOT, INC.","PEUGEOT, INC.",22,원문,없음,,,
 STRICK CORPORATION,Strick Corporation,Strick Corporation,22,표기 통일,없음,,,
@@ -253,18 +253,18 @@ Supreme Corporation,Supreme Corporation,Supreme Corporation,21,표기 통일,없
 U.S. BUS CORPORATION,U.S. BUS CORPORATION,U.S. BUS CORPORATION,21,원문,없음,,,
 Cummins Inc.,"Cummins, Inc.","Cummins, Inc.",20,표기 통일,없음,,,
 HYUNDAI MOTOR AMERICA,Hyundai Motor America,Hyundai Motor America,20,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): 리콜 데이터에서 같은 신고 주체가 HYUNDAI MOTOR AMERICA(1986~98) → HYUNDAI MOTOR COMPANY(1999~2014) → Hyundai Motor America(2014~)로 이어짐. 미국 법인↔본사 같은 묶음 규칙. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
-MAZDA MOTOR CORP,MAZDA MOTOR CORP,MAZDA MOTOR CORP,20,원문,없음,,,
+MAZDA MOTOR CORP,MAZDA MOTOR CORP,Mazda North American Operations,20,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 리뷰 반영 — Mazda 본사(Mazda Motor Corporation). 미국 법인↔본사 같은 묶음 규칙(Hyundai Motor Company·Toyota Motor Co.와 같은 기준)"
 Marion Body Works Inc.,Marion Body Works Inc.,Marion Body Works Inc.,20,원문,없음,,,
 "PIERCE MANUFACTURING,INC.",Pierce Manufacturing,Pierce Manufacturing,20,법인 형태 통일,없음,,,
 TRAILMOBILE INC.,TRAILMOBILE INC.,TRAILMOBILE INC.,20,법인 형태 통일,없음,,,
 VOLVO TRUCKS NORTH AMERICA,Volvo Trucks North America,Volvo Trucks North America,20,법인 형태 통일,없음,,,
 Volvo Car USA LLC,"Volvo Car USA, LLC","Volvo Cars of N.A., LLC",20,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: Volvo Cars of N.A.(1990~2015) → Volvo Car USA(2016~), 승용차 같은 신고 주체"
 CATERPILLAR INC.,Caterpillar Inc.,Caterpillar Inc.,19,표기 통일,없음,,,
-CUMMINS ENGINE CO.,CUMMINS ENGINE CO.,"Cummins, Inc.",19,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: CUMMINS ENGINE CO.(1975~2001) → Cummins, Inc.(2003~) 이름 승계"
-"FLEETWOOD RV, INC.","Fleetwood RV, Inc.","Fleetwood RV, Inc.",19,표기 통일,없음,,,
+CUMMINS ENGINE CO.,CUMMINS ENGINE CO.,"Cummins, Inc.",19,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: CUMMINS ENGINE CO.(1975~2001) → Cummins, Inc.(2003~), 2년 공백 있음. 같은 회사의 개명으로 보이나 출처로 대조하지 않음"
+"FLEETWOOD RV, INC.","Fleetwood RV, Inc.","Fleetwood RV, Inc.",19,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Fleetwood Enterprises 파산(2009) 뒤 매각된 브랜드, 다른 회사(사용자 결정 2026-10-07)"
 HYUNDAI CARIBBEAN-PUERTO RICO,HYUNDAI CARIBBEAN-PUERTO RICO,Hyundai Motor America,19,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 유통사 — 현대차 자회사가 아닌 푸에르토리코 독립 유통사(Sojitz 계열, 출처: sojitz.com, NHTSA 10V457)지만 리콜 대상은 현대 차량(Accent 등). 고객사 선례를 찾는 데 쓰려고 브랜드 묶음에 넣음(사용자 결정 2026-10-07: 유통사 리콜은 브랜드 묶음)"
 INDIAN MOTORCYCLE COMPANY,Indian Motorcycle Company,Indian Motorcycle Company,19,표기 통일,없음,,,
-LAND ROVER,LAND ROVER,LAND ROVER,19,원문,자동,,,
+LAND ROVER,LAND ROVER,LAND ROVER,19,원문,자동,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 소유주가 바뀐 브랜드(과거 BMW·Ford), JLR NA와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
 NEWELL COACH CORP.,Newell Coach Corp.,Newell Coach Corp.,19,표기 통일,없음,,,
 New Flyer Industries Ltd.,New Flyer Industries Ltd.,New Flyer Industries Ltd.,19,법인 형태 통일,없음,,,
 TRIUMPH MOTORCYCLES AMERICA LTD,"Triumph Motorcycles America, LTD","Triumph Motorcycles America, LTD",19,표기 통일,자동,,,
@@ -278,7 +278,7 @@ DOREL JUVENILE GROUP,Dorel Juvenile Group,Dorel Juvenile Group,18,표기 통일,
 "DORSEY TRAILERS, INC.","DORSEY TRAILERS, INC.","DORSEY TRAILERS, INC.",18,원문,없음,,,
 GOSHEN COACH,Goshen Coach,Goshen Coach,18,표기 통일,없음,,,
 HOME & PARK MOTORHOMES,HOME & PARK MOTORHOMES,HOME & PARK MOTORHOMES,18,원문,없음,,,
-JAGUAR CARS LTD,JAGUAR CARS,JAGUAR CARS,18,법인 형태 통일,없음,,,
+JAGUAR CARS LTD,JAGUAR CARS,JAGUAR CARS,18,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 소유주가 바뀐 브랜드(과거 Ford 등), JLR NA(2009~)와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
 Rosenbauer America,Rosenbauer America,Rosenbauer America,18,원문,없음,,,
 "TEREX TELELECT, INC.","TEREX TELELECT, INC.","TEREX TELELECT, INC.",18,표기 통일,없음,,,
 Takata Corporation,Takata Corporation,Takata Corporation,18,표기 통일,없음,,,
@@ -292,7 +292,7 @@ Lippert,Lippert,Lippert,17,원문,없음,,,
 NOVA BUS INCORPORATED,Nova Bus,Nova Bus,17,법인 형태 통일,없음,,,
 Orange EV,Orange EV,Orange EV,17,원문,없음,,,
 "Polestar Automotive USA, Inc.","Polestar Automotive USA, Inc.","Polestar Automotive USA, Inc.",17,원문,없음,,,
-"RENAULT USA, INCORPORATED","RENAULT USA, INCORPORATED","RENAULT USA, INCORPORATED",17,원문,자동,확인 완료,필요,"maker_group: 핵심 단어가 하나뿐이라 우연히 같은 이름일 수 있음 | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Renault USA, Inc.와 Renault, Incorporated가 Renault 본사 계열인지 공개 출처로 확인하지 못했고(상표 기록만 있음), 리콜(1966~83)은 결함 설명이 비어 있음"
+"RENAULT USA, INCORPORATED","RENAULT USA, INCORPORATED","RENAULT USA, INCORPORATED",17,원문,자동,확인 완료,필요,"maker_group: 핵심 단어가 하나뿐이라 우연히 같은 이름일 수 있음 | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Renault USA, Inc.와 Renault, Incorporated가 Renault 본사 계열인지 공개 출처로 확인하지 못했고(상표 기록만 있음), 리콜 내용(1966~83)만으로는 두 신고 주체의 관계를 판단할 수 없음"
 STARTRANS BUS CORPORATION,STARTRANS BUS CORPORATION,STARTRANS BUS CORPORATION,17,원문,없음,,,
 TRANSPORTATION MFG. CORP.,TRANSPORTATION MFG. CORP.,TRANSPORTATION MFG. CORP.,17,원문,없음,,,
 Van Hool N.V.,Van Hool N.V.,Van Hool N.V.,17,표기 통일,없음,,,
@@ -330,11 +330,11 @@ CROSSROADS RV,Crossroads RV,Crossroads RV,14,표기 통일,없음,,,
 FMC CORPORATION,FMC CORPORATION,FMC CORPORATION,14,원문,없음,,,
 "Gulf States Toyota, Inc.","Gulf States Toyota, Inc.",Toyota,14,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 유통사 — Toyota 차량 지역 유통사의 리콜. 브랜드 묶음에 넣음(사용자 결정 2026-10-07)"
 "HEARTLAND RECREATIONAL VEHICLES, LLC","Heartland Recreational Vehicles, LLC","Heartland Recreational Vehicles, LLC",14,표기 통일,없음,,,
-"LAND ROVER NORTH AMERICA, INC.","LAND ROVER NORTH AMERICA, INC.",LAND ROVER,14,원문,자동,,,
+"LAND ROVER NORTH AMERICA, INC.","LAND ROVER NORTH AMERICA, INC.",LAND ROVER,14,원문,자동,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 소유주가 바뀐 브랜드(과거 BMW·Ford), JLR NA와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
 "MASERATI NORTH AMERICA, INC.","Maserati North America, Inc.","Maserati North America, Inc.",14,표기 통일,없음,,,
 "TAP Worldwide, LLC","TAP Worldwide, LLC","TAP Worldwide, LLC",14,원문,없음,,,
 TURTLE TOP,Turtle Top,Turtle Top,14,법인 형태 통일,없음,,,
-UTILITY TRAILER MFG. CO.,UTILITY TRAILER MFG. CO.,UTILITY TRAILER MFG. CO.,14,원문,없음,,,
+UTILITY TRAILER MFG. CO.,UTILITY TRAILER MFG. CO.,Utility Trailer Manufacturing Company,14,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 리뷰 반영 — MFG.는 Manufacturing 약어, 데이터 1972~2002 → 2003~ 이어짐"
 WILSON TRAILER COMPANY,Wilson Trailer Company,Wilson Trailer Company,14,표기 통일,없음,,,
 ATWOOD MOBILE PRODUCTS,Atwood Mobile Products,Atwood Mobile Products,13,표기 통일,없음,,,
 "Bombardier Recreational Products, Inc.","Bombardier Recreational Products, Inc.","Bombardier Recreational Products, Inc.",13,표기 통일,없음,,,
@@ -375,7 +375,7 @@ MID BUS CORPORATION,MID BUS CORPORATION,MID BUS CORPORATION,12,법인 형태 통
 "MORryde International, Inc.","MORryde International, Inc.","MORryde International, Inc.",12,원문,없음,,,
 "RANGE ROVER NA., INC.","RANGE ROVER NA., INC.","RANGE ROVER NA., INC.",12,원문,없음,,,
 Roadtrek Inc.,Roadtrek Inc.,Roadtrek Inc.,12,원문,없음,,,
-SPRINTER ENGINEERING & COMPLIANCE SUPPOR,SPRINTER ENGINEERING & COMPLIANCE SUPPOR,SPRINTER ENGINEERING & COMPLIANCE SUPPOR,12,원문,없음,,,
+SPRINTER ENGINEERING & COMPLIANCE SUPPOR,SPRINTER ENGINEERING & COMPLIANCE SUPPOR,SPRINTER ENGINEERING & COMPLIANCE SUPPOR,12,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 'DBA Sprinter'처럼 Mercedes-Benz USA라는 법인명이 신고서에 없어 같은 법인인지 확인 못 함"
 "Seagrave Fire Apparatus, LLC","Seagrave Fire Apparatus, LLC","Seagrave Fire Apparatus, LLC",12,표기 통일,없음,,,
 THOR MOTOR COACH,Thor Motor Coach,Thor Motor Coach,12,표기 통일,없음,,,
 "Terex Advance Mixer, Inc.","Terex Advance Mixer, Inc.","Terex Advance Mixer, Inc.",12,표기 통일,없음,,,
@@ -433,7 +433,7 @@ R-VISION,R-VISION,R-VISION,10,법인 형태 통일,없음,,,
 Ricon Corporation,Ricon Corporation,Ricon Corporation,10,표기 통일,없음,,,
 Starcraft Bus,Starcraft Bus,Starcraft Bus,10,표기 통일,없음,,,
 "Strick Trailers, LLC","Strick Trailers, LLC","Strick Trailers, LLC",10,원문,없음,,,
-"Suzuki Motor USA, LLC","Suzuki Motor USA, LLC",American Suzuki Motor Corp.,10,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: Suzuki Motor of America(~2020) → Suzuki Motor USA(2021~)"
+"Suzuki Motor USA, LLC","Suzuki Motor USA, LLC",American Suzuki Motor Corp.,10,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — Suzuki 브랜드의 미국 법인(데이터: Suzuki Motor of America ~2020 → Suzuki Motor USA 2021~). 두 법인의 관계는 출처로 확인 못 함 — 미국 법인↔본사 같은 묶음 규칙"
 UNION CITY BODY COMPANY,UNION CITY BODY COMPANY,UNION CITY BODY COMPANY,10,법인 형태 통일,없음,,,
 "Volkswagen of America, Inc.","Volkswagen of America, Inc.",Volkswagen,10,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Volkswagen of America와 Volkswagen Group of America는 같은 미국 법인의 이름(개명 연도는 출처로 확인 못 함). 묶음 맞음"
 "WESTERN RV, INC.","WESTERN RV, INC.","WESTERN RV, INC.",10,원문,없음,,,
@@ -449,7 +449,7 @@ Dexter Axle Company,Dexter Axle Company,Dexter Axle Company,9,법인 형태 통�
 Eldorado National-Kansas,Eldorado National- Kansas,Eldorado National- Kansas,9,표기 통일,없음,,,
 FWD CORPORATION,FWD CORPORATION,FWD CORPORATION,9,원문,없음,,,
 GEN MTRS CORP-OVERSEAS,GEN MTRS CORP-OVERSEAS,GEN MTRS CORP-OVERSEAS,9,원문,없음,,,
-ISUZU MANUFACTURING SERVICES OF AMERICA,Isuzu Manufacturing Services of America,Isuzu Manufacturing Services of America,9,표기 통일,없음,,,
+ISUZU MANUFACTURING SERVICES OF AMERICA,Isuzu Manufacturing Services of America,Isuzu Manufacturing Services of America,9,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Isuzu의 미국 생산 지원 법인, 다른 법인(사용자 결정 2026-10-07)"
 "Iowa Mold Tooling Co., Inc.","Iowa Mold Tooling Co., Inc.","Iowa Mold Tooling Co., Inc.",9,원문,없음,,,
 LOTUS CARS OF AMERICA INC,LOTUS CARS OF AMERICA INC,LOTUS CARS OF AMERICA INC,9,원문,없음,,,
 NORTH AMERICAN BUS INDUSTRIES,"North American Bus Industries, Inc.","North American Bus Industries, Inc.",9,법인 형태 통일,없음,,,
@@ -586,13 +586,13 @@ GOODYEAR TIRE & RUBBER COMPANY,Goodyear Tire & Rubber Company,Goodyear Tire & Ru
 HEIL COMPANY,The Heil Co.,The Heil Co.,6,법인 형태 통일,없음,,,
 HENDRICKSON MFG. CO.,HENDRICKSON MFG. CO.,HENDRICKSON MFG. CO.,6,원문,없음,,,
 HOLLAND HITCH COMPANY,HOLLAND HITCH COMPANY,HOLLAND HITCH COMPANY,6,원문,없음,,,
-Isuzu Manufacturing Services of America,Isuzu Manufacturing Services of America,Isuzu Manufacturing Services of America,6,표기 통일,없음,,,
-JAGUAR ROVER TRIUMPH INC.,JAGUAR ROVER TRIUMPH INC.,JAGUAR ROVER TRIUMPH INC.,6,원문,없음,,,
+Isuzu Manufacturing Services of America,Isuzu Manufacturing Services of America,Isuzu Manufacturing Services of America,6,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Isuzu의 미국 생산 지원 법인, 다른 법인(사용자 결정 2026-10-07)"
+JAGUAR ROVER TRIUMPH INC.,JAGUAR ROVER TRIUMPH INC.,JAGUAR ROVER TRIUMPH INC.,6,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 소유주가 바뀐 브랜드(사용자 결정 2026-10-07)"
 Kia Motors Corporation,Kia Motors Corporation,Kia,6,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01)(출처: PR Newswire 2021-05-18). 묶음 맞음, 현대와는 별도 유지"
 Lion Bus Inc.,Lion Bus Inc.,Lion Bus Inc.,6,원문,없음,,,
 MAXZONE AUTO PARTS CORPORATION,Maxzone Auto Parts Corporation,Maxzone Auto Parts Corporation,6,표기 통일,없음,,,
 "MIDLAND BRAKE, INC.","MIDLAND BRAKE, INC.","MIDLAND BRAKE, INC.",6,원문,없음,,,
-"MITSUBISHI FUSO TRK, AMER","MITSUBISHI FUSO TRK, AMER","MITSUBISHI FUSO TRK, AMER",6,원문,없음,,,
+"MITSUBISHI FUSO TRK, AMER","MITSUBISHI FUSO TRK, AMER","MITSUBISHI FUSO TRK, AMER",6,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Mitsubishi Motors와 다른 회사(트럭)"
 New England Wheels,New England Wheels,New England Wheels,6,표기 통일,없음,,,
 Nikola Corporation,Nikola Corporation,Nikola Corporation,6,원문,없음,,,
 PJ Trailers,PJ Trailers,PJ Trailers,6,표기 통일,없음,,,
@@ -648,7 +648,7 @@ Escape Trailer,Escape Trailer,Escape Trailer,5,원문,없음,,,
 "FEDERAL COACH, LLC","Federal Coach, LLC","Federal Coach, LLC",5,표기 통일,없음,,,
 "FLEETWOOD FOLDING TRAILER, INC.",FLEETWOOD FOLDING TRAILER,FLEETWOOD FOLDING TRAILER,5,법인 형태 통일,없음,,,
 "Firefly Integrations, LLC","Firefly Integrations, LLC","Firefly Integrations, LLC",5,원문,없음,,,
-"Fleetwood RV, Inc.","Fleetwood RV, Inc.","Fleetwood RV, Inc.",5,표기 통일,없음,,,
+"Fleetwood RV, Inc.","Fleetwood RV, Inc.","Fleetwood RV, Inc.",5,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Fleetwood Enterprises 파산(2009) 뒤 매각된 브랜드, 다른 회사(사용자 결정 2026-10-07)"
 Freedman Seating Company,Freedman Seating Company,Freedman Seating Company,5,원문,없음,,,
 "GENERAL COACH AMERICA, INC.","GENERAL COACH AMERICA, INC.","GENERAL COACH AMERICA, INC.",5,원문,없음,,,
 GRACO CHILDREN'S PRODUCTS INC,Graco Children's Products Inc.,Graco Children's Products Inc.,5,법인 형태 통일,없음,,,
@@ -657,7 +657,7 @@ H&H Sports Protection,H&H Sports Protection,H&H Sports Protection,5,원문,없�
 HACKNEY,HACKNEY,HACKNEY,5,원문,없음,,,
 HEIL TRAILER INTERNATIONAL,HEIL TRAILER INTERNATIONAL,HEIL TRAILER INTERNATIONAL,5,원문,없음,,,
 HERCULES TIRE & RUBBER COMPANY,Hercules Tire & Rubber Company,Hercules Tire & Rubber Company,5,표기 통일,없음,,,
-HINO DIESEL TRUCKS(USA),HINO DIESEL TRUCKS(USA),"Hino Motors Sales U.S.A., Inc.",5,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: HINO DIESEL TRUCKS(USA)(1986~2000) → Hino Motors Sales U.S.A.(2004~) 이름 승계"
+HINO DIESEL TRUCKS(USA),HINO DIESEL TRUCKS(USA),"Hino Motors Sales U.S.A., Inc.",5,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 둘 다 Hino(트럭)의 미국 법인(데이터: 1986~2000, 2004~ — 4년 공백). 이름 변경 여부는 출처로 확인 못 함 — 미국 법인↔본사 같은 묶음 규칙"
 HOST INDUSTRIES,HOST INDUSTRIES,HOST INDUSTRIES,5,원문,없음,,,
 Hendrickson USA. L.L.C.,Hendrickson USA. L.L.C.,Hendrickson USA. L.L.C.,5,표기 통일,없음,,,
 KENTUCKY MFG. CO.,KENTUCKY MFG. CO.,KENTUCKY MFG. CO.,5,원문,없음,,,
@@ -690,7 +690,7 @@ SALEEN PERFORMANCE INC.,SALEEN PERFORMANCE INC.,SALEEN PERFORMANCE INC.,5,원문
 SUBURBAN MANUFACTURING CO,Suburban Manufacturing CO,Suburban Manufacturing CO,5,표기 통일,없음,,,
 SUTPHEN CORPORATION,Sutphen Corporation,Sutphen Corporation,5,표기 통일,없음,,,
 Silver Eagle Manufacturing Company,Silver Eagle Manufacturing Company,Silver Eagle Manufacturing Company,5,법인 형태 통일,없음,,,
-Spartan ERV,Spartan ERV,Spartan ERV,5,원문,없음,,,
+Spartan ERV,Spartan ERV,Spartan Motors USA,5,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 리뷰 반영 — Spartan ERV는 그 시기(2013~15) Spartan Motors의 소방·응급 차량 자회사들을 묶은 이름(조사 에이전트: Crimson·Classic Fire 자회사). Spartan Chassis와 같은 기준. 2020년 REV Group에 매각된 뒤의 Spartan Fire, LLC는 다른 회사라 묶지 않음"
 "Sumitomo Rubber USA, LLC","Sumitomo Rubber USA, LLC","Sumitomo Rubber USA, LLC",5,원문,없음,,,
 "SynTec Seating Solutions, LLC","SynTec Seating Solutions, LLC","SynTec Seating Solutions, LLC",5,원문,없음,,,
 TRANSCRAFT CORPORATION,Transcraft Corporation,Transcraft Corporation,5,표기 통일,없음,,,
@@ -865,7 +865,7 @@ ADVENTURE MANUFACTURING,ADVENTURE MANUFACTURING,ADVENTURE MANUFACTURING,3,원문
 "AFX NORTH AMERICA, INC.","AFX North America, Inc.","AFX North America, Inc.",3,표기 통일,없음,,,
 ALLISON,ALLISON,ALLISON,3,원문,없음,,,
 ALUMINUM TRAILER COMPANY,Aluminum Trailer Company,Aluminum Trailer Company,3,표기 통일,없음,,,
-AM GENERAL LLC,AM GENERAL CORPORATION,AM GENERAL CORPORATION,3,법인 형태 통일,없음,,,
+AM GENERAL LLC,AM GENERAL CORPORATION,AM GENERAL CORPORATION,3,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — General Motors와 다른 회사"
 AMERICAN,AMERICAN,AMERICAN,3,원문,없음,,,
 "AMERICAN CAR CARE CENTERS, INC.","AMERICAN CAR CARE CENTERS, INC.","AMERICAN CAR CARE CENTERS, INC.",3,원문,없음,,,
 AMERICAN RACING WHEELS,AMERICAN RACING WHEELS,AMERICAN RACING WHEELS,3,원문,없음,,,
@@ -945,7 +945,7 @@ Emerson Process Mgmt Regulator Tech. Inc,Emerson Process Mgmt Regulator Tech. In
 "Excellance, Inc","Excellance, Inc","Excellance, Inc",3,원문,없음,,,
 FALKEN TIRE CORPORATION,FALKEN TIRE CORPORATION,FALKEN TIRE CORPORATION,3,원문,없음,,,
 FONTAINE TRAILER COMPANY,Fontaine Trailer Company,Fontaine Trailer Company,3,법인 형태 통일,없음,,,
-FORD MTR CO-OVERSEAS,FORD MTR CO-OVERSEAS,FORD MTR CO-OVERSEAS,3,원문,없음,,,
+FORD MTR CO-OVERSEAS,FORD MTR CO-OVERSEAS,FORD MTR CO-OVERSEAS,3,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Ford 해외 부문으로 보이나 출처로 확인 못 함(CHRYSLER CORP-OVERSEAS와 같은 기준)"
 "Fabform Industries, INC.","Fabform Industries, INC.","Fabform Industries, INC.",3,원문,없음,,,
 Fuel Helmets,Fuel Helmets,Fuel Helmets,3,원문,없음,,,
 GATES,The Gates Corporation,The Gates Corporation,3,법인 형태 통일,없음,,,
@@ -1437,7 +1437,7 @@ Manac Inc.,Manac Inc.,Manac Inc.,2,법인 형태 통일,없음,,,
 Manning Equipment Inc. LLC,Manning Equipment Inc. LLC,Manning Equipment Inc. LLC,2,원문,없음,,,
 Maxzone Auto Parts Corporation,Maxzone Auto Parts Corporation,Maxzone Auto Parts Corporation,2,표기 통일,없음,,,
 Meritor Wabco Vehicle Control Systems,Meritor Wabco Vehicle Control Systems,Meritor Wabco Vehicle Control Systems,2,표기 통일,없음,,,
-"Monaco RV, LLC","Monaco RV, LLC","Monaco RV, LLC",2,표기 통일,없음,,,
+"Monaco RV, LLC","Monaco RV, LLC","Monaco RV, LLC",2,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Monaco Coach 파산(2009) 뒤 매각된 브랜드, 다른 회사(사용자 결정 2026-10-07)"
 Morgan 3 Wheeler Limited,Morgan 3 Wheeler Limited,Morgan 3 Wheeler Limited,2,원문,없음,,,
 "Motorcar Parts of America, Inc.","Motorcar Parts of America, Inc.","Motorcar Parts of America, Inc.",2,원문,없음,,,
 N.A.PHILIPS LTG.CORP.,N.A.PHILIPS LTG.CORP.,N.A.PHILIPS LTG.CORP.,2,원문,없음,,,
@@ -1570,7 +1570,7 @@ Sentury Tire Thailand,Sentury Tire Thailand,Sentury Tire Thailand,2,원문,없�
 Shred-Tech Corporation,Shred-Tech Corporation,Shred-Tech Corporation,2,원문,없음,,,
 Silverstone Associates LLC,Silverstone Associates LLC,Silverstone Associates LLC,2,원문,없음,,,
 Snake River Trailer Company,Snake River Trailer Company,Snake River Trailer Company,2,표기 통일,없음,,,
-"Spartan Chassis, Inc.","Spartan Chassis, Inc.",Spartan Motors USA,2,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Spartan Chassis는 Spartan Motors의 자회사 Spartan Motors Chassis, Inc.의 약칭(출처: SEC 10-K). 데이터: SPARTAN MOTORS(~2003) → CHASSIS(2004~12) → Spartan Motors(2011~)"
+"Spartan Chassis, Inc.","Spartan Chassis, Inc.",Spartan Motors USA,2,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Spartan Chassis는 Spartan Motors의 자회사 Spartan Motors Chassis, Inc.의 약칭(출처: SEC 10-K, 조사 에이전트 확인) — 이름 승계가 아니라 모자 관계(데이터상 2011~12 겹침). 그 시기 Spartan Motors 계열이라 같은 묶음"
 "Spyder Controls, Corp","Spyder Controls, Corp","Spyder Controls, Corp",2,원문,없음,,,
 Stanley Assembly Technologies,Stanley Assembly Technologies,Stanley Assembly Technologies,2,원문,없음,,,
 Streamline Industries Incorporated,Streamline Industries Incorporated,Streamline Industries Incorporated,2,원문,없음,,,
@@ -2107,7 +2107,7 @@ CONSUMERS UNION,CONSUMERS UNION,CONSUMERS UNION,1,원문,없음,,,
 "CONTEMPO CAMPERS, INC.","CONTEMPO CAMPERS, INC.","CONTEMPO CAMPERS, INC.",1,원문,없음,,,
 CONTINENTAL AUTOMOTIVE SYSTEMS,"Continental Automotive Systems, Inc.","Continental Automotive Systems, Inc.",1,법인 형태 통일,없음,,,
 "CONTINENTAL TIRE THE AMERICAS, LLC.","Continental Tire the Americas, LLC.","Continental Tire the Americas, LLC.",1,표기 통일,없음,,,
-COOPER STANDARD AUTOMOTIVE,COOPER STANDARD AUTOMOTIVE,COOPER STANDARD AUTOMOTIVE,1,원문,없음,,,
+COOPER STANDARD AUTOMOTIVE,COOPER STANDARD AUTOMOTIVE,COOPER STANDARD AUTOMOTIVE,1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Cooper Tire와 다른 회사"
 COPCO STEEL & ENG. CO.,COPCO STEEL & ENG. CO.,COPCO STEEL & ENG. CO.,1,원문,없음,,,
 CORDER MANUFACTURING COMP,CORDER MANUFACTURING COMP,CORDER MANUFACTURING COMP,1,원문,없음,,,
 "COREY ENTERPRISES, INC.","COREY ENTERPRISES, INC.","COREY ENTERPRISES, INC.",1,원문,없음,,,
@@ -2691,7 +2691,7 @@ JACK A. HELMS CO.,JACK A. HELMS CO.,JACK A. HELMS CO.,1,원문,없음,,,
 "JACOBS VEHICLE SYSTEMS, INC.","JACOBS VEHICLE SYSTEMS, INC.","JACOBS VEHICLE SYSTEMS, INC.",1,원문,없음,,,
 JACOBSEN TRAILER INC.,JACOBSEN TRAILER INC.,JACOBSEN TRAILER INC.,1,원문,없음,,,
 "JAG MOBILE SOLUTIONS, INC.","JAG MOBILE SOLUTIONS, INC.","JAG MOBILE SOLUTIONS, INC.",1,원문,없음,,,
-"JAGUAR MOTORS, INC.","JAGUAR MOTORS, INC.","JAGUAR MOTORS, INC.",1,원문,없음,,,
+"JAGUAR MOTORS, INC.","JAGUAR MOTORS, INC.","JAGUAR MOTORS, INC.",1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 관계 확인 못 함"
 "JAMCO INTERNATIONAL, INC.","JAMCO INTERNATIONAL, INC.","JAMCO INTERNATIONAL, INC.",1,원문,없음,,,
 JANNELL & SONS BODY CO.,JANNELL & SONS BODY CO.,JANNELL & SONS BODY CO.,1,원문,없음,,,
 JDM ASTAR LLC,JDM ASTAR LLC,JDM ASTAR LLC,1,원문,없음,,,
@@ -2948,7 +2948,7 @@ MOBILITY CONQUEST LLC,MOBILITY CONQUEST LLC,MOBILITY CONQUEST LLC,1,원문,없�
 MODERN IND. MELBOURNE INC,MODERN IND. MELBOURNE INC,MODERN IND. MELBOURNE INC,1,원문,없음,,,
 MODULAR AMBULANCE CORP.,MODULAR AMBULANCE CORP.,MODULAR AMBULANCE CORP.,1,원문,없음,,,
 "MOMO AUTOMOTIVE ACCESSORIES, INC.","MOMO AUTOMOTIVE ACCESSORIES, INC.","MOMO AUTOMOTIVE ACCESSORIES, INC.",1,원문,없음,,,
-"MONACO RV, LLC","Monaco RV, LLC","Monaco RV, LLC",1,표기 통일,없음,,,
+"MONACO RV, LLC","Monaco RV, LLC","Monaco RV, LLC",1,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Monaco Coach 파산(2009) 뒤 매각된 브랜드, 다른 회사(사용자 결정 2026-10-07)"
 MONARCH SPORT SYSTEM,MONARCH SPORT SYSTEM,MONARCH SPORT SYSTEM,1,원문,없음,,,
 MONROE TRUCK EQUIPMENT,Monroe Truck Equipment,Monroe Truck Equipment,1,표기 통일,없음,,,
 "MOODY MFG., INC.","MOODY MFG., INC.","MOODY MFG., INC.",1,원문,없음,,,
@@ -3252,7 +3252,7 @@ REGENCY CONVERSIONS INC.,"REGENCY CONVERSIONS, INC.","REGENCY CONVERSIONS, INC."
 "REITNOUER, INC.","Reitnouer, Inc.","Reitnouer, Inc.",1,표기 통일,없음,,,
 RELIANCE HEAVY DUTY TRAILERS,RELIANCE HEAVY DUTY TRAILERS,RELIANCE HEAVY DUTY TRAILERS,1,원문,없음,,,
 "REMY POWER PRODUCTS, LLP","REMY POWER PRODUCTS, LLP","REMY POWER PRODUCTS, LLP",1,원문,없음,,,
-"RENAULT, INCORPORATED","RENAULT, INCORPORATED","RENAULT, INCORPORATED",1,원문,자동,확인 완료,필요,"maker_group: 핵심 단어가 하나뿐이라 우연히 같은 이름일 수 있음 | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Renault USA, Inc.와 Renault, Incorporated가 Renault 본사 계열인지 공개 출처로 확인하지 못했고(상표 기록만 있음), 리콜(1966~83)은 결함 설명이 비어 있음"
+"RENAULT, INCORPORATED","RENAULT, INCORPORATED","RENAULT, INCORPORATED",1,원문,자동,확인 완료,필요,"maker_group: 핵심 단어가 하나뿐이라 우연히 같은 이름일 수 있음 | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Renault USA, Inc.와 Renault, Incorporated가 Renault 본사 계열인지 공개 출처로 확인하지 못했고(상표 기록만 있음), 리콜 내용(1966~83)만으로는 두 신고 주체의 관계를 판단할 수 없음"
 RESTYLING CONCEPTS,RESTYLING CONCEPTS,RESTYLING CONCEPTS,1,원문,없음,,,
 REX-STROLL-O-CHAIR,REX-STROLL-O-CHAIR,REX-STROLL-O-CHAIR,1,원문,없음,,,
 REXWORKS INC.,REXWORKS INC.,REXWORKS INC.,1,원문,없음,,,
@@ -3315,7 +3315,7 @@ Rock Run Industies,Rock Run Industies,Rock Run Industies,1,원문,없음,,,
 Rockford Corporation,Rockford Corporation,Rockford Corporation,1,원문,없음,,,
 "Rocky Mountain ATV/MC, Inc.","Rocky Mountain ATV/MC, Inc.","Rocky Mountain ATV/MC, Inc.",1,원문,없음,,,
 "RockyMounts, Inc.","RockyMounts, Inc.","RockyMounts, Inc.",1,원문,없음,,,
-"Rolls-Royce Motor Cars, Ltd.","Rolls-Royce Motor Cars, Ltd.","Rolls-Royce Motor Cars, Ltd.",1,원문,없음,,,
+"Rolls-Royce Motor Cars, Ltd.","Rolls-Royce Motor Cars, Ltd.","Rolls-Royce Motor Cars, Ltd.",1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — ROLLS-ROYCE MOTORS와 소유 회사가 다른 회사(BMW 계열)"
 Rollx Vans,Rollx Vans,Rollx Vans,1,원문,없음,,,
 "Rush Truck Centers of Texas, LP","Rush Truck Centers of Texas, LP","Rush Truck Centers of Texas, LP",1,원문,없음,,,
 S&C AUTOMOTIVE,S&C AUTOMOTIVE,S&C AUTOMOTIVE,1,원문,없음,,,
@@ -3498,7 +3498,7 @@ Southeast Apparatus,Southeast Apparatus,Southeast Apparatus,1,원문,없음,,,
 Southern Pride Distributing LLC,Southern Pride Distributing LLC,Southern Pride Distributing LLC,1,원문,없음,,,
 Southwest Products,Southwest Products,Southwest Products,1,원문,없음,,,
 "Space Craft Mfg., Inc.",Space Craft MFG,Space Craft MFG,1,법인 형태 통일,없음,,,
-"Spartan Tool, LLC","Spartan Tool, LLC","Spartan Tool, LLC",1,원문,없음,,,
+"Spartan Tool, LLC","Spartan Tool, LLC","Spartan Tool, LLC",1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Spartan Motors와 관계 확인 못 함"
 "Special Fleet Service, Inc.","Special Fleet Service, Inc.","Special Fleet Service, Inc.",1,원문,없음,,,
 Specialty Products Company,Specialty Products Company,Specialty Products Company,1,원문,없음,,,
 Speedtech LLC,Speedtech LLC,Speedtech LLC,1,원문,없음,,,
@@ -3856,7 +3856,7 @@ Williamsen-Godwin Truck Body Company LLC,Williamsen-Godwin Truck Body Company LL
 Wilson Manifolds Inc,Wilson Manifolds Inc,Wilson Manifolds Inc,1,원문,없음,,,
 Wilwood Engineering,Wilwood Engineering,Wilwood Engineering,1,원문,없음,,,
 Winkelmann Flowform Technology LP,Winkelmann Flowform Technology LP,Winkelmann Flowform Technology LP,1,원문,없음,,,
-"Winnebago of Indiana, LLC","Winnebago of Indiana, LLC","Winnebago of Indiana, LLC",1,원문,없음,,,
+"Winnebago of Indiana, LLC","Winnebago of Indiana, LLC","Winnebago of Indiana, LLC",1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Winnebago의 자회사(사용자 결정 2026-10-07)"
 Woodstock Safety Mirror Co.,Woodstock Safety Mirror Co.,Woodstock Safety Mirror Co.,1,원문,없음,,,
 Workhorse Group Inc.,Workhorse Group Inc.,Workhorse Group Inc.,1,원문,없음,,,
 "Worldwide Distribution, LLLP","Worldwide Distribution, LLLP","Worldwide Distribution, LLLP",1,원문,없음,,,
