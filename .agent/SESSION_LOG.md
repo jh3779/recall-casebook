@@ -63,3 +63,4 @@
 - 2026-10-07: PR #22 병합(d1019a5, DEC-032), HANDOFF에 #22 후속(할 일 25 갱신·26 추가)·DEC-032 인용 정정
 - 2026-10-07: 573 전체 수집 하기로 결정(사용자) — rclrpt 보강(재시도·중간 저장·불완전 파일 차단·poppler 확인, 테스트 12개 추가). 이 PC의 pdftotext가 xpdf라 poppler 설치 전에는 실행 불가
 - 2026-10-07: poppler 25.07.0 설치(winget)·기준 표본 재현(205/95/0, 행 동일), write_jsonl을 LF로 고정(Windows CRLF 해시 불일치 방지)
+- 2026-10-07: PR #32 Codex 리뷰 반영 — all은 --expect-campaigns 필수, pdftotext -enc UTF-8·바이트 해독, 손상 PDF 격리·비PDF 응답 거부, 실패 시 이전 완성본 구분. 파일럿 1,000건(15.5분, 읽음 999·실패 1)

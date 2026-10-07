@@ -4,7 +4,7 @@
     uv run python -m scripts.defect_precedent.rclrpt sample 300   # 무작위 표본 N건 (기본 시드 20261006)
     uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defect_precedent/baseline_2026-10-06.json  # 기준 표본 그대로
     uv run python -m scripts.defect_precedent.rclrpt sample 1000 --out data/processed/defect/causes_pilot_1000.jsonl  # 파일럿 (표본 파일을 덮어쓰지 않는다)
-    uv run python -m scripts.defect_precedent.rclrpt all          # 전체 (약 1.2만 건, 수 시간)
+    uv run python -m scripts.defect_precedent.rclrpt all --expect-campaigns 11737   # 전체 (수 시간) — 기대 캠페인 수는 필수
 
 먼저 `scripts.defect_precedent.nhtsa build`로 recalls.jsonl을 만들어 둔다.
 PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew install poppler`).
@@ -15,6 +15,8 @@ PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew ins
 - 긴 실행에 대비한다: 일시적인 오류(연결 끊김·타임아웃·5xx·429)는 간격을 늘려 다시 시도하고, 이미 받은 PDF는 건너뛰므로
   중간에 끊겨도 다시 실행하면 이어서 한다. 100건마다 진행률을, 200건마다 `*.partial.jsonl`에 중간 결과를 쓴다.
   Ctrl+C로 멈춰도 `*.partial.jsonl`만 남긴다.
+- `all` 모드는 시작할 때 목록에서 얻은 수집 대상 수가 `--expect-campaigns N`과 같은지 먼저 확인한다 (서버가 빈 목록이나
+  일부 연도만 돌려줘도 완성본처럼 보이는 것을 막는다). N은 같은 실행 앞부분이 출력하는 "그중 … 접수·리콜 파일에 있음" 값이다.
 - `all` 모드는 **실패가 하나도 없을 때만** `causes.jsonl`을 만든다 (일부만 담긴 파일이 완성본으로 올라가는 것을 막는다).
   실패가 있으면 `causes.partial.jsonl`과 `causes_failures.jsonl`만 남기니, 원인을 보고 다시 실행한다 (실패한 건만 다시 받는다).
 - 시점 평가에서는 질문 기준일 이전 판본만 써야 한다 (docs/기획_결함선례.md 6절) — 여기서는 최신 판본만 만든다.
@@ -164,8 +166,8 @@ def require_poppler() -> str:
     xpdf 같은 다른 pdftotext는 출력 인코딩(UTF-8이 아님)과 줄 배치가 달라 기준 데이터와 다른 값을 만든다.
     그런 도구로는 시작하지 않는다 (기준 표본 205/95를 재현하지 못한다).
     """
-    result = subprocess.run(["pdftotext", "-v"], capture_output=True, text=True, check=False)
-    banner = (result.stdout or "") + (result.stderr or "")
+    result = subprocess.run(["pdftotext", "-v"], capture_output=True, check=False)
+    banner = (result.stdout + result.stderr).decode("utf-8", errors="replace")
     if "poppler" not in banner.lower():
         first = banner.strip().splitlines()[0] if banner.strip() else "(버전을 읽지 못함)"
         sys.exit(
@@ -176,15 +178,27 @@ def require_poppler() -> str:
     return banner.strip().splitlines()[0]
 
 
+def _quarantine(path: Path) -> None:
+    """읽지 못한 PDF를 `.bad`로 옮긴다 — 같은 이름으로 남으면 다음 실행이 "이미 받음"으로 건너뛰어 계속 실패한다."""
+    if path.exists():
+        path.replace(path.with_name(path.name + ".bad"))
+
+
 def _pdf_text(path: Path) -> str:
+    # 출력을 UTF-8로 고정하고 바이트로 받아 직접 해독한다 — 컴퓨터의 기본 문자 인코딩(Windows는 cp949 등)에 기대면
+    # 같은 PDF가 환경마다 다른 글자(또는 조용히 깨진 글자)가 된다
     result = subprocess.run(
-        ["pdftotext", "-layout", str(path), "-"], capture_output=True, text=True, check=False
+        ["pdftotext", "-enc", "UTF-8", "-layout", str(path), "-"], capture_output=True, check=False
     )
     if result.returncode != 0:
-        raise ReportError(f"pdftotext 실패({result.returncode}): {path.name}")
-    if result.stdout is None:  # 출력을 UTF-8로 읽지 못하면 None이 된다 — "글자 없는 PDF"와 구분한다
-        raise ReportError(f"pdftotext 출력을 UTF-8로 읽지 못함: {path.name}")
-    return result.stdout  # 글자 없는 이미지 PDF면 빈 문자열
+        _quarantine(path)
+        raise ReportError(
+            f"pdftotext 실패({result.returncode}): {path.name} — 파일을 .bad로 옮겼다 (다시 실행하면 다시 받는다)"
+        )
+    try:
+        return result.stdout.decode("utf-8")  # 글자 없는 이미지 PDF면 빈 문자열
+    except UnicodeDecodeError as e:
+        raise ReportError(f"pdftotext 출력을 UTF-8로 읽지 못함: {path.name} ({e.reason})") from e
 
 
 def _download(key: str) -> Path:
@@ -194,12 +208,17 @@ def _download(key: str) -> Path:
         req = urllib.request.Request(LIST_URL + key, headers=UA)
         part = path.with_name(path.name + ".part")
         try:
-            part.write_bytes(_get(req))
+            data = _get(req)
         except (
             OSError,
             http.client.HTTPException,
         ) as e:  # 다시 시도해도 안 되면 (IncompleteRead 포함)
             raise ReportError(f"다운로드 실패: {key} ({e})") from e
+        if not data.startswith(
+            b"%PDF"
+        ):  # 서버가 오류 문서(HTML 등)를 200으로 돌려주면 PDF 이름으로 저장하지 않는다
+            raise ReportError(f"PDF가 아닌 응답: {key} ({len(data):,}바이트)")
+        part.write_bytes(data)
         part.replace(path)
         time.sleep(REQUEST_GAP_SEC)
     return path
@@ -255,7 +274,12 @@ def run(
     seed: int = DEFAULT_SEED,
     baseline: Path | None = None,
     out: Path | None = None,
+    expect_campaigns: int | None = None,
 ) -> None:
+    if mode == "all" and expect_campaigns is None:
+        sys.exit(
+            "all은 --expect-campaigns N(기대 캠페인 수)이 필요하다 — 목록이 불완전해도 완성본처럼 보이는 것을 막기 위해서다"
+        )
     if shutil.which("pdftotext") is None:
         sys.exit(
             "pdftotext가 없다 — poppler를 설치한다 (macOS: brew install poppler, Windows: winget install oschwartz10612.Poppler)"
@@ -284,12 +308,19 @@ def run(
             reports = list_reports(range(2014, datetime.now().year + 1))
         except (OSError, http.client.HTTPException) as e:
             sys.exit(f"파일 목록 조회에 실패했다 — 네트워크를 확인하고 다시 실행한다 ({e})")
+        if not reports:
+            sys.exit("파일 목록이 비어 있다 — 서버 응답을 확인하고 다시 실행한다")
         eligible = sorted(c for c in reports if received.get(c, "") >= RCLRPT_FROM)
         missing = sum(1 for c in reports if c not in received)
         print(
             f"보고서가 있는 리콜 {len(reports):,}, 그중 {RCLRPT_FROM} 이후 접수·리콜 파일에 있음 {len(eligible):,}"
         )
         print(f"(리콜 파일에 없는 보고서 {missing:,} — 2026-10-06: 11,856 / 11,734 / 66)")
+        if mode == "all" and len(eligible) != expect_campaigns:
+            sys.exit(
+                f"수집 대상이 {len(eligible):,}개 캠페인이다 — 기대 {expect_campaigns:,}개와 다르다 "
+                "(목록이 불완전하거나 NHTSA 데이터가 바뀐 것일 수 있다. 확인한 뒤 기대 값을 고쳐 다시 실행한다)"
+            )
         picked = random.Random(seed).sample(eligible, n) if mode == "sample" else eligible
         expected_sha = {}
 
@@ -370,10 +401,18 @@ def run(
         print(
             f"  실패 목록: {failures_path.name} — 원인을 보고 같은 명령을 다시 실행한다 (받은 PDF는 건너뛴다)"
         )
+        if out_path.exists():
+            print(
+                f"  주의: 이전 실행의 {out_path.name}이 그대로 남아 있다 — 이번 실행 결과가 아니다"
+            )
         sys.exit(130 if interrupted else 1)
     write_jsonl(out_path, rows)
     write_jsonl(failures_path, failures)
     partial_path.unlink(missing_ok=True)
+    if mode == "all":
+        print(
+            f"  완성본 {len(rows):,}줄 — 올릴 때: load_db load --causes full --expect-rows {len(rows)}"
+        )
     manual_used = sum(1 for r in rows if r["resolution"] == "manual")
     print(
         f"원인 칸: 채워짐 {counts['filled']} / 비어 있음 {counts['empty']} / 칸 없음 {counts['no_field']}"
@@ -395,9 +434,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--out", type=Path, help="결과 파일 (기본: causes_sample.jsonl / causes.jsonl)"
     )
+    parser.add_argument(
+        "--expect-campaigns",
+        type=int,
+        help="all 모드의 기대 캠페인 수 (목록과 다르면 시작 전에 중단)",
+    )
     args = parser.parse_args()
     if args.mode == "all" and args.baseline is not None:
         parser.error("--baseline은 sample 모드에서만 쓴다")
+    if args.mode == "all" and args.expect_campaigns is None:
+        parser.error("all은 --expect-campaigns N(기대 캠페인 수)이 필요하다")
+    if args.mode != "all" and args.expect_campaigns is not None:
+        parser.error("--expect-campaigns는 all 모드에서만 쓴다")
     if args.baseline is not None and not args.baseline.exists():
         parser.error(f"기준 파일이 없다: {args.baseline}")
-    run(args.mode, n=args.n, baseline=args.baseline, out=args.out)
+    run(
+        args.mode,
+        n=args.n,
+        baseline=args.baseline,
+        out=args.out,
+        expect_campaigns=args.expect_campaigns,
+    )

@@ -137,7 +137,7 @@ def test_run_all_writes_complete_file_and_no_partial(env, monkeypatch, capsys):
     monkeypatch.setattr(
         rclrpt, "latest_parsed", lambda keys, manual=None: (keys[0], parsed(keys[0].split("-")[1]))
     )
-    rclrpt.run("all")
+    rclrpt.run("all", expect_campaigns=5)
     assert [r["campaign"] for r in lines(env / "causes.jsonl")] == CAMPAIGNS
     assert not (env / "causes.partial.jsonl").exists()
     assert lines(env / "causes_failures.jsonl") == []
@@ -153,7 +153,7 @@ def test_run_all_with_a_failure_never_creates_the_complete_file(env, monkeypatch
 
     monkeypatch.setattr(rclrpt, "latest_parsed", fake)
     with pytest.raises(SystemExit) as e:
-        rclrpt.run("all")
+        rclrpt.run("all", expect_campaigns=5)
     assert e.value.code == 1
     assert not (env / "causes.jsonl").exists()  # 일부만 담긴 파일이 완성본 이름으로 남지 않는다
     assert len(lines(env / "causes.partial.jsonl")) == 4
@@ -172,9 +172,9 @@ def test_rerun_after_failure_completes_and_clears_partial(env, monkeypatch):
 
     monkeypatch.setattr(rclrpt, "latest_parsed", fake)
     with pytest.raises(SystemExit):
-        rclrpt.run("all")
+        rclrpt.run("all", expect_campaigns=5)
     broken["on"] = False  # 원인이 사라진 뒤 같은 명령을 다시 실행
-    rclrpt.run("all")
+    rclrpt.run("all", expect_campaigns=5)
     assert len(lines(env / "causes.jsonl")) == 5
     assert not (env / "causes.partial.jsonl").exists()
     assert lines(env / "causes_failures.jsonl") == []
@@ -189,7 +189,7 @@ def test_unexpected_error_is_recorded_and_the_run_continues(env, monkeypatch):
 
     monkeypatch.setattr(rclrpt, "latest_parsed", fake)
     with pytest.raises(SystemExit):
-        rclrpt.run("all")
+        rclrpt.run("all", expect_campaigns=5)
     failure = lines(env / "causes_failures.jsonl")[0]
     assert failure["campaign"] == "24V002" and "ValueError" in failure["error"]
     assert len(lines(env / "causes.partial.jsonl")) == 4  # 나머지는 계속 읽었다
@@ -207,7 +207,7 @@ def test_interrupt_keeps_only_a_partial_file(env, monkeypatch):
 
     monkeypatch.setattr(rclrpt, "latest_parsed", fake)
     with pytest.raises(SystemExit) as e:
-        rclrpt.run("all")
+        rclrpt.run("all", expect_campaigns=5)
     assert e.value.code == 130
     assert not (env / "causes.jsonl").exists()
     assert [r["campaign"] for r in lines(env / "causes.partial.jsonl")] == seen == CAMPAIGNS[:3]
@@ -223,7 +223,7 @@ def test_checkpoint_is_written_while_running(env, monkeypatch):
         return keys[0], parsed(campaign)
 
     monkeypatch.setattr(rclrpt, "latest_parsed", fake)
-    rclrpt.run("all")
+    rclrpt.run("all", expect_campaigns=5)
     # 2건마다 중간 저장 → 3번째 건을 읽을 때 앞의 2건이 이미 저장돼 있다
     assert dict(snapshots)["24V003"] == 2 and dict(snapshots)["24V005"] == 4
 
@@ -241,16 +241,20 @@ def test_sample_mode_with_out_does_not_touch_the_baseline_sample_file(env, monke
 
 
 class Completed:
-    def __init__(self, stdout="", stderr="", returncode=0):
+    """subprocess.run의 가짜 결과 — 실제처럼 stdout·stderr는 바이트다 (글자 해독은 코드가 직접 UTF-8로 한다)."""
+
+    def __init__(self, stdout=b"", stderr=b"", returncode=0):
         self.stdout, self.stderr, self.returncode = stdout, stderr, returncode
 
 
 def test_require_poppler_accepts_poppler_and_rejects_other_pdftotext(monkeypatch):
     poppler = "pdftotext version 25.07.0\nCopyright 2005-2025 The Poppler Developers - http://poppler.freedesktop.org"
-    monkeypatch.setattr(rclrpt.subprocess, "run", lambda *a, **k: Completed(stderr=poppler))
+    monkeypatch.setattr(
+        rclrpt.subprocess, "run", lambda *a, **k: Completed(stderr=poppler.encode())
+    )
     assert rclrpt.require_poppler() == "pdftotext version 25.07.0"
     xpdf = "pdftotext version 4.06 [www.xpdfreader.com]\nCopyright 1996-2025 Glyph & Cog, LLC"
-    monkeypatch.setattr(rclrpt.subprocess, "run", lambda *a, **k: Completed(stderr=xpdf))
+    monkeypatch.setattr(rclrpt.subprocess, "run", lambda *a, **k: Completed(stderr=xpdf.encode()))
     with pytest.raises(SystemExit) as e:
         rclrpt.require_poppler()
     assert "poppler가 아니다" in str(e.value) and "4.06" in str(e.value)
@@ -262,17 +266,119 @@ def test_run_stops_before_reading_anything_when_pdftotext_is_not_poppler(env, mo
     monkeypatch.setattr(
         rclrpt.subprocess,
         "run",
-        lambda *a, **k: Completed(stderr="pdftotext version 4.06 [www.xpdfreader.com]"),
+        lambda *a, **k: Completed(stderr=b"pdftotext version 4.06 [www.xpdfreader.com]"),
     )
     with pytest.raises(SystemExit) as e:
-        rclrpt.run("all")
+        rclrpt.run("all", expect_campaigns=5)
     assert "poppler가 아니다" in str(e.value)
 
 
-def test_pdf_text_reports_undecodable_output_instead_of_returning_none(monkeypatch, tmp_path):
-    monkeypatch.setattr(rclrpt.subprocess, "run", lambda *a, **k: Completed(stdout=None))
-    with pytest.raises(rclrpt.ReportError):
+def test_pdf_text_decodes_utf8_itself_regardless_of_the_computer_encoding(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append((cmd, kwargs))
+        return Completed(stdout="결함 원인: 실링 재질".encode())
+
+    monkeypatch.setattr(rclrpt.subprocess, "run", fake_run)
+    assert rclrpt._pdf_text(tmp_path / "x.PDF") == "결함 원인: 실링 재질"
+    cmd, kwargs = calls[0]
+    assert cmd[:3] == ["pdftotext", "-enc", "UTF-8"]  # poppler 출력 인코딩을 UTF-8로 고정
+    assert (
+        "text" not in kwargs and "encoding" not in kwargs
+    )  # 컴퓨터 기본 인코딩(cp949 등)으로 읽지 않는다
+
+
+def test_pdf_text_turns_invalid_utf8_into_a_report_error(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        rclrpt.subprocess, "run", lambda *a, **k: Completed(stdout=b"ok \xa7 broken")
+    )
+    with pytest.raises(rclrpt.ReportError, match="UTF-8로 읽지 못함"):
         rclrpt._pdf_text(tmp_path / "x.PDF")
+
+
+def test_pdf_text_failure_quarantines_the_file_so_the_next_run_downloads_it_again(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(rclrpt, "PDF_DIR", tmp_path)
+    monkeypatch.setattr(rclrpt.time, "sleep", lambda s: None)
+    bad = tmp_path / "RCLRPT-24V001-0001.PDF"
+    bad.write_bytes(b"%PDF-1.4 truncated")
+    monkeypatch.setattr(rclrpt.subprocess, "run", lambda *a, **k: Completed(returncode=1))
+    with pytest.raises(rclrpt.ReportError):
+        rclrpt._pdf_text(bad)
+    assert not bad.exists() and (tmp_path / "RCLRPT-24V001-0001.PDF.bad").exists()
+    # 다음 실행: 파일이 없으므로 _download가 다시 받는다
+    calls = script_urlopen(monkeypatch, [b"%PDF-1.4 good"])
+    assert rclrpt._download("odi/rcl/2024/RCLRPT-24V001-0001.PDF").read_bytes() == b"%PDF-1.4 good"
+    assert len(calls) == 1
+
+
+def test_download_rejects_a_non_pdf_response_instead_of_saving_it(monkeypatch, tmp_path, no_sleep):
+    monkeypatch.setattr(rclrpt, "PDF_DIR", tmp_path)
+    script_urlopen(
+        monkeypatch, [b"<html>Service Unavailable</html>"]
+    )  # HTTP 200으로 오류 문서가 오는 경우
+    with pytest.raises(rclrpt.ReportError, match="PDF가 아닌 응답"):
+        rclrpt._download("odi/rcl/2024/RCLRPT-24V001-0001.PDF")
+    assert list(tmp_path.iterdir()) == []  # PDF 이름으로도 .part로도 남지 않는다
+
+
+# ---------------------------------------------------------------------------
+# all 모드: 기대 캠페인 수
+
+
+def test_all_requires_expected_campaign_count_before_touching_the_network(env, monkeypatch):
+    monkeypatch.setattr(
+        rclrpt, "list_reports", lambda years: pytest.fail("목록을 조회하면 안 된다")
+    )
+    with pytest.raises(SystemExit) as e:
+        rclrpt.run("all")
+    assert "--expect-campaigns" in str(e.value)
+
+
+def test_all_stops_before_any_pdf_when_the_list_is_shorter_than_expected(env, monkeypatch):
+    monkeypatch.setattr(
+        rclrpt, "latest_parsed", lambda *a, **k: pytest.fail("PDF를 처리하면 안 된다")
+    )
+    with pytest.raises(
+        SystemExit
+    ) as e:  # 서버가 일부 연도만 돌려준 경우 (5개 중 5개가 기대인데 목록이 줄어듦)
+        rclrpt.run("all", expect_campaigns=6)
+    assert "5개 캠페인이다" in str(e.value) and "기대 6개" in str(e.value)
+    assert not (env / "causes.jsonl").exists() and not (env / "causes.partial.jsonl").exists()
+
+
+def test_all_stops_when_the_server_returns_an_empty_list(env, monkeypatch):
+    monkeypatch.setattr(rclrpt, "list_reports", lambda years: {})
+    with pytest.raises(SystemExit) as e:
+        rclrpt.run("all", expect_campaigns=0)
+    assert "목록이 비어 있다" in str(e.value)
+
+
+def test_failed_rerun_says_the_old_complete_file_is_not_this_runs_result(env, monkeypatch, capsys):
+    (env / "causes.jsonl").write_text(
+        '{"campaign": "old"}\n', encoding="utf-8"
+    )  # 이전 실행의 완성본
+
+    def fake(keys, manual=None):
+        raise rclrpt.ReportError("일시 오류")
+
+    monkeypatch.setattr(rclrpt, "latest_parsed", fake)
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5)
+    assert (env / "causes.jsonl").read_text(
+        encoding="utf-8"
+    ) == '{"campaign": "old"}\n'  # 지우지는 않는다
+    assert "이전 실행의 causes.jsonl이 그대로 남아 있다" in capsys.readouterr().out
+
+
+def test_all_success_prints_the_row_count_to_use_for_loading(env, monkeypatch, capsys):
+    monkeypatch.setattr(
+        rclrpt, "latest_parsed", lambda keys, manual=None: (keys[0], parsed(keys[0].split("-")[1]))
+    )
+    rclrpt.run("all", expect_campaigns=5)
+    assert "load_db load --causes full --expect-rows 5" in capsys.readouterr().out
 
 
 def test_write_jsonl_always_uses_lf_so_file_hashes_match_across_platforms(tmp_path):
