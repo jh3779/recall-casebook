@@ -505,8 +505,19 @@ def test_maker_alias_representative_avoids_period_typo():
     assert abbr["UTILITY TRAILER MFG. CO."]["review"] == ""
 
 
-def _row(name, review="", required=""):
-    return {"raw_maker": name, "review": review, "review_required": required}
+def _row(name, review="", required="", **over):
+    row = {
+        "raw_maker": name,
+        "maker": name,
+        "maker_group": name,
+        "count": "1",
+        "maker_basis": "없음",
+        "group_basis": "없음",
+        "review": review,
+        "review_required": required,
+        "review_note": "",
+    }
+    return {**row, **over}
 
 
 # 스크립트가 만든 초안: A는 볼 필요 없음, B·C·D는 검토가 필요한 줄
@@ -588,6 +599,42 @@ def test_maker_alias_unreviewed_compares_with_the_draft_so_deleted_rows_and_colu
         unreviewed([*full, _row("E")], DRAFT)
     with pytest.raises(ValueError, match="겹치는 줄"):
         unreviewed([*full, _row("B", "확인 완료", "필요")], DRAFT)
+
+
+def test_maker_alias_unreviewed_checks_company_name_columns_against_the_draft():
+    from scripts.defect_precedent.maker_aliases import unreviewed
+
+    ok = [
+        _row("A"),
+        _row("B", "확인 완료", "필요"),
+        _row("C", "확인 완료", "필요"),
+        _row("D", "확인 완료", "필요"),
+    ]
+
+    def with_row(name, **over):
+        return [{**r, **over} if r["raw_maker"] == name else r for r in ok]
+
+    # 칸을 지움 (검토가 필요 없던 줄도)
+    with pytest.raises(ValueError, match="빈 줄"):
+        unreviewed(with_row("A", maker_group=""), DRAFT)
+    with pytest.raises(ValueError, match="빈 줄"):
+        unreviewed(with_row("B", maker=" "), DRAFT)
+    # 열 하나만 정렬이 어긋남 — maker_group이 다른 줄 것으로 바뀌고 count도 어긋난다
+    shifted = [{**r, "maker_group": ok[(i + 1) % 4]["maker_group"]} for i, r in enumerate(ok)]
+    with pytest.raises(ValueError, match="초안과 다르다|고친 줄"):
+        unreviewed(shifted, DRAFT)
+    with pytest.raises(ValueError, match="고치지 않는 칸"):
+        unreviewed(with_row("C", count="9"), DRAFT)
+    # 검토 대상이 아니던 줄을 기록 없이 고침 / 확인 완료만 하고 이유를 안 적음
+    with pytest.raises(ValueError, match="이유를 적어야"):
+        unreviewed(with_row("A", maker_group="X"), DRAFT)
+    with pytest.raises(ValueError, match="이유를 적어야"):
+        unreviewed(with_row("B", maker_group="X"), DRAFT)
+    # 고치고 확인 완료 + 이유를 적으면 통과
+    fixed = with_row("B", maker_group="X", review_note="같은 계열로 확인")
+    assert unreviewed(fixed, DRAFT) == []
+    fixed_a = with_row("A", maker_group="X", review="확인 완료", review_note="계열사 연결")
+    assert unreviewed(fixed_a, DRAFT) == []
 
 
 def test_maker_alias_committed_draft_is_a_valid_input_for_unreviewed():

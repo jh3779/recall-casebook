@@ -174,6 +174,9 @@ def build_table(counts: Counter) -> list[dict]:
     return rows
 
 
+FIXED_COLUMNS = ("count", "maker_basis", "group_basis")  # 사람이 고치지 않는 칸
+
+
 def read_table(path: Path) -> list[dict]:
     """대응표 CSV를 읽는다 (엑셀용 UTF-8 BOM)."""
     with path.open(encoding="utf-8-sig", newline="") as f:
@@ -187,6 +190,9 @@ def unreviewed(rows: list[dict], draft: list[dict]) -> list[dict]:
     - 줄이 사라졌거나 늘었거나 같은 `raw_maker`가 겹치면 오류로 멈춘다 (검토 대상 줄을 통째로 지운 경우를 잡는다).
     - `review_required`가 초안과 다르면 오류로 멈춘다 (`review`와 `review_required`를 함께 지운 경우를 잡는다).
     - 알 수 없는 상태값(오타 `확인완료` 등)은 짐작하지 않고 오류로 멈춘다.
+    - `maker`·`maker_group`이 비어 있으면 오류로 멈춘다. 초안과 값이 다른 줄은 `review`가 `확인 완료`이고 `review_note`도
+      초안에서 바뀌어 있어야 한다 (이유 없이 고친 줄을 잡는다). `count`·`maker_basis`·`group_basis`는 사람이 고치지 않는 칸이라
+      초안과 같아야 한다 (열 하나만 정렬이 어긋난 경우를 잡는다).
     - `확인 필요`·`보류`는 끝나지 않은 줄이고, 검토가 필요했던 줄(`review_required = 필요`)은 `review`가 정확히
       `확인 완료`일 때만 끝난 것이다.
     """
@@ -208,6 +214,37 @@ def unreviewed(rows: list[dict], draft: list[dict]) -> list[dict]:
     if changed:
         raise ValueError(
             f"review_required가 초안과 다르다 {changed[:5]} (총 {len(changed)}줄) — 이 칸은 스크립트가 쓰는 고정 칸이다"
+        )
+    empty = sorted(
+        r["raw_maker"] for r in rows if not r["maker"].strip() or not r["maker_group"].strip()
+    )
+    if empty:
+        raise ValueError(f"maker·maker_group이 빈 줄이 있다 {empty[:5]} (총 {len(empty)}줄)")
+    moved = sorted(
+        r["raw_maker"]
+        for r in rows
+        if any(str(r[c]) != str(original[r["raw_maker"]][c]) for c in FIXED_COLUMNS)
+    )
+    if moved:
+        raise ValueError(
+            f"count·maker_basis·group_basis가 초안과 다르다 {moved[:5]} (총 {len(moved)}줄) — 고치지 않는 칸이다"
+        )
+    unexplained = sorted(
+        r["raw_maker"]
+        for r in rows
+        if (
+            r["maker"] != original[r["raw_maker"]]["maker"]
+            or r["maker_group"] != original[r["raw_maker"]]["maker_group"]
+        )
+        and (
+            r["review"] != "확인 완료"
+            or r["review_note"] == original[r["raw_maker"]]["review_note"]
+        )
+    )
+    if unexplained:
+        raise ValueError(
+            f"maker·maker_group을 고친 줄은 review를 `확인 완료`로 하고 review_note에 이유를 적어야 한다 "
+            f"{unexplained[:5]} (총 {len(unexplained)}줄)"
         )
     unknown = sorted({r["review"] for r in rows if r["review"] not in REVIEW_STATES})
     if unknown:
