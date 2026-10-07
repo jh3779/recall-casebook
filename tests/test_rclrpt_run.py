@@ -261,6 +261,74 @@ def test_require_poppler_accepts_poppler_and_rejects_other_pdftotext(monkeypatch
     assert "poppler가 아니다" in str(e.value) and "4.06" in str(e.value)
 
 
+def _fail_on(campaign):
+    def fake(keys, manual=None):
+        name = keys[0].split("-")[1]
+        if name == campaign:  # 원본 자체의 결함: 다시 해도 같다
+            raise rclrpt.ReportError("PDF가 아닌 응답: Artemis Login Page")
+        return keys[0], parsed(name)
+
+    return fake
+
+
+def test_accepting_persistent_failures_makes_the_complete_file_with_the_failed_list_in_the_manifest(
+    env, monkeypatch
+):
+    monkeypatch.setattr(rclrpt, "latest_parsed", _fail_on("24V003"))
+    with pytest.raises(SystemExit):  # 수용하지 않으면 완성본이 없다
+        rclrpt.run("all", expect_campaigns=5)
+    assert not (env / "causes.jsonl").exists()
+    # 실패 목록을 확인한 뒤 건수를 정확히 적어 수용하면 완성본과 명세가 생긴다
+    rclrpt.run("all", expect_campaigns=5, accept_failures=1)
+    assert [r["campaign"] for r in lines(env / "causes.jsonl")] == [
+        c for c in CAMPAIGNS if c != "24V003"
+    ]
+    assert not (env / "causes.partial.jsonl").exists()
+    failures = lines(env / "causes_failures.jsonl")
+    assert [f["campaign"] for f in failures] == ["24V003"]
+    manifest = json.loads((env / "causes.manifest.json").read_text(encoding="utf-8"))
+    assert (
+        manifest["rows"] == 4
+        and manifest["failures"] == 1
+        and manifest["failed_campaigns"] == ["24V003"]
+    )
+    assert (
+        manifest["rows"] + manifest["failures"] == manifest["expect_campaigns"] == 5
+    )  # 빠진 캠페인이 없다
+    assert (
+        manifest["failures_sha256"]
+        == hashlib.sha256((env / "causes_failures.jsonl").read_bytes()).hexdigest()
+    )
+    assert manifest["campaigns_sha256"] == rclrpt.campaigns_digest(
+        c for c in CAMPAIGNS if c != "24V003"
+    )
+
+
+def test_accept_failures_must_equal_the_actual_failure_count(env, monkeypatch, capsys):
+    monkeypatch.setattr(rclrpt, "latest_parsed", _fail_on("24V003"))
+    with pytest.raises(
+        SystemExit
+    ) as e:  # 실패는 1건인데 2건이라고 적음 — 목록을 안 보고 숫자만 키운 경우
+        rclrpt.run("all", expect_campaigns=5, accept_failures=2)
+    assert e.value.code == 1
+    assert not (env / "causes.jsonl").exists() and not (env / "causes.manifest.json").exists()
+    out = capsys.readouterr().out
+    assert "--accept-failures 1로 다시 실행한다" in out and "실제 실패 1건과 다르다" in out
+
+
+def test_no_failures_manifest_records_zero_failures(env, monkeypatch):
+    monkeypatch.setattr(
+        rclrpt, "latest_parsed", lambda keys, manual=None: (keys[0], parsed(keys[0].split("-")[1]))
+    )
+    rclrpt.run("all", expect_campaigns=5)
+    manifest = json.loads((env / "causes.manifest.json").read_text(encoding="utf-8"))
+    assert (
+        manifest["failures"] == 0
+        and manifest["failed_campaigns"] == []
+        and manifest["failures_sha256"] is None
+    )
+
+
 def test_run_stops_before_reading_anything_when_pdftotext_is_not_poppler(env, monkeypatch):
     monkeypatch.undo()  # require_poppler를 가짜로 바꾼 설정을 되돌려 실제 검사를 쓴다
     monkeypatch.setattr(rclrpt.shutil, "which", lambda name: "/usr/bin/pdftotext")

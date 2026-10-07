@@ -5,6 +5,7 @@
     uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defect_precedent/baseline_2026-10-06.json  # 기준 표본 그대로
     uv run python -m scripts.defect_precedent.rclrpt sample 1000 --out data/processed/defect/causes_pilot_1000.jsonl  # 파일럿 (표본 파일을 덮어쓰지 않는다)
     uv run python -m scripts.defect_precedent.rclrpt all --expect-campaigns 11737   # 전체 (수 시간) — 기대 캠페인 수는 필수
+    uv run python -m scripts.defect_precedent.rclrpt all --expect-campaigns 11737 --accept-failures 57  # 실패 목록을 확인한 뒤 (57은 예시)
 
 먼저 `scripts.defect_precedent.nhtsa build`로 recalls.jsonl을 만들어 둔다.
 PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew install poppler`).
@@ -20,7 +21,11 @@ PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew ins
 - `all` 모드가 끝나면 완성본 `causes.jsonl`과 함께 **명세 `causes.manifest.json`**을 남긴다 (종류·줄 수·파일 sha256·캠페인 목록
   sha256·기대 캠페인 수·목록의 전체 캠페인 수·pdftotext 버전·생성 시각). `load_db`는 사람이 입력한 숫자 대신 이 명세와
   대조해 올린다 — 중간까지만 만들어진 파일은 명세가 없거나 맞지 않아 올라가지 않는다.
-- `all` 모드는 **실패가 하나도 없을 때만** `causes.jsonl`을 만든다 (일부만 담긴 파일이 완성본으로 올라가는 것을 막는다).
+- 원본 자체의 결함으로 다시 해도 같은 실패가 있다 (예: `RCLRPT-14E059-8941.PDF`는 HTTP 200·`application/pdf`로 응답하지만
+  내용은 "Artemis Login Page" HTML, 글자 없는 이미지 PDF에 사람이 확인한 제출일이 없는 경우). 이런 실패는 목록을 확인한 뒤
+  `--accept-failures N`(N = 실패 건수와 정확히 같아야 함)으로 명시적으로 수용해야 완성본을 만든다. 수용한 캠페인 목록과
+  실패 목록 파일의 sha256은 명세에 남고, `load_db`는 `줄 수 + 실패 = 기대 캠페인 수`와 목록을 대조한다.
+- `all` 모드는 **실패가 하나도 없거나 `--accept-failures`로 수용했을 때만** `causes.jsonl`을 만든다 (일부만 담긴 파일이 완성본으로 올라가는 것을 막는다).
   실패가 있으면 `causes.partial.jsonl`과 `causes_failures.jsonl`만 남기니, 원인을 보고 다시 실행한다 (실패한 건만 다시 받는다).
 - 시점 평가에서는 질문 기준일 이전 판본만 써야 한다 (docs/기획_결함선례.md 6절) — 여기서는 최신 판본만 만든다.
 """
@@ -283,6 +288,7 @@ def run(
     baseline: Path | None = None,
     out: Path | None = None,
     expect_campaigns: int | None = None,
+    accept_failures: int | None = None,
 ) -> None:
     if mode == "all" and expect_campaigns is None:
         sys.exit(
@@ -400,7 +406,9 @@ def run(
     except KeyboardInterrupt:
         interrupted = True
 
-    if interrupted or (mode == "all" and failures):
+    # 다시 해도 같은 실패(원본 결함)는 목록을 확인한 뒤 건수를 정확히 적어야 수용한다
+    accepted = mode == "all" and bool(failures) and accept_failures == len(failures)
+    if interrupted or (mode == "all" and failures and not accepted):
         # 일부만 담긴 파일이 완성본 이름으로 남지 않게 한다 — 이어서 하려면 같은 명령을 다시 실행한다
         checkpoint()
         why = "중단됨" if interrupted else f"실패 {len(failures)}건"
@@ -414,16 +422,31 @@ def run(
             print(
                 f"  주의: 이전 실행의 {out_path.name}이 그대로 남아 있다 — 이번 실행 결과가 아니다"
             )
+        if failures and not interrupted:
+            print(
+                f"  실패가 다시 해도 같은 것(원본 결함 등)이면 목록을 확인한 뒤 --accept-failures {len(failures)}로 다시 실행한다 "
+                "(받은 PDF는 건너뛴다) — 실패한 캠페인 목록이 명세에 남는다"
+            )
+            if accept_failures is not None:
+                print(
+                    f"  (이번에 준 --accept-failures {accept_failures}는 실제 실패 {len(failures)}건과 다르다)"
+                )
         sys.exit(130 if interrupted else 1)
     write_jsonl(out_path, rows)
     write_jsonl(failures_path, failures)
     partial_path.unlink(missing_ok=True)
     if mode == "all":
+        assert len(rows) + len(failures) == len(picked)
         manifest = {
             "kind": "full",
             "rows": len(rows),
             "file_sha256": hashlib.sha256(out_path.read_bytes()).hexdigest(),
             "campaigns_sha256": campaigns_digest(r["campaign"] for r in rows),
+            "failures": len(failures),
+            "failed_campaigns": sorted(f["campaign"] for f in failures),
+            "failures_sha256": hashlib.sha256(failures_path.read_bytes()).hexdigest()
+            if failures
+            else None,
             "expect_campaigns": expect_campaigns,
             "listing_campaigns": len(reports),
             "pdftotext": poppler_version,
@@ -464,13 +487,20 @@ if __name__ == "__main__":
         type=int,
         help="all 모드의 기대 캠페인 수 (목록과 다르면 시작 전에 중단)",
     )
+    parser.add_argument(
+        "--accept-failures",
+        type=int,
+        help="all 모드에서 다시 해도 같은 실패(원본 결함)를 수용한다. 실제 실패 건수와 정확히 같아야 한다",
+    )
     args = parser.parse_args()
     if args.mode == "all" and args.baseline is not None:
         parser.error("--baseline은 sample 모드에서만 쓴다")
     if args.mode == "all" and args.expect_campaigns is None:
         parser.error("all은 --expect-campaigns N(기대 캠페인 수)이 필요하다")
-    if args.mode != "all" and args.expect_campaigns is not None:
-        parser.error("--expect-campaigns는 all 모드에서만 쓴다")
+    if args.mode != "all" and (
+        args.expect_campaigns is not None or args.accept_failures is not None
+    ):
+        parser.error("--expect-campaigns·--accept-failures는 all 모드에서만 쓴다")
     if args.baseline is not None and not args.baseline.exists():
         parser.error(f"기준 파일이 없다: {args.baseline}")
     run(
@@ -479,4 +509,5 @@ if __name__ == "__main__":
         baseline=args.baseline,
         out=args.out,
         expect_campaigns=args.expect_campaigns,
+        accept_failures=args.accept_failures,
     )
