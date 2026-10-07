@@ -15,6 +15,8 @@
   - `sample`: 커밋된 기준 파일(`baseline_2026-10-06.json`)의 `rclrpt_sample` 캠페인 목록과 정확히 같아야 한다.
   - `full`: `rclrpt all`이 완성본과 함께 만드는 `causes.manifest.json`(줄 수·파일 sha256·캠페인 목록 sha256·기대 캠페인 수)과
     같아야 한다. 명세가 없으면 올리지 않는다 — 중간까지만 만들어진 파일에는 명세가 없다.
+    원본 자체의 결함으로 읽지 못한 캠페인은 `rclrpt all --accept-failures`로 수용한 목록(failed_campaigns)이 명세에 있고,
+    `줄 수 + 실패 = 기대 캠페인 수`가 맞아야 한다 (실패한 캠페인은 data_builds.causes_spec에 남는다).
 - 올리기 전에 `build.json`의 sha256과 파일을 대조하고, 어느 원인 파일·명세로 올렸는지를 data_builds에 남긴다.
 - 직전 날짜의 build와 비교해 새로 생김·바뀜(칸별)·사라짐·그대로 건수를 계산해 data_builds.change_summary에 남긴다.
 - 날짜는 칸마다 정해진 형식(YYYYMMDD, snapshot_date는 YYYY-MM-DD)만 받는다. 틀리면 몇 번째 줄인지 알려 주고 중단한다.
@@ -170,14 +172,21 @@ def causes_spec(data_dir: Path, kind: str, baseline: Path) -> dict:
             "중간까지만 만들어진 파일이거나 명세 없이 옮긴 파일은 올리지 않는다"
         )
     manifest = json.loads(path.read_text(encoding="utf-8"))
-    for key in ("kind", "rows", "file_sha256", "campaigns_sha256", "expect_campaigns"):
+    for key in (
+        "kind", "rows", "file_sha256", "campaigns_sha256", "expect_campaigns", "failures", "failed_campaigns",
+    ):  # fmt: skip
         if key not in manifest:
             sys.exit(f"{MANIFEST_NAME}에 {key} 칸이 없다")
     if manifest["kind"] != "full":
         sys.exit(f"{MANIFEST_NAME}의 종류가 full이 아니다 ({manifest['kind']})")
-    if manifest["rows"] != manifest["expect_campaigns"]:
+    if len(manifest["failed_campaigns"]) != manifest["failures"]:
         sys.exit(
-            f"{MANIFEST_NAME}: 줄 수 {manifest['rows']:,}이 기대 캠페인 수 {manifest['expect_campaigns']:,}와 다르다 — 완성본이 아니다"
+            f"{MANIFEST_NAME}: 실패 {manifest['failures']:,}건인데 실패 캠페인 목록은 {len(manifest['failed_campaigns']):,}개다"
+        )
+    if manifest["rows"] + manifest["failures"] != manifest["expect_campaigns"]:
+        sys.exit(
+            f"{MANIFEST_NAME}: 줄 수 {manifest['rows']:,} + 실패 {manifest['failures']:,}이 "
+            f"기대 캠페인 수 {manifest['expect_campaigns']:,}와 다르다 — 완성본이 아니다"
         )
     return {**manifest, "source": MANIFEST_NAME}
 
@@ -282,8 +291,16 @@ def load_files(data_dir: Path, causes_kind: str, baseline: Path = BASELINE) -> d
                 f"{causes_file.name}의 캠페인이 기준 파일의 표본 목록과 다르다 — 빠진 캠페인 {len(expected - found)}개 "
                 f"{sorted(expected - found)[:5]}, 목록에 없는 캠페인 {len(found - expected)}개 {sorted(found - expected)[:5]}"
             )
-    elif campaigns_digest(found) != spec["campaigns_sha256"]:
-        sys.exit(f"{causes_file.name}의 캠페인 목록이 {MANIFEST_NAME}의 campaigns_sha256과 다르다")
+    else:
+        if campaigns_digest(found) != spec["campaigns_sha256"]:
+            sys.exit(
+                f"{causes_file.name}의 캠페인 목록이 {MANIFEST_NAME}의 campaigns_sha256과 다르다"
+            )
+        if found & set(spec["failed_campaigns"]):
+            sys.exit(
+                f"{causes_file.name}에 {MANIFEST_NAME}이 실패로 기록한 캠페인이 들어 있다 "
+                f"{sorted(found & set(spec['failed_campaigns']))[:5]}"
+            )
 
     return {
         "build": {

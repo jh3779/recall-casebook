@@ -121,6 +121,9 @@ def write_full(d, cause_rows, **override):
         "rows": len(cause_rows),
         "file_sha256": sha(d / "causes.jsonl"),
         "campaigns_sha256": load_db.campaigns_digest(r["campaign"] for r in cause_rows),
+        "failures": 0,
+        "failed_campaigns": [],
+        "failures_sha256": None,
         "expect_campaigns": len(cause_rows),
         "listing_campaigns": len(cause_rows),
         "pdftotext": "pdftotext version 25.07.0",
@@ -307,6 +310,15 @@ def test_full_requires_a_manifest_that_matches_the_file(tmp_path):
         ({"file_sha256": "00" * 32}, "sha256이"),  # 명세를 만든 뒤 파일이 바뀜
         ({"campaigns_sha256": "00" * 32}, "campaigns_sha256과 다르다"),  # 캠페인 목록이 다름
         ({"kind": "sample"}, "종류가 full이 아니다"),
+        (
+            {"failures": 1, "failed_campaigns": []},
+            "실패 캠페인 목록은 0개다",
+        ),  # 실패 건수와 목록이 다름
+        ({"failures": 1, "failed_campaigns": ["25V003"]}, "완성본이 아니다"),  # 2 + 1 != 기대 2
+        (
+            {"expect_campaigns": 3, "failures": 1, "failed_campaigns": ["24V001"]},
+            "실패로 기록한 캠페인이 들어 있다",
+        ),
     ],
 )
 def test_full_stops_when_the_file_does_not_match_the_manifest(tmp_path, tamper, message):
@@ -315,6 +327,25 @@ def test_full_stops_when_the_file_does_not_match_the_manifest(tmp_path, tamper, 
     with pytest.raises(SystemExit) as e:
         load_db.load_files(d, "full", make_baseline(tmp_path))
     assert message in str(e.value)
+
+
+def test_full_accepts_recorded_failures_only_when_rows_plus_failures_match(tmp_path):
+    d = make_data_dir(tmp_path)
+    write_full(
+        d,
+        [cause("24V001"), cause("23V002")],
+        expect_campaigns=3,
+        failures=1,
+        failed_campaigns=["25V003"],
+    )
+    build = load_db.load_files(d, "full", make_baseline(tmp_path))["build"]
+    assert build["causes_rows"] == 2 and build["causes_expected_rows"] == 2
+    # 원본 결함으로 읽지 못해 수용한 캠페인 목록이 명세(causes_spec)에 그대로 남는다
+    assert (
+        build["causes_spec"]["failed_campaigns"] == ["25V003"]
+        and build["causes_spec"]["failures"] == 1
+    )
+    assert build["causes_spec"]["expect_campaigns"] == 3
 
 
 def test_full_stops_when_the_file_was_edited_after_the_manifest(tmp_path):
