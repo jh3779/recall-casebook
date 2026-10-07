@@ -1,7 +1,11 @@
 """리콜 카드의 회사명(raw_maker)을 같은 회사끼리 묶는 대응표 초안을 만든다.
 
 사용법:
-    uv run python -m scripts.defect_precedent.maker_aliases   # maker_aliases.csv 만들기
+    uv run python -m scripts.defect_precedent.maker_aliases   # maker_aliases_draft.csv 만들기
+
+파일은 둘로 나눈다. 이 스크립트는 **초안**(`maker_aliases_draft.csv`)만 만들고 언제든 다시 만들 수 있다.
+사람이 확인한 결과는 초안을 복사해 `maker_aliases.csv`로 저장해서 고친다 — 스크립트가 이 파일은 건드리지 않으므로
+확인 결과가 덮어써지지 않는다. CSV는 엑셀용 UTF-8 BOM으로 쓰므로 읽을 때 `encoding="utf-8-sig"`를 쓴다.
 
 칸 두 개를 따로 채운다 (DEC-033).
 - `maker`: 신고서 이름을 정리한 이름. 대소문자·문장부호·Inc/Incorporated류 표기 차이와 법인 형태 차이
@@ -11,7 +15,11 @@
   묶을 이름이 없으면 `maker`와 같다.
 
 `maker_group`의 근거는 `group_basis`에 적는다: 없음(묶을 이름 없음) · 자동(이름의 핵심 단어가 같음) ·
-초안(이름 목록으로 직접 지정 — 사람이 확인하기 전 값). `review = 확인 필요`인 줄만 사람이 보면 된다.
+초안(이름 목록으로 직접 지정 — 사람이 확인하기 전 값).
+
+`review`는 확인 상태다: `확인 필요`(검토 전) · `확인 완료` · `보류`(판단 못 함) · 빈칸(사람이 볼 필요 없음).
+`review_note`에 이유(무엇을 확인할지)와 사람의 메모를 적는다. 카드에 적용하는 코드는 `unreviewed()`가
+비어 있을 때만 진행한다 (`확인 필요`나 `보류`가 하나라도 남으면 중단).
 
 이 표는 아직 recalls.jsonl의 maker에 적용하지 않는다. 적용하면 카드 sha256이 바뀌어 기준 파일 재현이 깨지므로
 사람 확인 뒤 새 기준(freeze)과 함께 적용한다.
@@ -25,7 +33,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RECALLS = REPO_ROOT / "data" / "processed" / "defect" / "recalls.jsonl"
-OUT = Path(__file__).resolve().parent / "maker_aliases.csv"
+OUT = Path(__file__).resolve().parent / "maker_aliases_draft.csv"
+REVIEW_PENDING = ("확인 필요", "보류")
 
 _SAME_WORD = {"INCORPORATED": "INC", "CORPORATION": "CORP", "COMPANY": "CO", "L L C": "LLC"}
 _LEGAL = {"INC", "LLC", "CORP", "CO", "LTD", "LIMITED", "LP"}
@@ -81,10 +90,13 @@ def _region(name: str) -> frozenset[str]:
     return frozenset(t for t in _tokens(name).split() if t in _REGION - {"THE"})
 
 
+# 법인 표기 앞에 쉼표 대신 마침표가 찍힌 오타 ("Americas. Inc."). MFG.·BLDR. 같은 약어(3글자 이하)는 해당하지 않는다.
+_TYPO = re.compile(r"[A-Za-z]{4,}\.\s+(?:Inc|LLC|Corp|Co|Ltd)\b", re.IGNORECASE)
+
+
 def _pick(names: list[str], counts: Counter) -> str:
-    """대표 이름: 소문자가 섞인 표기 중 가장 많은 것, 없으면 가장 많은 것."""
-    mixed = [n for n in names if n != n.upper()]
-    return max(mixed or names, key=lambda n: (counts[n], n))
+    """대표 이름: 마침표 오타가 없는 표기 → 소문자가 섞인 표기 → 가장 많은 표기 순으로 고른다."""
+    return max(names, key=lambda n: (not _TYPO.search(n), n != n.upper(), counts[n], n))
 
 
 def build_table(counts: Counter) -> list[dict]:
@@ -94,8 +106,13 @@ def build_table(counts: Counter) -> list[dict]:
         by_maker[(loose_key(raw), _region(raw))].append(raw)
     maker_of: dict[str, str] = {}
     basis_of: dict[str, str] = {}
+    typo_makers: set[str] = (
+        set()
+    )  # 합쳐진 원문 중 마침표 오타가 있는 maker — 대표 이름을 사람이 본다
     for raws in by_maker.values():
         name = _pick(raws, counts)
+        if len(raws) > 1 and any(_TYPO.search(r) for r in raws):
+            typo_makers.add(name)
         for raw in raws:
             maker_of[raw] = name
             if len(raws) == 1:
@@ -121,13 +138,20 @@ def build_table(counts: Counter) -> list[dict]:
     rows = []
     for raw, n in counts.items():
         core = loose_key(raw)
+        notes = []
         if maker_of[raw] in curated:
             group, basis, review = curated[maker_of[raw]], "초안", "확인 필요"
+            notes.append("maker_group: 이름 목록으로 지정한 초안")
         elif len(by_core[core]) > 1:
             group, basis = core_label[core], "자동"
             review = "확인 필요" if len(core.split()) == 1 else ""
+            if review:
+                notes.append("maker_group: 핵심 단어가 하나뿐이라 우연히 같은 이름일 수 있음")
         else:
             group, basis, review = maker_of[raw], "없음", ""
+        if maker_of[raw] in typo_makers:
+            review = "확인 필요"
+            notes.append("maker: 합쳐진 원문에 마침표 오타('. Inc.')가 있어 대표 이름(철자) 확인")
         rows.append(
             {
                 "raw_maker": raw,
@@ -137,10 +161,16 @@ def build_table(counts: Counter) -> list[dict]:
                 "maker_basis": basis_of[raw],
                 "group_basis": basis,
                 "review": review,
+                "review_note": "; ".join(notes),
             }
         )
     rows.sort(key=lambda r: (-r["count"], r["raw_maker"]))
     return rows
+
+
+def unreviewed(rows: list[dict]) -> list[dict]:
+    """확인이 끝나지 않은 줄(`확인 필요`·`보류`). 카드에 적용하기 전에 비어 있어야 한다."""
+    return [r for r in rows if r["review"] in REVIEW_PENDING]
 
 
 def main() -> None:
@@ -151,7 +181,16 @@ def main() -> None:
     if missing:
         print(f"주의: 이름 목록에 있지만 데이터에 없는 이름 {missing}")
     rows = build_table(counts)
-    fields = ["raw_maker", "maker", "maker_group", "count", "maker_basis", "group_basis", "review"]
+    fields = [
+        "raw_maker",
+        "maker",
+        "maker_group",
+        "count",
+        "maker_basis",
+        "group_basis",
+        "review",
+        "review_note",
+    ]
     with OUT.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()

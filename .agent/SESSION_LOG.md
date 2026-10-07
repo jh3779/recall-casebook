@@ -60,3 +60,4 @@
 - 2026-10-07: PR #23 Codex 29cf946c 지적 반영 — 시점 평가 질문도 기준일 당시 판본, 예비 30문항은 절차 확인용·본 평가 34문항 이상, PR 제목 chore로 변경
 - 2026-10-07: PR #23 병합(3db9846), 온보딩 PR #17·#20·#21 닫음, HANDOFF에 시점 평가 결정 기한·부품 트리 규칙(할 일 22) 추가
 - 2026-10-07: 기준 재현 확인(0.510) 후 PR #29 회사명 대응표 초안 — maker·maker_group 두 칸(DEC-033), 확인 필요 25줄, 이승노 님용 안내문(docs/회사명_대응표_안내.md)
+- 2026-10-07: PR #29 Codex 리뷰 반영 — 대표 회사명 선택 규칙(마침표 오타 회피, Piaggio 회귀 테스트), review 상태 4종·review_note·unreviewed(), 초안(maker_aliases_draft.csv)/확인본(maker_aliases.csv) 분리

@@ -477,3 +477,55 @@ def test_maker_alias_maker_and_group():
     )
     # 모든 줄이 maker_group을 가진다
     assert all(r["maker_group"] for r in rows.values())
+
+
+def test_maker_alias_representative_avoids_period_typo():
+    from collections import Counter
+
+    from scripts.defect_precedent.maker_aliases import build_table
+
+    # 신고서 원문에 오타(마침표)가 더 많이 쓰여도 대표 이름은 쉼표 표기를 고르고, 사람이 보게 표시한다
+    counts = Counter(
+        {
+            "Piaggio Group Americas. Inc.": 16,
+            "Piaggio Group Americas, Inc.": 4,
+            "MACK TRUCKS, INC.": 1,
+            "Mack Trucks, Inc.": 122,
+        }
+    )
+    rows = {r["raw_maker"]: r for r in build_table(counts)}
+    for raw in ("Piaggio Group Americas. Inc.", "Piaggio Group Americas, Inc."):
+        assert rows[raw]["maker"] == "Piaggio Group Americas, Inc."
+        assert rows[raw]["review"] == "확인 필요"
+        assert "마침표 오타" in rows[raw]["review_note"]
+    # 오타가 없는 묶음은 표시하지 않는다
+    assert rows["MACK TRUCKS, INC."]["review"] == ""
+    # 약어 마침표(MFG. CORP.)는 오타로 보지 않는다
+    abbr = {r["raw_maker"]: r for r in build_table(Counter({"UTILITY TRAILER MFG. CO.": 14}))}
+    assert abbr["UTILITY TRAILER MFG. CO."]["review"] == ""
+
+
+def test_maker_alias_unreviewed_blocks_until_every_row_is_confirmed():
+    from scripts.defect_precedent.maker_aliases import unreviewed
+
+    rows = [
+        {"raw_maker": "A", "review": ""},
+        {"raw_maker": "B", "review": "확인 완료"},
+        {"raw_maker": "C", "review": "보류"},
+        {"raw_maker": "D", "review": "확인 필요"},
+    ]
+    assert [r["raw_maker"] for r in unreviewed(rows)] == ["C", "D"]
+    assert unreviewed(rows[:2]) == []
+
+
+def test_maker_alias_draft_csv_is_read_with_bom_aware_encoding():
+    import csv
+
+    from scripts.defect_precedent.maker_aliases import OUT
+
+    # 엑셀용 BOM이 붙은 파일이라 utf-8-sig로 읽어야 첫 칸 이름이 맞다
+    with OUT.open(encoding="utf-8-sig", newline="") as f:
+        header = next(csv.reader(f))
+    assert header[0] == "raw_maker"
+    assert "review" in header and "review_note" in header
+    assert OUT.read_bytes().startswith(b"\xef\xbb\xbf")
