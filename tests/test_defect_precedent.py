@@ -505,6 +505,50 @@ def test_maker_alias_representative_avoids_period_typo():
     assert abbr["UTILITY TRAILER MFG. CO."]["review"] == ""
 
 
+def test_maker_alias_dotted_abbreviations_join_the_same_company():
+    from collections import Counter
+
+    from scripts.defect_precedent.maker_aliases import build_table, strict_key
+
+    assert strict_key("PORSCHE CARS N.A. INC.") == strict_key("Porsche Cars NA, Inc.")
+    assert strict_key("Kawasaki Motors Corp., U.S.A.") == strict_key("KAWASAKI MOTORS CORP USA")
+    rows = {
+        r["raw_maker"]: r
+        for r in build_table(
+            Counter({"PORSCHE CARS N.A. INC.": 73, "Porsche Cars North America, Inc.": 135})
+        )
+    }
+    # N.A.가 N·A로 갈라지면 핵심 이름이 달라 묶이지 않았다 — 이제 같은 maker_group이다 (maker는 지역 표기가 달라 따로 둔다)
+    assert (
+        rows["PORSCHE CARS N.A. INC."]["maker_group"]
+        == rows["Porsche Cars North America, Inc."]["maker_group"]
+    )
+
+
+def test_maker_alias_automatic_groups_of_customer_makers_need_a_human_check():
+    from collections import Counter
+
+    from scripts.defect_precedent.maker_aliases import build_table
+
+    rows = {
+        r["raw_maker"]: r
+        for r in build_table(
+            Counter(
+                {
+                    "Hyundai Motor America": 202,
+                    "Hyundai Motor Company": 35,
+                    "Ford Motor Company": 500,
+                    "Ford Motor Co": 5,
+                }
+            )
+        )
+    }
+    # 현대는 두 단어 이상 자동 묶음이어도 확인 대상이다. 같은 방식으로 묶인 비고객사(Ford)는 아니다
+    for name in ("Hyundai Motor America", "Hyundai Motor Company"):
+        assert rows[name]["review"] == "확인 필요" and "고객사" in rows[name]["review_note"]
+    assert rows["Ford Motor Co"]["review"] == "" and rows["Ford Motor Company"]["review"] == ""
+
+
 def _row(name, review="", required="", **over):
     row = {
         "raw_maker": name,
@@ -665,7 +709,7 @@ def test_maker_alias_committed_draft_is_a_valid_input_for_unreviewed():
     from scripts.defect_precedent.maker_aliases import OUT, read_table, unreviewed
 
     draft = read_table(OUT)
-    pending = unreviewed(draft, draft)  # 초안 그대로면 검토 대상 27줄이 모두 미확인이다
+    pending = unreviewed(draft, draft)  # 초안 그대로면 검토 대상 31줄이 모두 미확인이다
     assert pending and all(r["review_required"] == "필요" for r in pending)
     confirmed = [
         {**r, "review": "확인 완료"} if r["review_required"] == "필요" else r for r in draft

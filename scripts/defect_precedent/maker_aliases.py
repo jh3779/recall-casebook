@@ -44,6 +44,8 @@ REVIEW_REQUIRED = "필요"  # review_required 칸 — 스크립트가 쓰고 사
 _SAME_WORD = {"INCORPORATED": "INC", "CORPORATION": "CORP", "COMPANY": "CO", "L L C": "LLC"}
 _LEGAL = {"INC", "LLC", "CORP", "CO", "LTD", "LIMITED", "LP"}
 _REGION = {"NA", "USA", "NORTH", "AMERICA", "THE"}
+# 이 서비스의 사용자가 납품하는 완성차 회사. 자동으로 묶은 이름도 미국 법인·본사 연결이 맞는지 사람이 본다
+CUSTOMER_CORES = {"HYUNDAI", "KIA", "GENESIS"}
 
 # 이름이 달라서 규칙으로는 못 잇는 묶음. 신고서 이름을 하나씩 적었다 (키워드로 찾으면
 # "Hyundai Translead"(트레일러 회사)처럼 다른 회사가 섞인다). 지식 기반 초안이므로 사람이 확인한다.
@@ -76,6 +78,8 @@ CURATED_GROUPS = {
 
 def _tokens(name: str) -> str:
     s = name.upper().replace("&", " AND ")
+    # 점이 찍힌 약어(N.A.·U.S.A.·L.L.C.)는 점을 지워 한 단어로 본다 — 점에서 자르면 N·A로 갈라져 NA·USA와 달라진다
+    s = re.sub(r"\b[A-Z](?:\.[A-Z])+\b", lambda m: m.group().replace(".", ""), s)
     s = re.sub(r"[^A-Z0-9]+", " ", s).strip()
     s = re.sub(r"\bL L C\b", "LLC", s)
     return " ".join(_SAME_WORD.get(t, t) for t in s.split())
@@ -150,8 +154,13 @@ def build_table(counts: Counter) -> list[dict]:
         elif len(by_core[core]) > 1:
             group, basis = core_label[core], "자동"
             review = "확인 필요" if len(core.split()) == 1 else ""
-            if review:
+            if len(core.split()) == 1:
                 notes.append("maker_group: 핵심 단어가 하나뿐이라 우연히 같은 이름일 수 있음")
+            if core.split()[0] in CUSTOMER_CORES:
+                review = "확인 필요"
+                notes.append(
+                    "maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인"
+                )
         else:
             group, basis, review = maker_of[raw], "없음", ""
         if maker_of[raw] in typo_makers:
@@ -287,7 +296,7 @@ def main() -> None:
         "review_note",
     ]
     with OUT.open("w", encoding="utf-8-sig", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         w.writeheader()
         w.writerows(rows)
     makers = len({r["maker"] for r in rows})
