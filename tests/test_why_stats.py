@@ -141,26 +141,35 @@ def make_base(sample, with_digest=True):
 SAME = {"raw_manifest_sha256": "r", "recalls_sha256": "c", "eval_sha256": "e"}
 
 
-def test_full_coverage_counts_filled_573_causes_and_leaves_out_unresolved_and_missing_reports():
+def test_full_coverage_separates_confirmed_unknown_and_missing_and_gives_a_range():
     recalls = [
         recall("20V001000", "Crack due to fatigue"),  # 기존 방식(표현) + 573 채움
-        recall("20V002000", "Brake may fail"),  # 573만 채움
-        recall("20V003000", "Brake may fail"),  # 573 원인 칸 비어 있음
-        recall("20V004000", "Brake may fail"),  # 573 채움이지만 최신판 미확정 → 뺌
-        recall("20V005000", "Brake may fail"),  # 573 행 없음(보고서 없음·읽지 못함)
-        recall("10V006000", "caused by a weld", received="20100101"),  # 이전 리콜: 기존 방식만
+        recall("20V002000", "Brake may fail"),  # 573만 채움(확인)
+        recall("20V003000", "Brake may fail"),  # 573 원인 칸 비어 있음(확인)
+        recall("20V004000", "Brake may fail"),  # 최신판 미확정 → 확인 불가
+        recall("20V005000", "Brake may fail"),  # 읽지 못해 수용한 실패 → 확인 불가
+        recall("20V006000", "Brake may fail"),  # 573 보고서가 없음 → 근거 없음 확정
+        recall("20V007000", "caused by a weld"),  # 확인 불가이지만 기존 방식 근거가 이미 있음
+        recall("10V008000", "caused by a weld", received="20100101"),  # 이전 리콜: 기존 방식만
     ]
     causes = [
         {"campaign": "20V001", "cause_status": "filled", "resolution": "auto"},
         {"campaign": "20V002", "cause_status": "filled", "resolution": "auto"},
         {"campaign": "20V003", "cause_status": "empty", "resolution": "auto"},
         {"campaign": "20V004", "cause_status": "filled", "resolution": "unresolved"},
+        {"campaign": "20V007", "cause_status": "empty", "resolution": "unresolved"},
     ]
-    s = why_stats.full_coverage(recalls, [], causes)
-    assert (s["post_recalls"], s["post_campaigns"], s["post_with_report"]) == (5, 5, 4)
-    assert (s["post_either"], s["post_filled"], s["post_union"]) == (1, 2, 2)
-    assert s["unresolved_filled_excluded"] == 1
-    assert (s["pre_either"], s["total_union"]) == (1, 3)  # 이전 1 + 이후 합집합 2
+    s = why_stats.full_coverage(recalls, [], causes, ["20V005"])
+    assert (s["post_recalls"], s["post_campaigns"], s["post_with_report"]) == (7, 7, 5)
+    assert (s["unresolved_campaigns"], s["failed_campaigns"], s["unknown_recalls"]) == (2, 1, 3)
+    assert (s["post_either"], s["post_filled"]) == (
+        2,
+        2,
+    )  # 표현 2건(001·007), 확인된 채움 2건(001·002)
+    assert s["post_union"] == 3  # 001·002·007
+    # 상한: 확인 불가 3건(004·005·007) 중 아직 근거가 없는 004·005를 더함
+    assert s["post_union_upper"] == 5
+    assert (s["pre_either"], s["total_union"], s["total_union_upper"]) == (1, 4, 6)
 
 
 def test_verify_causes_stops_when_the_file_does_not_match_the_manifest(tmp_path):
@@ -168,29 +177,46 @@ def test_verify_causes_stops_when_the_file_does_not_match_the_manifest(tmp_path)
     path = tmp_path / "causes.jsonl"
     path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     manifest_path = tmp_path / "causes.manifest.json"
-    good = {"kind": "full", "rows": 2, "file_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+    good = {
+        "kind": "full",
+        "rows": 2,
+        "file_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "failed_campaigns": ["20V003"],
+        "expect_campaigns": 3,
+        "expected_campaigns_sha256": why_stats._digest(["20V001", "20V002", "20V003"]),
+    }
     manifest_path.write_text(json.dumps(good), encoding="utf-8")
     assert why_stats.verify_causes(path, manifest_path, rows)["rows"] == 2
     for bad, message in (
         ({**good, "file_sha256": "00" * 32}, "sha256"),
         ({**good, "rows": 3}, "줄 수"),
         ({**good, "kind": "sample"}, "full이 아니다"),
+        # 대상이 빠진 파일 — 파일과 명세가 서로 맞아도 기대 수·목록과 다르면 통과하지 못한다
+        ({**good, "expect_campaigns": 10}, "전체 수집이 아니다"),
+        ({**good, "expected_campaigns_sha256": "00" * 32}, "기대 목록과 다르다"),
+        ({**good, "failed_campaigns": ["20V001"]}, "겹치거나"),
+        ({**good, "failed_campaigns": ["20V003", "20V003"], "expect_campaigns": 4}, "겹치거나"),
     ):
         manifest_path.write_text(json.dumps(bad), encoding="utf-8")
         with pytest.raises(SystemExit) as e:
             why_stats.verify_causes(path, manifest_path, rows)
-        assert message in str(e.value)
+        assert message in str(e.value), message
+    manifest_path.write_text(json.dumps(good), encoding="utf-8")
     with pytest.raises(SystemExit):  # 같은 캠페인이 겹침
-        manifest_path.write_text(json.dumps(good), encoding="utf-8")
         why_stats.verify_causes(path, manifest_path, [rows[0], rows[0]])
     manifest_path.unlink()
     with pytest.raises(SystemExit):  # 명세가 없으면 쓰지 않는다
         why_stats.verify_causes(path, manifest_path, rows)
 
 
-def test_input_label_for_the_full_mode_does_not_look_at_the_sample():
+def test_input_label_for_the_full_mode_does_not_claim_to_reproduce_the_full_result():
     base = make_base([sample_row("20V001")])
-    assert "재현" in why_stats.input_label("b.json", base, SAME, None, False)
+    label = why_stats.input_label("b.json", base, SAME, None, False)
+    assert "원본·카드·시험지" in label and "대조하지 않았다" in label
+    assert "재현 (" not in label  # 전수 결과를 기준과 대조하지 않았으므로 "재현"이라고 하지 않는다
+    drift = {**SAME, "recalls_sha256": "x"}
+    with pytest.raises(SystemExit):
+        why_stats.input_label("b.json", base, drift, None, False)
 
 
 def test_input_label_says_reproduction_only_when_the_inputs_match_the_baseline():
@@ -309,8 +335,11 @@ def test_reproduces_the_full_573_numbers_of_2026_10_07():
         why_stats.read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl"),
         nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS),
         causes,
+        manifest["failed_campaigns"],
     )
     assert (s["causes_rows"], manifest["failures"]) == (11719, 18)
     assert (s["post_recalls"], s["post_campaigns"], s["post_with_report"]) == (12011, 12011, 11719)
-    assert (s["post_either"], s["post_filled"], s["post_union"]) == (3719, 8160, 9307)
-    assert (s["unresolved_filled_excluded"], s["total_union"]) == (19, 14918)
+    assert (s["post_either"], s["post_filled"]) == (3719, 8160)
+    assert (s["unresolved_campaigns"], s["failed_campaigns"], s["unknown_recalls"]) == (23, 18, 41)
+    assert (s["post_union"], s["post_union_upper"]) == (9307, 9334)
+    assert (s["total_union"], s["total_union_upper"]) == (14918, 14945)

@@ -21,9 +21,10 @@
 재현할 때는 기준 파일을 넘긴다. 입력(원본·카드·시험지 sha256, 573 표본의 캠페인·원인 칸 내용)이 기준과 같을 때만 "재현"이고, 다르면
 멈춘다(`--allow-drift`를 주면 현재 데이터로 "재계산"한다). 입력 사본은 `docs/환경셋팅.md` 4절(2026-10-06 원본 사본)을 따른다.
 
-- 전수 실측(`--full`): 573 전체 수집이 끝난 완성본(`causes.jsonl`)과 명세(`causes.manifest.json`)로 "추정"이 아니라 실제 값을 낸다.
-  명세의 파일 sha256·줄 수와 완성본이 맞아야 하고, 원인 칸이 채워진 리콜(최신판 미확정은 뺀다)과 기존 방식의 합집합을 센다.
-  읽지 못해 수용한 실패와 573 보고서가 없는 리콜은 채워지지 않은 것으로 센다(보수적).
+- 전수 확인(`--full`): 573 전체 수집이 끝난 완성본(`causes.jsonl`)과 명세(`causes.manifest.json`)로 "추정"이 아니라 확인한 만큼을 센다.
+  명세의 파일 sha256·줄 수, 성공+수용한 실패=기대 수, 성공∪실패=기대 목록 지문이 모두 맞아야 한다. 값은 **하한~상한**이다:
+  원인 칸이 확인된 채움(최신판 확정)과 기존 방식의 합집합이 하한이고, 확인 불가(읽지 못해 수용한 실패·최신판 미확정)의 리콜을
+  모두 "있음"으로 더한 값이 상한이다. 573 보고서가 목록에 없는 리콜은 근거 없음이 확정이라 두 값 모두 0으로 센다.
 
     uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json
     uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json --full
@@ -189,12 +190,17 @@ def sample_matches(base: dict, causes_sample: list[dict]) -> bool:
     return same_pdfs and all(got[k] == expected[k] for k in got)
 
 
-def full_coverage(recalls: list[dict], inv_rows: list[dict], causes: list[dict]) -> dict:
-    """573 완성본으로 센 실측값 (추정 아님).
+def full_coverage(
+    recalls: list[dict], inv_rows: list[dict], causes: list[dict], failed_campaigns: list[str]
+) -> dict:
+    """573 완성본으로 센 값 — 확인된 만큼의 **하한**과, 확인 불가를 모두 "있음"으로 쳤을 때의 **상한**.
 
-    - 573 원인 칸 채움: `cause_status == "filled"`이고 최신판이 확정된(`resolution != "unresolved"`) 캠페인의 2014-08-20 이후 리콜
-    - 둘 중 하나: 기존 방식(원인 표현 ∪ 조사 요약)과 573 원인 칸 채움의 합집합
-    573 원인 행이 없는 리콜(보고서 없음·읽지 못함)은 채워지지 않은 것으로 센다.
+    확인 상태를 나눈다:
+    - 확인된 채움: `cause_status == "filled"`이고 최신판이 확정된(`resolution != "unresolved"`) 캠페인
+    - 확인된 비어 있음: 최신판이 확정된 `empty`
+    - 573 자체가 없음: 보고서가 목록에 없는 리콜 (근거 없음이 확정)
+    - 확인 불가: 읽지 못해 수용한 실패(`failed_campaigns`)와 최신판 미확정(`unresolved`) 캠페인
+    하한은 확인 불가를 "없음"으로 센 값이고(= 확인된 근거의 최소), 상한은 확인 불가의 리콜 중 기존 방식 근거가 없는 것을 모두 "있음"으로 더한 값이다.
     """
     campnos = {r["campno"] for r in recalls}
     expressed = {r["campno"] for r in recalls if PATTERN.search(r["defect"])}
@@ -214,8 +220,12 @@ def full_coverage(recalls: list[dict], inv_rows: list[dict], causes: list[dict])
         for r in causes
         if r["cause_status"] == "filled" and r["resolution"] != "unresolved"
     }
+    unresolved = {r["campaign"] for r in causes if r["resolution"] == "unresolved"}
     post_filled = expand(filled) & post
     post_union = (either & post) | post_filled
+    unknown = expand(unresolved | set(failed_campaigns)) & post
+    can_add = unknown - post_union
+    pre_either = len(either & pre)
     return {
         "recalls": len(campnos),
         "expressed": len(expressed),
@@ -225,20 +235,32 @@ def full_coverage(recalls: list[dict], inv_rows: list[dict], causes: list[dict])
         "post_campaigns": len({c[:6] for c in post}),
         "post_either": len(either & post),
         "pre_recalls": len(pre),
-        "pre_either": len(either & pre),
+        "pre_either": pre_either,
         "causes_rows": len(causes),
         "post_with_report": len(expand({r["campaign"] for r in causes}) & post),
-        "unresolved_filled_excluded": sum(
-            r["cause_status"] == "filled" and r["resolution"] == "unresolved" for r in causes
-        ),
+        "unresolved_campaigns": len(unresolved),
+        "failed_campaigns": len(set(failed_campaigns)),
+        "unknown_recalls": len(unknown),
         "post_filled": len(post_filled),
         "post_union": len(post_union),
-        "total_union": len(either & pre) + len(post_union),
+        "post_union_upper": len(post_union) + len(can_add),
+        "total_union": pre_either + len(post_union),
+        "total_union_upper": pre_either + len(post_union) + len(can_add),
     }
 
 
+def _digest(campaigns) -> str:
+    """캠페인 번호 목록의 지문 — `rclrpt.campaigns_digest`·`load_db.campaigns_digest`와 같은 규칙."""
+    return hashlib.sha256("\n".join(sorted(campaigns)).encode()).hexdigest()
+
+
 def verify_causes(causes_path: Path, manifest_path: Path, causes: list[dict]) -> dict:
-    """완성본이 수집이 남긴 명세와 같은지 확인한다 (종류·파일 sha256·줄 수·캠페인 중복). 다르면 멈춘다."""
+    """완성본이 수집이 남긴 명세와 같고 대상이 빠짐없이 모였는지 확인한다. 다르면 멈춘다.
+
+    파일 sha256·줄 수·캠페인 중복뿐 아니라, 성공 캠페인과 수용한 실패 캠페인이 겹치지 않고
+    둘을 합친 목록이 수집을 시작할 때 기록한 기대 목록(`expected_campaigns_sha256`)·기대 수와 같은지 본다.
+    (일부 대상만 모은 파일이 그 파일에 맞는 명세와 함께 와도 통과하지 못한다.)
+    """
     if not manifest_path.exists():
         sys.exit(f"{manifest_path.name}이 없다 — 수집(`rclrpt all`)이 끝나야 만들어진다")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -248,8 +270,20 @@ def verify_causes(causes_path: Path, manifest_path: Path, causes: list[dict]) ->
         sys.exit(
             f"{causes_path.name}이 {manifest_path.name}의 파일 sha256과 다르다 — 수집 뒤 파일이 바뀌었다"
         )
-    if len(causes) != manifest["rows"] or len({r["campaign"] for r in causes}) != len(causes):
+    campaigns = [r["campaign"] for r in causes]
+    if len(causes) != manifest["rows"] or len(set(campaigns)) != len(campaigns):
         sys.exit(f"{causes_path.name}의 줄 수가 명세와 다르거나 캠페인이 겹친다")
+    failed = manifest["failed_campaigns"]
+    if len(set(failed)) != len(failed) or set(failed) & set(campaigns):
+        sys.exit(f"{manifest_path.name}의 실패 캠페인이 겹치거나 완성본에도 들어 있다")
+    if len(campaigns) + len(failed) != manifest["expect_campaigns"]:
+        sys.exit(
+            f"성공 {len(campaigns):,} + 실패 {len(failed):,}이 기대 캠페인 수 {manifest['expect_campaigns']:,}와 다르다 — 전체 수집이 아니다"
+        )
+    if _digest([*campaigns, *failed]) != manifest["expected_campaigns_sha256"]:
+        sys.exit(
+            "성공·실패 캠페인을 합친 목록이 수집을 시작할 때의 기대 목록과 다르다 — 빠졌거나 대상이 아닌 캠페인이 있다"
+        )
     return manifest
 
 
@@ -268,7 +302,10 @@ def input_label(
     same_sample = causes_sample is None or sample_matches(base, causes_sample)
     if same_files and same_sample:
         if causes_sample is None:
-            return f"{baseline_name} 재현 (원본·카드·시험지 sha256 일치)"
+            return (
+                f"{baseline_name}와 같은 원본·카드·시험지(sha256 일치). 573 전수 결과는 기준 파일에 해시가 없어 "
+                '기준과 대조하지 않았다 — 위 "573 완성본" 줄의 명세 해시로만 확인한다'
+            )
         return f"{baseline_name} 재현 (원본·카드·시험지 sha256 일치, 573 표본 캠페인·원인 칸 내용 일치)"
     if allow_drift:
         return f"{baseline_name}와 다른 입력으로 재계산 (재현 아님)"
@@ -284,7 +321,7 @@ def input_label(
 
 
 def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
-    """573 완성본 기준 실측 (추정 아님)."""
+    """573 완성본 기준의 확인된 값(하한)과 상한. 추정이 아니라 확인한 만큼만 센다."""
     recalls = read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl")
     causes_path = nhtsa.OUT_DIR / "causes.jsonl"
     if not causes_path.exists():
@@ -296,7 +333,10 @@ def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
         base = json.loads(baseline.read_text(encoding="utf-8"))
         label = input_label(baseline.name, base, nhtsa.verify_build(), None, allow_drift)
     s = full_coverage(
-        recalls, nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS), causes
+        recalls,
+        nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS),
+        causes,
+        manifest["failed_campaigns"],
     )
     if s["post_recalls"] != s["post_campaigns"]:
         sys.exit(
@@ -309,11 +349,12 @@ def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
         return f"{x:,.0f}건 ({x / whole:.1%})"
 
     post = s["post_recalls"]
-    no_row = post - s["post_with_report"]
+    no_report = post - s["post_with_report"] - s["failed_campaigns"]
+    unknown = s["unresolved_campaigns"] + s["failed_campaigns"]
     print(f"입력: {label}")
     print(
         f"573 완성본: {s['causes_rows']:,}줄 (명세 sha256 {manifest['file_sha256'][:12]}… 일치, "
-        f"읽지 못해 수용한 실패 {manifest['failures']}건)"
+        f"성공 {s['causes_rows']:,} + 수용한 실패 {manifest['failures']} = 기대 {manifest['expect_campaigns']:,})"
     )
     print(f"전체 리콜 {total:,}건")
     print(f"  결함문 원인 표현   {pct(s['expressed'], total)}")
@@ -321,17 +362,21 @@ def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
     print(f"  둘 중 하나         {pct(s['either'], total)}")
     print(f"2014-08-20 이후 {post:,}건 (캠페인 {s['post_campaigns']:,}개와 1:1)")
     print(f"  기존 방식              {pct(s['post_either'], post)}")
+    print(f"  573 원인 칸 채워짐     {pct(s['post_filled'], post)}  (확인된 것만)")
     print(
-        f"  573 원인 칸 채워짐     {pct(s['post_filled'], post)}"
-        f" — 573 원인 행이 없는 {no_row:,}건(보고서 없음·읽지 못함)은 채워지지 않은 것으로 셈,"
-        f" 최신판 미확정 중 채워진 {s['unresolved_filled_excluded']}건은 뺌"
+        f"  확인 불가              {s['unknown_recalls']}건 = 읽지 못해 수용한 실패 {s['failed_campaigns']} + 최신판 미확정 "
+        f"{s['unresolved_campaigns']} (합 {unknown}캠페인)"
     )
-    print(f"  둘 중 하나             {pct(s['post_union'], post)}")
+    print(f"  573 보고서 자체가 없음 {no_report}건 (근거 없음이 확정)")
+    print(
+        f"  둘 중 하나             하한 {pct(s['post_union'], post)} ~ 상한 {pct(s['post_union_upper'], post)}"
+    )
     print(
         f"2014-08-20 이전 {s['pre_recalls']:,}건 중 기존 방식 {pct(s['pre_either'], s['pre_recalls'])}"
     )
     print(
-        f"전체 {total:,}건 중 원인 근거 있음 {pct(s['total_union'], total)} — 실측(573 전수), 추정 아님"
+        f"전체 {total:,}건 중 원인 근거 있음 하한 {pct(s['total_union'], total)} ~ 상한 {pct(s['total_union_upper'], total)}"
+        ' — 확인 불가를 모두 "없음"으로 센 값이 하한, 모두 "있음"으로 센 값이 상한'
     )
 
 
@@ -396,7 +441,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--full",
         action="store_true",
-        help="573 완성본(causes.jsonl)과 명세로 추정이 아닌 실측을 낸다",
+        help="573 완성본(causes.jsonl)과 명세로 추정이 아닌 확인값(하한~상한)을 낸다",
     )
     parser.add_argument(
         "--allow-drift",
