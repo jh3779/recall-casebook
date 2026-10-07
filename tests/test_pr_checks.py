@@ -51,6 +51,20 @@ def test_principles_flags_variants():
         assert not check_principles([line("src/x.py", text)]).ok, text
 
 
+def test_principles_flags_defect_precedent_verdicts():
+    # 결함 선례 주제(DEC-030)의 판정 필드·문구
+    for text in (
+        "    recall_required: bool",
+        "recall required",
+        "recall-required",
+        '"recallRequired": true',
+        '"리콜 대상입니다"',
+        "원인은 이것입니다",
+    ):
+        res = check_principles([line("src/rag/answer.py", text, 3)])
+        assert res.errors, text
+
+
 def test_principles_flags_korean_verdict_phrases():
     for text in ("적용됩니다라고 답하라", "적용되지 않습니다", "적용 안 됩니다"):
         assert not check_principles([line("src/rag/prompt.py", text)]).ok, text
