@@ -14,12 +14,22 @@
   단어가 질문 단어와 하나라도 겹치면 "겹침"이다. 회사 이름 전체 문자열이 질문에 그대로 들어 있는 문항은 따로 센다.
   질문에서 회사 이름을 떼지 않으면 같은 회사 리콜만 나오기 쉬워서, 떼어야 하는 문항의 비율을 본다.
 
-    uv run python -m scripts.defect_precedent.why_stats
+- 집계 단위: 573 표본은 **캠페인**(리콜 번호 앞 6자리) 단위라서 표본 비율은 캠페인 비율이다. 2014-08-20 이후 리콜은 리콜 번호와
+  캠페인이 1:1이라(앞 6자리가 겹치는 리콜이 없다) 캠페인 수와 리콜 수가 같다 — 이 전제를 `post_one_to_one`으로 확인해 출력하고,
+  1:1이 아니면 환산을 캠페인 수에 곱하므로 리콜 수와 달라질 수 있다는 경고를 띄운다.
+
+재현할 때는 기준 파일을 넘긴다. 입력(원본·카드·시험지 sha256, 573 표본 캠페인 목록)이 기준과 같을 때만 "재현"이고, 다르면
+멈춘다(`--allow-drift`를 주면 현재 데이터로 "재계산"한다). 입력 사본은 `docs/환경셋팅.md` 4절(2026-10-06 원본 사본)을 따른다.
+
+    uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json
+    uv run python -m scripts.defect_precedent.why_stats    # 기준 파일 없이 현재 데이터로 계산 (재현이 아니다)
 """
 
+import argparse
 import json
 import math
 import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -87,6 +97,8 @@ def compute(recalls: list[dict], inv_rows: list[dict], causes_sample: list[dict]
 
     post = {r["campno"] for r in recalls if r["received_date"] >= nhtsa.RCLRPT_FROM}
     pre = campnos - post
+    # 표본 비율은 캠페인 단위이므로 환산도 캠페인 수에 곱한다. 이후 리콜은 캠페인과 1:1이어야 리콜 수와 같다
+    post_campaigns = {c[:6] for c in post}
 
     # 표본: 캠페인(앞 6자리) 하나가 여러 리콜에 붙을 수 있다 — 그중 하나라도 기존 방식 근거가 있으면 있는 것으로 센다
     by_campaign = defaultdict(list)
@@ -100,13 +112,15 @@ def compute(recalls: list[dict], inv_rows: list[dict], causes_sample: list[dict]
     n = len(causes_sample)
     p = union_in_sample / n if n else 0.0
     half_width = 1.96 * math.sqrt(p * (1 - p) / n) if n else 0.0  # 정규 근사 95%
-    estimate = len(either & pre) + len(post) * p
+    estimate = len(either & pre) + len(post_campaigns) * p
     return {
         "recalls": len(campnos),
         "expressed": len(expressed),
         "linked": len(linked),
         "either": len(either),
         "post_recalls": len(post),
+        "post_campaigns": len(post_campaigns),
+        "post_one_to_one": len(post) == len(post_campaigns),
         "post_either": len(either & post),
         "pre_recalls": len(pre),
         "pre_either": len(either & pre),
@@ -117,24 +131,53 @@ def compute(recalls: list[dict], inv_rows: list[dict], causes_sample: list[dict]
         "sample_union_rate": p,
         "sample_half_width": half_width,
         "estimate": estimate,
-        "estimate_half_width": len(post) * half_width,
+        "estimate_half_width": len(post_campaigns) * half_width,
     }
 
 
-def main() -> None:
+def input_label(
+    baseline_name: str, base: dict, info: dict, causes_sample: list[dict], allow_drift: bool
+) -> str:
+    """기준 파일과 같은 입력인지 확인해 출력용 문구를 만든다. 다르면 멈춘다 (--allow-drift면 재계산으로 표시)."""
+    same_files = all(
+        info[k] == base["build"][k]
+        for k in ("raw_manifest_sha256", "recalls_sha256", "eval_sha256")
+    )
+    same_sample = {r["campaign"] for r in causes_sample} == {
+        s["campaign"] for s in base["rclrpt_sample"]
+    }
+    if same_files and same_sample:
+        return f"{baseline_name} 재현 (원본·카드·시험지 sha256 일치, 573 표본 캠페인 목록 일치)"
+    if allow_drift:
+        return f"{baseline_name}와 다른 입력으로 재계산 (재현 아님)"
+    what = []
+    if not same_files:
+        what.append("원본·카드·시험지 sha256")
+    if not same_sample:
+        what.append("573 표본 캠페인 목록")
+    sys.exit(
+        f"{', '.join(what)}이 기준 파일과 다르다 — 같은 원본 사본(data/raw/nhtsa.<받은 시각>)과 표본으로 다시 만들거나, "
+        "현재 데이터로 재계산만 하려면 --allow-drift를 붙인다"
+    )
+
+
+def main(baseline: Path | None = None, allow_drift: bool = False) -> None:
+    recalls = read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl")
+    causes_sample = read_jsonl(nhtsa.OUT_DIR / "causes_sample.jsonl")
+    label = "현재 데이터로 계산 (기준 파일과 같은 입력인지 확인하지 않음 — 재현이 아니다)"
+    if baseline is not None:
+        base = json.loads(baseline.read_text(encoding="utf-8"))
+        label = input_label(baseline.name, base, nhtsa.verify_build(), causes_sample, allow_drift)
     s = compute(
-        read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl"),
-        nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS),
-        read_jsonl(nhtsa.OUT_DIR / "causes_sample.jsonl"),
+        recalls, nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS), causes_sample
     )
     total = s["recalls"]
-    overlap = maker_overlap(
-        read_jsonl(nhtsa.OUT_DIR / "eval.jsonl"), read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl")
-    )
+    overlap = maker_overlap(read_jsonl(nhtsa.OUT_DIR / "eval.jsonl"), recalls)
 
     def pct(x: float, whole: float) -> str:
         return f"{x:,.0f}건 ({x / whole:.1%})"
 
+    print(f"입력: {label}")
     print(f"전체 리콜 {total:,}건")
     print(f"  결함문 원인 표현   {pct(s['expressed'], total)}")
     print(f"  조사 요약 연결     {pct(s['linked'], total)}")
@@ -142,6 +185,15 @@ def main() -> None:
     print(
         f"2014-08-20 이후 {s['post_recalls']:,}건 중 기존 방식 {pct(s['post_either'], s['post_recalls'])}"
     )
+    if s["post_one_to_one"]:
+        print(
+            f"  (이 리콜 {s['post_recalls']:,}건은 캠페인 {s['post_campaigns']:,}개와 1:1 — 표본 비율을 그대로 곱해도 단위가 같다)"
+        )
+    else:
+        print(
+            f"  주의: 리콜 {s['post_recalls']:,}건이 캠페인 {s['post_campaigns']:,}개에 걸려 있다 — 표본 비율은 캠페인 단위라 "
+            "아래 환산은 캠페인 수에 곱한 값이고, 리콜 수로 바꾸면 달라질 수 있다"
+        )
     print(
         f"2014-08-20 이전 {s['pre_recalls']:,}건 중 기존 방식 {pct(s['pre_either'], s['pre_recalls'])}"
     )
@@ -162,4 +214,20 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="기획 5절 '왜' 집계")
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        help="기준 파일 — 입력 sha256·573 표본 캠페인을 대조해 재현인지 확인한다",
+    )
+    parser.add_argument(
+        "--allow-drift",
+        action="store_true",
+        help="입력이 기준과 달라도 현재 데이터로 재계산한다 (--baseline과 함께)",
+    )
+    args = parser.parse_args()
+    if args.baseline is not None and not args.baseline.exists():
+        parser.error(f"기준 파일이 없다: {args.baseline}")
+    if args.allow_drift and args.baseline is None:
+        parser.error("--allow-drift는 --baseline과 함께 쓴다")
+    main(args.baseline, args.allow_drift)

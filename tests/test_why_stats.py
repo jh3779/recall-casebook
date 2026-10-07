@@ -86,6 +86,47 @@ def test_compute_estimate_uses_the_sample_rate_only_for_post_2014_recalls():
     assert s["estimate"] == pytest.approx(1 + 4 * 2 / 3)
 
 
+def test_compute_converts_the_sample_rate_by_campaigns_and_flags_when_recalls_are_not_one_to_one():
+    # 이후 리콜 3건이 캠페인 2개에 걸려 있다 — 표본 비율(캠페인 단위)은 캠페인 수에 곱한다
+    recalls = [
+        recall("20V001000", "Crack due to fatigue"),
+        recall("20V001001", "Brake may fail"),
+        recall("20V002000", "Brake may fail"),
+    ]
+    sample = [
+        {"campaign": "20V001", "cause_status": "empty"},
+        {"campaign": "20V002", "cause_status": "empty"},
+    ]
+    s = why_stats.compute(recalls, [], sample)
+    assert (s["post_recalls"], s["post_campaigns"], s["post_one_to_one"]) == (3, 2, False)
+    assert s["sample_union_rate"] == pytest.approx(0.5)
+    assert s["estimate"] == pytest.approx(2 * 0.5)  # 리콜 수(3)가 아니라 캠페인 수(2)에 곱함
+    one = why_stats.compute(
+        [recall("20V003000", "x")], [], [{"campaign": "20V003", "cause_status": "filled"}]
+    )
+    assert one["post_one_to_one"] is True
+
+
+def test_input_label_says_reproduction_only_when_the_inputs_match_the_baseline():
+    base = {
+        "build": {"raw_manifest_sha256": "r", "recalls_sha256": "c", "eval_sha256": "e"},
+        "rclrpt_sample": [{"campaign": "20V001"}],
+    }
+    same = {"raw_manifest_sha256": "r", "recalls_sha256": "c", "eval_sha256": "e"}
+    sample = [{"campaign": "20V001"}]
+    assert "재현" in why_stats.input_label("b.json", base, same, sample, False)
+    # 카드가 다르면 멈추고, --allow-drift를 주면 재계산이라고 표시한다
+    drift = {**same, "recalls_sha256": "x"}
+    with pytest.raises(SystemExit) as e:
+        why_stats.input_label("b.json", base, drift, sample, False)
+    assert "원본·카드·시험지 sha256" in str(e.value)
+    assert "재현 아님" in why_stats.input_label("b.json", base, drift, sample, True)
+    # 573 표본 캠페인 목록이 다르면 입력이 같아 보여도 멈춘다
+    with pytest.raises(SystemExit) as e:
+        why_stats.input_label("b.json", base, same, [{"campaign": "99V999"}], False)
+    assert "573 표본 캠페인 목록" in str(e.value)
+
+
 def test_compute_counts_a_campaign_with_several_recalls_once_per_sample_row():
     recalls = [recall("20V001000", "Brake may fail"), recall("20V001001", "caused by a weld")]
     s = why_stats.compute(recalls, [], [{"campaign": "20V001", "cause_status": "empty"}])
@@ -95,6 +136,7 @@ def test_compute_counts_a_campaign_with_several_recalls_once_per_sample_row():
 @pytest.mark.skipif(
     not (nhtsa.OUT_DIR / "recalls.jsonl").exists()
     or not (nhtsa.OUT_DIR / "causes_sample.jsonl").exists()
+    or not (nhtsa.OUT_DIR / "eval.jsonl").exists()
     or not (nhtsa.RAW_DIR / "FLAT_INV.zip").exists(),
     reason="내려받은 원본·기준 데이터가 없다 (data/raw, data/processed는 커밋하지 않는다)",
 )
@@ -111,6 +153,7 @@ def test_reproduces_the_numbers_of_the_2026_10_06_snapshot():
         205,
         232,
     )
+    assert (s["post_recalls"], s["post_campaigns"], s["post_one_to_one"]) == (12011, 12011, True)
     overlap = why_stats.maker_overlap(
         why_stats.read_jsonl(nhtsa.OUT_DIR / "eval.jsonl"),
         why_stats.read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl"),

@@ -12,7 +12,7 @@ uv run python -m scripts.defect_precedent.nhtsa fetch          # NHTSA 원본 zi
 uv run python -m scripts.defect_precedent.nhtsa build          # recalls.jsonl · eval.jsonl (약 2초, 원본 sha256 검증 후)
 uv run python -m scripts.defect_precedent.bm25_baseline        # 기준 점수 Hit@1·3·5·10 (약 1분)
 uv run python -m scripts.defect_precedent.rclrpt sample 300    # 원본 보고서(Part 573) 무작위 표본 판독 (pdftotext 필요)
-uv run python -m scripts.defect_precedent.why_stats            # 기획 5절 "왜" 집계 (원인 표현·조사 요약·표본 추정·질문의 회사 이름 겹침, 추가 수집 없음)
+uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json  # 기획 5절 "왜" 집계 (원인 표현·조사 요약·표본 추정·질문의 회사 이름 겹침, 추가 수집 없음)
 ```
 
 **기준 실행을 다시 잴 때**는 기준 파일을 넘긴다.
