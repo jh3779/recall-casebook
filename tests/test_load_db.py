@@ -1,9 +1,10 @@
 """scripts/defect_precedent/load_db.py 테스트.
 
-DB 없이 도는 테스트가 기본이다. 맨 아래 `pg_` 테스트는 로컬 Postgres가 있을 때만 돈다:
+DB 없이 도는 테스트가 기본이다. `@pg` 테스트는 Postgres가 있을 때 돈다:
     docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -p 54329:5432 postgres:17
     TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54329/postgres uv run pytest tests/test_load_db.py
 주소가 localhost가 아니면 실행하지 않는다 (테스트가 public 스키마를 통째로 지우므로 Supabase에 향하면 안 된다).
+CI는 REQUIRE_DB_TESTS=1로 돌려서 DB 테스트가 조용히 건너뛰어지지 않게 한다 (DB가 없으면 실패).
 """
 
 import hashlib
@@ -72,10 +73,23 @@ def write_jsonl(path, rows):
     )
 
 
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def make_baseline(tmp_path, campaigns=("24V001",)):
+    """표본 원인 파일의 기대 캠페인 목록이 든 가짜 기준 파일 (실제 파일은 300개)."""
+    path = tmp_path / "baseline.json"
+    path.write_text(
+        json.dumps({"rclrpt_sample": [{"campaign": c} for c in campaigns]}), encoding="utf-8"
+    )
+    return path
+
+
 def make_data_dir(
     tmp_path, snapshot="2026-10-06", recalls=None, causes=None, questions=None, manifest="a1" * 32
 ):
-    """load_db가 읽는 파일 4개(recalls·eval·causes_sample·build.json)를 만든다. build.json의 해시는 실제 파일에서 계산한다."""
+    """load_db가 읽는 파일(recalls·eval·causes_sample·build.json)을 만든다. build.json의 해시는 실제 파일에서 계산한다."""
     d = tmp_path / snapshot
     d.mkdir(parents=True)
     recalls = recalls or [
@@ -85,19 +99,35 @@ def make_data_dir(
     write_jsonl(d / "recalls.jsonl", recalls)
     write_jsonl(d / "eval.jsonl", questions or [QUESTION])
     write_jsonl(d / "causes_sample.jsonl", causes or [cause("24V001")])
-    sha = lambda name: hashlib.sha256((d / name).read_bytes()).hexdigest()  # noqa: E731
     (d / "build.json").write_text(
         json.dumps(
             {
                 "raw_manifest_sha256": manifest,
-                "recalls_sha256": sha("recalls.jsonl"),
-                "eval_sha256": sha("eval.jsonl"),
+                "recalls_sha256": sha(d / "recalls.jsonl"),
+                "eval_sha256": sha(d / "eval.jsonl"),
                 "snapshot_date": snapshot,
             }
         ),
         encoding="utf-8",
     )
     return d
+
+
+def write_full(d, cause_rows, **override):
+    """`rclrpt all`이 남기는 것과 같은 모양의 완성본 causes.jsonl + 명세를 쓴다."""
+    write_jsonl(d / "causes.jsonl", cause_rows)
+    manifest = {
+        "kind": "full",
+        "rows": len(cause_rows),
+        "file_sha256": sha(d / "causes.jsonl"),
+        "campaigns_sha256": load_db.campaigns_digest(r["campaign"] for r in cause_rows),
+        "expect_campaigns": len(cause_rows),
+        "listing_campaigns": len(cause_rows),
+        "pdftotext": "pdftotext version 25.07.0",
+        "generated_at": "2026-10-07T00:00:00+00:00",
+        **override,
+    }
+    (d / "causes.manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +158,7 @@ def test_parse_compact_stops_instead_of_guessing(bad):
 
 
 def test_load_files_reads_and_seals_rows(tmp_path):
-    data = load_db.load_files(make_data_dir(tmp_path), "sample", 1)
+    data = load_db.load_files(make_data_dir(tmp_path), "sample", make_baseline(tmp_path))
     assert [len(data[t]) for t in load_db.TABLES] == [2, 1, 1]
     r = data["recalls"][0]
     assert r["snapshot_date"] == date(2026, 10, 6) and r["received_date"] == date(2023, 1, 30)
@@ -136,12 +166,17 @@ def test_load_files_reads_and_seals_rows(tmp_path):
         r["defect"] == "Brake line may leak." and r["consequence"] == ""
     )  # 빈 문자열은 NULL로 바꾸지 않는다
     assert re.fullmatch(r"[0-9a-f]{64}", r["row_sha256"])
-    assert data["build"]["causes_kind"] == "sample" and data["build"]["causes_rows"] == 1
+    build = data["build"]
+    assert re.fullmatch(r"[0-9a-f]{16}", build["build_id"]) and r["build_id"] == build["build_id"]
     assert (
-        data["build"]["causes_sha256"]
-        == hashlib.sha256(
-            (tmp_path / "2026-10-06" / "causes_sample.jsonl").read_bytes()
-        ).hexdigest()
+        build["causes_kind"] == "sample"
+        and build["causes_rows"] == 1
+        and build["causes_expected_rows"] == 1
+    )
+    assert build["causes_sha256"] == sha(tmp_path / "2026-10-06" / "causes_sample.jsonl")
+    assert (
+        build["causes_spec"]["source"] == "baseline.json"
+        and "campaigns" not in build["causes_spec"]
     )
 
 
@@ -159,68 +194,180 @@ def test_row_sha256_changes_with_content_not_with_key_order():
     assert load_db.row_sha256(row, cols) != load_db.row_sha256({**row, "question": "q2"}, cols)
 
 
+def test_build_id_is_determined_by_all_four_input_hashes():
+    base = ("a" * 64, "b" * 64, "c" * 64, "d" * 64)
+    same = load_db.build_id_of(*base)
+    assert same == load_db.build_id_of(*base)  # 같은 입력 → 같은 build
+    for i in range(4):  # 어느 하나라도 다르면 다른 build
+        changed = list(base)
+        changed[i] = "e" * 64
+        assert load_db.build_id_of(*changed) != same
+
+
+def test_campaigns_digest_is_order_independent_and_pinned():
+    # rclrpt.campaigns_digest와 같은 값이어야 한다 (두 모듈의 골든 값이 같다)
+    assert load_db.campaigns_digest(["24V002", "24V001"]) == load_db.campaigns_digest(
+        ["24V001", "24V002"]
+    )
+    assert load_db.campaigns_digest(["24V001", "24V002"]) == (
+        "7d8d70be5ca2cbddacab9b80813f827e412aca999b939a204b31b10ada753aff"
+    )
+
+
 def test_load_files_stops_on_tampered_file(tmp_path):
     d = make_data_dir(tmp_path)
     (d / "recalls.jsonl").write_text(
         (d / "recalls.jsonl").read_text(encoding="utf-8") + "\n", encoding="utf-8"
     )
     with pytest.raises(SystemExit) as e:
-        load_db.load_files(d, "sample", 1)
+        load_db.load_files(d, "sample", make_baseline(tmp_path))
     assert "build.json과 다르다" in str(e.value)
 
 
 def test_load_files_stops_when_gold_recall_or_campaign_is_missing(tmp_path):
     bad_q = make_data_dir(tmp_path / "a", questions=[{**QUESTION, "gold_campnos": ["99V999000"]}])
     with pytest.raises(SystemExit) as e:
-        load_db.load_files(bad_q, "sample", 1)
+        load_db.load_files(bad_q, "sample", make_baseline(tmp_path))
     assert "정답 리콜이 recalls에 없다" in str(e.value)
     bad_c = make_data_dir(tmp_path / "b", causes=[cause("99V999")])
     with pytest.raises(SystemExit) as e:
-        load_db.load_files(bad_c, "sample", 1)
+        load_db.load_files(bad_c, "sample", make_baseline(tmp_path, ["99V999"]))
     assert "앞 6자리와도 맞지 않는다" in str(e.value)
 
 
 def test_load_files_stops_when_snapshot_date_differs_from_build(tmp_path):
     d = make_data_dir(tmp_path, recalls=[recall("24V001000", snapshot_date="2026-10-05")])
     with pytest.raises(SystemExit) as e:
-        load_db.load_files(d, "sample", 1)
+        load_db.load_files(d, "sample", make_baseline(tmp_path))
     assert "snapshot_date가 build.json과 다르다" in str(e.value)
 
 
-def test_causes_file_is_never_chosen_automatically(tmp_path):
-    d = make_data_dir(tmp_path)
-    write_jsonl(
-        d / "causes.jsonl", [cause("24V001")]
-    )  # 전체 파일이 있어도 sample을 고르면 표본을 쓴다
-    assert load_db.load_files(d, "sample", 1)["build"]["causes_file"] == "causes_sample.jsonl"
-    # 기대 건수는 표본·전체 모두 필요하다 — 없으면 올리지 않는다
-    for kind in ("sample", "full"):
-        with pytest.raises(SystemExit) as e:
-            load_db.load_files(d, kind)
-        assert "--expect-rows" in str(e.value)
-    # 파일이 기대보다 짧으면(중간까지만 만들어짐) 표본이든 전체든 올리지 않는다
-    for kind, expected in (("full", 1000), ("sample", 300)):
-        with pytest.raises(SystemExit) as e:
-            load_db.load_files(d, kind, expect_rows=expected)
-        assert f"기대 건수 {expected:,}줄과 다르다" in str(e.value)
-    full = load_db.load_files(d, "full", expect_rows=1)
-    assert full["build"]["causes_kind"] == "full" and full["build"]["causes_expected_rows"] == 1
+# ---------------------------------------------------------------------------
+# 원인 파일 완전성 — 사람이 입력한 숫자가 아니라 독립된 명세와 대조
 
 
-def test_check_command_requires_expect_rows_and_stops_on_a_short_sample(tmp_path, capsys):
+def test_sample_must_match_the_baseline_campaign_list_exactly(tmp_path):
+    recalls = [recall(f"{c}000") for c in ("24V001", "23V002", "25V003")]
+    # 기준 파일은 2개 캠페인인데 표본 파일이 1개뿐 (중간까지만 만들어짐)
+    short = make_data_dir(tmp_path / "a", recalls=recalls, causes=[cause("24V001")])
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(short, "sample", make_baseline(tmp_path, ["24V001", "23V002"]))
+    assert "명세(baseline.json)의 2줄과 다르다" in str(e.value)
+    # 줄 수는 같지만 다른 캠페인 (기준 파일에 없는 캠페인이 섞임)
+    wrong = make_data_dir(
+        tmp_path / "b", recalls=recalls, causes=[cause("24V001"), cause("25V003")]
+    )
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(wrong, "sample", make_baseline(tmp_path, ["24V001", "23V002"]))
+    assert (
+        "표본 목록과 다르다" in str(e.value)
+        and "23V002" in str(e.value)
+        and "25V003" in str(e.value)
+    )
+    # 기준 파일과 정확히 같으면 통과
+    ok = make_data_dir(tmp_path / "c", recalls=recalls, causes=[cause("24V001"), cause("23V002")])
+    assert (
+        load_db.load_files(ok, "sample", make_baseline(tmp_path, ["24V001", "23V002"]))["build"][
+            "causes_expected_rows"
+        ]
+        == 2
+    )
+
+
+def test_the_committed_baseline_lists_the_300_sample_campaigns():
+    spec = load_db.causes_spec(load_db.PROCESSED, "sample", load_db.BASELINE)
+    assert spec["rows"] == 300 and len(set(spec["campaigns"])) == 300
+    assert spec["campaigns_sha256"] == load_db.campaigns_digest(spec["campaigns"])
+
+
+def test_full_requires_a_manifest_that_matches_the_file(tmp_path):
     d = make_data_dir(tmp_path)
-    with pytest.raises(SystemExit) as e:  # argparse가 필수 인자로 막는다
-        load_db.main(["check", "--causes", "sample", "--data-dir", str(d)])
+    write_full(d, [cause("24V001"), cause("23V002")])
+    baseline = make_baseline(tmp_path)
+    full = load_db.load_files(d, "full", baseline)
+    assert full["build"]["causes_kind"] == "full" and full["build"]["causes_expected_rows"] == 2
+    assert full["build"]["causes_spec"]["source"] == "causes.manifest.json"
+    assert full["build"]["causes_spec"]["file_sha256"] == sha(d / "causes.jsonl")
+
+    # 명세가 없으면 올리지 않는다 (중간까지만 만든 파일에는 명세가 없다)
+    (d / "causes.manifest.json").unlink()
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(d, "full", baseline)
+    assert "causes.manifest.json이 없다" in str(e.value)
+
+
+@pytest.mark.parametrize(
+    "tamper, message",
+    [
+        (
+            {"rows": 5, "expect_campaigns": 5},
+            "명세(causes.manifest.json)의 5줄과 다르다",
+        ),  # 파일이 명세보다 짧음
+        ({"expect_campaigns": 3}, "완성본이 아니다"),  # 기대 캠페인 수와 줄 수가 다름
+        ({"file_sha256": "00" * 32}, "sha256이"),  # 명세를 만든 뒤 파일이 바뀜
+        ({"campaigns_sha256": "00" * 32}, "campaigns_sha256과 다르다"),  # 캠페인 목록이 다름
+        ({"kind": "sample"}, "종류가 full이 아니다"),
+    ],
+)
+def test_full_stops_when_the_file_does_not_match_the_manifest(tmp_path, tamper, message):
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001"), cause("23V002")], **tamper)
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(d, "full", make_baseline(tmp_path))
+    assert message in str(e.value)
+
+
+def test_full_stops_when_the_file_was_edited_after_the_manifest(tmp_path):
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001"), cause("23V002")])
+    (d / "causes.jsonl").write_text(
+        (d / "causes.jsonl").read_text(encoding="utf-8").replace("insufficient", "ok"),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(d, "full", make_baseline(tmp_path))
+    assert "sha256이 causes.manifest.json과 다르다" in str(e.value)
+
+
+def test_causes_kind_is_never_chosen_automatically(tmp_path):
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001")])  # 전체 파일이 있어도 sample을 고르면 표본을 쓴다
+    baseline = make_baseline(tmp_path)
+    assert (
+        load_db.load_files(d, "sample", baseline)["build"]["causes_file"] == "causes_sample.jsonl"
+    )
+    assert load_db.load_files(d, "full", baseline)["build"]["causes_file"] == "causes.jsonl"
+    with pytest.raises(SystemExit) as e:  # --causes를 생략하면 argparse가 막는다
+        load_db.main(["check", "--data-dir", str(d)])
     assert e.value.code == 2
-    with pytest.raises(SystemExit) as e:  # 300건짜리 표본이 1건만 남은 경우
-        load_db.main(["check", "--causes", "sample", "--expect-rows", "300", "--data-dir", str(d)])
-    assert "기대 건수 300줄과 다르다" in str(e.value)
-    load_db.main(["check", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(d)])
-    assert "검증 통과" in capsys.readouterr().out
+
+
+def test_the_human_typed_expect_rows_option_no_longer_exists(tmp_path):
+    d = make_data_dir(tmp_path)
+    with pytest.raises(SystemExit) as e:
+        load_db.main(["check", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(d)])
+    assert e.value.code == 2
+
+
+def test_check_command_reports_the_build_and_the_spec(tmp_path, capsys):
+    d = make_data_dir(tmp_path)
+    load_db.main(
+        [
+            "check",
+            "--causes",
+            "sample",
+            "--data-dir",
+            str(d),
+            "--baseline",
+            str(make_baseline(tmp_path)),
+        ]
+    )
+    out = capsys.readouterr().out
+    assert "검증 통과" in out and "baseline.json" in out and re.search(r"build [0-9a-f]{16}", out)
 
 
 # ---------------------------------------------------------------------------
-# 스냅샷 비교
+# build 비교
 
 
 def test_diff_rows_counts_new_changed_removed_unchanged_and_columns():
@@ -284,21 +431,25 @@ def test_loader_columns_match_schema():
 def test_sql_helpers():
     sql = load_db.insert_sql("eval_questions")
     assert sql.startswith(
-        "insert into eval_questions (snapshot_date, action_no, question, open_date, gold_campnos, sets, row_sha256) values"
+        "insert into eval_questions (build_id, snapshot_date, action_no, question, open_date, gold_campnos, sets, row_sha256) values"
     )
     build_sql = load_db.upsert_build_sql()
-    assert "on conflict (snapshot_date) do update set" in build_sql
+    assert (
+        "on conflict (build_id) do update set change_summary = excluded.change_summary" in build_sql
+    )
 
 
-def test_schema_has_snapshot_keys_join_column_views_and_row_level_security():
+def test_schema_has_build_keys_join_column_views_and_row_level_security():
     text = load_db.SCHEMA.read_text(encoding="utf-8")
     assert "generated always as (left(campno, 6)) stored" in text
     for pk in (
-        "primary key (snapshot_date, campno)",
-        "primary key (snapshot_date, action_no)",
-        "primary key (snapshot_date, campaign)",
+        "primary key (build_id, campno)",
+        "primary key (build_id, action_no)",
+        "primary key (build_id, campaign)",
     ):
         assert pk in text
+    assert "build_id             text primary key" in text and "pruned_at" not in text
+    assert re.search(r"create or replace view latest_build with \(security_invoker = true\)", text)
     for table in load_db.TABLES:
         assert f"alter table {table}" in text
         # 뷰는 기본이 만든 사람 권한으로 읽어 RLS를 우회하므로 security_invoker가 반드시 필요하다
@@ -309,11 +460,10 @@ def test_schema_has_snapshot_keys_join_column_views_and_row_level_security():
 
 
 # ---------------------------------------------------------------------------
-# 로컬 Postgres (TEST_DATABASE_URL이 있을 때만)
+# Postgres (TEST_DATABASE_URL이 있을 때만, CI는 항상)
 
 PG_URL = os.environ.get("TEST_DATABASE_URL", "")
 PG_USABLE = bool(PG_URL) and urlparse(PG_URL).hostname in ("localhost", "127.0.0.1")
-# CI는 REQUIRE_DB_TESTS=1로 돌려서 DB 테스트가 조용히 건너뛰어지지 않게 한다 (DB가 없으면 건너뛰는 대신 실패)
 REQUIRE_DB = os.environ.get("REQUIRE_DB_TESTS") == "1"
 pg = pytest.mark.skipif(
     not PG_USABLE and not REQUIRE_DB, reason="TEST_DATABASE_URL이 없거나 localhost가 아니다"
@@ -336,22 +486,35 @@ def pgconn(monkeypatch):
         yield conn
 
 
-def counts(conn, table, snap):
+def load(d, kind="sample", baseline=None):
+    argv = ["load", "--causes", kind, "--data-dir", str(d)]
+    load_db.main([*argv, "--baseline", str(baseline)] if baseline else argv)
+
+
+def counts(conn, table, build_id):
     return conn.execute(
-        f"select count(*) from {table} where snapshot_date = %s", (snap,)
+        f"select count(*) from {table} where build_id = %s", (build_id,)
     ).fetchone()[0]
 
 
-def summary_of(conn, snap):
-    return conn.execute(
-        "select change_summary from data_builds where snapshot_date = %s", (snap,)
-    ).fetchone()[0]
+def build_ids(conn):
+    return [
+        r[0]
+        for r in conn.execute(
+            "select build_id from data_builds order by snapshot_date, loaded_at"
+        ).fetchall()
+    ]
+
+
+def latest(conn):
+    return conn.execute("select build_id from latest_build").fetchone()[0]
 
 
 @pg
-def test_pg_two_snapshots_are_kept_and_compared(pgconn, tmp_path):
+def test_pg_builds_on_different_dates_are_kept_and_compared(pgconn, tmp_path):
+    baseline = make_baseline(tmp_path)
     s1 = make_data_dir(
-        tmp_path,
+        tmp_path / "x",
         "2026-10-06",
         recalls=[
             recall("24V001000", snapshot_date="2026-10-06"),
@@ -360,23 +523,23 @@ def test_pg_two_snapshots_are_kept_and_compared(pgconn, tmp_path):
         ],
         manifest="a1" * 32,
     )
-    load_db.main(["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(s1)])
-    load_db.main(
-        ["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(s1)]
-    )  # 같은 스냅샷을 다시 올려도 줄 수는 그대로
-    d1, d2 = date(2026, 10, 6), date(2026, 10, 7)
-    assert [counts(pgconn, t, d1) for t in load_db.TABLES] == [3, 1, 1]
-    assert summary_of(pgconn, d1)["vs"] is None  # 첫 스냅샷
+    load(s1, baseline=baseline)
+    load(s1, baseline=baseline)  # 같은 build를 다시 올려도 줄 수는 그대로
+    (b1,) = build_ids(pgconn)
+    assert [counts(pgconn, t, b1) for t in load_db.TABLES] == [3, 1, 1]
+    assert (
+        pgconn.execute("select change_summary->>'vs' from data_builds").fetchone()[0] is None
+    )  # 첫 build
     # campaign6 조인: 원인 1건이 카드 2건에 붙는다 (일대다)
     n = pgconn.execute(
         "select count(*), count(distinct r.campno) from recalls r join causes c "
-        "on c.snapshot_date = r.snapshot_date and c.campaign = r.campaign6 where r.snapshot_date = %s",
-        (d1,),
+        "on c.build_id = r.build_id and c.campaign = r.campaign6 where r.build_id = %s",
+        (b1,),
     ).fetchone()
     assert n == (2, 2)
 
     s2 = make_data_dir(
-        tmp_path,
+        tmp_path / "y",
         "2026-10-07",
         recalls=[
             recall("24V001000", snapshot_date="2026-10-07"),  # 그대로
@@ -387,12 +550,16 @@ def test_pg_two_snapshots_are_kept_and_compared(pgconn, tmp_path):
         ],
         manifest="b2" * 32,
     )
-    load_db.main(["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(s2)])
-    # 두 스냅샷이 모두 남는다
-    assert [counts(pgconn, t, d1) for t in load_db.TABLES] == [3, 1, 1]
-    assert [counts(pgconn, t, d2) for t in load_db.TABLES] == [3, 1, 1]
-    s = summary_of(pgconn, d2)
-    assert s["vs"] == "2026-10-06"
+    load(s2, baseline=baseline)
+    b1, b2 = build_ids(pgconn)
+    assert b1 != b2
+    # 두 build가 모두 남는다
+    assert [counts(pgconn, t, b1) for t in load_db.TABLES] == [3, 1, 1]
+    assert [counts(pgconn, t, b2) for t in load_db.TABLES] == [3, 1, 1]
+    s = pgconn.execute(
+        "select change_summary from data_builds where build_id = %s", (b2,)
+    ).fetchone()[0]
+    assert s["vs"] == "2026-10-06" and s["vs_build"] == b1
     assert s["recalls"] == {
         "new": 1,
         "changed": 1,
@@ -401,30 +568,19 @@ def test_pg_two_snapshots_are_kept_and_compared(pgconn, tmp_path):
         "changed_columns": {"defect": 1},
     }
     assert s["eval_questions"]["unchanged"] == 1 and s["causes"]["unchanged"] == 1
-    # *_latest 뷰는 최신 스냅샷만 보여 준다
+    # *_latest 뷰는 최신 build만 보여 준다
+    assert latest(pgconn) == b2
     assert pgconn.execute(
-        "select snapshot_date, count(*) from recalls_latest group by 1"
-    ).fetchall() == [(d2, 3)]
-    # 어느 원인 파일을 올렸는지 남는다
-    kind, rows = pgconn.execute(
-        "select causes_kind, causes_rows from data_builds where snapshot_date = %s", (d2,)
-    ).fetchone()
-    assert (kind, rows) == ("sample", 1)
+        "select build_id, count(*) from recalls_latest group by 1"
+    ).fetchall() == [(b2, 3)]
 
 
 @pg
-def test_pg_same_date_different_build_is_not_overwritten(pgconn, tmp_path):
-    load_db.main(
-        [
-            "load",
-            "--causes",
-            "sample",
-            "--expect-rows",
-            "1",
-            "--data-dir",
-            str(make_data_dir(tmp_path / "a", "2026-10-06", manifest="a1" * 32)),
-        ]
-    )
+def test_pg_same_date_different_content_is_a_separate_build_and_nothing_is_overwritten(
+    pgconn, tmp_path
+):
+    baseline = make_baseline(tmp_path)
+    load(make_data_dir(tmp_path / "a", "2026-10-06", manifest="a1" * 32), baseline=baseline)
     other = make_data_dir(
         tmp_path / "b",
         "2026-10-06",
@@ -432,79 +588,64 @@ def test_pg_same_date_different_build_is_not_overwritten(pgconn, tmp_path):
             recall("24V001000", "Different text.", snapshot_date="2026-10-06"),
             recall("23V002000", snapshot_date="2026-10-06"),
         ],
+        manifest="c3" * 32,
     )
-    with pytest.raises(SystemExit) as e:
-        load_db.main(["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(other)])
-    assert "덮어쓰지 않는다" in str(e.value)
-    assert (
-        pgconn.execute("select defect from recalls where campno = '24V001000'").fetchone()[0]
-        == "Brake line may leak."
+    load(other, baseline=baseline)
+    first, second = build_ids(pgconn)
+    assert first != second  # 같은 날짜라도 내용이 다르면 다른 build
+    defects = dict(
+        pgconn.execute("select build_id, defect from recalls where campno = '24V001000'").fetchall()
     )
+    assert defects == {
+        first: "Brake line may leak.",
+        second: "Different text.",
+    }  # 첫 build는 그대로 남는다
+    assert latest(pgconn) == second  # 같은 날짜·같은 종류면 나중에 올린 것
 
 
 @pg
-def test_pg_same_date_with_a_different_causes_file_is_refused_unless_replaced(pgconn, tmp_path):
-    d1 = date(2026, 10, 6)
-    sample = make_data_dir(tmp_path / "s", "2026-10-06")
-    load_db.main(["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(sample)])
-    # 같은 스냅샷에 전체 원인 파일(내용이 다른 2줄)을 올리려 하면 기본은 중단 — 이전 근거를 되살릴 수 없게 되기 때문이다
-    write_jsonl(sample / "causes.jsonl", [cause("24V001", "Different text."), cause("23V002")])
-    args = ["load", "--causes", "full", "--expect-rows", "2", "--data-dir", str(sample)]
-    with pytest.raises(SystemExit) as e:
-        load_db.main(args)
-    assert "--replace-causes" in str(e.value)
+def test_pg_same_date_sample_and_full_are_both_kept_and_full_wins_for_queries(pgconn, tmp_path):
+    baseline = make_baseline(tmp_path)
+    d = make_data_dir(tmp_path / "s", "2026-10-06")
+    load(d, "sample", baseline)
+    (sample_build,) = build_ids(pgconn)
+    write_full(d, [cause("24V001", "Different text."), cause("23V002")])
+    load(d, "full", baseline)
+    ids = build_ids(pgconn)
+    full_build = next(b for b in ids if b != sample_build)
+    # 표본 build의 원인 문장은 교체되지 않고 그대로 남는다 — 같은 날짜가 다른 내용을 가리키게 되지 않는다
     assert (
-        pgconn.execute("select cause_text from causes where campaign = '24V001'").fetchone()[0]
+        pgconn.execute(
+            "select cause_text from causes where build_id = %s", (sample_build,)
+        ).fetchone()[0]
         == "The gauge of the tube is insufficient."
     )
-    assert pgconn.execute(
-        "select causes_kind, jsonb_array_length(causes_history) from data_builds"
-    ).fetchone() == ("sample", 0)
-    # 의도한 교체는 --replace-causes로 하고, 이전 파일 정보가 causes_history에 남는다
-    load_db.main([*args, "--replace-causes"])
-    kind, expected, history = pgconn.execute(
-        "select causes_kind, causes_expected_rows, causes_history from data_builds"
-    ).fetchone()
-    assert (kind, expected) == ("full", 2) and counts(pgconn, "causes", d1) == 2
-    assert len(history) == 1
-    assert (
-        history[0]["causes_kind"] == "sample"
-        and history[0]["causes_rows"] == 1
-        and history[0]["causes_expected_rows"] == 1
-    )
-    assert (
-        history[0]["causes_sha256"]
-        == hashlib.sha256((sample / "causes_sample.jsonl").read_bytes()).hexdigest()
-    )
-    # 같은 파일을 다시 올리는 것은 교체가 아니라서 이력이 늘지 않는다
-    load_db.main(args)
-    assert (
-        pgconn.execute("select jsonb_array_length(causes_history) from data_builds").fetchone()[0]
-        == 1
-    )
+    assert counts(pgconn, "causes", full_build) == 2 and counts(pgconn, "causes", sample_build) == 1
+    kinds = dict(pgconn.execute("select build_id, causes_kind from data_builds").fetchall())
+    assert kinds == {sample_build: "sample", full_build: "full"}
+    spec = pgconn.execute(
+        "select causes_spec from data_builds where build_id = %s", (full_build,)
+    ).fetchone()[0]
+    assert spec["source"] == "causes.manifest.json" and spec["rows"] == 2
+    # 조회는 전체본을 쓴다. 표본 build를 나중에 다시 올려도 조회가 표본으로 돌아가지 않는다
+    assert latest(pgconn) == full_build
+    load(d, "sample", baseline)
+    assert latest(pgconn) == full_build
+    assert pgconn.execute("select count(*) from causes_latest").fetchone()[0] == 2
 
 
 @pg
-def test_pg_has_no_command_that_deletes_snapshots(pgconn, tmp_path):
+def test_pg_has_no_command_that_deletes_builds(pgconn, tmp_path):
+    baseline = make_baseline(tmp_path)
     for day, manifest in (("2026-10-06", "a1" * 32), ("2026-10-07", "b2" * 32)):
-        load_db.main(
-            [
-                "load",
-                "--causes",
-                "sample",
-                "--expect-rows",
-                "1",
-                "--data-dir",
-                str(make_data_dir(tmp_path, day, manifest=manifest)),
-            ]
-        )
+        load(make_data_dir(tmp_path, day, manifest=manifest), baseline=baseline)
     with pytest.raises(
         SystemExit
-    ):  # prune 명령은 없다 — 지운 데이터를 되살릴 보관소가 생기기 전에는 두지 않는다
+    ):  # prune 같은 삭제 명령은 없다 — 지운 데이터를 되살릴 보관소가 생기기 전에는 두지 않는다
         load_db.main(["prune", "--keep", "1", "--apply"])
     assert (
         pgconn.execute("select count(*) from recalls").fetchone()[0] == 4
-    )  # 두 스냅샷이 그대로 남는다
+    )  # 두 build가 그대로 남는다
     assert "pruned_at" not in [
         r[0]
         for r in pgconn.execute(
@@ -515,17 +656,7 @@ def test_pg_has_no_command_that_deletes_snapshots(pgconn, tmp_path):
 
 @pg
 def test_pg_rls_blocks_api_roles_even_through_views(pgconn, tmp_path):
-    load_db.main(
-        [
-            "load",
-            "--causes",
-            "sample",
-            "--expect-rows",
-            "1",
-            "--data-dir",
-            str(make_data_dir(tmp_path)),
-        ]
-    )
+    load(make_data_dir(tmp_path), baseline=make_baseline(tmp_path))
     pgconn.execute("drop role if exists api_user")
     pgconn.execute("create role api_user nologin")
     pgconn.execute("grant usage on schema public to api_user")
@@ -538,6 +669,7 @@ def test_pg_rls_blocks_api_roles_even_through_views(pgconn, tmp_path):
             "recalls_latest",
             "causes_latest",
             "eval_questions_latest",
+            "latest_build",
             "data_builds",
         ):
             assert pgconn.execute(f"select count(*) from {relation}").fetchone()[0] == 0, relation
@@ -550,26 +682,19 @@ def test_pg_rls_blocks_api_roles_even_through_views(pgconn, tmp_path):
 def test_pg_failed_load_rolls_back_everything(pgconn, tmp_path):
     import psycopg
 
-    load_db.main(
-        [
-            "load",
-            "--causes",
-            "sample",
-            "--expect-rows",
-            "1",
-            "--data-dir",
-            str(make_data_dir(tmp_path, "2026-10-06")),
-        ]
-    )
-    # 둘째 스냅샷의 마지막 테이블(causes)에서 제약 위반이 나게 한다 — 앞서 올린 recalls·eval·data_builds도 함께 되돌아가야 한다
+    baseline = make_baseline(tmp_path)
+    load(make_data_dir(tmp_path / "ok", "2026-10-06"), baseline=baseline)
+    # 둘째 build의 마지막 테이블(causes)에서 제약 위반이 나게 한다 — 앞서 올린 recalls·eval·data_builds도 함께 되돌아가야 한다
     broken = make_data_dir(
-        tmp_path, "2026-10-07", causes=[cause("24V001", cause_status="bogus")], manifest="b2" * 32
+        tmp_path / "bad",
+        "2026-10-07",
+        causes=[cause("24V001", cause_status="bogus")],
+        manifest="b2" * 32,
     )
     with pytest.raises(psycopg.errors.CheckViolation):
-        load_db.main(
-            ["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(broken)]
-        )
-    d1, d2 = date(2026, 10, 6), date(2026, 10, 7)
-    assert pgconn.execute("select snapshot_date from data_builds").fetchall() == [(d1,)]
-    assert [counts(pgconn, t, d2) for t in load_db.TABLES] == [0, 0, 0]
-    assert [counts(pgconn, t, d1) for t in load_db.TABLES] == [2, 1, 1]  # 이전 스냅샷은 그대로
+        load(broken, baseline=baseline)
+    (only,) = build_ids(pgconn)
+    assert [counts(pgconn, t, only) for t in load_db.TABLES] == [2, 1, 1]  # 이전 build는 그대로
+    assert (
+        pgconn.execute("select count(*) from recalls").fetchone()[0] == 2
+    )  # 실패한 build의 줄은 남지 않는다

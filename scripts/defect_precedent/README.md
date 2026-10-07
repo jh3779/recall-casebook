@@ -71,21 +71,23 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 ## DB 적재 (Supabase, DEC-034)
 
 ```bash
-uv run python -m scripts.defect_precedent.load_db check --causes sample --expect-rows 300  # DB 없이 파일만 검증 (해시·날짜·정답 리콜·캠페인 연결·원인 파일 줄 수)
+uv run python -m scripts.defect_precedent.load_db check --causes sample                    # DB 없이 파일만 검증 (해시·날짜·정답 리콜·캠페인 연결·원인 파일 명세 대조)
 uv run --env-file .env python -m scripts.defect_precedent.load_db schema                  # schema.sql 적용 (여러 번 해도 됨)
-uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes sample --expect-rows 300  # 스냅샷 1개 적재 + 건수 대조 + 직전 스냅샷과 비교 (오류면 전체 되돌림)
-uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes full --expect-rows 11737  # 573 전체가 생긴 뒤 (기대 건수가 파일 줄 수와 같아야 올림)
+uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes sample    # build 1개 적재 + 건수 대조 + 직전 날짜 build와 비교 (오류면 전체 되돌림)
+uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes full      # 573 전체가 생긴 뒤 (causes.manifest.json 명세와 대조)
 ```
 
 - 연결 문자열은 `.env`의 `DATABASE_URL`(Supabase 대시보드 Connect → 로컬 스크립트는 Direct connection, IPv6가 안 되면 Session pooler). 값은 출력·커밋하지 않는다.
-- **스냅샷별로 보관한다.** 줄마다 `snapshot_date`를 두고 새 스냅샷을 올려도 지난 스냅샷은 그대로다. 평소 조회는 `recalls_latest`·`eval_questions_latest`·`causes_latest` 뷰(데이터가 남은 가장 최근 스냅샷)로 한다. 같은 스냅샷을 다시 올리면 그 스냅샷의 줄만 통째로 바꾸고, **같은 날짜인데 원본·카드·시험지 해시가 다르면 덮어쓰지 않고 중단**한다.
-- 올리는 테이블: `data_builds`(스냅샷 1개 = 1줄. 원본·원인 파일의 종류·이름·sha256·건수, 직전 스냅샷 대비 변경 요약) · `recalls` · `eval_questions` · `causes`. 회사명 대응표(`maker_aliases`)는 PR #29 병합 뒤 추가한다.
-- `--causes`와 `--expect-rows`는 반드시 적는다 (파일을 자동으로 고르지 않는다). `sample`은 `causes_sample.jsonl`(지금은 300건), `full`은 `causes.jsonl`이다. 기대 건수가 파일 줄 수와 다르면(중간까지만 만들어진 파일) 올리지 않는다.
-- **같은 날짜에 다른 원인 파일을 올리면 기본은 중단한다** (이전 근거를 되살릴 수 없게 되기 때문). 표본을 전체본으로 바꾸는 것처럼 의도한 교체만 `--replace-causes`를 붙이고, 이전 파일의 종류·이름·sha256·건수는 `data_builds.causes_history`에 남는다.
-- **스냅샷을 지우는 명령은 없다.** 지운 데이터를 되살릴 보관소(아카이브)와 복원 절차가 생기기 전에는 NHTSA가 옛 파일을 다시 주지 않아 근거를 잃는다 — 필요해지면 아카이브와 함께 추가한다 (DEC-034 미결).
+- **build 단위로 보관한다.** `build_id`는 입력 파일 4개(원본 명세·카드·시험지·원인 파일)의 sha256으로 정해지는 불변 식별자다. **내용이 하나라도 다르면 다른 build라서 같은 날짜라도 덮어쓰지 않고 둘 다 남는다** (예: 같은 날짜의 표본 build와 전체 build). 줄마다 `build_id`를 두고 `(build_id, 번호)`가 기본키다. 같은 build를 다시 올리면(내용이 같다) 그 build의 줄만 통째로 바꾼다.
+- 평소 조회는 `recalls_latest`·`eval_questions_latest`·`causes_latest` 뷰로 한다. 뷰는 `latest_build`가 고른 build 하나만 보여 준다: **가장 최근 날짜 → 같은 날짜면 전체본(full)이 표본(sample)보다 우선 → 나중에 올린 것.** 같은 날짜에 표본이 먼저 올라가 있어도 전체본을 올리면 조회는 전체본을 쓰고, 표본 build는 지워지지 않는다.
+- 올리는 테이블: `data_builds`(build 1개 = 1줄. 원본·원인 파일의 종류·이름·sha256·건수, 대조한 명세, 직전 날짜 build 대비 변경 요약) · `recalls` · `eval_questions` · `causes`. 회사명 대응표(`maker_aliases`)는 PR #29 병합 뒤 추가한다.
+- **원인 파일의 완전성은 사람이 입력한 숫자가 아니라 독립된 명세와 대조한다.** `--causes`는 반드시 적는다 (파일을 자동으로 고르지 않는다).
+  - `sample`(`causes_sample.jsonl`): 커밋된 기준 파일 `baseline_2026-10-06.json`의 `rclrpt_sample` 300개 캠페인과 **정확히 같아야** 한다 (줄 수와 캠페인 목록 모두).
+  - `full`(`causes.jsonl`): `rclrpt all`이 완성본과 함께 만드는 `causes.manifest.json`(줄 수·파일 sha256·캠페인 목록 sha256·기대 캠페인 수)과 같아야 한다. **명세가 없으면 올리지 않는다** — 중간까지만 만들어진 파일에는 명세가 없다.
 - 날짜는 `date` 타입이다. 칸마다 정해진 형식(`YYYYMMDD`, `snapshot_date`는 `YYYY-MM-DD`)만 받고, 틀리면 몇 번째 줄인지 알려 주고 중단한다.
-- `recalls.campaign6`은 DB가 `left(campno, 6)`으로 채우는 생성 칸이다. `causes.campaign`과 이을 때 쓴다 (`c.snapshot_date = r.snapshot_date and c.campaign = r.campaign6`). **한 캠페인이 `recalls` 여러 건에 붙을 수 있다** (282개 캠페인) — 카드 수를 셀 때 `distinct campno`를 쓴다.
-- 모든 테이블은 RLS를 켜고 정책을 두지 않았다 — Supabase의 anon·authenticated API 키로는 읽히지 않는다. `*_latest` 뷰는 `security_invoker = true`다 (없으면 뷰가 RLS를 우회한다). 서버·스크립트는 `postgres` 계정으로 접속한다.
+- `recalls.campaign6`은 DB가 `left(campno, 6)`으로 채우는 생성 칸이다. `causes.campaign`과 이을 때 쓴다 (`c.build_id = r.build_id and c.campaign = r.campaign6`). **한 캠페인이 `recalls` 여러 건에 붙을 수 있다** (282개 캠페인) — 카드 수를 셀 때 `distinct campno`를 쓴다.
+- 모든 테이블은 RLS를 켜고 정책을 두지 않았다 — Supabase의 anon·authenticated API 키로는 읽히지 않는다. `*_latest`·`latest_build` 뷰는 `security_invoker = true`다 (없으면 뷰가 RLS를 우회한다). 서버·스크립트는 `postgres` 계정으로 접속한다.
+- **build를 지우는 명령은 없다.** 지운 데이터를 되살릴 보관소(아카이브)와 복원 절차가 생기기 전에는 NHTSA가 옛 파일을 다시 주지 않아 근거를 잃는다 — 필요해지면 아카이브와 함께 추가한다 (DEC-034 미결).
 - 중복·변경을 종류별로 어떻게 다루는지: [`docs/데이터_중복_처리_패턴.md`](../../docs/데이터_중복_처리_패턴.md)
 - CI(`lint-and-test`)는 일회용 Postgres 17을 띄워 DB 테스트도 항상 실행한다 (`REQUIRE_DB_TESTS=1` — DB가 없으면 건너뛰지 않고 실패).
 - 로컬 확인(DB 테스트 포함): `docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -p 54329:5432 postgres:17` 뒤 `TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54329/postgres uv run pytest tests/test_load_db.py`. 테스트가 `public` 스키마를 통째로 지우므로 주소가 localhost가 아니면 건너뛴다.
