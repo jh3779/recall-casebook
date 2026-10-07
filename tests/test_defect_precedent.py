@@ -429,3 +429,27 @@ def test_verify_build_stops_when_manifest_changed(tmp_path):
     (raw / "manifest.json").write_text(json.dumps(manifest))
     with pytest.raises(SystemExit):
         nhtsa.verify_build(raw, out)
+
+
+def test_maker_alias_merges_only_mechanical_differences():
+    from collections import Counter
+
+    from scripts.defect_precedent.maker_aliases import build_table
+
+    counts = Counter(
+        {
+            "FORD MOTOR COMPANY": 986,
+            "Ford Motor Company": 758,
+            "GENERAL MOTORS CORP.": 1217,
+            "General Motors LLC": 276,
+            "General Motors, LLC": 193,
+        }
+    )
+    rows = {r["raw_maker"]: r for r in build_table(counts)}
+    # 대소문자 차이는 한 이름으로 묶는다 (소문자가 섞인 표기가 대표)
+    assert rows["FORD MOTOR COMPANY"]["maker"] == "Ford Motor Company"
+    assert rows["FORD MOTOR COMPANY"]["status"] == "자동"
+    # 쉼표 차이는 묶고, 법인 형태(Corp ↔ LLC)가 다른 것은 묶지 않고 확인 요청
+    assert rows["General Motors, LLC"]["maker"] == rows["General Motors LLC"]["maker"]
+    assert rows["GENERAL MOTORS CORP."]["maker"] != rows["General Motors LLC"]["maker"]
+    assert rows["GENERAL MOTORS CORP."]["status"] == "확인 필요"
