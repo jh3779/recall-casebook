@@ -705,6 +705,28 @@ def test_maker_alias_unreviewed_needs_a_real_reason_kept_after_the_draft_note():
     assert reason_added("설명", "") and not reason_added(None, None)
 
 
+def test_maker_alias_unreviewed_blocks_one_maker_split_into_two_groups():
+    from scripts.defect_precedent.maker_aliases import unreviewed
+
+    # 같은 maker(Kia Motors America)로 정리되는 원문 두 줄 중 하나만 다른 묶음으로 바꾸고 이유를 적어도 통과하지 못한다
+    draft = [
+        _row("KIA MOTORS AMERICA, INC.", maker="Kia Motors America", maker_group="Kia"),
+        _row("Kia Motors America", maker="Kia Motors America", maker_group="Kia"),
+    ]
+    split = [
+        draft[0],
+        {**draft[1], "maker_group": "Kia Group", "review": "확인 완료", "review_note": "묶음 변경"},
+    ]
+    with pytest.raises(ValueError, match="같은 maker가 서로 다른 maker_group"):
+        unreviewed(split, draft)
+    # 두 줄을 함께 바꾸면 통과한다
+    both = [
+        {**r, "maker_group": "Kia Group", "review": "확인 완료", "review_note": "묶음 변경"}
+        for r in draft
+    ]
+    assert unreviewed(both, draft) == []
+
+
 def test_maker_alias_committed_draft_is_a_valid_input_for_unreviewed():
     from scripts.defect_precedent.maker_aliases import OUT, read_table, unreviewed
 

@@ -206,8 +206,9 @@ def unreviewed(rows: list[dict], draft: list[dict]) -> list[dict]:
     - `review_required`가 초안과 다르면 오류로 멈춘다 (`review`와 `review_required`를 함께 지운 경우를 잡는다).
     - 알 수 없는 상태값(오타 `확인완료` 등)은 짐작하지 않고 오류로 멈춘다.
     - `maker`·`maker_group`이 비어 있으면 오류로 멈춘다. 초안과 값이 다른 줄은 `review`가 `확인 완료`이고 `review_note`가
-      초안 메모를 그대로 둔 채 그 뒤에 실제 설명이 덧붙어 있어야 한다 (이유 없이 고치거나 메모를 지운 줄을 잡는다). `count`·`maker_basis`·`group_basis`는 사람이 고치지 않는 칸이라
-      초안과 같아야 한다 (열 하나만 정렬이 어긋난 경우를 잡는다).
+      초안 메모를 그대로 둔 채 그 뒤에 실제 설명이 덧붙어 있어야 한다 (이유 없이 고치거나 메모를 지운 줄을 잡는다).
+    - `count`·`maker_basis`·`group_basis`는 사람이 고치지 않는 칸이라 초안과 같아야 한다 (열 하나만 정렬이 어긋난 경우를 잡는다).
+    - 같은 `maker`가 서로 다른 `maker_group`을 가지면 오류로 멈춘다 (같은 회사의 선례가 두 묶음으로 갈리는 것을 막는다).
     - `확인 필요`·`보류`는 끝나지 않은 줄이고, 검토가 필요했던 줄(`review_required = 필요`)은 `review`가 정확히
       `확인 완료`일 때만 끝난 것이다.
     """
@@ -262,6 +263,14 @@ def unreviewed(rows: list[dict], draft: list[dict]) -> list[dict]:
         raise ValueError(
             f"maker·maker_group을 고친 줄은 review를 `확인 완료`로 하고 review_note에 이유를 적어야 한다 "
             f"{unexplained[:5]} (총 {len(unexplained)}줄)"
+        )
+    groups_of: dict[str, set[str]] = defaultdict(set)
+    for r in rows:
+        groups_of[r["maker"]].add(r["maker_group"])
+    split = sorted(m for m, g in groups_of.items() if len(g) > 1)
+    if split:
+        raise ValueError(
+            f"같은 maker가 서로 다른 maker_group으로 갈렸다 {split[:5]} (총 {len(split)}개) — 같은 회사의 선례가 둘로 나뉜다"
         )
     unknown = sorted({r["review"] for r in rows if r["review"] not in REVIEW_STATES})
     if unknown:
