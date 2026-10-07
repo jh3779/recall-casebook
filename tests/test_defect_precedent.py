@@ -431,7 +431,7 @@ def test_verify_build_stops_when_manifest_changed(tmp_path):
         nhtsa.verify_build(raw, out)
 
 
-def test_maker_alias_merges_only_mechanical_differences():
+def test_maker_alias_maker_and_group():
     from collections import Counter
 
     from scripts.defect_precedent.maker_aliases import build_table
@@ -442,14 +442,38 @@ def test_maker_alias_merges_only_mechanical_differences():
             "Ford Motor Company": 758,
             "GENERAL MOTORS CORP.": 1217,
             "General Motors LLC": 276,
-            "General Motors, LLC": 193,
+            "Hyundai Motor America": 202,
+            "Hyundai Motor Company": 35,
+            "Hyundai Translead": 10,
+            "CHRYSLER CORPORATION": 654,
+            "Chrysler Group LLC": 73,
+            "Chrysler (FCA US, LLC)": 271,
+            "Kia Motors America": 82,
+            "KIA MOTORS AMERICA, INC.": 38,
         }
     )
     rows = {r["raw_maker"]: r for r in build_table(counts)}
-    # 대소문자 차이는 한 이름으로 묶는다 (소문자가 섞인 표기가 대표)
+    # 대소문자 차이는 표기 통일 (소문자가 섞인 표기가 대표)
     assert rows["FORD MOTOR COMPANY"]["maker"] == "Ford Motor Company"
-    assert rows["FORD MOTOR COMPANY"]["status"] == "자동"
-    # 쉼표 차이는 묶고, 법인 형태(Corp ↔ LLC)가 다른 것은 묶지 않고 확인 요청
-    assert rows["General Motors, LLC"]["maker"] == rows["General Motors LLC"]["maker"]
-    assert rows["GENERAL MOTORS CORP."]["maker"] != rows["General Motors LLC"]["maker"]
-    assert rows["GENERAL MOTORS CORP."]["status"] == "확인 필요"
+    assert rows["FORD MOTOR COMPANY"]["maker_basis"] == "표기 통일"
+    # 법인 형태(Corp ↔ LLC)가 달라도 maker는 한 이름
+    assert rows["GENERAL MOTORS CORP."]["maker"] == rows["General Motors LLC"]["maker"]
+    assert rows["GENERAL MOTORS CORP."]["maker_basis"] == "법인 형태 통일"
+    # 미국 법인과 본사는 maker는 따로, maker_group은 같다
+    america, company = rows["Hyundai Motor America"], rows["Hyundai Motor Company"]
+    assert america["maker"] != company["maker"]
+    assert america["maker_group"] == company["maker_group"]
+    assert america["group_basis"] == "자동"
+    # 이름이 비슷해도 다른 회사(트레일러 제조사)는 묶지 않는다
+    assert rows["Hyundai Translead"]["maker_group"] != america["maker_group"]
+    # 후신 관계는 이름 목록으로 묶고 maker는 신고 당시 이름을 유지한다 (초안 → 확인 필요)
+    names = ("CHRYSLER CORPORATION", "Chrysler Group LLC", "Chrysler (FCA US, LLC)")
+    assert len({rows[n]["maker_group"] for n in names}) == 1
+    assert rows["Chrysler Group LLC"]["maker"] == "Chrysler Group LLC"
+    assert rows["Chrysler Group LLC"]["review"] == "확인 필요"
+    # 목록에 없는 표기도 같은 maker로 합쳐지면 그 maker의 묶음을 따른다
+    assert (
+        rows["KIA MOTORS AMERICA, INC."]["maker_group"] == rows["Kia Motors America"]["maker_group"]
+    )
+    # 모든 줄이 maker_group을 가진다
+    assert all(r["maker_group"] for r in rows.values())
