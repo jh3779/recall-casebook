@@ -63,3 +63,8 @@
 - 2026-10-07: PR #22 병합(d1019a5, DEC-032), HANDOFF에 #22 후속(할 일 25 갱신·26 추가)·DEC-032 인용 정정
 - 2026-10-07: 기준 재현 확인(0.510) 후 PR #29 회사명 대응표 초안 — maker·maker_group 두 칸(DEC-033), 확인 필요 25줄(리뷰 반영 후 31줄), 이승노 님용 안내문(docs/회사명_대응표_안내.md)
 - 2026-10-07: PR #29 Codex 리뷰 반영 — 대표 회사명 선택 규칙(마침표 오타 회피, Piaggio 회귀 테스트), review 상태 4종·review_note·unreviewed(), 초안(maker_aliases_draft.csv)/확인본(maker_aliases.csv) 분리
+- 2026-10-07: Supabase 적재 준비 — schema.sql·load_db.py·테스트, date 타입·campaign6 생성 칸(DEC-034). 로컬 Postgres 17 컨테이너에서 스키마 2회·적재 2회·질의 검증 (실제 Supabase 미적재)
+- 2026-10-07: PR #30 Codex 리뷰 반영 — 스냅샷별 보관(DEC-034 개정: 복합 기본키·row_sha256·변경 요약·prune), 원인 파일 명시 선택(--causes)·기대 건수, 날짜 형식 칸별 분리, 로컬 Postgres에서 스냅샷 2개 연속 적재 검증
+- 2026-10-07: PR #30 Codex 재리뷰(7deffafc) 반영 — prune 삭제(아카이브 전까지), 표본도 기대 건수 필수, 같은 날짜 다른 원인 파일은 --replace-causes + causes_history, CI에 Postgres 17 서비스(DB 테스트 항상 실행)
+- 2026-10-07: PR #30 Codex 재리뷰(c0906973) 반영 — build_id(입력 파일 4개 해시) 단위 보관으로 변경(같은 날짜 교체·--replace-causes·causes_history 제거), 원인 파일 완전성을 사람이 입력한 --expect-rows 대신 독립된 명세(표본: 기준 파일 300개 캠페인, 전체: causes.manifest.json)와 대조
+- 2026-10-07: load_db가 causes.manifest.json의 수용한 실패(failures·failed_campaigns)를 대조 — 줄 수+실패=기대 캠페인 수, 실패한 캠페인이 파일에 있으면 중단 (PR #32 --accept-failures와 짝)

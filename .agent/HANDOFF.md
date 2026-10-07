@@ -1,6 +1,6 @@
 # Agent Handoff
 
-_갱신: 2026-10-07 (PR #26 병합 뒤 체크포인트 — 팀 공지 초안·학습 진행, A파트 회사명 대응표 PR #29)_
+_갱신: 2026-10-07 (PR #26 병합 뒤 체크포인트 — 팀 공지 초안·학습 진행, A파트 회사명 대응표 PR #29, Supabase 적재 준비)_
 
 ## Current Objective
 
@@ -73,6 +73,7 @@ PR #25를 `6f2624a`로 병합(`0801f51`)한 뒤 PR #23에 main을 합치고 리�
   25. **브랜치 정리 범위** (PR #26 Codex `ad11ed68` 선택, PR #22 병합으로 갱신): #17·#20·#21 원격 브랜치와 worktree 4개(`wt-b`·`wt-f`·`wt-fe`·`LG_CNS_RAG_main-research`)는 더 보존할 이유가 없다 — 사용자 확인 뒤 정리.
   26. **`frontend/.nvmrc` 고정과 프런트 초기 설정 — 담당 우지훈** ([[DEC-032]]): Node 버전을 정해 `frontend/.nvmrc`로 올리고, 빌드 도구(Vite 등)·TypeScript 여부를 C 파트(박성호)와 정한다. 화면과 RAG 사이 전달 방식(결과 파일 / 서버 API)도 B·C가 정한다(DEC-032 미결). API 호출 상한도 미결.
   27. **회사명 대응표 (A 파트, PR #29, [[DEC-033]])**: 초안 `scripts/defect_precedent/maker_aliases_draft.csv`(스크립트가 만든다, 다시 만들어도 됨)·`maker_aliases.py` 완료(원문 3,889 → `maker` 3,323 → `maker_group` 3,297, `review = 확인 필요` 31줄(고객사 현대·기아·제네시스의 자동 묶음 4줄 포함)). 순서: 이승노 님이 안내문(`docs/회사명_대응표_안내.md`)대로 초안을 `maker_aliases.csv`로 복사해 확인(`review`를 `확인 완료`·`보류`로 바꾸고 `review_note`에 메모) → 박예원이 `unreviewed(확인본, 초안)`이 비어 있는지 검사(초안과 줄 목록·`review_required`를 대조해 줄 삭제·추가·변경은 중단, `확인 필요`·`보류`가 남거나, 검토가 필요했던 줄(`review_required = 필요`)이 `확인 완료`가 아니거나, 알 수 없는 상태값이 있으면 중단) → `recalls.jsonl`의 `maker`·`maker_group`에 반영 → 새 기준 freeze로 재현 확인(적용하면 카드 sha256이 바뀌어 기존 `baseline_2026-10-06.json` 재현은 깨진다). 미확인 초안을 바로 적용하지 않는다. 기준 원본 사본(`data/raw/nhtsa/`, 2026-10-07 로컬에 확보)으로 0.510 / 0.503 재현 확인함.
+  28. **Supabase 적재 ([[DEC-034]])**: `scripts/defect_precedent/schema.sql`·`load_db.py` 완료 — **build 단위 보관**(`build_id` = 입력 파일 4개 해시, 같은 날짜라도 내용이 다르면 별도 build), 원인 파일은 `--causes sample|full`로 명시하고 독립된 명세와 대조(표본: 기준 파일의 300개 캠페인, 전체: `rclrpt all`이 만드는 `causes.manifest.json`), 직전 날짜 build 대비 변경 요약, **build 삭제 명령은 없음**(아카이브가 생기면 추가). 로컬 Postgres 17·CI에서 검증(실제 Supabase에는 아직 안 올림). 남은 것: ① Supabase 새 프로젝트·`DATABASE_URL`(.env) 준비 → `load_db schema` → `load_db load --causes sample`, ② 573 전체 수집이 끝나 `causes.jsonl`·`causes.manifest.json`이 생기면 `load_db load --causes full`, ③ PR #29 병합 뒤 `maker_aliases` 테이블·적재 추가, ④ 회사명 확인본 반영 시 `recalls.maker` 갱신(새 freeze), ⑤ 벡터 칸·부품 트리는 모델·연결 규칙 확정 뒤, ⑥ 검색을 DB로 옮기면 BM25 기준선과 같은 시험지로 before/after, ⑦ 두 번째 날짜의 NHTSA build를 올릴 때 변경 요약(생김·바뀜·사라짐)을 `docs/데이터_중복_처리_패턴.md`에 기록하고 칸별로 따로 남길 사례를 정한다. ⑧ **조회 정책(2026-10-07 사용자 결정, PR #30 Codex 리뷰)**: `latest_build`는 날짜보다 종류가 먼저다 — 전체본(full)이 있으면 가장 최근 전체본, 없을 때만 가장 최근 표본. 나중 날짜의 표본(300건)이 이전 날짜의 전체본(약 1.2만 건)을 평소 조회에서 가리지 않게 한 것이다. 표본만 보려면 `*_latest_sample` 뷰. 표본 기준 파일은 저장소의 `baseline_2026-10-06.json`만 쓰고 `--baseline` 옵션은 없앴다. ⑨ **후속(이슈로 올리지 않고 여기에 둔다, 2026-10-07 사용자 결정)**: 과거 날짜 build를 나중에 올리면 그 다음 날짜 build의 `data_builds.change_summary`가 다시 계산되지 않는다(예: 10/5 → 10/7을 올린 뒤 10/6을 올리면 10/7의 요약은 여전히 10/5 대비). 역순 적재를 거부하거나, 허용하려면 이후 build들의 변경 요약을 다시 계산하는 절차를 만든다. 지금은 build가 날짜순으로 쌓이므로 급하지 않다 — 두 번째 날짜의 build를 올리기 전에 정한다. ⑩ 선택: `build_id`를 SHA-256 앞 16자리 대신 전체 값으로 저장(충돌 가능성은 매우 낮음, 스키마 변경이라 아카이브 설계와 함께).
 - 역할 확정(이슈 #24): A 박예원 · B 우지훈 · C 박성호(발표) · D 이승노.
 - **주의(재발 방지)**: `.gitignore`에 `docs/handbook/*`가 없는 브랜치에서 `uv run ruff format .` 금지. 결과 코멘트는 수정하지 말고 새로 올린다.
 
