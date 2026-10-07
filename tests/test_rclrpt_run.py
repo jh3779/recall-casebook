@@ -288,7 +288,7 @@ def test_accepting_persistent_failures_makes_the_complete_file_with_the_failed_l
         rclrpt.run("all", expect_campaigns=5)
     assert not (env / "causes.jsonl").exists()
     # 실패 목록을 확인한 뒤 건수를 정확히 적어 수용하면 완성본과 명세가 생긴다
-    rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003"])
+    rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003:non_pdf_response"])
     assert [r["campaign"] for r in lines(env / "causes.jsonl")] == [
         c for c in CAMPAIGNS if c != "24V003"
     ]
@@ -311,6 +311,7 @@ def test_accepting_persistent_failures_makes_the_complete_file_with_the_failed_l
     assert manifest["campaigns_sha256"] == rclrpt.campaigns_digest(
         c for c in CAMPAIGNS if c != "24V003"
     )
+    assert manifest["failed_kinds"] == {"24V003": "non_pdf_response"}
     assert manifest["expected_campaigns_sha256"] == rclrpt.campaigns_digest(
         CAMPAIGNS
     )  # 성공 ∪ 실패 = 기대 목록
@@ -320,15 +321,40 @@ def test_accept_failures_must_name_exactly_the_failed_campaigns(env, monkeypatch
     monkeypatch.setattr(rclrpt, "latest_parsed", _fail_on("24V003"))
     # 건수는 맞지만 다른 캠페인을 적음 — 확인하지 않은 실패를 수용하는 경우
     with pytest.raises(SystemExit) as e:
-        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V001"])
+        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V001:non_pdf_response"])
     assert e.value.code == 1
     assert not (env / "causes.jsonl").exists() and not (env / "causes.manifest.json").exists()
     out = capsys.readouterr().out
-    assert "--accept-failures 24V003 로 다시 실행한다" in out and "이번 실패 캠페인" in out
+    assert (
+        "--accept-failures 24V003:non_pdf_response 로 다시 실행한다" in out and "이번 실패" in out
+    )
     # 목록에 더 넣어도(건수 불일치) 받지 않는다
     with pytest.raises(SystemExit):
-        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003", "24V001"])
+        rclrpt.run(
+            "all",
+            expect_campaigns=5,
+            accept_failures=["24V003:non_pdf_response", "24V001:non_pdf_response"],
+        )
     assert not (env / "causes.jsonl").exists()
+
+
+def test_the_same_campaign_failing_for_a_different_reason_is_not_accepted(env, monkeypatch, capsys):
+    # 사람이 확인한 것은 비PDF 응답인데 재실행에서는 일시적인 다운로드 오류로 실패한 경우
+    def fake(keys, manual=None):
+        name = keys[0].split("-")[1]
+        if name == "24V003":
+            raise rclrpt.ReportError("다운로드 실패: odi/rcl/x.PDF (timed out)")
+        return keys[0], parsed(name)
+
+    monkeypatch.setattr(rclrpt, "latest_parsed", fake)
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003:non_pdf_response"])
+    assert not (env / "causes.jsonl").exists()
+    # 일시 오류 종류는 목록을 그대로 적어도 수용할 수 없다
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003:download_failed"])
+    assert not (env / "causes.jsonl").exists()
+    assert "수용할 수 없는 실패 종류" in capsys.readouterr().out
 
 
 def test_unexpected_errors_cannot_be_accepted(env, monkeypatch, capsys):
@@ -340,9 +366,33 @@ def test_unexpected_errors_cannot_be_accepted(env, monkeypatch, capsys):
 
     monkeypatch.setattr(rclrpt, "latest_parsed", fake)
     with pytest.raises(SystemExit):
-        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003"])
+        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003:unexpected"])
     assert not (env / "causes.jsonl").exists()
-    assert '예상 못 한 오류"는 수용할 수 없다' in capsys.readouterr().out
+    assert "수용할 수 없는 실패 종류" in capsys.readouterr().out
+
+
+def test_previous_complete_file_is_moved_even_when_the_run_stops_before_any_pdf(env, monkeypatch):
+    (env / "causes.jsonl").write_text('{"campaign": "old"}\n', encoding="utf-8")
+    (env / "causes.manifest.json").write_text('{"kind": "full"}\n', encoding="utf-8")
+
+    def down(years):
+        raise OSError("서버 응답 없음")
+
+    monkeypatch.setattr(rclrpt, "list_reports", down)  # 목록 조회 단계에서 중단
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5)
+    assert not (env / "causes.jsonl").exists() and not (env / "causes.manifest.json").exists()
+    assert len(list(env.glob("*.prev.*"))) == 2
+    # 기대 캠페인 수가 달라 중단돼도 마찬가지다
+    (env / "causes.jsonl").write_text("x\n", encoding="utf-8")
+    monkeypatch.setattr(
+        rclrpt,
+        "list_reports",
+        lambda years: {c: [f"odi/rcl/2024/RCLRPT-{c}-0001.PDF"] for c in CAMPAIGNS},
+    )
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=99)
+    assert not (env / "causes.jsonl").exists()
 
 
 def test_no_failures_manifest_records_zero_failures(env, monkeypatch):

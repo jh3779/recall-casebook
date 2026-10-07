@@ -5,7 +5,7 @@
     uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defect_precedent/baseline_2026-10-06.json  # 기준 표본 그대로
     uv run python -m scripts.defect_precedent.rclrpt sample 1000 --out data/processed/defect/causes_pilot_1000.jsonl  # 파일럿 (표본 파일을 덮어쓰지 않는다)
     uv run python -m scripts.defect_precedent.rclrpt all --expect-campaigns 11737   # 전체 (수 시간) — 기대 캠페인 수는 필수
-    uv run python -m scripts.defect_precedent.rclrpt all --expect-campaigns 11737 --accept-failures 14E059 15E040  # 확인한 실패 캠페인 목록 (예시)
+    uv run python -m scripts.defect_precedent.rclrpt all --expect-campaigns 11737 --accept-failures 14E059:non_pdf_response 15E040:no_confirmable_date  # 확인한 실패 (예시)
 
 먼저 `scripts.defect_precedent.nhtsa build`로 recalls.jsonl을 만들어 둔다.
 PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew install poppler`).
@@ -23,10 +23,11 @@ PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew ins
   대조해 올린다 — 중간까지만 만들어진 파일은 명세가 없거나 맞지 않아 올라가지 않는다.
 - 원본 자체의 결함으로 다시 해도 같은 실패가 있다 (예: `RCLRPT-14E059-8941.PDF`는 HTTP 200·`application/pdf`로 응답하지만
   내용은 "Artemis Login Page" HTML, 글자 없는 이미지 PDF에 사람이 확인한 제출일이 없는 경우). 이런 실패는 목록을 확인한 뒤
-  `--accept-failures 캠페인번호…`로 확인한 **캠페인 목록**을 적어 수용해야 완성본을 만든다 (이번 실행의 실패 캠페인과 정확히 같아야
-  하고 건수만 맞는 것은 받지 않는다. "예상 못 한 오류"는 수용할 수 없다). 수용한 캠페인 목록·실패 목록 파일의 sha256·
+  `--accept-failures 캠페인:실패종류…`로 확인한 **캠페인과 실패 종류**를 적어 수용해야 완성본을 만든다 (이번 실행의 실패와 정확히
+  같아야 하고 건수만 맞거나 같은 캠페인이 다른 이유로 실패한 것은 받지 않는다. 수용할 수 있는 종류는 `non_pdf_response`·
+  `no_confirmable_date`뿐이고 일시 오류(`download_failed`)·코드 오류(`unexpected`)는 수용할 수 없다). 수용한 캠페인 목록·실패 목록 파일의 sha256·
   **기대 캠페인 전체 목록의 sha256**은 명세에 남고, `load_db`는 `성공 ∪ 실패 = 기대 목록`을 대조한다.
-- `all`을 시작하면 이전 실행의 완성본과 명세는 `<이름>.<UTC 시각>.prev.<확장자>`로 옮겨 둔다 — 이번 실행이 실패해도 기본 경로에 이전
+- `all`을 시작하면(목록 조회·poppler 검사보다 먼저) 이전 실행의 완성본과 명세는 `<이름>.<UTC 시각>.prev.<확장자>`로 옮겨 둔다 — 이번 실행이 실패해도 기본 경로에 이전
   결과가 최신처럼 남아 `load_db`가 올리지 않게 한다.
 - `all` 모드는 **실패가 하나도 없거나 `--accept-failures`로 수용했을 때만** `causes.jsonl`을 만든다 (일부만 담긴 파일이 완성본으로 올라가는 것을 막는다).
   실패가 있으면 `causes.partial.jsonl`과 `causes_failures.jsonl`만 남기니, 원인을 보고 다시 실행한다 (실패한 건만 다시 받는다).
@@ -284,6 +285,28 @@ def latest_parsed(keys: list[str], manual: dict | None = None) -> tuple[str, dic
     return key, {**parsed, "pdfs": pdfs, "resolution": resolution, "unresolved_reasons": reasons}
 
 
+# 실패 문장의 앞부분으로 비교 가능한 종류를 정한다. 다시 받으면 될 수 있는 일시 오류(download_failed 등)와 코드 오류(unexpected)는
+# 수용할 수 없다 — 사람이 확인한 원본 결함(non_pdf_response·no_confirmable_date)만 수용한다
+FAILURE_KINDS = (
+    ("PDF가 아닌 응답", "non_pdf_response"),
+    ("날짜를 확인할 수 있는 판본 없음", "no_confirmable_date"),
+    ("다운로드 실패", "download_failed"),
+    ("pdftotext 실패", "pdftotext_failed"),
+    ("pdftotext 출력을 UTF-8", "utf8_decode_failed"),
+    ("기준과 sha256 다름", "sha256_mismatch"),
+    ("예상 못 한 오류", "unexpected"),
+)
+ACCEPTABLE_KINDS = {"non_pdf_response", "no_confirmable_date"}
+
+
+def failure_kind(error: str) -> str:
+    return next((kind for prefix, kind in FAILURE_KINDS if error.startswith(prefix)), "unknown")
+
+
+def with_kind(failures: list[dict]) -> list[dict]:
+    return [{**f, "kind": failure_kind(f["error"])} for f in failures]
+
+
 def run(
     mode: str,
     n: int = 300,
@@ -297,6 +320,16 @@ def run(
         sys.exit(
             "all은 --expect-campaigns N(기대 캠페인 수)이 필요하다 — 목록이 불완전해도 완성본처럼 보이는 것을 막기 위해서다"
         )
+    out_path = out or OUT_DIR / ("causes.jsonl" if mode == "all" else "causes_sample.jsonl")
+    manifest_path = out_path.with_name(out_path.stem + ".manifest.json")
+    if mode == "all":
+        # 목록 조회·poppler 검사 등 어디서 중단되더라도 이전 완성본·명세가 최신 결과처럼 기본 경로에 남지 않게 맨 먼저 옮긴다
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        for old in (out_path, manifest_path):
+            if old.exists():
+                kept = old.with_name(f"{old.stem}.{stamp}.prev{old.suffix}")
+                old.replace(kept)
+                print(f"이전 실행의 {old.name}을 {kept.name}으로 옮겼다 (이번 실행 결과가 아니다)")
     if shutil.which("pdftotext") is None:
         sys.exit(
             "pdftotext가 없다 — poppler를 설치한다 (macOS: brew install poppler, Windows: winget install oschwartz10612.Poppler)"
@@ -344,20 +377,9 @@ def run(
 
     PDF_DIR.mkdir(parents=True, exist_ok=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = out or OUT_DIR / ("causes.jsonl" if mode == "all" else "causes_sample.jsonl")
     out_path.parent.mkdir(
         parents=True, exist_ok=True
     )  # --out 폴더가 없으면 긴 작업 도중 첫 중간 저장에서 죽는다
-    manifest_path = out_path.with_name(out_path.stem + ".manifest.json")
-    if (
-        mode == "all"
-    ):  # 이번 실행이 실패해도 이전 완성본·명세가 최신 결과처럼 기본 경로에 남지 않게 한다
-        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-        for old in (out_path, manifest_path):
-            if old.exists():
-                kept = old.with_name(f"{old.stem}.{stamp}.prev{old.suffix}")
-                old.replace(kept)
-                print(f"이전 실행의 {old.name}을 {kept.name}으로 옮겼다 (이번 실행 결과가 아니다)")
     partial_path = out_path.with_name(out_path.stem + ".partial.jsonl")
     failures_path = out_path.with_name(out_path.stem + "_failures.jsonl")
     counts = {"filled": 0, "empty": 0, "no_field": 0}
@@ -367,7 +389,7 @@ def run(
 
     def checkpoint() -> None:
         write_jsonl(partial_path, rows)
-        write_jsonl(failures_path, failures)
+        write_jsonl(failures_path, with_kind(failures))
 
     try:
         for i, campaign in enumerate(picked, 1):
@@ -422,15 +444,15 @@ def run(
     except KeyboardInterrupt:
         interrupted = True
 
-    # 다시 해도 같은 실패(원본 결함)는 확인한 캠페인 목록이 이번 실패와 정확히 같을 때만 수용한다
-    failed_now = sorted(f["campaign"] for f in failures)
-    unexpected = [f["campaign"] for f in failures if f["error"].startswith("예상 못 한 오류")]
+    # 다시 해도 같은 실패(원본 결함)는 확인한 `캠페인:실패종류` 목록이 이번 실패와 정확히 같을 때만 수용한다
+    failed_now = sorted(f"{f['campaign']}:{failure_kind(f['error'])}" for f in failures)
+    unacceptable = [t for t in failed_now if t.split(":")[1] not in ACCEPTABLE_KINDS]
     accepted = (
         mode == "all"
         and bool(failures)
         and accept_failures is not None
         and sorted(accept_failures) == failed_now
-        and not unexpected
+        and not unacceptable
     )
     if interrupted or (mode == "all" and failures and not accepted):
         # 일부만 담긴 파일이 완성본 이름으로 남지 않게 한다 — 이어서 하려면 같은 명령을 다시 실행한다
@@ -451,15 +473,17 @@ def run(
                 "  실패가 다시 해도 같은 것(원본 결함 등)이면 실패 목록을 확인한 뒤 "
                 f"--accept-failures {' '.join(failed_now)} 로 다시 실행한다 (받은 PDF는 건너뛴다)"
             )
-            if unexpected:
-                print(f'  "예상 못 한 오류"는 수용할 수 없다 — 코드 오류일 수 있다: {unexpected}')
+            if unacceptable:
+                print(
+                    f"  수용할 수 없는 실패 종류(일시 오류나 코드 오류일 수 있다 — 수용 가능: {sorted(ACCEPTABLE_KINDS)}): {unacceptable}"
+                )
             if accept_failures is not None:
                 print(
-                    f"  (이번에 준 목록 {sorted(accept_failures)}이 이번 실패 캠페인 {failed_now}과 다르다)"
+                    f"  (이번에 준 목록 {sorted(accept_failures)}이 이번 실패 {failed_now}과 다르다)"
                 )
         sys.exit(130 if interrupted else 1)
     write_jsonl(out_path, rows)
-    write_jsonl(failures_path, failures)
+    write_jsonl(failures_path, with_kind(failures))
     partial_path.unlink(missing_ok=True)
     if mode == "all":
         assert len(rows) + len(failures) == len(picked)
@@ -471,6 +495,7 @@ def run(
             "expected_campaigns_sha256": campaigns_digest(picked),
             "failures": len(failures),
             "failed_campaigns": sorted(f["campaign"] for f in failures),
+            "failed_kinds": {f["campaign"]: failure_kind(f["error"]) for f in failures},
             "failures_sha256": hashlib.sha256(failures_path.read_bytes()).hexdigest()
             if failures
             else None,
@@ -516,8 +541,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--accept-failures",
         nargs="+",
-        metavar="CAMPAIGN",
-        help="all 모드에서 다시 해도 같은 실패(원본 결함)를 수용한다. 확인한 실패 캠페인 목록이 이번 실패와 정확히 같아야 한다",
+        metavar="CAMPAIGN:KIND",
+        help="all 모드에서 다시 해도 같은 실패(원본 결함)를 수용한다. 확인한 `캠페인:실패종류` 목록이 이번 실패와 정확히 같아야 한다 (예: 14E059:non_pdf_response)",
     )
     args = parser.parse_args()
     if args.mode == "all" and args.baseline is not None:
