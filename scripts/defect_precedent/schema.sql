@@ -37,7 +37,8 @@ create table if not exists recalls (
     snapshot_date date not null,
     campno        text not null,                                      -- 24V412000 (9자리, 원본 그대로)
     campaign6     text generated always as (left(campno, 6)) stored,  -- 24V412 — causes.campaign과 잇는 칸. DB가 계산한다
-    maker         text not null,
+    maker         text not null,                                      -- 신고서 이름을 정리한 이름 (표기·법인 형태 통일, 지역은 따로)
+    maker_group   text,                                               -- 같은 회사로 묶어 볼 단위(회사명 대응표 확인본, DEC-033·035). NULL = 대응표를 반영하기 전에 만든 build
     raw_maker     text not null,
     components    text[] not null default '{}',
     defect        text not null,
@@ -53,6 +54,8 @@ create table if not exists recalls (
 create index if not exists recalls_campaign6_idx on recalls (build_id, campaign6);
 create index if not exists recalls_received_date_idx on recalls (build_id, received_date);
 create index if not exists recalls_dup_group_idx on recalls (build_id, dup_group);
+-- 이미 만들어진 recalls 테이블(대응표 반영 전 스키마)에도 칸을 더한다. 옛 build의 줄은 NULL로 남는다 (새 build부터 적재 코드가 값을 요구한다)
+alter table recalls add column if not exists maker_group text;
 
 -- 시험 질문 1개 = 1줄 (eval.jsonl). 정답 리콜은 같은 build의 recalls.campno 목록 (배열이라 외래 키는 못 건다 — 적재 스크립트가 대조한다)
 create table if not exists eval_questions (

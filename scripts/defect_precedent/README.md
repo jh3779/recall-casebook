@@ -28,6 +28,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 
 - 새 기준을 만들 때: `uv run python -m scripts.defect_precedent.nhtsa freeze scripts/defect_precedent/baseline_<날짜>.json` (원본과 다른 날 만든 eval이면 중단한다)
 - `fetch`는 옛 원본을 지우지 않고 `data/raw/nhtsa.<받은 시각>`으로 보관한다.
+- `build`는 사람이 확인한 회사명 대응표(`maker_aliases.csv`)를 읽어 카드의 `maker`(정리한 이름)와 `maker_group`(같은 회사로 묶어 볼 단위)을 채운다 (DEC-035). 신고서 원문은 `raw_maker`에 그대로 남는다. 확인이 끝나지 않은 표이거나 표에 없는 이름이 있으면 중단한다. `build.json`에 표의 sha256(`maker_aliases_sha256`)이 남고 `verify_build`가 대조한다. 회사명 반영 전의 기준(`baseline_2026-10-06.json`)은 카드가 달라져 "재현"이 되지 않는다(옛 값이 필요하면 커밋 `9e8381f`를 체크아웃). 새 기준은 `baseline_2026-10-06_maker-aliases.json`.
 - NHTSA 원본 URL은 매일 덮어써져서 옛 스냅샷을 다시 받을 수 없다. 원본은 커밋하지 않으므로 **같은 원본 사본(`data/raw/nhtsa` 또는 fetch가 보관한 `data/raw/nhtsa.<받은 시각>`)을 지우지 않는다** — 다른 사람은 사본을 넘겨받아야 재현할 수 있다.
 - **573 전체 수집(`rclrpt all`)은 하기로 결정했다 (2026-10-07 사용자 결정).** 대상은 접수일 2014-08-20 이후이면서 573 보고서가 있는 **11,737개 캠페인**(2026-10-07 목록 기준 — 접수일 이후 카드는 12,011건이지만 보고서가 없는 리콜이 있다)이다. PDF 약 2.3만 개, 약 5GB. 파일럿 1,000건(15.5분, 읽음 999·실패 1)으로 잰 전체 소요 시간은 **약 3.5~4시간**이다. 순서:
   1. `pdftotext --version`이 **poppler**인지 확인한다 (xpdf 등 다른 도구는 시작 단계에서 멈춘다. Windows: `winget install oschwartz10612.Poppler`).
