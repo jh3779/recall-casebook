@@ -23,7 +23,7 @@ PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew ins
   대조해 올린다 — 중간까지만 만들어진 파일은 명세가 없거나 맞지 않아 올라가지 않는다.
 - 원본 자체의 결함으로 다시 해도 같은 실패가 있다 (예: `RCLRPT-14E059-8941.PDF`는 HTTP 200·`application/pdf`로 응답하지만
   내용은 "Artemis Login Page" HTML, 글자 없는 이미지 PDF에 사람이 확인한 제출일이 없는 경우). 이런 실패는 목록을 확인한 뒤
-  `--accept-failures 캠페인:실패종류:원본파일지문…`(실패했을 때 화면에 나오는 토큰을 복사한다)로 확인한 **캠페인·실패 종류·원본 파일**을
+  `--accept-failures 캠페인:실패종류:원본파일·내용지문…`(실패했을 때 화면에 나오는 토큰을 복사한다)로 확인한 **캠페인·실패 종류·원본 파일과 그 내용**을
   적어 수용해야 완성본을 만든다 (이번 실행의 실패와 정확히 같아야 하고 건수만 맞거나 같은 캠페인이 다른 이유나 다른 파일로 실패한 것은 받지 않는다. 수용할 수 있는 종류는 `non_pdf_response`·
   `no_confirmable_date`뿐이고 일시 오류(`download_failed`)·코드 오류(`unexpected`)는 수용할 수 없다). 수용한 캠페인 목록·실패 목록 파일의 sha256·
   **기대 캠페인 전체 목록의 sha256**은 명세에 남고, `load_db`는 `성공 ∪ 실패 = 기대 목록`을 대조한다.
@@ -172,11 +172,19 @@ class ReportError(Exception):
     """PDF를 받거나 읽지 못한 경우 — "원인 칸 없음"과 구분해 실패 목록에 남긴다.
 
     source_files: 실제로 실패한 원본 파일(없으면 캠페인의 모든 판본). `--accept-failures` 토큰이 이 파일로 만들어진다.
+    source_sha256: 파일 이름 → 받은 내용의 sha256 (PDF가 아닌 응답 본문, 날짜를 못 읽은 PDF). 토큰이 파일 이름뿐 아니라
+    내용에도 묶이게 한다 — 같은 주소에서 사람이 보지 않은 다른 응답이 와도 기존 토큰으로 승인되지 않는다.
     """
 
-    def __init__(self, message: str, source_files: list[str] | None = None):
+    def __init__(
+        self,
+        message: str,
+        source_files: list[str] | None = None,
+        source_sha256: dict[str, str] | None = None,
+    ):
         super().__init__(message)
         self.source_files = list(source_files or [])
+        self.source_sha256 = dict(source_sha256 or {})
 
 
 def require_poppler() -> str:
@@ -244,7 +252,11 @@ def _download(key: str) -> Path:
         if not data.startswith(
             b"%PDF"
         ):  # 서버가 오류 문서(HTML 등)를 200으로 돌려주면 PDF 이름으로 저장하지 않는다
-            raise ReportError(f"PDF가 아닌 응답: {key} ({len(data):,}바이트)", [key])
+            raise ReportError(
+                f"PDF가 아닌 응답: {key} ({len(data):,}바이트)",
+                [key],
+                {key.split("/")[-1]: hashlib.sha256(data).hexdigest()},
+            )
         part.write_bytes(data)
         part.replace(path)
         time.sleep(REQUEST_GAP_SEC)
@@ -286,7 +298,12 @@ def latest_parsed(keys: list[str], manual: dict | None = None) -> tuple[str, dic
             continue
         dated.append(((parsed["submission_date"], len(text)), key, parsed))
     if not dated:
-        raise ReportError(f"날짜를 확인할 수 있는 판본 없음: {keys}", keys)  # 모든 판본이 근거다
+        # 모든 판본이 근거다 — 각 PDF의 sha256도 함께 남긴다
+        raise ReportError(
+            f"날짜를 확인할 수 있는 판본 없음: {keys}",
+            keys,
+            {k.split("/")[-1]: v for k, v in pdfs.items()},
+        )
     _, key, parsed = max(dated, key=lambda d: d[0])
     if parsed is None:
         reasons.append(f"가장 늦은 판본이 글자 없는 이미지: {key}")
@@ -313,15 +330,21 @@ def failure_kind(error: str) -> str:
     return next((kind for prefix, kind in FAILURE_KINDS if error.startswith(prefix)), "unknown")
 
 
-def keys_digest(keys: list[str]) -> str:
-    """실제로 실패한 원본 파일(이름)의 지문(앞 8자리) — 같은 캠페인이라도 실패한 파일이 다르면 다른 실패로 본다."""
+def keys_digest(keys: list[str], sha256: dict[str, str] | None = None) -> str:
+    """실패한 원본 파일의 지문(앞 8자리) — 파일 이름과, 알고 있으면 받은 내용의 sha256까지 묶는다.
+
+    같은 캠페인·같은 파일 이름이라도 내용이 다르면(사람이 보지 않은 다른 오류 응답) 다른 실패로 본다.
+    """
+    sha256 = sha256 or {}
     names = sorted({k.split("/")[-1] for k in keys})
-    return hashlib.sha256("\n".join(names).encode()).hexdigest()[:8]
+    parts = [f"{n}={sha256.get(n, '')}" for n in names]
+    return hashlib.sha256("\n".join(parts).encode()).hexdigest()[:8]
 
 
 def failure_token(f: dict) -> str:
-    """`--accept-failures`에 적는 값: 캠페인:실패종류:원본파일지문."""
-    return f"{f['campaign']}:{failure_kind(f['error'])}:{keys_digest(f.get('source_files') or f['keys'])}"
+    """`--accept-failures`에 적는 값: 캠페인:실패종류:원본파일·내용지문."""
+    digest = keys_digest(f.get("source_files") or f["keys"], f.get("source_sha256"))
+    return f"{f['campaign']}:{failure_kind(f['error'])}:{digest}"
 
 
 def with_kind(failures: list[dict]) -> list[dict]:
@@ -424,6 +447,7 @@ def run(
                         "campaign": campaign,
                         "keys": reports[campaign],
                         "source_files": e.source_files or reports[campaign],
+                        "source_sha256": e.source_sha256,
                         "error": str(e),
                     }
                 )
@@ -531,6 +555,7 @@ def run(
             "failed_sources": {
                 f["campaign"]: sorted(f.get("source_files") or f["keys"]) for f in failures
             },
+            "failed_source_sha256": {f["campaign"]: f.get("source_sha256", {}) for f in failures},
             "failures_sha256": hashlib.sha256(failures_path.read_bytes()).hexdigest()
             if failures
             else None,
@@ -577,7 +602,7 @@ if __name__ == "__main__":
         "--accept-failures",
         nargs="+",
         metavar="CAMPAIGN:KIND:FILES",
-        help="all 모드에서 다시 해도 같은 실패(원본 결함)를 수용한다. 확인한 `캠페인:실패종류:원본파일지문` 목록이 이번 실패와 정확히 같아야 한다 (실패했을 때 화면에 나오는 토큰을 복사)",
+        help="all 모드에서 다시 해도 같은 실패(원본 결함)를 수용한다. 확인한 `캠페인:실패종류:원본파일·내용지문` 목록이 이번 실패와 정확히 같아야 한다 (실패했을 때 화면에 나오는 토큰을 복사)",
     )
     args = parser.parse_args()
     if args.mode == "all" and args.baseline is not None:

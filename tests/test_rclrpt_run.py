@@ -90,10 +90,10 @@ def test_download_skips_files_that_already_exist(monkeypatch, tmp_path):
 CAMPAIGNS = [f"24V{n:03d}" for n in range(1, 6)]
 
 
-def tok(campaign, kind, keys=None):
+def tok(campaign, kind, keys=None, sha256=None):
     """`--accept-failures`에 적는 토큰 — env 픽스처의 원본 파일 이름 규칙."""
     keys = keys or [f"odi/rcl/2024/RCLRPT-{campaign}-0001.PDF"]
-    return f"{campaign}:{kind}:{rclrpt.keys_digest(keys)}"
+    return f"{campaign}:{kind}:{rclrpt.keys_digest(keys, sha256)}"
 
 
 def parsed(campaign):
@@ -418,6 +418,45 @@ def test_a_failure_on_another_file_of_the_same_campaign_is_not_accepted(env, mon
     assert manifest["failed_sources"] == {
         "24V003": [file_b]
     }  # 명세에는 실제로 실패한 파일만 남는다
+
+
+def test_the_same_file_name_with_different_response_content_is_not_accepted(env, monkeypatch):
+    # 사람이 확인한 것은 "Artemis Login Page"(해시 aa…)인데, 승인 재실행에서는 같은 주소가 다른 오류 응답(해시 bb…)을 돌려준다
+    bad = "odi/rcl/2024/RCLRPT-24V003-0001.PDF"
+
+    def failing(content_sha):
+        def fake(keys, manual=None):
+            name = keys[0].split("-")[1]
+            if name == "24V003":
+                raise rclrpt.ReportError(
+                    f"PDF가 아닌 응답: {bad} (4,628바이트)",
+                    [bad],
+                    {bad.split("/")[-1]: content_sha},
+                )
+            return keys[0], parsed(name)
+
+        return fake
+
+    reviewed = tok("24V003", "non_pdf_response", [bad], {bad.split("/")[-1]: "aa" * 32})
+    other = tok("24V003", "non_pdf_response", [bad], {bad.split("/")[-1]: "bb" * 32})
+    assert reviewed != other  # 파일 이름과 캠페인이 같아도 내용이 다르면 토큰이 다르다
+    monkeypatch.setattr(rclrpt, "latest_parsed", failing("bb" * 32))
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5, accept_failures=[reviewed])
+    assert not (env / "causes.jsonl").exists()
+    rclrpt.run("all", expect_campaigns=5, accept_failures=[other])  # 바뀐 내용을 확인했다면 통과
+    manifest = json.loads((env / "causes.manifest.json").read_text(encoding="utf-8"))
+    assert manifest["failed_source_sha256"] == {"24V003": {"RCLRPT-24V003-0001.PDF": "bb" * 32}}
+
+
+def test_download_records_the_sha256_of_a_non_pdf_response(monkeypatch, tmp_path, no_sleep):
+    monkeypatch.setattr(rclrpt, "PDF_DIR", tmp_path)
+    monkeypatch.setattr(rclrpt, "_get", lambda req: b"<!DOCTYPE html>login")
+    with pytest.raises(rclrpt.ReportError) as e:
+        rclrpt._download("odi/rcl/2014/RCLRPT-14E059-8941.PDF")
+    assert e.value.source_sha256 == {
+        "RCLRPT-14E059-8941.PDF": hashlib.sha256(b"<!DOCTYPE html>login").hexdigest()
+    }
 
 
 def test_previous_failures_file_is_archived_with_the_complete_file_and_stays_verifiable(
