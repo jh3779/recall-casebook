@@ -496,6 +496,9 @@ def test_no_failures_manifest_records_zero_failures(env, monkeypatch):
 
 def test_run_stops_before_reading_anything_when_pdftotext_is_not_poppler(env, monkeypatch):
     monkeypatch.undo()  # require_poppler를 가짜로 바꾼 설정을 되돌려 실제 검사를 쓴다
+    # undo는 임시 폴더 설정도 되돌리므로 다시 건다 — 안 그러면 실행 맨 앞의 이전 결과 보관이 실제 data 폴더를 건드린다
+    monkeypatch.setattr(rclrpt, "OUT_DIR", env)
+    monkeypatch.setattr(rclrpt, "PDF_DIR", env / "pdf")
     monkeypatch.setattr(rclrpt.shutil, "which", lambda name: "/usr/bin/pdftotext")
     monkeypatch.setattr(
         rclrpt.subprocess,
