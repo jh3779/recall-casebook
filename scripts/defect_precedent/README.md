@@ -20,7 +20,7 @@ uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_pr
 
 - `bm25_baseline --baseline`: 원본 manifest·`recalls.jsonl`·`eval.jsonl`의 sha256이 기준 파일과 모두 같을 때만 "재현"으로 실행하고, 다르면 중단한다. 같은 원본 사본이 없어 현재 데이터로 같은 질문 번호만 다시 재려면 `--allow-drift`를 붙인다 — 출력에 "재평가 (재현 아님)"으로 표시된다.
 - `rclrpt sample --baseline`: 현재 목록을 다시 조회하지 않고 기준 파일에 적힌 **당시 판본 목록(582개)**만 받아 각 PDF의 sha256을 확인한 뒤 판독한다. 해시가 다르면 그 리콜은 실패 목록으로 간다.
-- `why_stats --baseline`: 원본 manifest·카드·시험지 sha256과 573 표본의 캠페인·원인 칸 내용(기준 파일의 `causes_sample.content_sha256`)이 모두 같을 때만 "재현"으로 실행하고, 다르면 멈춘다(`--allow-drift`는 현재 데이터로 "재계산"). 입력 사본은 구글 드라이브 `defect_data_2026-10-06`(저장소와 같은 `data/` 구조, 원본 `data/raw/nhtsa/`와 `data/processed/defect/`의 4개 파일)이고, 링크는 `.agent/HANDOFF.md` 할 일 20번에 적었다. 2014-08-20 이후 리콜이 캠페인과 1:1이 아니면 전체 추정을 내지 않는다.
+- `why_stats --baseline`: 원본 manifest·카드·시험지 sha256과 573 표본의 캠페인·원인 칸 내용(기준 파일의 `causes_sample.content_sha256`)이 모두 같을 때만 "재현"으로 실행하고, 다르면 멈춘다(`--allow-drift`는 현재 데이터로 "재계산"). 입력 사본은 구글 드라이브 `defect_data_2026-10-06`(저장소와 같은 `data/` 구조, 원본 `data/raw/nhtsa/`와 `data/processed/defect/`의 4개 파일)이고, 링크는 `.agent/HANDOFF.md` 할 일 20번에 적었다. 2014-08-20 이후 리콜이 캠페인과 1:1이 아니면 전체 추정을 내지 않는다. `--full`은 기준 파일의 `causes_full`(대상 목록·실패 목록·원인 파일·명세 파일 지문, 줄 수)과도 대조해서 일부 캠페인만 모은 파일은 통과하지 못한다.
 
 ```bash
 uv run python -m scripts.defect_precedent.bm25_baseline --baseline scripts/defect_precedent/baseline_2026-10-06.json

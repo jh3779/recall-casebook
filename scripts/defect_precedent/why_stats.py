@@ -22,7 +22,9 @@
 멈춘다(`--allow-drift`를 주면 현재 데이터로 "재계산"한다). 입력 사본은 `docs/환경셋팅.md` 4절(2026-10-06 원본 사본)을 따른다.
 
 - 전수 확인(`--full`): 573 전체 수집이 끝난 완성본(`causes.jsonl`)과 명세(`causes.manifest.json`)로 "추정"이 아니라 확인한 만큼을 센다.
-  명세의 파일 sha256·줄 수, 성공+수용한 실패=기대 수, 성공∪실패=기대 목록 지문이 모두 맞아야 한다. 값은 **하한~상한**이다:
+  명세의 파일 sha256·줄 수, 성공+수용한 실패=기대 수, 성공∪실패=기대 목록 지문이 모두 맞아야 하고, `--baseline`을 주면 기준 파일에
+  고정한 전수 결과의 값(대상 목록·실패 목록·원인 파일·명세 파일 지문)과도 같아야 한다(일부 캠페인만 모은 파일과 그에 맞춘 명세는
+  여기서 걸린다). 값은 **하한~상한**이다:
   원인 칸이 확인된 채움(최신판 확정)과 기존 방식의 합집합이 하한이고, 확인 불가(읽지 못해 수용한 실패·최신판 미확정)의 리콜을
   모두 "있음"으로 더한 값이 상한이다. 573 보고서가 목록에 없는 리콜은 근거 없음이 확정이라 두 값 모두 0으로 센다.
 
@@ -302,10 +304,7 @@ def input_label(
     same_sample = causes_sample is None or sample_matches(base, causes_sample)
     if same_files and same_sample:
         if causes_sample is None:
-            return (
-                f"{baseline_name}와 같은 원본·카드·시험지(sha256 일치). 573 전수 결과는 기준 파일에 해시가 없어 "
-                '기준과 대조하지 않았다 — 위 "573 완성본" 줄의 명세 해시로만 확인한다'
-            )
+            return f"{baseline_name}와 같은 원본·카드·시험지(sha256 일치)"
         return f"{baseline_name} 재현 (원본·카드·시험지 sha256 일치, 573 표본 캠페인·원인 칸 내용 일치)"
     if allow_drift:
         return f"{baseline_name}와 다른 입력으로 재계산 (재현 아님)"
@@ -320,6 +319,35 @@ def input_label(
     )
 
 
+def full_baseline_check(base: dict, manifest: dict, manifest_sha256: str, allow_drift: bool) -> str:
+    """전수 결과가 기준 파일에 고정해 둔 값과 같은지 본다 (대상 목록·실패 목록·원인 파일·명세 파일 지문, 줄 수).
+
+    명세는 수집 프로그램이 스스로 기록한 값이라 명세 안의 숫자끼리 맞는 것만으로는 일부 캠페인만 모은 파일을 걸러내지 못한다.
+    기준 파일에 따로 고정한 값과 비교해야 그런 파일이 통과하지 못한다. 다르면 멈춘다(--allow-drift면 재계산으로 표시).
+    """
+    spec = base.get("causes_full")
+    if not spec:
+        return "기준 파일에 전수 결과의 고정값이 없어 대조하지 않았다"
+    got = {
+        "rows": manifest["rows"],
+        "failures": manifest["failures"],
+        "expect_campaigns": manifest["expect_campaigns"],
+        "causes_sha256": manifest["file_sha256"],
+        "expected_campaigns_sha256": manifest["expected_campaigns_sha256"],
+        "failed_campaigns_sha256": _digest(manifest["failed_campaigns"]),
+        "manifest_sha256": manifest_sha256,
+    }
+    different = [k for k, v in got.items() if v != spec.get(k)]
+    if not different:
+        return "기준 파일의 고정값과 일치 (대상 목록·실패 목록·원인 파일·명세 파일)"
+    if allow_drift:
+        return f"기준과 다른 전수 결과로 재계산 (다른 항목: {', '.join(different)})"
+    sys.exit(
+        f"전수 결과가 기준 파일의 고정값과 다르다 ({', '.join(different)}) — 같은 완성본·명세로 다시 만들거나, "
+        "현재 결과로 재계산만 하려면 --allow-drift를 붙인다"
+    )
+
+
 def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
     """573 완성본 기준의 확인된 값(하한)과 상한. 추정이 아니라 확인한 만큼만 센다."""
     recalls = read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl")
@@ -327,11 +355,15 @@ def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
     if not causes_path.exists():
         sys.exit("causes.jsonl이 없다 — 573 전체 수집(`rclrpt all`)을 끝낸 뒤에 쓴다")
     causes = read_jsonl(causes_path)
-    manifest = verify_causes(causes_path, nhtsa.OUT_DIR / "causes.manifest.json", causes)
+    manifest_path = nhtsa.OUT_DIR / "causes.manifest.json"
+    manifest = verify_causes(causes_path, manifest_path, causes)
+    manifest_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
     label = "현재 데이터로 계산 (기준 파일과 같은 입력인지 확인하지 않음 — 재현이 아니다)"
+    full_check = "기준 파일 없이 계산 — 전체 수집이 맞는지 기준 파일의 고정값으로 대조하지 않았다"
     if baseline is not None:
         base = json.loads(baseline.read_text(encoding="utf-8"))
         label = input_label(baseline.name, base, nhtsa.verify_build(), None, allow_drift)
+        full_check = full_baseline_check(base, manifest, manifest_sha256, allow_drift)
     s = full_coverage(
         recalls,
         nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS),
@@ -352,8 +384,10 @@ def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
     no_report = post - s["post_with_report"] - s["failed_campaigns"]
     unknown = s["unresolved_campaigns"] + s["failed_campaigns"]
     print(f"입력: {label}")
+    print(f"573 전수 결과: {full_check}")
     print(
-        f"573 완성본: {s['causes_rows']:,}줄 (명세 sha256 {manifest['file_sha256'][:12]}… 일치, "
+        f"573 완성본: {s['causes_rows']:,}줄 (원인 파일 sha256 {manifest['file_sha256'][:12]}…이 명세 기록과 일치, "
+        f"명세 파일 sha256 {manifest_sha256[:12]}…, "
         f"성공 {s['causes_rows']:,} + 수용한 실패 {manifest['failures']} = 기대 {manifest['expect_campaigns']:,})"
     )
     print(f"전체 리콜 {total:,}건")

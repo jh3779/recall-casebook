@@ -209,11 +209,56 @@ def test_verify_causes_stops_when_the_file_does_not_match_the_manifest(tmp_path)
         why_stats.verify_causes(path, manifest_path, rows)
 
 
+def test_full_baseline_check_pins_the_target_list_and_stops_for_a_partial_collection():
+    pinned = {
+        "rows": 11719,
+        "failures": 18,
+        "expect_campaigns": 11737,
+        "causes_sha256": "c" * 64,
+        "expected_campaigns_sha256": "e" * 64,
+        "failed_campaigns_sha256": why_stats._digest(["20V001", "20V002"]),
+        "manifest_sha256": "m" * 64,
+    }
+    base = {"causes_full": pinned}
+    manifest = {
+        "rows": 11719,
+        "failures": 18,
+        "expect_campaigns": 11737,
+        "file_sha256": "c" * 64,
+        "expected_campaigns_sha256": "e" * 64,
+        "failed_campaigns": ["20V002", "20V001"],
+    }
+    assert "일치" in why_stats.full_baseline_check(base, manifest, "m" * 64, False)
+    # 10,000개만 모은 파일과 그에 맞춰 만든 명세 — 명세 안의 숫자끼리는 맞지만 기준 파일의 고정값과 달라 멈춘다
+    partial = {
+        "rows": 9990,
+        "failures": 10,
+        "expect_campaigns": 10000,
+        "file_sha256": "p" * 64,
+        "expected_campaigns_sha256": "q" * 64,
+        "failed_campaigns": ["20V001"],
+    }
+    with pytest.raises(SystemExit) as e:
+        why_stats.full_baseline_check(base, partial, "x" * 64, False)
+    assert "expected_campaigns_sha256" in str(e.value) and "expect_campaigns" in str(e.value)
+    # 실패 목록만 다른 캠페인으로 바꾸고 명세 지문을 갱신해도, 원인 파일 해시가 같아도 멈춘다
+    swapped = {**manifest, "failed_campaigns": ["20V009", "20V010"]}
+    with pytest.raises(SystemExit) as e:
+        why_stats.full_baseline_check(base, swapped, "m" * 64, False)
+    assert "failed_campaigns_sha256" in str(e.value)
+    # 명세 파일 자체가 달라진 경우
+    with pytest.raises(SystemExit) as e:
+        why_stats.full_baseline_check(base, manifest, "z" * 64, False)
+    assert "manifest_sha256" in str(e.value)
+    # --allow-drift면 재계산이라고 표시하고, 기준에 고정값이 없으면 대조하지 않았다고 알린다
+    assert "재계산" in why_stats.full_baseline_check(base, partial, "x" * 64, True)
+    assert "대조하지 않았다" in why_stats.full_baseline_check({}, manifest, "m" * 64, False)
+
+
 def test_input_label_for_the_full_mode_does_not_claim_to_reproduce_the_full_result():
     base = make_base([sample_row("20V001")])
     label = why_stats.input_label("b.json", base, SAME, None, False)
-    assert "원본·카드·시험지" in label and "대조하지 않았다" in label
-    assert "재현 (" not in label  # 전수 결과를 기준과 대조하지 않았으므로 "재현"이라고 하지 않는다
+    assert "원본·카드·시험지" in label  # 전수 모드에서는 표본을 보지 않는다
     drift = {**SAME, "recalls_sha256": "x"}
     with pytest.raises(SystemExit):
         why_stats.input_label("b.json", base, drift, None, False)
@@ -331,6 +376,11 @@ def test_reproduces_the_full_573_numbers_of_2026_10_07():
     causes = why_stats.read_jsonl(causes_path)
     manifest = why_stats.verify_causes(causes_path, nhtsa.OUT_DIR / "causes.manifest.json", causes)
     assert manifest["file_sha256"].startswith("d215ff583281")  # 이 값을 센 완성본
+    # 기준 파일에 고정한 전수 결과의 값(대상 목록·실패 목록·원인 파일·명세 파일 지문)과 같다
+    base_path = nhtsa.REPO_ROOT / "scripts/defect_precedent/baseline_2026-10-06.json"
+    base = json.loads(base_path.read_text(encoding="utf-8"))
+    manifest_sha = hashlib.sha256((nhtsa.OUT_DIR / "causes.manifest.json").read_bytes()).hexdigest()
+    assert "일치" in why_stats.full_baseline_check(base, manifest, manifest_sha, False)
     s = why_stats.full_coverage(
         why_stats.read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl"),
         nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS),
