@@ -687,6 +687,53 @@ def test_pg_builds_on_different_dates_are_kept_and_compared(pgconn, tmp_path):
 
 
 @pg
+def test_pg_a_sample_is_never_compared_with_a_full_build_so_nothing_is_reported_as_removed(
+    pgconn, tmp_path
+):
+    baseline = make_baseline(tmp_path)
+    day1 = make_data_dir(tmp_path / "d1", "2026-10-06", manifest="a1" * 32)
+    load(day1, "sample", baseline)  # 표본 원인 1건
+    write_full(day1, [cause("24V001"), cause("23V002")])
+    load(day1, "full", baseline)  # 같은 날짜의 전체본 원인 2건
+    day2 = make_data_dir(tmp_path / "d2", "2026-10-07", manifest="b2" * 32)
+    load(day2, "sample", baseline)  # 다음 날짜의 표본 원인 1건
+    summary = pgconn.execute(
+        "select change_summary from data_builds where snapshot_date = '2026-10-07'"
+    ).fetchone()[0]
+    # 원인은 직전 표본과만 비교한다: 전체본(2건)과 비교했다면 1건이 사라졌다고 잘못 기록됐을 것이다
+    assert summary["causes"]["removed"] == 0 and summary["causes"]["unchanged"] == 1
+    sample_day1 = pgconn.execute(
+        "select build_id from data_builds where snapshot_date = '2026-10-06' and causes_kind = 'sample'"
+    ).fetchone()[0]
+    assert summary["causes"]["vs_build"] == sample_day1
+    # 전체본은 직전 날짜의 표본이 아니라 직전 전체본(10/6)과 비교한다
+    day3 = make_data_dir(tmp_path / "d3", "2026-10-08", manifest="c3" * 32)
+    write_full(day3, [cause("24V001"), cause("23V002")])
+    load(day3, "full", baseline)
+    full3 = pgconn.execute(
+        "select change_summary from data_builds where snapshot_date = '2026-10-08'"
+    ).fetchone()[0]
+    assert full3["causes"]["vs_build"] is not None  # 10/6 전체본과 비교한다
+    assert full3["causes"]["removed"] == 0
+
+
+@pg
+def test_pg_the_first_full_build_is_not_compared_with_an_earlier_sample(pgconn, tmp_path):
+    baseline = make_baseline(tmp_path)
+    load(make_data_dir(tmp_path / "d1", "2026-10-06", manifest="a1" * 32), "sample", baseline)
+    day2 = make_data_dir(tmp_path / "d2", "2026-10-07", manifest="b2" * 32)
+    write_full(day2, [cause("24V001"), cause("23V002")])
+    load(day2, "full", baseline)
+    summary = pgconn.execute(
+        "select change_summary from data_builds where snapshot_date = '2026-10-07'"
+    ).fetchone()[0]
+    # 같은 종류의 이전 build가 없으면 비교하지 않고 그렇게 적는다 (표본과 비교하면 '새로 생김'이 부풀려진다)
+    assert "같은 종류(full)의 이전 build가 없어" in summary["causes"]["skipped"]
+    # 리콜·시험지는 종류와 무관하게 직전 날짜와 비교한다
+    assert summary["recalls"]["unchanged"] == 2 and summary["vs"] == "2026-10-06"
+
+
+@pg
 def test_pg_same_date_different_content_is_a_separate_build_and_nothing_is_overwritten(
     pgconn, tmp_path
 ):

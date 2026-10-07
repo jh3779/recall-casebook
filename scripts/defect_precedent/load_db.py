@@ -352,13 +352,35 @@ def diff_rows(prev: dict[str, dict], new: dict[str, dict], cols: list[str]) -> d
     }
 
 
-def summarize_changes(prev: dict | None, prev_tables: dict[str, dict], data: dict) -> dict:
-    """prev = 비교할 직전 build({"build_id", "snapshot_date"}) 또는 None."""
+def summarize_changes(
+    prev: dict | None,
+    prev_tables: dict[str, dict],
+    data: dict,
+    causes_prev: dict | None = None,
+    causes_rows: dict | None = None,
+) -> dict:
+    """prev = 리콜·시험지를 비교할 직전 build({"build_id", "snapshot_date"}) 또는 None.
+
+    원인(causes)은 표본과 전체본의 크기가 다르므로 **같은 종류(sample/full)의 직전 build**(causes_prev)와만 비교한다 —
+    표본(300건)을 전체본(약 1.2만 건)과 비교하면 표본에 없는 캠페인이 전부 '사라짐'으로 잘못 기록된다.
+    같은 종류의 이전 build가 없으면 비교하지 않고 그렇게 적는다."""
     if prev is None:
         return {"vs": None, "note": "첫 build — 비교할 이전 날짜의 build가 없다"}
     summary: dict = {"vs": prev["snapshot_date"].isoformat(), "vs_build": prev["build_id"]}
     for table, spec in TABLES.items():
         new = {r[spec["key"]]: r for r in data[table]}
+        if table == "causes":
+            if causes_prev is None:
+                summary[table] = {
+                    "skipped": f"같은 종류({data['build']['causes_kind']})의 이전 build가 없어 비교하지 않았다"
+                }
+            else:
+                summary[table] = {
+                    **diff_rows(causes_rows, new, spec["cols"]),
+                    "vs": causes_prev["snapshot_date"].isoformat(),
+                    "vs_build": causes_prev["build_id"],
+                }
+            continue
         summary[table] = diff_rows(prev_tables[table], new, spec["cols"])
     return summary
 
@@ -369,6 +391,9 @@ def describe_changes(summary: dict) -> list[str]:
     lines = [f"직전 날짜({summary['vs']}, build {summary['vs_build']}) 대비"]
     for table in TABLES:
         d = summary[table]
+        if "skipped" in d:
+            lines.append(f"  {table}: {d['skipped']}")
+            continue
         cols = ", ".join(f"{c} {n:,}" for c, n in d["changed_columns"].items())
         lines.append(
             f"  {table}: 새로 생김 {d['new']:,} · 바뀜 {d['changed']:,} · 사라짐 {d['removed']:,} · 그대로 {d['unchanged']:,}"
@@ -479,16 +504,32 @@ def cmd_load(args) -> None:
                     f"build {build_id}는 이미 올라가 있고 내용(행 해시·원인 명세)이 같다 — 아무것도 바꾸지 않았다"
                 )
                 return
+            # 원인은 같은 종류(sample/full)의 직전 build와만 비교한다 (표본과 전체본은 크기가 달라 '사라짐'이 부풀려진다)
+            causes_prev = cur.execute(
+                "select build_id, snapshot_date from data_builds where snapshot_date < %s and causes_kind = %s "
+                "order by snapshot_date desc, loaded_at desc limit 1",
+                (snapshot, build["causes_kind"]),
+            ).fetchone()
+            causes_rows: dict = {}
+            if causes_prev:
+                cols = [c for c in db_columns("causes") if c not in ("build_id", "snapshot_date")]
+                fetched = cur.execute(
+                    f"select {', '.join(cols)} from causes where build_id = %s",
+                    (causes_prev["build_id"],),
+                ).fetchall()
+                causes_rows = {r[TABLES["causes"]["key"]]: r for r in fetched}
             prev_tables: dict[str, dict] = {}
             if prev:
                 for table, spec in TABLES.items():
+                    if table == "causes":
+                        continue
                     cols = [c for c in db_columns(table) if c not in ("build_id", "snapshot_date")]
                     rows = cur.execute(
                         f"select {', '.join(cols)} from {table} where build_id = %s",
                         (prev["build_id"],),
                     ).fetchall()
                     prev_tables[table] = {r[spec["key"]]: r for r in rows}
-            summary = summarize_changes(prev, prev_tables, data)
+            summary = summarize_changes(prev, prev_tables, data, causes_prev, causes_rows)
 
             cur.execute(insert_build_sql(), _params({**build, "change_summary": summary}))
             for table in TABLES:
