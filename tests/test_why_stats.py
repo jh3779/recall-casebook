@@ -1,3 +1,6 @@
+import hashlib
+import json
+
 import pytest
 
 from scripts.defect_precedent import nhtsa, why_stats
@@ -138,6 +141,58 @@ def make_base(sample, with_digest=True):
 SAME = {"raw_manifest_sha256": "r", "recalls_sha256": "c", "eval_sha256": "e"}
 
 
+def test_full_coverage_counts_filled_573_causes_and_leaves_out_unresolved_and_missing_reports():
+    recalls = [
+        recall("20V001000", "Crack due to fatigue"),  # 기존 방식(표현) + 573 채움
+        recall("20V002000", "Brake may fail"),  # 573만 채움
+        recall("20V003000", "Brake may fail"),  # 573 원인 칸 비어 있음
+        recall("20V004000", "Brake may fail"),  # 573 채움이지만 최신판 미확정 → 뺌
+        recall("20V005000", "Brake may fail"),  # 573 행 없음(보고서 없음·읽지 못함)
+        recall("10V006000", "caused by a weld", received="20100101"),  # 이전 리콜: 기존 방식만
+    ]
+    causes = [
+        {"campaign": "20V001", "cause_status": "filled", "resolution": "auto"},
+        {"campaign": "20V002", "cause_status": "filled", "resolution": "auto"},
+        {"campaign": "20V003", "cause_status": "empty", "resolution": "auto"},
+        {"campaign": "20V004", "cause_status": "filled", "resolution": "unresolved"},
+    ]
+    s = why_stats.full_coverage(recalls, [], causes)
+    assert (s["post_recalls"], s["post_campaigns"], s["post_with_report"]) == (5, 5, 4)
+    assert (s["post_either"], s["post_filled"], s["post_union"]) == (1, 2, 2)
+    assert s["unresolved_filled_excluded"] == 1
+    assert (s["pre_either"], s["total_union"]) == (1, 3)  # 이전 1 + 이후 합집합 2
+
+
+def test_verify_causes_stops_when_the_file_does_not_match_the_manifest(tmp_path):
+    rows = [{"campaign": "20V001"}, {"campaign": "20V002"}]
+    path = tmp_path / "causes.jsonl"
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    manifest_path = tmp_path / "causes.manifest.json"
+    good = {"kind": "full", "rows": 2, "file_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+    manifest_path.write_text(json.dumps(good), encoding="utf-8")
+    assert why_stats.verify_causes(path, manifest_path, rows)["rows"] == 2
+    for bad, message in (
+        ({**good, "file_sha256": "00" * 32}, "sha256"),
+        ({**good, "rows": 3}, "줄 수"),
+        ({**good, "kind": "sample"}, "full이 아니다"),
+    ):
+        manifest_path.write_text(json.dumps(bad), encoding="utf-8")
+        with pytest.raises(SystemExit) as e:
+            why_stats.verify_causes(path, manifest_path, rows)
+        assert message in str(e.value)
+    with pytest.raises(SystemExit):  # 같은 캠페인이 겹침
+        manifest_path.write_text(json.dumps(good), encoding="utf-8")
+        why_stats.verify_causes(path, manifest_path, [rows[0], rows[0]])
+    manifest_path.unlink()
+    with pytest.raises(SystemExit):  # 명세가 없으면 쓰지 않는다
+        why_stats.verify_causes(path, manifest_path, rows)
+
+
+def test_input_label_for_the_full_mode_does_not_look_at_the_sample():
+    base = make_base([sample_row("20V001")])
+    assert "재현" in why_stats.input_label("b.json", base, SAME, None, False)
+
+
 def test_input_label_says_reproduction_only_when_the_inputs_match_the_baseline():
     sample = [sample_row("20V001"), sample_row("20V002", "empty")]
     base = make_base(sample)
@@ -236,3 +291,26 @@ def test_reproduces_the_numbers_of_the_2026_10_06_snapshot():
         why_stats.read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl"),
     )
     assert overlap == {"questions": 749, "overlap": 364, "full_name": 73}  # 이슈 #24 B 파트의 값
+
+
+@pytest.mark.skipif(
+    not (nhtsa.OUT_DIR / "causes.jsonl").exists()
+    or not (nhtsa.OUT_DIR / "causes.manifest.json").exists()
+    or not (nhtsa.OUT_DIR / "recalls.jsonl").exists()
+    or not (nhtsa.RAW_DIR / "FLAT_INV.zip").exists(),
+    reason="573 전체 수집 결과(causes.jsonl·명세)나 원본이 없다 (data/는 커밋하지 않는다)",
+)
+def test_reproduces_the_full_573_numbers_of_2026_10_07():
+    causes_path = nhtsa.OUT_DIR / "causes.jsonl"
+    causes = why_stats.read_jsonl(causes_path)
+    manifest = why_stats.verify_causes(causes_path, nhtsa.OUT_DIR / "causes.manifest.json", causes)
+    assert manifest["file_sha256"].startswith("d215ff583281")  # 이 값을 센 완성본
+    s = why_stats.full_coverage(
+        why_stats.read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl"),
+        nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS),
+        causes,
+    )
+    assert (s["causes_rows"], manifest["failures"]) == (11719, 18)
+    assert (s["post_recalls"], s["post_campaigns"], s["post_with_report"]) == (12011, 12011, 11719)
+    assert (s["post_either"], s["post_filled"], s["post_union"]) == (3719, 8160, 9307)
+    assert (s["unresolved_filled_excluded"], s["total_union"]) == (19, 14918)

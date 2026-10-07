@@ -21,7 +21,12 @@
 재현할 때는 기준 파일을 넘긴다. 입력(원본·카드·시험지 sha256, 573 표본의 캠페인·원인 칸 내용)이 기준과 같을 때만 "재현"이고, 다르면
 멈춘다(`--allow-drift`를 주면 현재 데이터로 "재계산"한다). 입력 사본은 `docs/환경셋팅.md` 4절(2026-10-06 원본 사본)을 따른다.
 
+- 전수 실측(`--full`): 573 전체 수집이 끝난 완성본(`causes.jsonl`)과 명세(`causes.manifest.json`)로 "추정"이 아니라 실제 값을 낸다.
+  명세의 파일 sha256·줄 수와 완성본이 맞아야 하고, 원인 칸이 채워진 리콜(최신판 미확정은 뺀다)과 기존 방식의 합집합을 센다.
+  읽지 못해 수용한 실패와 573 보고서가 없는 리콜은 채워지지 않은 것으로 센다(보수적).
+
     uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json
+    uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json --full
     uv run python -m scripts.defect_precedent.why_stats    # 기준 파일 없이 현재 데이터로 계산 (재현이 아니다)
 """
 
@@ -184,16 +189,86 @@ def sample_matches(base: dict, causes_sample: list[dict]) -> bool:
     return same_pdfs and all(got[k] == expected[k] for k in got)
 
 
+def full_coverage(recalls: list[dict], inv_rows: list[dict], causes: list[dict]) -> dict:
+    """573 완성본으로 센 실측값 (추정 아님).
+
+    - 573 원인 칸 채움: `cause_status == "filled"`이고 최신판이 확정된(`resolution != "unresolved"`) 캠페인의 2014-08-20 이후 리콜
+    - 둘 중 하나: 기존 방식(원인 표현 ∪ 조사 요약)과 573 원인 칸 채움의 합집합
+    573 원인 행이 없는 리콜(보고서 없음·읽지 못함)은 채워지지 않은 것으로 센다.
+    """
+    campnos = {r["campno"] for r in recalls}
+    expressed = {r["campno"] for r in recalls if PATTERN.search(r["defect"])}
+    linked = linked_campnos(inv_rows, campnos)
+    either = expressed | linked
+    post = {r["campno"] for r in recalls if r["received_date"] >= nhtsa.RCLRPT_FROM}
+    pre = campnos - post
+    by_campaign = defaultdict(list)
+    for c in campnos:
+        by_campaign[c[:6]].append(c)
+
+    def expand(campaigns) -> set[str]:
+        return {c for camp in campaigns for c in by_campaign.get(camp, [])}
+
+    filled = {
+        r["campaign"]
+        for r in causes
+        if r["cause_status"] == "filled" and r["resolution"] != "unresolved"
+    }
+    post_filled = expand(filled) & post
+    post_union = (either & post) | post_filled
+    return {
+        "recalls": len(campnos),
+        "expressed": len(expressed),
+        "linked": len(linked),
+        "either": len(either),
+        "post_recalls": len(post),
+        "post_campaigns": len({c[:6] for c in post}),
+        "post_either": len(either & post),
+        "pre_recalls": len(pre),
+        "pre_either": len(either & pre),
+        "causes_rows": len(causes),
+        "post_with_report": len(expand({r["campaign"] for r in causes}) & post),
+        "unresolved_filled_excluded": sum(
+            r["cause_status"] == "filled" and r["resolution"] == "unresolved" for r in causes
+        ),
+        "post_filled": len(post_filled),
+        "post_union": len(post_union),
+        "total_union": len(either & pre) + len(post_union),
+    }
+
+
+def verify_causes(causes_path: Path, manifest_path: Path, causes: list[dict]) -> dict:
+    """완성본이 수집이 남긴 명세와 같은지 확인한다 (종류·파일 sha256·줄 수·캠페인 중복). 다르면 멈춘다."""
+    if not manifest_path.exists():
+        sys.exit(f"{manifest_path.name}이 없다 — 수집(`rclrpt all`)이 끝나야 만들어진다")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("kind") != "full":
+        sys.exit(f"{manifest_path.name}의 종류가 full이 아니다")
+    if hashlib.sha256(causes_path.read_bytes()).hexdigest() != manifest["file_sha256"]:
+        sys.exit(
+            f"{causes_path.name}이 {manifest_path.name}의 파일 sha256과 다르다 — 수집 뒤 파일이 바뀌었다"
+        )
+    if len(causes) != manifest["rows"] or len({r["campaign"] for r in causes}) != len(causes):
+        sys.exit(f"{causes_path.name}의 줄 수가 명세와 다르거나 캠페인이 겹친다")
+    return manifest
+
+
 def input_label(
-    baseline_name: str, base: dict, info: dict, causes_sample: list[dict], allow_drift: bool
+    baseline_name: str,
+    base: dict,
+    info: dict,
+    causes_sample: list[dict] | None,
+    allow_drift: bool,
 ) -> str:
     """기준 파일과 같은 입력인지 확인해 출력용 문구를 만든다. 다르면 멈춘다 (--allow-drift면 재계산으로 표시)."""
     same_files = all(
         info[k] == base["build"][k]
         for k in ("raw_manifest_sha256", "recalls_sha256", "eval_sha256")
     )
-    same_sample = sample_matches(base, causes_sample)
+    same_sample = causes_sample is None or sample_matches(base, causes_sample)
     if same_files and same_sample:
+        if causes_sample is None:
+            return f"{baseline_name} 재현 (원본·카드·시험지 sha256 일치)"
         return f"{baseline_name} 재현 (원본·카드·시험지 sha256 일치, 573 표본 캠페인·원인 칸 내용 일치)"
     if allow_drift:
         return f"{baseline_name}와 다른 입력으로 재계산 (재현 아님)"
@@ -205,6 +280,58 @@ def input_label(
     sys.exit(
         f"{', '.join(what)}이 기준 파일과 다르다 — 같은 원본 사본(data/raw/nhtsa.<받은 시각>)과 표본으로 다시 만들거나, "
         "현재 데이터로 재계산만 하려면 --allow-drift를 붙인다"
+    )
+
+
+def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
+    """573 완성본 기준 실측 (추정 아님)."""
+    recalls = read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl")
+    causes_path = nhtsa.OUT_DIR / "causes.jsonl"
+    if not causes_path.exists():
+        sys.exit("causes.jsonl이 없다 — 573 전체 수집(`rclrpt all`)을 끝낸 뒤에 쓴다")
+    causes = read_jsonl(causes_path)
+    manifest = verify_causes(causes_path, nhtsa.OUT_DIR / "causes.manifest.json", causes)
+    label = "현재 데이터로 계산 (기준 파일과 같은 입력인지 확인하지 않음 — 재현이 아니다)"
+    if baseline is not None:
+        base = json.loads(baseline.read_text(encoding="utf-8"))
+        label = input_label(baseline.name, base, nhtsa.verify_build(), None, allow_drift)
+    s = full_coverage(
+        recalls, nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS), causes
+    )
+    if s["post_recalls"] != s["post_campaigns"]:
+        sys.exit(
+            f"2014-08-20 이후 리콜 {s['post_recalls']:,}건이 캠페인 {s['post_campaigns']:,}개에 걸려 있다 — 573은 캠페인 단위라 "
+            "리콜 건수와 단위가 섞인다. 캠페인 단위로 다시 정의한 뒤에 계산한다"
+        )
+    total = s["recalls"]
+
+    def pct(x: float, whole: float) -> str:
+        return f"{x:,.0f}건 ({x / whole:.1%})"
+
+    post = s["post_recalls"]
+    no_row = post - s["post_with_report"]
+    print(f"입력: {label}")
+    print(
+        f"573 완성본: {s['causes_rows']:,}줄 (명세 sha256 {manifest['file_sha256'][:12]}… 일치, "
+        f"읽지 못해 수용한 실패 {manifest['failures']}건)"
+    )
+    print(f"전체 리콜 {total:,}건")
+    print(f"  결함문 원인 표현   {pct(s['expressed'], total)}")
+    print(f"  조사 요약 연결     {pct(s['linked'], total)}")
+    print(f"  둘 중 하나         {pct(s['either'], total)}")
+    print(f"2014-08-20 이후 {post:,}건 (캠페인 {s['post_campaigns']:,}개와 1:1)")
+    print(f"  기존 방식              {pct(s['post_either'], post)}")
+    print(
+        f"  573 원인 칸 채워짐     {pct(s['post_filled'], post)}"
+        f" — 573 원인 행이 없는 {no_row:,}건(보고서 없음·읽지 못함)은 채워지지 않은 것으로 셈,"
+        f" 최신판 미확정 중 채워진 {s['unresolved_filled_excluded']}건은 뺌"
+    )
+    print(f"  둘 중 하나             {pct(s['post_union'], post)}")
+    print(
+        f"2014-08-20 이전 {s['pre_recalls']:,}건 중 기존 방식 {pct(s['pre_either'], s['pre_recalls'])}"
+    )
+    print(
+        f"전체 {total:,}건 중 원인 근거 있음 {pct(s['total_union'], total)} — 실측(573 전수), 추정 아님"
     )
 
 
@@ -267,6 +394,11 @@ if __name__ == "__main__":
         help="기준 파일 — 입력 sha256·573 표본 캠페인을 대조해 재현인지 확인한다",
     )
     parser.add_argument(
+        "--full",
+        action="store_true",
+        help="573 완성본(causes.jsonl)과 명세로 추정이 아닌 실측을 낸다",
+    )
+    parser.add_argument(
         "--allow-drift",
         action="store_true",
         help="입력이 기준과 달라도 현재 데이터로 재계산한다 (--baseline과 함께)",
@@ -276,4 +408,4 @@ if __name__ == "__main__":
         parser.error(f"기준 파일이 없다: {args.baseline}")
     if args.allow_drift and args.baseline is None:
         parser.error("--allow-drift는 --baseline과 함께 쓴다")
-    main(args.baseline, args.allow_drift)
+    (main_full if args.full else main)(args.baseline, args.allow_drift)
