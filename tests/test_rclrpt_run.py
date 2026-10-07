@@ -288,7 +288,7 @@ def test_accepting_persistent_failures_makes_the_complete_file_with_the_failed_l
         rclrpt.run("all", expect_campaigns=5)
     assert not (env / "causes.jsonl").exists()
     # 실패 목록을 확인한 뒤 건수를 정확히 적어 수용하면 완성본과 명세가 생긴다
-    rclrpt.run("all", expect_campaigns=5, accept_failures=1)
+    rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003"])
     assert [r["campaign"] for r in lines(env / "causes.jsonl")] == [
         c for c in CAMPAIGNS if c != "24V003"
     ]
@@ -311,18 +311,38 @@ def test_accepting_persistent_failures_makes_the_complete_file_with_the_failed_l
     assert manifest["campaigns_sha256"] == rclrpt.campaigns_digest(
         c for c in CAMPAIGNS if c != "24V003"
     )
+    assert manifest["expected_campaigns_sha256"] == rclrpt.campaigns_digest(
+        CAMPAIGNS
+    )  # 성공 ∪ 실패 = 기대 목록
 
 
-def test_accept_failures_must_equal_the_actual_failure_count(env, monkeypatch, capsys):
+def test_accept_failures_must_name_exactly_the_failed_campaigns(env, monkeypatch, capsys):
     monkeypatch.setattr(rclrpt, "latest_parsed", _fail_on("24V003"))
-    with pytest.raises(
-        SystemExit
-    ) as e:  # 실패는 1건인데 2건이라고 적음 — 목록을 안 보고 숫자만 키운 경우
-        rclrpt.run("all", expect_campaigns=5, accept_failures=2)
+    # 건수는 맞지만 다른 캠페인을 적음 — 확인하지 않은 실패를 수용하는 경우
+    with pytest.raises(SystemExit) as e:
+        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V001"])
     assert e.value.code == 1
     assert not (env / "causes.jsonl").exists() and not (env / "causes.manifest.json").exists()
     out = capsys.readouterr().out
-    assert "--accept-failures 1로 다시 실행한다" in out and "실제 실패 1건과 다르다" in out
+    assert "--accept-failures 24V003 로 다시 실행한다" in out and "이번 실패 캠페인" in out
+    # 목록에 더 넣어도(건수 불일치) 받지 않는다
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003", "24V001"])
+    assert not (env / "causes.jsonl").exists()
+
+
+def test_unexpected_errors_cannot_be_accepted(env, monkeypatch, capsys):
+    def fake(keys, manual=None):
+        name = keys[0].split("-")[1]
+        if name == "24V003":
+            raise KeyError("코드 오류")
+        return keys[0], parsed(name)
+
+    monkeypatch.setattr(rclrpt, "latest_parsed", fake)
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003"])
+    assert not (env / "causes.jsonl").exists()
+    assert '예상 못 한 오류"는 수용할 수 없다' in capsys.readouterr().out
 
 
 def test_no_failures_manifest_records_zero_failures(env, monkeypatch):
@@ -434,10 +454,13 @@ def test_all_stops_when_the_server_returns_an_empty_list(env, monkeypatch):
     assert "목록이 비어 있다" in str(e.value)
 
 
-def test_failed_rerun_says_the_old_complete_file_is_not_this_runs_result(env, monkeypatch, capsys):
+def test_failed_rerun_moves_the_old_complete_file_and_manifest_out_of_the_default_path(
+    env, monkeypatch, capsys
+):
     (env / "causes.jsonl").write_text(
         '{"campaign": "old"}\n', encoding="utf-8"
     )  # 이전 실행의 완성본
+    (env / "causes.manifest.json").write_text('{"kind": "full"}\n', encoding="utf-8")
 
     def fake(keys, manual=None):
         raise rclrpt.ReportError("일시 오류")
@@ -445,10 +468,14 @@ def test_failed_rerun_says_the_old_complete_file_is_not_this_runs_result(env, mo
     monkeypatch.setattr(rclrpt, "latest_parsed", fake)
     with pytest.raises(SystemExit):
         rclrpt.run("all", expect_campaigns=5)
-    assert (env / "causes.jsonl").read_text(
+    # 기본 경로에는 이전 결과가 없어 load_db가 올릴 수 없고, 이전 결과는 시각이 붙은 이름으로 보관된다
+    assert not (env / "causes.jsonl").exists() and not (env / "causes.manifest.json").exists()
+    kept = sorted(p.name for p in env.glob("*.prev.*"))
+    assert len(kept) == 2
+    assert '{"campaign": "old"}' in next(env.glob("causes.2*.prev.jsonl")).read_text(
         encoding="utf-8"
-    ) == '{"campaign": "old"}\n'  # 지우지는 않는다
-    assert "이전 실행의 causes.jsonl이 그대로 남아 있다" in capsys.readouterr().out
+    )
+    assert "이번 실행 결과가 아니다" in capsys.readouterr().out
 
 
 def test_campaigns_digest_is_order_independent_and_pinned():
