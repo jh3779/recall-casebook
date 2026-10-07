@@ -68,3 +68,8 @@
 - 2026-10-07: PR #30 Codex 재리뷰(7deffafc) 반영 — prune 삭제(아카이브 전까지), 표본도 기대 건수 필수, 같은 날짜 다른 원인 파일은 --replace-causes + causes_history, CI에 Postgres 17 서비스(DB 테스트 항상 실행)
 - 2026-10-07: PR #30 Codex 재리뷰(c0906973) 반영 — build_id(입력 파일 4개 해시) 단위 보관으로 변경(같은 날짜 교체·--replace-causes·causes_history 제거), 원인 파일 완전성을 사람이 입력한 --expect-rows 대신 독립된 명세(표본: 기준 파일 300개 캠페인, 전체: causes.manifest.json)와 대조
 - 2026-10-07: load_db가 causes.manifest.json의 수용한 실패(failures·failed_campaigns)를 대조 — 줄 수+실패=기대 캠페인 수, 실패한 캠페인이 파일에 있으면 중단 (PR #32 --accept-failures와 짝)
+- 2026-10-07: 573 전체 수집 하기로 결정(사용자) — rclrpt 보강(재시도·중간 저장·불완전 파일 차단·poppler 확인, 테스트 12개 추가). 이 PC의 pdftotext가 xpdf라 poppler 설치 전에는 실행 불가
+- 2026-10-07: poppler 25.07.0 설치(winget)·기준 표본 재현(205/95/0, 행 동일), write_jsonl을 LF로 고정(Windows CRLF 해시 불일치 방지)
+- 2026-10-07: PR #32 Codex 리뷰 반영 — all은 --expect-campaigns 필수, pdftotext -enc UTF-8·바이트 해독, 손상 PDF 격리·비PDF 응답 거부, 실패 시 이전 완성본 구분. 파일럿 1,000건(15.5분, 읽음 999·실패 1)
+- 2026-10-07: rclrpt all이 완성본과 함께 causes.manifest.json(줄 수·파일/캠페인 해시·기대 캠페인 수)을 남기도록 변경 — load_db가 사람이 입력한 기대 건수 대신 명세와 대조 (PR #30 Codex c0906973 반영 준비)
+- 2026-10-07: 전체 수집 중 원본 결함 발견(RCLRPT-14E059-8941.PDF가 HTTP 200·application/pdf인데 내용은 로그인 페이지 HTML) — rclrpt all에 --accept-failures N(실패 건수와 정확히 같아야 함)·명세에 failed_campaigns 추가, load_db가 줄 수+실패=기대 캠페인 수 대조
