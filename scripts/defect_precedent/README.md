@@ -27,7 +27,12 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 - 새 기준을 만들 때: `uv run python -m scripts.defect_precedent.nhtsa freeze scripts/defect_precedent/baseline_<날짜>.json` (원본과 다른 날 만든 eval이면 중단한다)
 - `fetch`는 옛 원본을 지우지 않고 `data/raw/nhtsa.<받은 시각>`으로 보관한다.
 - NHTSA 원본 URL은 매일 덮어써져서 옛 스냅샷을 다시 받을 수 없다. 원본은 커밋하지 않으므로 **같은 원본 사본(`data/raw/nhtsa` 또는 fetch가 보관한 `data/raw/nhtsa.<받은 시각>`)을 지우지 않는다** — 다른 사람은 사본을 넘겨받아야 재현할 수 있다.
-- `rclrpt all`(약 1.2만 건, 수 시간)은 팀 확인 후에 돌린다.
+- **573 전체 수집(`rclrpt all`)은 하기로 결정했다 (2026-10-07 사용자 결정).** 대상은 접수일 2014-08-20 이후 12,011개 캠페인(PDF 약 2.3만 개, 약 4.8GB, 수 시간 — 추정)이다. 순서:
+  1. `pdftotext --version`이 **poppler**인지 확인한다 (xpdf 등 다른 도구는 시작 단계에서 멈춘다. Windows: `winget install oschwartz10612.Poppler`).
+  2. 같은 도구로 기준 표본을 재현한다: `rclrpt sample --baseline scripts/defect_precedent/baseline_2026-10-06.json` → 채워짐 205 · 비어 있음 95 · 미확정 0이 나와야 한다. 다르면 도구 버전 차이이므로 전체 수집으로 넘어가지 않는다.
+  3. 파일럿: `rclrpt sample 1000 --out data/processed/defect/causes_pilot_1000.jsonl`로 실패율·시간을 잰다 (받은 PDF는 전체 수집에서 그대로 쓴다).
+  4. 전체: `rclrpt all` — 일시 오류는 자동 재시도, 이미 받은 PDF는 건너뛰므로 끊겨도 같은 명령으로 이어서 한다. 200건마다 `causes.partial.jsonl`에 중간 저장하고, **실패가 하나라도 있으면 `causes.jsonl`을 만들지 않는다** (`causes_failures.jsonl`을 보고 원인을 정한 뒤 다시 실행).
+  5. 끝나면 `load_db load --causes full --expect-rows <읽은 줄 수>`로 올린다.
 - 원본 줄의 칸 수가 명세와 다르면 `build`가 그 줄 번호를 보여 주고 중단한다 (값이 옆 칸으로 밀렸을 수 있어 추측해 맞추지 않는다).
 
 ## 만들어지는 파일 (`data/processed/defect/`)
@@ -57,7 +62,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 | BM25 Hit@10 (전체 749) | **0.510** (주 지표: 연결 리콜 중 하나라도) / 0.503 (첫 번째 연결 리콜만) |
 | BM25 Hit@10 (2010년 이후 214 / 573 범위 91) | 0.706 / 0.736 |
 | 573 표본 300건 원인 칸 | 채워짐 205 (68.3%) · 비어 있음 95 · 미확정 0 · 읽지 못함 0 (25V063은 이미지 판본 제출일을 사람이 확인 — `manual`) |
-| PDF 텍스트 변환 | poppler `pdftotext` 26.08.0 (`-layout`) — 다른 버전이면 판독 결과가 달라질 수 있다 |
+| PDF 텍스트 변환 | poppler `pdftotext` 26.08.0 (`-layout`) — 다른 버전이면 판독 결과가 달라질 수 있다. **25.07.0(Windows winget)에서도 같은 결과를 확인했다** (2026-10-07: 205 · 95 · 미확정 0, 300행 JSON 동일, 판본 582개 sha256 일치) |
 
 - 이 점수는 **대리 평가**다 — 정답 리콜의 99.6%가 조사 시작 뒤 접수라 "과거 선례 찾기"는 재지 못한다.
 - 알려진 한계: 시험 질문 중 내용이 없는 문구가 몇 개 남아 있다 (예: `A`, `DD`, `SEE ATTACHED SUMMARY.`, `See attached closing resume summary.` — 35자 미만 10개 중 다수). 749개 정의를 유지하려고 걸러내지 않았다.
@@ -65,5 +70,5 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 - 후속 (PR #25 리뷰에서 나옴, 기준을 새로 만들 때 처리):
   - `freeze`는 `causes_sample*.jsonl`이 이번 build와 같은 입력·시드에서 나왔는지 확인하지 않는다 → `causes_sample`에 build 해시와 시드를 함께 적고 freeze에서 대조한다.
   - `rclrpt sample --baseline`은 일반 `sample`과 같은 파일명에 덮어쓰고, 고른 판본(`selected`)·기대값(`expected`)을 자동 비교하지 않는다. 실패 행은 `pdfs`가 비어 저장되어, 실패가 있는 표본으로 기준을 만들면 그 리콜의 판본 해시가 고정되지 않는다 (2026-10-06 기준은 실패 0건).
-  - `rclrpt all`용 재시도·이어받기가 없다.
+  - ~~`rclrpt all`용 재시도·이어받기가 없다.~~ (2026-10-07: 자동 재시도·중간 저장·진행률·불완전 파일 차단을 넣었다. PDF 단위 이어받기는 원래 있었다.)
   - 기준 원본(NHTSA zip·명세·573 PDF)의 팀 공용 보관 위치와 받는 절차를 정한다 (위 "재현 범위").
