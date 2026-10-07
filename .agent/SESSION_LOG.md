@@ -74,3 +74,4 @@
 - 2026-10-07: rclrpt all이 완성본과 함께 causes.manifest.json(줄 수·파일/캠페인 해시·기대 캠페인 수)을 남기도록 변경 — load_db가 사람이 입력한 기대 건수 대신 명세와 대조 (PR #30 Codex c0906973 반영 준비)
 - 2026-10-07: 전체 수집 중 원본 결함 발견(RCLRPT-14E059-8941.PDF가 HTTP 200·application/pdf인데 내용은 로그인 페이지 HTML) — rclrpt all에 --accept-failures N(실패 건수와 정확히 같아야 함)·명세에 failed_campaigns 추가, load_db가 줄 수+실패=기대 캠페인 수 대조
 - 2026-10-07: "왜" 집계 스크립트 `why_stats.py` 추가(할 일 20) — 30,350건 기준 재현, 기획 5절 건수 통일 (data/why-stats)
+- 2026-10-07: 573 전체 수집 완료(11,737개, 성공 11,719·수용한 실패 18) — `why_stats --full`로 "왜" 집계를 전수 확인값(하한~상한)으로 확정(이후 리콜 원인 근거 77.5~77.7%, 전체 49.2%), 기획 5절·HANDOFF 갱신 (data/why-full)
