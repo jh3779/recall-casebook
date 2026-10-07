@@ -252,7 +252,42 @@ def test_full_baseline_check_pins_the_target_list_and_stops_for_a_partial_collec
     assert "manifest_sha256" in str(e.value)
     # --allow-drift면 재계산이라고 표시하고, 기준에 고정값이 없으면 대조하지 않았다고 알린다
     assert "재계산" in why_stats.full_baseline_check(base, partial, "x" * 64, True)
-    assert "대조하지 않았다" in why_stats.full_baseline_check({}, manifest, "m" * 64, False)
+    # 기준 파일에 고정값이 없으면 멈추고, --allow-drift일 때만 대조 없이 재계산한다
+    with pytest.raises(SystemExit) as e:
+        why_stats.full_baseline_check({}, manifest, "m" * 64, False)
+    assert "causes_full" in str(e.value)
+    assert "재현 아님" in why_stats.full_baseline_check({}, manifest, "m" * 64, True)
+
+
+def test_full_requires_a_baseline_file_on_the_command_line_and_in_the_function(
+    monkeypatch, tmp_path
+):
+    import runpy
+    import sys
+
+    # 데이터가 없는 환경(CI)에서도 파일을 읽기 전에 먼저 막힌다
+    monkeypatch.setattr(nhtsa, "OUT_DIR", tmp_path)
+    # 함수: 기준 파일 없이는 일부만 수집한 자료도 계산되므로 시작 전에 멈춘다
+    with pytest.raises(SystemExit) as e:
+        why_stats.main_full(None)
+    assert "--baseline이 필요하다" in str(e.value)
+    # 명령줄: `--full`만 주면 argparse 오류(종료 코드 2)
+    monkeypatch.setattr(sys, "argv", ["why_stats", "--full"])
+    with pytest.raises(SystemExit) as e:
+        runpy.run_module("scripts.defect_precedent.why_stats", run_name="__main__")
+    assert e.value.code == 2
+
+
+def test_the_committed_baseline_file_has_no_duplicate_json_keys():
+    # 같은 이름의 키가 두 번 있으면 읽는 프로그램마다 앞쪽·뒤쪽 값을 달리 골라 기준이 모호해진다
+    def refuse_duplicates(pairs):
+        keys = [k for k, _ in pairs]
+        duplicated = {k for k in keys if keys.count(k) > 1}
+        assert not duplicated, f"중복된 키: {sorted(duplicated)}"
+        return dict(pairs)
+
+    path = nhtsa.REPO_ROOT / "scripts/defect_precedent/baseline_2026-10-06.json"
+    json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=refuse_duplicates)
 
 
 def test_input_label_for_the_full_mode_does_not_claim_to_reproduce_the_full_result():

@@ -22,9 +22,9 @@
 멈춘다(`--allow-drift`를 주면 현재 데이터로 "재계산"한다). 입력 사본은 `docs/환경셋팅.md` 4절(2026-10-06 원본 사본)을 따른다.
 
 - 전수 확인(`--full`): 573 전체 수집이 끝난 완성본(`causes.jsonl`)과 명세(`causes.manifest.json`)로 "추정"이 아니라 확인한 만큼을 센다.
-  명세의 파일 sha256·줄 수, 성공+수용한 실패=기대 수, 성공∪실패=기대 목록 지문이 모두 맞아야 하고, `--baseline`을 주면 기준 파일에
+  명세의 파일 sha256·줄 수, 성공+수용한 실패=기대 수, 성공∪실패=기대 목록 지문이 모두 맞아야 하고, **`--baseline`이 필수**다 — 기준 파일에
   고정한 전수 결과의 값(대상 목록·실패 목록·원인 파일·명세 파일 지문)과도 같아야 한다(일부 캠페인만 모은 파일과 그에 맞춘 명세는
-  여기서 걸린다). 값은 **하한~상한**이다:
+  여기서 걸린다. 고정값이 없는 기준 파일이면 멈추고, 대조 없이 재계산만 하려면 `--allow-drift`). 값은 **하한~상한**이다:
   원인 칸이 확인된 채움(최신판 확정)과 기존 방식의 합집합이 하한이고, 확인 불가(읽지 못해 수용한 실패·최신판 미확정)의 리콜을
   모두 "있음"으로 더한 값이 상한이다. 573 보고서가 목록에 없는 리콜은 근거 없음이 확정이라 두 값 모두 0으로 센다.
 
@@ -327,7 +327,12 @@ def full_baseline_check(base: dict, manifest: dict, manifest_sha256: str, allow_
     """
     spec = base.get("causes_full")
     if not spec:
-        return "기준 파일에 전수 결과의 고정값이 없어 대조하지 않았다"
+        if allow_drift:
+            return "기준 파일에 전수 결과의 고정값이 없어 대조하지 않고 재계산 (재현 아님)"
+        sys.exit(
+            "기준 파일에 전수 결과의 고정값(causes_full)이 없다 — 전체 수집이 맞는지 독립적으로 대조할 수 없다. "
+            "고정값이 있는 기준 파일을 쓰거나, 대조 없이 재계산만 하려면 --allow-drift를 붙인다"
+        )
     got = {
         "rows": manifest["rows"],
         "failures": manifest["failures"],
@@ -350,6 +355,11 @@ def full_baseline_check(base: dict, manifest: dict, manifest_sha256: str, allow_
 
 def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
     """573 완성본 기준의 확인된 값(하한)과 상한. 추정이 아니라 확인한 만큼만 센다."""
+    if baseline is None:  # 어떤 파일을 읽기 전에 먼저 막는다
+        sys.exit(
+            "--full은 --baseline이 필요하다 — 기준 파일에 고정한 전수 결과의 값과 대조하지 않으면 "
+            "일부만 수집한 자료도 전수 집계로 계산된다"
+        )
     recalls = read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl")
     causes_path = nhtsa.OUT_DIR / "causes.jsonl"
     if not causes_path.exists():
@@ -358,12 +368,9 @@ def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
     manifest_path = nhtsa.OUT_DIR / "causes.manifest.json"
     manifest = verify_causes(causes_path, manifest_path, causes)
     manifest_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
-    label = "현재 데이터로 계산 (기준 파일과 같은 입력인지 확인하지 않음 — 재현이 아니다)"
-    full_check = "기준 파일 없이 계산 — 전체 수집이 맞는지 기준 파일의 고정값으로 대조하지 않았다"
-    if baseline is not None:
-        base = json.loads(baseline.read_text(encoding="utf-8"))
-        label = input_label(baseline.name, base, nhtsa.verify_build(), None, allow_drift)
-        full_check = full_baseline_check(base, manifest, manifest_sha256, allow_drift)
+    base = json.loads(baseline.read_text(encoding="utf-8"))
+    label = input_label(baseline.name, base, nhtsa.verify_build(), None, allow_drift)
+    full_check = full_baseline_check(base, manifest, manifest_sha256, allow_drift)
     s = full_coverage(
         recalls,
         nhtsa.read_flat(nhtsa.RAW_DIR / "FLAT_INV.zip", nhtsa.INV_COLS),
@@ -485,6 +492,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.baseline is not None and not args.baseline.exists():
         parser.error(f"기준 파일이 없다: {args.baseline}")
+    if args.full and args.baseline is None:
+        parser.error(
+            "--full은 --baseline과 함께 쓴다 (기준 파일에 고정한 전수 결과의 값과 대조한다)"
+        )
     if args.allow_drift and args.baseline is None:
         parser.error("--allow-drift는 --baseline과 함께 쓴다")
     (main_full if args.full else main)(args.baseline, args.allow_drift)
