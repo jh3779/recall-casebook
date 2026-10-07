@@ -2,24 +2,24 @@
 GENERAL MOTORS CORP.,General Motors LLC,General Motors LLC,1217,법인 형태 통일,없음,,,
 FORD MOTOR COMPANY,Ford Motor Company,Ford Motor Company,986,표기 통일,없음,,,
 Ford Motor Company,Ford Motor Company,Ford Motor Company,758,표기 통일,없음,,,
-CHRYSLER CORPORATION,CHRYSLER CORPORATION,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),654,법인 형태 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 회사의 이름 변천 — Chrysler Corp. → DaimlerChrysler(1998 합병) → Chrysler LLC(2007) → Chrysler Group LLC(2009) → FCA US LLC(2014 개명). 미국 법인은 지금도 FCA US LLC이고 Stellantis(2021)는 모회사(출처: en.wikipedia.org/wiki/Chrysler, Stellantis 2021-01 발표). 묶음 맞음"
+CHRYSLER CORPORATION,CHRYSLER CORPORATION,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),654,법인 형태 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 미국 사업의 이름 변천 — Chrysler Corp. → DaimlerChrysler 자회사(1998) → Chrysler LLC(2007, Cerberus) → 2009-06-10 Chrysler Group LLC가 자산을 사들이며 옛 차량의 리콜 책임까지 넘겨받음 → FCA US LLC(2014-12 개명), Stellantis(2021)는 모회사. 소유주는 바뀌었지만 NHTSA 리콜 책임이 승계돼 같은 신고 주체로 봄. 출처: ① Chrysler Group LLC의 NHTSA PE13-016 답변(2013-08-09) https://static.nhtsa.gov/odi/inv/2013/INRL-PE13016-57509P.pdf ""Chrysler Group LLC assumed responsibility for safety recalls … for vehicles that were manufactured and sold by Chrysler LLC"" ② ""Chrysler Group LLC Announces New Company Name: FCA US LLC""(2014-12-16, 8-K Ex.99.1) https://www.sec.gov/Archives/edgar/data/0001513153/000151315314000022/exhibit991namechange.htm ③ Stellantis 20-F FY2021 Ex.8.1(FCA US LLC 100%) https://www.sec.gov/Archives/edgar/data/1605484/000160548422000023/exhibit8120211231-subsidia.htm. 묶음 맞음"
 "Forest River, Inc.","Forest River, Inc.","Forest River, Inc.",587,표기 통일,없음,,,
 "BMW of North America, LLC","BMW of North America, LLC","BMW of North America, LLC",355,표기 통일,없음,,,
-"Volkswagen Group of America, Inc.","Volkswagen Group of America, Inc.",Volkswagen,321,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Volkswagen of America와 Volkswagen Group of America는 같은 미국 법인의 이름(개명 연도는 출처로 확인 못 함). 묶음 맞음"
+"Volkswagen Group of America, Inc.","Volkswagen Group of America, Inc.",Volkswagen,321,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Volkswagen of America와 Volkswagen Group of America는 같은 미국 법인(개명 날짜는 확인 못 함 — 법원 문서상 2009-05에 이미 새 이름, 리콜 데이터는 2014-08까지 옛 이름). 출처: 연방항소법원 In re Volkswagen of America, Inc. (now known as Volkswagen Group of America, Inc.), Misc. No. 897(2009-05-22) https://www.cafc.uscourts.gov/opinions-orders/09-m897.pdf. 묶음 맞음"
 General Motors LLC,General Motors LLC,General Motors LLC,276,법인 형태 통일,없음,,,
-"Chrysler (FCA US, LLC)","Chrysler (FCA US, LLC)",Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),271,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 회사의 이름 변천 — Chrysler Corp. → DaimlerChrysler(1998 합병) → Chrysler LLC(2007) → Chrysler Group LLC(2009) → FCA US LLC(2014 개명). 미국 법인은 지금도 FCA US LLC이고 Stellantis(2021)는 모회사(출처: en.wikipedia.org/wiki/Chrysler, Stellantis 2021-01 발표). 묶음 맞음"
+"Chrysler (FCA US, LLC)","Chrysler (FCA US, LLC)",Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),271,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 미국 사업의 이름 변천 — Chrysler Corp. → DaimlerChrysler 자회사(1998) → Chrysler LLC(2007, Cerberus) → 2009-06-10 Chrysler Group LLC가 자산을 사들이며 옛 차량의 리콜 책임까지 넘겨받음 → FCA US LLC(2014-12 개명), Stellantis(2021)는 모회사. 소유주는 바뀌었지만 NHTSA 리콜 책임이 승계돼 같은 신고 주체로 봄. 출처: ① Chrysler Group LLC의 NHTSA PE13-016 답변(2013-08-09) https://static.nhtsa.gov/odi/inv/2013/INRL-PE13016-57509P.pdf ""Chrysler Group LLC assumed responsibility for safety recalls … for vehicles that were manufactured and sold by Chrysler LLC"" ② ""Chrysler Group LLC Announces New Company Name: FCA US LLC""(2014-12-16, 8-K Ex.99.1) https://www.sec.gov/Archives/edgar/data/0001513153/000151315314000022/exhibit991namechange.htm ③ Stellantis 20-F FY2021 Ex.8.1(FCA US LLC 100%) https://www.sec.gov/Archives/edgar/data/1605484/000160548422000023/exhibit8120211231-subsidia.htm. 묶음 맞음"
 BLUE BIRD BODY COMPANY,Blue Bird Body Company,Blue Bird Body Company,254,표기 통일,없음,,,
-Toyota Motor Engineering & Manufacturing,Toyota Motor Engineering & Manufacturing,Toyota,250,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): TEMA는 2006년 북미 생산·R&D 지주로 출범, 2017년 Toyota Motor North America로 통합 운영. Toyota Motor Co., Ltd.는 1982년 판매회사와 합병해 Toyota Motor Corporation이 된 본사 옛 이름(출처: Wikipedia, toyota-global.com). 묶음 맞음"
+Toyota Motor Engineering & Manufacturing,Toyota Motor Engineering & Manufacturing,Toyota,250,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): TEMA·Toyota Motor North America는 Toyota Motor Corporation의 100% 미국 자회사, Toyota Motor Co., Ltd.는 1982-07-01 판매회사와 합병해 Toyota Motor Corporation이 된 본사 옛 이름. 출처: ① Toyota 20-F FY2024 Item 4.C 자회사 표(2024-06-25 제출) https://global.toyota/pages/global_toyota/ir/library/sec/20-F_202403_final.pdf ② Toyota 75년사 ""A New Toyota is Born"" https://www.toyota-global.com/company/history_of_toyota/75years/text/leaping_forward_as_a_global_corporation/chapter1/section2/item2.html. 묶음 맞음"
 Honda (American Honda Motor Co.),Honda (American Honda Motor Co.),Honda (American Honda Motor Co.),249,표기 통일,없음,,,
 "MACK TRUCKS, INCORPORATED","Mack Trucks, Inc.","Mack Trucks, Inc.",248,표기 통일,없음,,,
-Chrysler (FCA US LLC),"Chrysler (FCA US, LLC)",Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),241,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 회사의 이름 변천 — Chrysler Corp. → DaimlerChrysler(1998 합병) → Chrysler LLC(2007) → Chrysler Group LLC(2009) → FCA US LLC(2014 개명). 미국 법인은 지금도 FCA US LLC이고 Stellantis(2021)는 모회사(출처: en.wikipedia.org/wiki/Chrysler, Stellantis 2021-01 발표). 묶음 맞음"
+Chrysler (FCA US LLC),"Chrysler (FCA US, LLC)",Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),241,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 미국 사업의 이름 변천 — Chrysler Corp. → DaimlerChrysler 자회사(1998) → Chrysler LLC(2007, Cerberus) → 2009-06-10 Chrysler Group LLC가 자산을 사들이며 옛 차량의 리콜 책임까지 넘겨받음 → FCA US LLC(2014-12 개명), Stellantis(2021)는 모회사. 소유주는 바뀌었지만 NHTSA 리콜 책임이 승계돼 같은 신고 주체로 봄. 출처: ① Chrysler Group LLC의 NHTSA PE13-016 답변(2013-08-09) https://static.nhtsa.gov/odi/inv/2013/INRL-PE13016-57509P.pdf ""Chrysler Group LLC assumed responsibility for safety recalls … for vehicles that were manufactured and sold by Chrysler LLC"" ② ""Chrysler Group LLC Announces New Company Name: FCA US LLC""(2014-12-16, 8-K Ex.99.1) https://www.sec.gov/Archives/edgar/data/0001513153/000151315314000022/exhibit991namechange.htm ③ Stellantis 20-F FY2021 Ex.8.1(FCA US LLC 100%) https://www.sec.gov/Archives/edgar/data/1605484/000160548422000023/exhibit8120211231-subsidia.htm. 묶음 맞음"
 "Nissan North America, Inc.","Nissan North America, Inc.","Nissan North America, Inc.",230,표기 통일,없음,,,
 "NISSAN NORTH AMERICA, INC.","Nissan North America, Inc.","Nissan North America, Inc.",220,표기 통일,없음,,,
 Daimler Trucks North America LLC,Daimler Trucks North America LLC,Daimler Trucks North America LLC,213,법인 형태 통일,없음,,,
-DAIMLERCHRYSLER CORPORATION,DAIMLERCHRYSLER CORPORATION,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),206,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 회사의 이름 변천 — Chrysler Corp. → DaimlerChrysler(1998 합병) → Chrysler LLC(2007) → Chrysler Group LLC(2009) → FCA US LLC(2014 개명). 미국 법인은 지금도 FCA US LLC이고 Stellantis(2021)는 모회사(출처: en.wikipedia.org/wiki/Chrysler, Stellantis 2021-01 발표). 묶음 맞음"
+DAIMLERCHRYSLER CORPORATION,DAIMLERCHRYSLER CORPORATION,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),206,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 미국 사업의 이름 변천 — Chrysler Corp. → DaimlerChrysler 자회사(1998) → Chrysler LLC(2007, Cerberus) → 2009-06-10 Chrysler Group LLC가 자산을 사들이며 옛 차량의 리콜 책임까지 넘겨받음 → FCA US LLC(2014-12 개명), Stellantis(2021)는 모회사. 소유주는 바뀌었지만 NHTSA 리콜 책임이 승계돼 같은 신고 주체로 봄. 출처: ① Chrysler Group LLC의 NHTSA PE13-016 답변(2013-08-09) https://static.nhtsa.gov/odi/inv/2013/INRL-PE13016-57509P.pdf ""Chrysler Group LLC assumed responsibility for safety recalls … for vehicles that were manufactured and sold by Chrysler LLC"" ② ""Chrysler Group LLC Announces New Company Name: FCA US LLC""(2014-12-16, 8-K Ex.99.1) https://www.sec.gov/Archives/edgar/data/0001513153/000151315314000022/exhibit991namechange.htm ③ Stellantis 20-F FY2021 Ex.8.1(FCA US LLC 100%) https://www.sec.gov/Archives/edgar/data/1605484/000160548422000023/exhibit8120211231-subsidia.htm. 묶음 맞음"
 "Jayco, Inc.","Jayco, Inc.","Jayco, Inc.",204,표기 통일,없음,,,
-"VOLKSWAGEN OF AMERICA,INC","Volkswagen of America, Inc.",Volkswagen,204,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Volkswagen of America와 Volkswagen Group of America는 같은 미국 법인의 이름(개명 연도는 출처로 확인 못 함). 묶음 맞음"
-Hyundai Motor America,Hyundai Motor America,Hyundai Motor America,202,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): 리콜 데이터에서 같은 신고 주체가 HYUNDAI MOTOR AMERICA(1986~98) → HYUNDAI MOTOR COMPANY(1999~2014) → Hyundai Motor America(2014~)로 이어짐. 미국 법인↔본사 같은 묶음 규칙. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
+"VOLKSWAGEN OF AMERICA,INC","Volkswagen of America, Inc.",Volkswagen,204,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Volkswagen of America와 Volkswagen Group of America는 같은 미국 법인(개명 날짜는 확인 못 함 — 법원 문서상 2009-05에 이미 새 이름, 리콜 데이터는 2014-08까지 옛 이름). 출처: 연방항소법원 In re Volkswagen of America, Inc. (now known as Volkswagen Group of America, Inc.), Misc. No. 897(2009-05-22) https://www.cafc.uscourts.gov/opinions-orders/09-m897.pdf. 묶음 맞음"
+Hyundai Motor America,Hyundai Motor America,Hyundai Motor America,202,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): Hyundai Motor America는 Hyundai Motor Company(본사)의 100% 미국 자회사 — 미국 법인↔본사 같은 묶음 규칙. 출처: Hyundai Motor Company 연결감사보고서 FY2025 자회사 표 https://www.hyundai.com/content/dam/hyundai/ww/en/images/company/investor-relations/financial-Information/report-en/2025/2025-q4-consolidated-audit-report-en.pdf, ""Hyundai Motor America Reports June Sales""(PR Newswire, 2016-07-01) https://www.prnewswire.com/news-releases/hyundai-motor-america-reports-june-sales-300293348.html. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
 "PACCAR, INCORPORATED",PACCAR Incorporated,PACCAR Incorporated,201,표기 통일,없음,,,
 "Mercedes-Benz USA, LLC.","Mercedes-Benz USA, LLC.","Mercedes-Benz USA, LLC.",199,법인 형태 통일,없음,,,
 "General Motors, LLC",General Motors LLC,General Motors LLC,193,법인 형태 통일,없음,,,
@@ -28,33 +28,33 @@ Hyundai Motor America,Hyundai Motor America,Hyundai Motor America,202,표기 통
 "Mercedes-Benz USA, LLC","Mercedes-Benz USA, LLC.","Mercedes-Benz USA, LLC.",178,법인 형태 통일,없음,,,
 Keystone RV Company,Keystone RV Company,Keystone RV Company,167,표기 통일,없음,,,
 "Daimler Trucks North America, LLC",Daimler Trucks North America LLC,Daimler Trucks North America LLC,165,법인 형태 통일,없음,,,
-NAVISTAR INTL CORP.,NAVISTAR INTL CORP.,"Navistar, Inc.",164,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): International Harvester → Navistar International Corp.(1986), 운영 법인 International Truck and Engine → Navistar, Inc.(2008)(출처: ttnews.com 2008-04-10, Wikipedia). 데이터상 이름이 1993·2008에 이어짐"
+NAVISTAR INTL CORP.,NAVISTAR INTL CORP.,"Navistar, Inc.",164,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명·지주 관계 — International Harvester → Navistar International Corp.(1986, 지주), 운영 회사 Navistar International Transportation Corp. → International Truck and Engine Corp.(2000) → Navistar, Inc.(2008). 같은 International 트럭 사업. 출처: Navistar 보도자료(2000-02-22) https://s2.q4cdn.com/760048324/files/doc_news/archive/c8a9a3c7-b0e5-4fb2-859c-21acf1f28957.pdf, Navistar 10-K FY2007 ""Navistar, Inc. (formerly known as International Truck and Engine Corporation)"" https://www.sec.gov/Archives/edgar/data/808450/000119312508124697/d10k.htm"
 Blue Bird Body Company,Blue Bird Body Company,Blue Bird Body Company,160,표기 통일,없음,,,
 PACCAR Incorporated,PACCAR Incorporated,PACCAR Incorporated,157,표기 통일,없음,,,
-FREIGHTLINER CORPORATION,FREIGHTLINER CORPORATION,Daimler Trucks North America LLC,153,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Freightliner LLC → Daimler Trucks North America LLC(2008-01-07)(출처: DTNA 보도자료 2007-10-05, FleetOwner). 데이터: FREIGHTLINER LLC(~2007) → DAIMLER TRUCKS NORTH AMERICA(2008~)"
-BAYERISCHE MOTOREN WERKE,BAYERISCHE MOTOREN WERKE,"BMW of North America, LLC",145,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 데이터: BAYERISCHE MOTOREN WERKE(1967~2004) → BMW OF NORTH AMERICA(2004~)로 같은 신고 주체가 이어짐, 제품(승용·이륜) 같음. 본사↔미국 법인 같은 묶음 규칙"
+FREIGHTLINER CORPORATION,FREIGHTLINER CORPORATION,Daimler Trucks North America LLC,153,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — Freightliner LLC → Daimler Trucks North America LLC(2008-01-07). 출처: ""Freightliner LLC Announces Company Name Change""(Trucking Info, 2007-10-05) https://www.truckinginfo.com/news/freightliner-llc-announces-company-name-change, DTNA History https://northamerica.daimlertruck.com/company/history. Corporation → LLC 전환 시점은 확인 못 함(같은 Freightliner 이름)"
+BAYERISCHE MOTOREN WERKE,BAYERISCHE MOTOREN WERKE,"BMW of North America, LLC",145,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 본사↔미국 자회사 — BMW AG와 그 간접 자회사 BMW of North America. 출처: SEC Release No. 33-10850, In the Matter of Bayerische Motoren Werke AG(2020-09-24) https://www.sec.gov/files/litigation/admin/2020/33-10850.pdf"
 WHITE MOTOR CORPORATION,WHITE MOTOR CORPORATION,WHITE MOTOR CORPORATION,143,원문,없음,,,
 DAIMLER TRUCKS NORTH AMERICA,Daimler Trucks North America LLC,Daimler Trucks North America LLC,138,법인 형태 통일,없음,,,
 COOPER TIRE & RUBBER CO.,Cooper Tire & Rubber Co.,Cooper Tire & Rubber Co.,132,표기 통일,없음,,,
-AMERICAN HONDA MOTOR CO.,AMERICAN HONDA MOTOR CO.,Honda (American Honda Motor Co.),127,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 데이터: AMERICAN HONDA MOTOR CO.(1966~2003) → HONDA (AMERICAN HONDA MOTOR CO.)(2004~12) → 현재 표기(2012~), 같은 법인 표기 차이"
+AMERICAN HONDA MOTOR CO.,AMERICAN HONDA MOTOR CO.,Honda (American Honda Motor Co.),127,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — NHTSA의 '브랜드(법인명)' 표기, 주소 같음(1919 Torrance Blvd). 출처: NHTSA 25V391 Part 573(2025-06-12) https://static.nhtsa.gov/odi/rcl/2025/RCLRPT-25V391-5996.pdf, ""Honda Division Fact Sheet""(2003-10-05) https://hondanews.com/en-US/releases/release-2ad10b78970b422b3fbbeb004c34c4a5-honda-division-fact-sheet"
 "Daimler Vans USA, LLC","Daimler Vans USA, LLC","Daimler Vans USA, LLC",126,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Daimler AG의 다른 법인(Sprinter 미국 법인), Mercedes-Benz USA와 형제 법인(사용자 결정 2026-10-07)"
 "WINNEBAGO INDUSTRIES, INC.","Winnebago Industries, Inc.","Winnebago Industries, Inc.",126,표기 통일,없음,,,
 Thor Motor Coach,Thor Motor Coach,Thor Motor Coach,124,표기 통일,없음,,,
 "Mack Trucks, Inc.","Mack Trucks, Inc.","Mack Trucks, Inc.",122,표기 통일,없음,,,
 Newmar Corporation,Newmar Corporation,Newmar Corporation,120,표기 통일,없음,,,
-FREIGHTLINER CORP.,FREIGHTLINER CORPORATION,Daimler Trucks North America LLC,116,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Freightliner LLC → Daimler Trucks North America LLC(2008-01-07)(출처: DTNA 보도자료 2007-10-05, FleetOwner). 데이터: FREIGHTLINER LLC(~2007) → DAIMLER TRUCKS NORTH AMERICA(2008~)"
+FREIGHTLINER CORP.,FREIGHTLINER CORPORATION,Daimler Trucks North America LLC,116,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — Freightliner LLC → Daimler Trucks North America LLC(2008-01-07). 출처: ""Freightliner LLC Announces Company Name Change""(Trucking Info, 2007-10-05) https://www.truckinginfo.com/news/freightliner-llc-announces-company-name-change, DTNA History https://northamerica.daimlertruck.com/company/history. Corporation → LLC 전환 시점은 확인 못 함(같은 Freightliner 이름)"
 PACCAR INCORPORATED,PACCAR Incorporated,PACCAR Incorporated,114,표기 통일,없음,,,
 "FLEETWOOD ENT., INC.","FLEETWOOD ENT., INC.","FLEETWOOD ENT., INC.",113,원문,없음,,,
 "JAYCO, INC.","Jayco, Inc.","Jayco, Inc.",112,표기 통일,없음,,,
 "Porsche Cars North America, Inc.","Porsche Cars North America, Inc.","Porsche Cars North America, Inc.",111,표기 통일,자동,,,
 Volvo Trucks North America,Volvo Trucks North America,Volvo Trucks North America,109,법인 형태 통일,없음,,,
-JAGUAR CARS,JAGUAR CARS,JAGUAR CARS,102,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 소유주가 바뀐 브랜드(과거 Ford 등), JLR NA(2009~)와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
-"THOMAS BUILT BUSES, INC.","THOMAS BUILT BUSES, INC.","THOMAS BUILT BUSES, INC.",101,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 1998년부터 Daimler Trucks NA 자회사(출처 확인)지만 다른 브랜드(사용자 결정 2026-10-07: 같은 모회사의 다른 브랜드는 묶지 않음)"
+JAGUAR CARS,JAGUAR CARS,JAGUAR CARS,102,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Jaguar Land Rover North America와 묶지 않음(JAGUAR CARS 표기끼리만 묶임) — 소유주가 바뀐 브랜드(과거 Ford 등), JLR NA(2009~)와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
+"THOMAS BUILT BUSES, INC.","THOMAS BUILT BUSES, INC.","THOMAS BUILT BUSES, INC.",101,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Daimler Trucks NA와 같은 그룹이라도 다른 브랜드(사용자 결정 2026-10-07: 같은 모회사의 다른 브랜드는 묶지 않음)"
 HONDA (AMERICAN HONDA MOTOR CO.),Honda (American Honda Motor Co.),Honda (American Honda Motor Co.),100,표기 통일,없음,,,
-INTERNATIONAL TRUCK AND ENGINE,INTERNATIONAL TRUCK AND ENGINE,"Navistar, Inc.",100,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): International Truck and Engine Corp. → Navistar, Inc.(2008)(출처: ttnews.com 2008-04-10). 데이터: ~2008 → NAVISTAR, INC(2008~)"
+INTERNATIONAL TRUCK AND ENGINE,INTERNATIONAL TRUCK AND ENGINE,"Navistar, Inc.",100,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — International Truck and Engine Corp. → Navistar, Inc.(2008). 출처: Navistar 10-K FY2007 ""Navistar, Inc. (formerly known as International Truck and Engine Corporation)"" https://www.sec.gov/Archives/edgar/data/808450/000119312508124697/d10k.htm"
 "Subaru of America, Inc.","Subaru of America, Inc.","Subaru of America, Inc.",100,표기 통일,없음,,,
-FREIGHTLINER LLC,FREIGHTLINER CORPORATION,Daimler Trucks North America LLC,99,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Freightliner LLC → Daimler Trucks North America LLC(2008-01-07)(출처: DTNA 보도자료 2007-10-05, FleetOwner). 데이터: FREIGHTLINER LLC(~2007) → DAIMLER TRUCKS NORTH AMERICA(2008~)"
-"TOYOTA MOTOR NORTH AMERICA, INC.","TOYOTA MOTOR NORTH AMERICA, INC.",Toyota,99,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): TEMA는 2006년 북미 생산·R&D 지주로 출범, 2017년 Toyota Motor North America로 통합 운영. Toyota Motor Co., Ltd.는 1982년 판매회사와 합병해 Toyota Motor Corporation이 된 본사 옛 이름(출처: Wikipedia, toyota-global.com). 묶음 맞음"
+FREIGHTLINER LLC,FREIGHTLINER CORPORATION,Daimler Trucks North America LLC,99,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — Freightliner LLC → Daimler Trucks North America LLC(2008-01-07). 출처: ""Freightliner LLC Announces Company Name Change""(Trucking Info, 2007-10-05) https://www.truckinginfo.com/news/freightliner-llc-announces-company-name-change, DTNA History https://northamerica.daimlertruck.com/company/history. Corporation → LLC 전환 시점은 확인 못 함(같은 Freightliner 이름)"
+"TOYOTA MOTOR NORTH AMERICA, INC.","TOYOTA MOTOR NORTH AMERICA, INC.",Toyota,99,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): TEMA·Toyota Motor North America는 Toyota Motor Corporation의 100% 미국 자회사, Toyota Motor Co., Ltd.는 1982-07-01 판매회사와 합병해 Toyota Motor Corporation이 된 본사 옛 이름. 출처: ① Toyota 20-F FY2024 Item 4.C 자회사 표(2024-06-25 제출) https://global.toyota/pages/global_toyota/ir/library/sec/20-F_202403_final.pdf ② Toyota 75년사 ""A New Toyota is Born"" https://www.toyota-global.com/company/history_of_toyota/75years/text/leaping_forward_as_a_global_corporation/chapter1/section2/item2.html. 묶음 맞음"
 Altec Industries Inc.,Altec Industries Inc.,Altec Industries Inc.,95,표기 통일,없음,,,
 "Autocar, LLC","Autocar, LLC","Autocar, LLC",95,표기 통일,없음,,,
 FIRESTONE TIRE AND RUBBER,FIRESTONE TIRE AND RUBBER,FIRESTONE TIRE AND RUBBER,95,원문,없음,,,
@@ -63,32 +63,32 @@ Mazda North American Operations,Mazda North American Operations,Mazda North Amer
 HARLEY-DAVIDSON MOTOR CO.,Harley-Davidson Motor Company,Harley-Davidson Motor Company,93,표기 통일,없음,,,
 "BMW OF NORTH AMERICA, LLC","BMW of North America, LLC","BMW of North America, LLC",90,표기 통일,없음,,,
 "SAAB CARS USA, INC.","SAAB CARS USA, INC.","SAAB CARS USA, INC.",88,원문,자동,,,
-INTERNATIONAL TRUCK & ENGINE CORPORATION,INTERNATIONAL TRUCK AND ENGINE,"Navistar, Inc.",86,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): International Truck and Engine Corp. → Navistar, Inc.(2008)(출처: ttnews.com 2008-04-10). 데이터: ~2008 → NAVISTAR, INC(2008~)"
+INTERNATIONAL TRUCK & ENGINE CORPORATION,INTERNATIONAL TRUCK AND ENGINE,"Navistar, Inc.",86,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — International Truck and Engine Corp. → Navistar, Inc.(2008). 출처: Navistar 10-K FY2007 ""Navistar, Inc. (formerly known as International Truck and Engine Corporation)"" https://www.sec.gov/Archives/edgar/data/808450/000119312508124697/d10k.htm"
 "Tesla, Inc.","Tesla, Inc.","Tesla, Inc.",86,원문,없음,,,
 UNIROYAL GOODRICH TIRE CO,UNIROYAL GOODRICH TIRE CO,UNIROYAL GOODRICH TIRE CO,84,원문,없음,,,
 "Altec Industries, Inc.",Altec Industries Inc.,Altec Industries Inc.,83,표기 통일,없음,,,
-Kia Motors America,Kia Motors America,Kia,82,법인 형태 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01)(출처: PR Newswire 2021-05-18). 묶음 맞음, 현대와는 별도 유지"
+Kia Motors America,Kia Motors America,Kia,82,법인 형태 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01) 같은 법인 개명. 출처: ""Kia America Debuts in US.""(PR Newswire, 2021-05-18) https://www.prnewswire.com/news-releases/kia-america-debuts-in-us-301294433.html. 묶음 맞음, 현대와는 별도 유지"
 KEYSTONE RV COMPANY,Keystone RV Company,Keystone RV Company,80,표기 통일,없음,,,
 AMERICAN SUZUKI MOTOR CORP.,American Suzuki Motor Corp.,American Suzuki Motor Corp.,77,표기 통일,없음,,,
 "SUBARU OF AMERICA, INC.","Subaru of America, Inc.","Subaru of America, Inc.",77,표기 통일,없음,,,
-"TOYOTA MOTOR CO., LTD.","TOYOTA MOTOR CO., LTD.",Toyota,76,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): TEMA는 2006년 북미 생산·R&D 지주로 출범, 2017년 Toyota Motor North America로 통합 운영. Toyota Motor Co., Ltd.는 1982년 판매회사와 합병해 Toyota Motor Corporation이 된 본사 옛 이름(출처: Wikipedia, toyota-global.com). 묶음 맞음"
-"FLEETWOOD ENTERPRISES, INC.","FLEETWOOD ENTERPRISES, INC.","FLEETWOOD ENT., INC.",74,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): ENT.는 ENTERPRISES 약어, 데이터: ENT.(1971~2002) → ENTERPRISES(2003~09) 같은 법인"
+"TOYOTA MOTOR CO., LTD.","TOYOTA MOTOR CO., LTD.",Toyota,76,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): TEMA·Toyota Motor North America는 Toyota Motor Corporation의 100% 미국 자회사, Toyota Motor Co., Ltd.는 1982-07-01 판매회사와 합병해 Toyota Motor Corporation이 된 본사 옛 이름. 출처: ① Toyota 20-F FY2024 Item 4.C 자회사 표(2024-06-25 제출) https://global.toyota/pages/global_toyota/ir/library/sec/20-F_202403_final.pdf ② Toyota 75년사 ""A New Toyota is Born"" https://www.toyota-global.com/company/history_of_toyota/75years/text/leaping_forward_as_a_global_corporation/chapter1/section2/item2.html. 묶음 맞음"
+"FLEETWOOD ENTERPRISES, INC.","FLEETWOOD ENTERPRISES, INC.","FLEETWOOD ENT., INC.",74,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — ENT.는 ENTERPRISES 약어(데이터: ENT. 1971~2002 → ENTERPRISES 2003~09)"
 "MACK TRUCKS, INC","Mack Trucks, Inc.","Mack Trucks, Inc.",74,표기 통일,없음,,,
-Chrysler Group LLC,Chrysler Group LLC,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),73,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 회사의 이름 변천 — Chrysler Corp. → DaimlerChrysler(1998 합병) → Chrysler LLC(2007) → Chrysler Group LLC(2009) → FCA US LLC(2014 개명). 미국 법인은 지금도 FCA US LLC이고 Stellantis(2021)는 모회사(출처: en.wikipedia.org/wiki/Chrysler, Stellantis 2021-01 발표). 묶음 맞음"
-"Kia America, Inc.","Kia America, Inc.",Kia,73,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01)(출처: PR Newswire 2021-05-18). 묶음 맞음, 현대와는 별도 유지"
+Chrysler Group LLC,Chrysler Group LLC,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),73,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 미국 사업의 이름 변천 — Chrysler Corp. → DaimlerChrysler 자회사(1998) → Chrysler LLC(2007, Cerberus) → 2009-06-10 Chrysler Group LLC가 자산을 사들이며 옛 차량의 리콜 책임까지 넘겨받음 → FCA US LLC(2014-12 개명), Stellantis(2021)는 모회사. 소유주는 바뀌었지만 NHTSA 리콜 책임이 승계돼 같은 신고 주체로 봄. 출처: ① Chrysler Group LLC의 NHTSA PE13-016 답변(2013-08-09) https://static.nhtsa.gov/odi/inv/2013/INRL-PE13016-57509P.pdf ""Chrysler Group LLC assumed responsibility for safety recalls … for vehicles that were manufactured and sold by Chrysler LLC"" ② ""Chrysler Group LLC Announces New Company Name: FCA US LLC""(2014-12-16, 8-K Ex.99.1) https://www.sec.gov/Archives/edgar/data/0001513153/000151315314000022/exhibit991namechange.htm ③ Stellantis 20-F FY2021 Ex.8.1(FCA US LLC 100%) https://www.sec.gov/Archives/edgar/data/1605484/000160548422000023/exhibit8120211231-subsidia.htm. 묶음 맞음"
+"Kia America, Inc.","Kia America, Inc.",Kia,73,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01) 같은 법인 개명. 출처: ""Kia America Debuts in US.""(PR Newswire, 2021-05-18) https://www.prnewswire.com/news-releases/kia-america-debuts-in-us-301294433.html. 묶음 맞음, 현대와는 별도 유지"
 PORSCHE CARS N.A. INC.,PORSCHE CARS N.A. INC.,"Porsche Cars North America, Inc.",73,원문,자동,,,
 "Tiffin Motorhomes, Inc.","Tiffin Motorhomes, Inc.","Tiffin Motorhomes, Inc.",70,표기 통일,없음,,,
 "Mitsubishi Motors North America, Inc.","Mitsubishi Motors North America, Inc.","Mitsubishi Motors North America, Inc.",67,표기 통일,없음,,,
 COUNTRY COACH INC,COUNTRY COACH INC,COUNTRY COACH INC,64,원문,없음,,,
 HARLEY-DAVIDSON MOTOR COMPANY,Harley-Davidson Motor Company,Harley-Davidson Motor Company,64,표기 통일,없음,,,
-OSHKOSH TRUCK CORPORATION,OSHKOSH TRUCK CORPORATION,Oshkosh Corporation,64,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: OSHKOSH TRUCK(~2009) → Oshkosh Corporation(2010~) 이름 승계"
-"VOLKSWAGEN OF AMERICA, INC","Volkswagen of America, Inc.",Volkswagen,64,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Volkswagen of America와 Volkswagen Group of America는 같은 미국 법인의 이름(개명 연도는 출처로 확인 못 함). 묶음 맞음"
+OSHKOSH TRUCK CORPORATION,OSHKOSH TRUCK CORPORATION,Oshkosh Corporation,64,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — 2008-02-05 주주 승인. 출처: Oshkosh 10-Q(2008-03-31 분기) https://www.sec.gov/Archives/edgar/data/0000775158/000089706908000832/cmw3517.htm"
+"VOLKSWAGEN OF AMERICA, INC","Volkswagen of America, Inc.",Volkswagen,64,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Volkswagen of America와 Volkswagen Group of America는 같은 미국 법인(개명 날짜는 확인 못 함 — 법원 문서상 2009-05에 이미 새 이름, 리콜 데이터는 2014-08까지 옛 이름). 출처: 연방항소법원 In re Volkswagen of America, Inc. (now known as Volkswagen Group of America, Inc.), Misc. No. 897(2009-05-22) https://www.cafc.uscourts.gov/opinions-orders/09-m897.pdf. 묶음 맞음"
 "MERCEDES-BENZ USA, INC.","Mercedes-Benz USA, LLC.","Mercedes-Benz USA, LLC.",63,법인 형태 통일,없음,,,
 "Grand Design RV, LLC","Grand Design RV, LLC","Grand Design RV, LLC",62,원문,없음,,,
 "Heartland Recreational Vehicles, LLC","Heartland Recreational Vehicles, LLC","Heartland Recreational Vehicles, LLC",62,표기 통일,없음,,,
 ISUZU MOTORS LIMITED,Isuzu Motors Limited,Isuzu Motors Limited,61,표기 통일,없음,,,
-"MAZDA (NORTH AMERICA),INC","MAZDA (NORTH AMERICA),INC",Mazda North American Operations,61,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 데이터: MAZDA (NORTH AMERICA)(1971~99) → MAZDA NORTH AMERICAN OPERATIONS(2000~)로 이어짐, MNAO는 1997년 북미 조직을 통합(출처: Wikipedia). 'Mazda (North America), Inc.' 법인 기록 자체는 출처로 확인 못 함"
-Nova Bus (US) Inc.,Nova Bus (US) Inc.,Nova Bus,60,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — Nova Bus(캐나다)의 미국 법인으로 보임(이름의 (US), 데이터 2021~). 법인 관계는 출처로 확인 못 함 — 미국 법인↔본사 같은 묶음 규칙"
+"MAZDA (NORTH AMERICA),INC","MAZDA (NORTH AMERICA),INC",Mazda North American Operations,61,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 본사 미국 조직 통합 — 1981 MTC·TKUS가 합쳐 Mazda (North America), Inc., 1997 MANA 등이 Mazda North American Operations(사업명)로 통합. 출처: Mazda USA ""Mazda History"" https://news.mazdausa.com/mazda-history"
+Nova Bus (US) Inc.,Nova Bus (US) Inc.,Nova Bus (US) Inc.,60,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 초안 묶음 유지 — Nova Bus와 같은 Volvo 계열(Volvo 20-F FY2004)이고 캐나다 공장 차량을 미국 법인 이름으로 리콜(26V604)하지만, Nova Bus의 자회사라는 문서는 못 찾음(결정 2026-10-07 PR #39: 출처로 확인된 것만 합침)"
 VOLVO OF AMERICA CORP.,VOLVO OF AMERICA CORP.,VOLVO OF AMERICA CORP.,59,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 1975~86 법인 기록만 확인(Florida 등록), 승용차 수입사였는지·Volvo Cars of N.A.로 이어졌는지 출처로 확인 못 함. 데이터상 1990~91 겹침"
 VOLVO TRUCKS NORTH AMERICA INC,Volvo Trucks North America,Volvo Trucks North America,59,법인 형태 통일,없음,,,
 NEWMAR CORPORATION,Newmar Corporation,Newmar Corporation,58,표기 통일,없음,,,
@@ -98,22 +98,22 @@ MONACO COACH CORPORATION,MONACO COACH CORPORATION,MONACO COACH CORPORATION,57,�
 VOLVO CARS OF N.A. LLC.,"Volvo Cars of N.A., LLC","Volvo Cars of N.A., LLC",56,법인 형태 통일,없음,,,
 DUCATI NORTH AMERICA,Ducati North America,Ducati North America,55,표기 통일,없음,,,
 Spartan Motors USA,Spartan Motors USA,Spartan Motors USA,55,원문,자동,,,
-VOLVO GM HEAVY TRUCK CORP,VOLVO GM HEAVY TRUCK CORP,Volvo Trucks North America,55,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Volvo GM Heavy Truck → Volvo Trucks North America(1997)(출처: Wikipedia Volvo Trucks, 판결문 'now known as'). 데이터: ~1995 → 1996~"
+VOLVO GM HEAVY TRUCK CORP,VOLVO GM HEAVY TRUCK CORP,Volvo Trucks North America,55,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — Volvo GM Heavy Truck Corp. → Volvo Trucks North America(1997, 다수 지분사 Volvo가 GM 지분을 사들이며 개명). 출처: 제8순회항소법원 Reeder-Simco GMC v. Volvo GM Heavy Truck Corporation, Now Known as Volvo Trucks North America(2004-07-12) https://www.courtlistener.com/opinion/786857/reeder-simco-gmc-inc-v-volvo-gm-heavy-truck-corporation-now-known-as/"
 Pierce Manufacturing,Pierce Manufacturing,Pierce Manufacturing,54,법인 형태 통일,없음,,,
-AM GENERAL CORPORATION,AM GENERAL CORPORATION,AM GENERAL CORPORATION,53,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — General Motors와 다른 회사"
+AM GENERAL CORPORATION,AM GENERAL CORPORATION,AM GENERAL CORPORATION,53,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): General Motors와 묶지 않음(AM GENERAL 표기끼리만 묶임) — General Motors와 다른 회사"
 HOLIDAY RAMBLER CORP.,HOLIDAY RAMBLER CORP.,HOLIDAY RAMBLER CORP.,53,원문,없음,,,
 E-One Incorporated,E-One Incorporated,E-One Incorporated,51,표기 통일,없음,,,
 GILLIG CORPORATION,Gillig LLC,Gillig LLC,51,법인 형태 통일,없음,,,
 "KZRV, L.P.","KZRV, L.P.","KZRV, L.P.",51,원문,없음,,,
-"PREVOST CAR, INCORPORATED","PREVOST CAR, INCORPORATED","Prevost Cars, Inc.",51,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: PREVOST CAR(1973~2004) → Prevost Cars(2005~21) 이름 승계"
-"SPARTAN CHASSIS, INC.","Spartan Chassis, Inc.",Spartan Motors USA,51,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Spartan Chassis는 Spartan Motors의 자회사 Spartan Motors Chassis, Inc.의 약칭(출처: SEC 10-K, 조사 에이전트 확인) — 이름 승계가 아니라 모자 관계(데이터상 2011~12 겹침). 그 시기 Spartan Motors 계열이라 같은 묶음"
+"PREVOST CAR, INCORPORATED","PREVOST CAR, INCORPORATED","PREVOST CAR, INCORPORATED",51,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 초안 묶음 유지 — Prevost Cars, Inc.와 표기 차이로 보이나 개명 문서를 못 찾았고, 이 이름이 쓰인 기간(1973~2004) 안에 소유주 변경(1995 Volvo·Henlys, 2004 Volvo 단독)이 있음(결정 2026-10-07 PR #39)"
+"SPARTAN CHASSIS, INC.","Spartan Chassis, Inc.","Spartan Chassis, Inc.",51,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Spartan Motors의 자회사(Spartan Motors Chassis, Inc.). 자회사는 묶지 않는 기준(Winnebago of Indiana·Thomas Built Buses와 같음, 결정 2026-10-07 PR #39)"
 Triple E Recreational Vehicles,Triple E Recreational Vehicles,Triple E Recreational Vehicles,50,표기 통일,없음,,,
 "Winnebago Industries, Inc.","Winnebago Industries, Inc.","Winnebago Industries, Inc.",50,표기 통일,없음,,,
 "FOREST RIVER, INC.","Forest River, Inc.","Forest River, Inc.",49,표기 통일,없음,,,
-HYUNDAI MOTOR COMPANY,Hyundai Motor Company,Hyundai Motor America,49,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): 리콜 데이터에서 같은 신고 주체가 HYUNDAI MOTOR AMERICA(1986~98) → HYUNDAI MOTOR COMPANY(1999~2014) → Hyundai Motor America(2014~)로 이어짐. 미국 법인↔본사 같은 묶음 규칙. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
+HYUNDAI MOTOR COMPANY,Hyundai Motor Company,Hyundai Motor America,49,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): Hyundai Motor America는 Hyundai Motor Company(본사)의 100% 미국 자회사 — 미국 법인↔본사 같은 묶음 규칙. 출처: Hyundai Motor Company 연결감사보고서 FY2025 자회사 표 https://www.hyundai.com/content/dam/hyundai/ww/en/images/company/investor-relations/financial-Information/report-en/2025/2025-q4-consolidated-audit-report-en.pdf, ""Hyundai Motor America Reports June Sales""(PR Newswire, 2016-07-01) https://www.prnewswire.com/news-releases/hyundai-motor-america-reports-june-sales-300293348.html. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
 Harley-Davidson Motor Company,Harley-Davidson Motor Company,Harley-Davidson Motor Company,49,표기 통일,없음,,,
 INTERNATIONAL HARVESTER,INTERNATIONAL HARVESTER,INTERNATIONAL HARVESTER,49,원문,없음,,,
-MITSUBISHI AMERICA,MITSUBISHI AMERICA,"Mitsubishi Motors North America, Inc.",49,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 리뷰 반영 — 데이터: MITSUBISHI AMERICA(1990~2003-05, 승용·SUV) → MMNA(2003-11~, 03V429)로 같은 신고 주체가 이어짐. Mitsubishi Fuso(트럭)와는 별도"
+MITSUBISHI AMERICA,MITSUBISHI AMERICA,MITSUBISHI AMERICA,49,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 초안 묶음 유지 — 1차 출처 없이 보조 자료(백과사전)만 있고, 49건 중 1건(90V198000)이 트럭이라 이 이름의 신고 주체가 승용 판매 법인 하나인지 확인 못 함(결정 2026-10-07 PR #39)"
 "Winnebago Industries, Inc","Winnebago Industries, Inc.","Winnebago Industries, Inc.",49,표기 통일,없음,,,
 "Corp. Micro Bird, Inc.","Corp. Micro Bird, Inc.","Corp. Micro Bird, Inc.",48,표기 통일,자동,,,
 FERRARI NORTH AMERICA,"Ferrari North America, Inc.","Ferrari North America, Inc.",48,법인 형태 통일,없음,,,
@@ -150,31 +150,31 @@ Great Dane Trailers,Great Dane Trailers,Great Dane Trailers,39,법인 형태 통
 "WESTERN STAR TRUCKS, INC.","WESTERN STAR TRUCKS, INC.","WESTERN STAR TRUCKS, INC.",39,원문,없음,,,
 FOUR WINDS INTERNATIONAL,FOUR WINDS INTERNATIONAL,FOUR WINDS INTERNATIONAL,38,원문,없음,,,
 GENERAL TIRE & RUBBER CO.,GENERAL TIRE & RUBBER CO.,GENERAL TIRE & RUBBER CO.,38,원문,없음,,,
-"KIA MOTORS AMERICA, INC.",Kia Motors America,Kia,38,법인 형태 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01)(출처: PR Newswire 2021-05-18). 묶음 맞음, 현대와는 별도 유지"
-Prevost Car (US) Inc.,Prevost Car (US) Inc.,"Prevost Cars, Inc.",38,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — Prevost(캐나다)의 미국 법인으로 보임(이름의 (US), 데이터 2021~). 법인 관계는 출처로 확인 못 함 — 미국 법인↔본사 같은 묶음 규칙"
+"KIA MOTORS AMERICA, INC.",Kia Motors America,Kia,38,법인 형태 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01) 같은 법인 개명. 출처: ""Kia America Debuts in US.""(PR Newswire, 2021-05-18) https://www.prnewswire.com/news-releases/kia-america-debuts-in-us-301294433.html. 묶음 맞음, 현대와는 별도 유지"
+Prevost Car (US) Inc.,Prevost Car (US) Inc.,Prevost Car (US) Inc.,38,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 초안 묶음 유지 — Prevost Cars와 같은 Volvo 계열의 별도 미국 법인(22V237 Plattsburgh)이지만 자회사라는 문서는 못 찾음(결정 2026-10-07 PR #39)"
 Starcraft RV,Starcraft RV,Starcraft RV,38,법인 형태 통일,없음,,,
-CHRYSLER GROUP LLC,Chrysler Group LLC,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),37,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 회사의 이름 변천 — Chrysler Corp. → DaimlerChrysler(1998 합병) → Chrysler LLC(2007) → Chrysler Group LLC(2009) → FCA US LLC(2014 개명). 미국 법인은 지금도 FCA US LLC이고 Stellantis(2021)는 모회사(출처: en.wikipedia.org/wiki/Chrysler, Stellantis 2021-01 발표). 묶음 맞음"
+CHRYSLER GROUP LLC,Chrysler Group LLC,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),37,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 미국 사업의 이름 변천 — Chrysler Corp. → DaimlerChrysler 자회사(1998) → Chrysler LLC(2007, Cerberus) → 2009-06-10 Chrysler Group LLC가 자산을 사들이며 옛 차량의 리콜 책임까지 넘겨받음 → FCA US LLC(2014-12 개명), Stellantis(2021)는 모회사. 소유주는 바뀌었지만 NHTSA 리콜 책임이 승계돼 같은 신고 주체로 봄. 출처: ① Chrysler Group LLC의 NHTSA PE13-016 답변(2013-08-09) https://static.nhtsa.gov/odi/inv/2013/INRL-PE13016-57509P.pdf ""Chrysler Group LLC assumed responsibility for safety recalls … for vehicles that were manufactured and sold by Chrysler LLC"" ② ""Chrysler Group LLC Announces New Company Name: FCA US LLC""(2014-12-16, 8-K Ex.99.1) https://www.sec.gov/Archives/edgar/data/0001513153/000151315314000022/exhibit991namechange.htm ③ Stellantis 20-F FY2021 Ex.8.1(FCA US LLC 100%) https://www.sec.gov/Archives/edgar/data/1605484/000160548422000023/exhibit8120211231-subsidia.htm. 묶음 맞음"
 "Kawasaki Motors Corp., U.S.A.","Kawasaki Motors Corp., U.S.A.",KAWASAKI MOTORS CORP.,37,표기 통일,자동,,,
 ROCKWELL INTERNATIONAL,ROCKWELL INTERNATIONAL,ROCKWELL INTERNATIONAL,37,원문,없음,,,
 "Maserati North America, Inc.","Maserati North America, Inc.","Maserati North America, Inc.",36,표기 통일,없음,,,
 SKYLINE CORPORATION,Skyline Corporation,Skyline Corporation,36,표기 통일,없음,,,
 "CHAMPION BUS, INC.","Champion Bus, Inc.","Champion Bus, Inc.",35,표기 통일,없음,,,
-Hyundai Motor Company,Hyundai Motor Company,Hyundai Motor America,35,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): 리콜 데이터에서 같은 신고 주체가 HYUNDAI MOTOR AMERICA(1986~98) → HYUNDAI MOTOR COMPANY(1999~2014) → Hyundai Motor America(2014~)로 이어짐. 미국 법인↔본사 같은 묶음 규칙. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
-"MOTOR COACH IND., INC.","MOTOR COACH IND., INC.",Motor Coach Industries,35,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 리뷰 반영 — IND.는 INDUSTRIES 약어, 데이터 1968~2002 → 2003~ 이어짐(Winnebago IND.·Fleetwood ENT.와 같은 기준)"
+Hyundai Motor Company,Hyundai Motor Company,Hyundai Motor America,35,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): Hyundai Motor America는 Hyundai Motor Company(본사)의 100% 미국 자회사 — 미국 법인↔본사 같은 묶음 규칙. 출처: Hyundai Motor Company 연결감사보고서 FY2025 자회사 표 https://www.hyundai.com/content/dam/hyundai/ww/en/images/company/investor-relations/financial-Information/report-en/2025/2025-q4-consolidated-audit-report-en.pdf, ""Hyundai Motor America Reports June Sales""(PR Newswire, 2016-07-01) https://www.prnewswire.com/news-releases/hyundai-motor-america-reports-june-sales-300293348.html. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
+"MOTOR COACH IND., INC.","MOTOR COACH IND., INC.",Motor Coach Industries,35,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — IND.는 INDUSTRIES 약어(데이터 1968~2002 → 2003~)"
 NEW FLYER INDUSTRIES LTD,New Flyer Industries Ltd.,New Flyer Industries Ltd.,35,법인 형태 통일,없음,,,
-"WINNEBAGO IND., INC.","WINNEBAGO IND., INC.","Winnebago Industries, Inc.",35,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — IND.는 INDUSTRIES 약어, 같은 법인"
+"WINNEBAGO IND., INC.","WINNEBAGO IND., INC.","Winnebago Industries, Inc.",35,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — IND.는 INDUSTRIES 약어"
 Nova Bus,Nova Bus,Nova Bus,34,법인 형태 통일,없음,,,
 Oshkosh Corporation,Oshkosh Corporation,Oshkosh Corporation,34,표기 통일,없음,,,
 SHELLER-GLOBE CORPORATION,SHELLER-GLOBE CORPORATION,SHELLER-GLOBE CORPORATION,34,원문,없음,,,
-"Suzuki Motor of America, Inc.","Suzuki Motor of America, Inc.",American Suzuki Motor Corp.,34,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 이름 승계가 아님: American Suzuki Motor Corp.가 2012~13년 파산 절차 중 Suzuki 본사의 완전 자회사 Suzuki Motor of America, Inc.로 자산을 넘김(출처: Wikipedia Suzuki 2013 연표). 둘 다 Suzuki 본사의 미국 법인이라 미국 법인↔본사 같은 묶음 규칙"
+"Suzuki Motor of America, Inc.","Suzuki Motor of America, Inc.",American Suzuki Motor Corp.,34,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 같은 본사 자회사 사이 자산 이전 — American Suzuki Motor Corp.(Suzuki Motor Corporation 소유)가 2013년 파산 절차에서 사업을 Suzuki 본사의 새 100% 자회사(Suzuki Motor of America, Inc.)에 매각, 소유주 그대로. 출처: In re Am. Suzuki Motor Corp., 494 B.R. 466(Bankr. C.D. Cal. 2013-06-04) https://case-law.vlex.com/vid/in-re-am-suzuki-892485918, ASMC 보도자료(2013-03-04) https://www.cycleworld.com/2013/03/04/american-suzuki-chapter-11-plan-approved/"
 "Triumph Motorcycles America, LTD","Triumph Motorcycles America, LTD","Triumph Motorcycles America, LTD",34,표기 통일,자동,,,
 "CHANCE COACH, INC.","CHANCE COACH, INC.","CHANCE COACH, INC.",33,원문,없음,,,
 DANA CORPORATION,Dana Incorporated,Dana Incorporated,33,법인 형태 통일,없음,,,
 FRUEHAUF CORPORATION,Fruehauf Inc.,Fruehauf Inc.,33,법인 형태 통일,없음,,,
 Highland Ridge RV,Highland Ridge RV,Highland Ridge RV,33,원문,없음,,,
 "MITSUBISHI MOTORS NORTH AMERICA, INC.","Mitsubishi Motors North America, Inc.","Mitsubishi Motors North America, Inc.",33,표기 통일,없음,,,
-"Volvo Car USA, LLC","Volvo Car USA, LLC","Volvo Cars of N.A., LLC",33,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: Volvo Cars of N.A.(1990~2015) → Volvo Car USA(2016~), 승용차 같은 신고 주체"
-CHRYSLER LLC,CHRYSLER CORPORATION,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),32,법인 형태 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 회사의 이름 변천 — Chrysler Corp. → DaimlerChrysler(1998 합병) → Chrysler LLC(2007) → Chrysler Group LLC(2009) → FCA US LLC(2014 개명). 미국 법인은 지금도 FCA US LLC이고 Stellantis(2021)는 모회사(출처: en.wikipedia.org/wiki/Chrysler, Stellantis 2021-01 발표). 묶음 맞음"
+"Volvo Car USA, LLC","Volvo Car USA, LLC","Volvo Cars of N.A., LLC",33,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 같은 본사의 미국 승용차 법인 — Volvo Cars of North America, LLC는 2016년 Volvo Car North America, LLC로 개명(Volvo Car Group 100%), Volvo Car USA LLC도 Volvo Car Group의 미국 자회사. 'USA'로의 개명인지 별도 법인인지는 확인 못 함. 출처: Volvo Car Group Annual Report 2016 자회사 주석 ""Prior name: Volvo Cars of North America, LLC"" https://investors.volvocars.com/~/media/Files/V/Volvo-Cars-IR/results-center/2016/annualreport2016.pdf, Volvo Car USA About https://news.cision.com/volvo-car-usa/about"
+CHRYSLER LLC,CHRYSLER CORPORATION,Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),32,법인 형태 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 미국 사업의 이름 변천 — Chrysler Corp. → DaimlerChrysler 자회사(1998) → Chrysler LLC(2007, Cerberus) → 2009-06-10 Chrysler Group LLC가 자산을 사들이며 옛 차량의 리콜 책임까지 넘겨받음 → FCA US LLC(2014-12 개명), Stellantis(2021)는 모회사. 소유주는 바뀌었지만 NHTSA 리콜 책임이 승계돼 같은 신고 주체로 봄. 출처: ① Chrysler Group LLC의 NHTSA PE13-016 답변(2013-08-09) https://static.nhtsa.gov/odi/inv/2013/INRL-PE13016-57509P.pdf ""Chrysler Group LLC assumed responsibility for safety recalls … for vehicles that were manufactured and sold by Chrysler LLC"" ② ""Chrysler Group LLC Announces New Company Name: FCA US LLC""(2014-12-16, 8-K Ex.99.1) https://www.sec.gov/Archives/edgar/data/0001513153/000151315314000022/exhibit991namechange.htm ③ Stellantis 20-F FY2021 Ex.8.1(FCA US LLC 100%) https://www.sec.gov/Archives/edgar/data/1605484/000160548422000023/exhibit8120211231-subsidia.htm. 묶음 맞음"
 Corp. Micro Bird Inc.,"Corp. Micro Bird, Inc.","Corp. Micro Bird, Inc.",32,표기 통일,자동,,,
 Daimler Trucks North America,Daimler Trucks North America LLC,Daimler Trucks North America LLC,32,법인 형태 통일,없음,,,
 "FIAT MOTORS OF N.A., INC.","FIAT MOTORS OF N.A., INC.","FIAT MOTORS OF N.A., INC.",32,원문,없음,,,
@@ -204,7 +204,7 @@ CRANE CARRIER COMPANY,Crane Carrier Company,Crane Carrier Company,29,표기 통�
 NEOPLAN USA CORP.,NEOPLAN USA CORP.,NEOPLAN USA CORP.,29,표기 통일,없음,,,
 "NISSAN DIESEL AMERICA, INC","NISSAN DIESEL AMERICA, INC","NISSAN DIESEL AMERICA, INC",29,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Nissan Motor와 다른 회사(UD Trucks)"
 "PREVOST CARS, INC.","Prevost Cars, Inc.","Prevost Cars, Inc.",29,표기 통일,없음,,,
-"Spartan Fire, LLC","Spartan Fire, LLC","Spartan Fire, LLC",29,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 2020년 REV Group에 매각된 뒤의 회사(출처: REV Group), Spartan Motors와 다른 회사"
+"Spartan Fire, LLC","Spartan Fire, LLC","Spartan Fire, LLC",29,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Spartan Motors와 같은 회사라는 근거를 못 찾음(자회사도 묶지 않는 기준)"
 ALTEC INDUSTRIES INC.,Altec Industries Inc.,Altec Industries Inc.,28,표기 통일,없음,,,
 "BIG DOG MOTORCYCLES, LLC","BIG DOG MOTORCYCLES, LLC","BIG DOG MOTORCYCLES, LLC",28,원문,없음,,,
 GENERAL MOTORS LLC,General Motors LLC,General Motors LLC,28,법인 형태 통일,없음,,,
@@ -217,8 +217,8 @@ GENERAL MOTORS LLC,General Motors LLC,General Motors LLC,28,법인 형태 통일
 UTILIMASTER CORPORATION,UTILIMASTER CORPORATION,UTILIMASTER CORPORATION,27,원문,없음,,,
 FLXIBLE CORPORATION,FLXIBLE CORPORATION,FLXIBLE CORPORATION,26,원문,없음,,,
 "Ferrari North America, Inc.","Ferrari North America, Inc.","Ferrari North America, Inc.",26,법인 형태 통일,없음,,,
-MITSUBISHI CARIBBEAN,MITSUBISHI CARIBBEAN,"Mitsubishi Motors North America, Inc.",26,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 유통사 — 리콜 대상이 Mitsubishi 승용차·SUV(데이터 96V143·98V059·98V220·98V316). 브랜드 묶음에 넣음(사용자 결정 2026-10-07). Mitsubishi Fuso(트럭, 다른 회사)와는 별도"
-"Southeast Toyota Distributors, LLC","Southeast Toyota Distributors, LLC",Toyota,26,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 유통사 — Toyota 차량 지역 유통사의 리콜. 브랜드 묶음에 넣음(사용자 결정 2026-10-07)"
+MITSUBISHI CARIBBEAN,MITSUBISHI CARIBBEAN,MITSUBISHI CARIBBEAN,26,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Mitsubishi 승용차·SUV(96V143·98V059·98V220·98V316)의 지역 유통사라 Mitsubishi Motors North America와 다른 회사(결정 2026-10-07, PR #39: maker_group은 회사 단위로만 쓰고 브랜드 묶음은 필요하면 별도 칸으로 후속)"
+"Southeast Toyota Distributors, LLC","Southeast Toyota Distributors, LLC","Southeast Toyota Distributors, LLC",26,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Toyota 차량 지역 독립 유통사라 Toyota와 다른 회사(결정 2026-10-07, PR #39: maker_group은 회사 단위로만 쓰고 브랜드 묶음은 필요하면 별도 칸으로 후속)"
 Volvo Bus Corporation,Volvo Bus Corporation,Volvo Bus Corporation,26,원문,없음,,,
 Braun Corporation,Braun Corporation,Braun Corporation,25,표기 통일,없음,,,
 CLARK EQUIP. COMPANY,CLARK EQUIP. COMPANY,CLARK EQUIP. COMPANY,25,원문,없음,,,
@@ -252,33 +252,33 @@ STARCRAFT COMPANY,STARCRAFT COMPANY,STARCRAFT COMPANY,21,원문,없음,,,
 Supreme Corporation,Supreme Corporation,Supreme Corporation,21,표기 통일,없음,,,
 U.S. BUS CORPORATION,U.S. BUS CORPORATION,U.S. BUS CORPORATION,21,원문,없음,,,
 Cummins Inc.,"Cummins, Inc.","Cummins, Inc.",20,표기 통일,없음,,,
-HYUNDAI MOTOR AMERICA,Hyundai Motor America,Hyundai Motor America,20,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): 리콜 데이터에서 같은 신고 주체가 HYUNDAI MOTOR AMERICA(1986~98) → HYUNDAI MOTOR COMPANY(1999~2014) → Hyundai Motor America(2014~)로 이어짐. 미국 법인↔본사 같은 묶음 규칙. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
-MAZDA MOTOR CORP,MAZDA MOTOR CORP,Mazda North American Operations,20,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 리뷰 반영 — Mazda 본사(Mazda Motor Corporation). 미국 법인↔본사 같은 묶음 규칙(Hyundai Motor Company·Toyota Motor Co.와 같은 기준)"
+HYUNDAI MOTOR AMERICA,Hyundai Motor America,Hyundai Motor America,20,표기 통일,자동,확인 완료,필요,"maker_group: 고객사(현대·기아·제네시스) 묶음 — 미국 법인과 본사 연결이 맞는지 확인 | 확인(우지훈, D 대행, 2026-10-07): Hyundai Motor America는 Hyundai Motor Company(본사)의 100% 미국 자회사 — 미국 법인↔본사 같은 묶음 규칙. 출처: Hyundai Motor Company 연결감사보고서 FY2025 자회사 표 https://www.hyundai.com/content/dam/hyundai/ww/en/images/company/investor-relations/financial-Information/report-en/2025/2025-q4-consolidated-audit-report-en.pdf, ""Hyundai Motor America Reports June Sales""(PR Newswire, 2016-07-01) https://www.prnewswire.com/news-releases/hyundai-motor-america-reports-june-sales-300293348.html. 묶음 맞음, Kia·Hyundai Translead와는 별도 유지"
+MAZDA MOTOR CORP,MAZDA MOTOR CORP,Mazda North American Operations,20,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 본사↔미국 자회사 — MNAO는 Mazda Motor of America, Inc.(Mazda Motor Corporation 100% 자회사)의 사업명. 출처: Mazda 유가증권보고서 FY2024 연결 자회사 표 https://www.mazda.com/content/dam/mazda/corporate/mazda-com/en/pdf/investors/library/s-report/2025/f_repo250627.pdf, mazda.com MAJOR FACILITIES https://www.mazda.com/en/about/facilities/"
 Marion Body Works Inc.,Marion Body Works Inc.,Marion Body Works Inc.,20,원문,없음,,,
 "PIERCE MANUFACTURING,INC.",Pierce Manufacturing,Pierce Manufacturing,20,법인 형태 통일,없음,,,
 TRAILMOBILE INC.,TRAILMOBILE INC.,TRAILMOBILE INC.,20,법인 형태 통일,없음,,,
 VOLVO TRUCKS NORTH AMERICA,Volvo Trucks North America,Volvo Trucks North America,20,법인 형태 통일,없음,,,
-Volvo Car USA LLC,"Volvo Car USA, LLC","Volvo Cars of N.A., LLC",20,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: Volvo Cars of N.A.(1990~2015) → Volvo Car USA(2016~), 승용차 같은 신고 주체"
+Volvo Car USA LLC,"Volvo Car USA, LLC","Volvo Cars of N.A., LLC",20,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 같은 본사의 미국 승용차 법인 — Volvo Cars of North America, LLC는 2016년 Volvo Car North America, LLC로 개명(Volvo Car Group 100%), Volvo Car USA LLC도 Volvo Car Group의 미국 자회사. 'USA'로의 개명인지 별도 법인인지는 확인 못 함. 출처: Volvo Car Group Annual Report 2016 자회사 주석 ""Prior name: Volvo Cars of North America, LLC"" https://investors.volvocars.com/~/media/Files/V/Volvo-Cars-IR/results-center/2016/annualreport2016.pdf, Volvo Car USA About https://news.cision.com/volvo-car-usa/about"
 CATERPILLAR INC.,Caterpillar Inc.,Caterpillar Inc.,19,표기 통일,없음,,,
-CUMMINS ENGINE CO.,CUMMINS ENGINE CO.,"Cummins, Inc.",19,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: CUMMINS ENGINE CO.(1975~2001) → Cummins, Inc.(2003~), 2년 공백 있음. 같은 회사의 개명으로 보이나 출처로 대조하지 않음"
+CUMMINS ENGINE CO.,CUMMINS ENGINE CO.,"Cummins, Inc.",19,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — Cummins Engine Company → Cummins Inc.(2001). 출처: Cummins 10-K FY2020 ""In 2001, we changed our name to Cummins Inc."" https://www.sec.gov/Archives/edgar/data/26172/000002617221000012/cmi-20201231.htm"
 "FLEETWOOD RV, INC.","Fleetwood RV, Inc.","Fleetwood RV, Inc.",19,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Fleetwood Enterprises 파산(2009) 뒤 매각된 브랜드, 다른 회사(사용자 결정 2026-10-07)"
-HYUNDAI CARIBBEAN-PUERTO RICO,HYUNDAI CARIBBEAN-PUERTO RICO,Hyundai Motor America,19,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 유통사 — 현대차 자회사가 아닌 푸에르토리코 독립 유통사(Sojitz 계열, 출처: sojitz.com, NHTSA 10V457)지만 리콜 대상은 현대 차량(Accent 등). 고객사 선례를 찾는 데 쓰려고 브랜드 묶음에 넣음(사용자 결정 2026-10-07: 유통사 리콜은 브랜드 묶음)"
+HYUNDAI CARIBBEAN-PUERTO RICO,HYUNDAI CARIBBEAN-PUERTO RICO,HYUNDAI CARIBBEAN-PUERTO RICO,19,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Hyundai Motor America(현대차 미국 법인)가 아닌 푸에르토리코 지역 유통사. 리콜 대상은 현대 차량(Accent 등)(결정 2026-10-07, PR #39: maker_group은 회사 단위로만 쓰고 브랜드 묶음은 필요하면 별도 칸으로 후속)"
 INDIAN MOTORCYCLE COMPANY,Indian Motorcycle Company,Indian Motorcycle Company,19,표기 통일,없음,,,
-LAND ROVER,LAND ROVER,LAND ROVER,19,원문,자동,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 소유주가 바뀐 브랜드(과거 BMW·Ford), JLR NA와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
+LAND ROVER,LAND ROVER,LAND ROVER,19,원문,자동,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Jaguar Land Rover North America와 묶지 않음(LAND ROVER 표기끼리만 묶임) — 소유주가 바뀐 브랜드(과거 BMW·Ford), JLR NA와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
 NEWELL COACH CORP.,Newell Coach Corp.,Newell Coach Corp.,19,표기 통일,없음,,,
 New Flyer Industries Ltd.,New Flyer Industries Ltd.,New Flyer Industries Ltd.,19,법인 형태 통일,없음,,,
 TRIUMPH MOTORCYCLES AMERICA LTD,"Triumph Motorcycles America, LTD","Triumph Motorcycles America, LTD",19,표기 통일,자동,,,
 Temsa Global Sanayi Ve Ticaret A.S.,Temsa Global Sanayi Ve Ticaret A.S.,Temsa Global Sanayi Ve Ticaret A.S.,19,원문,없음,,,
 Zero Motorcycles Inc.,Zero Motorcycles Inc.,Zero Motorcycles Inc.,19,표기 통일,없음,,,
 ARMSTRONG RUBBER CO.,ARMSTRONG RUBBER CO.,ARMSTRONG RUBBER CO.,18,원문,없음,,,
-ARVINMERITOR,ARVINMERITOR,"Meritor, Inc.",18,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: MERITOR AUTOMOTIVE(1999~2000) → ARVINMERITOR(2000~11) → Meritor, Inc.(2011~) 이름 승계. Wabco 합작(MERITOR WABCO)은 별도 회사라 묶지 않음"
+ARVINMERITOR,ARVINMERITOR,"Meritor, Inc.",18,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 합병 승계·개명 — Meritor Automotive가 자회사 ArvinMeritor에 합병되고 Arvin도 합쳐짐(2000), ArvinMeritor → Meritor, Inc.(2011-03-30). 출처: ArvinMeritor 10-K405(2000-12-21) https://content.edgar-online.com/ExternalLink/EDGAR/0000950123-00-011696.html, Meritor 8-K(2011-03-31) https://www.sec.gov/Archives/edgar/data/0001113256/000120677411000675/meritor_8k.htm. Wabco 합작(MERITOR WABCO)은 별도 회사라 묶지 않음"
 Aston Martin The Americas,Aston Martin The Americas,Aston Martin The Americas,18,원문,없음,,,
 "CORP. MICRO BIRD, INC.","Corp. Micro Bird, Inc.","Corp. Micro Bird, Inc.",18,표기 통일,자동,,,
 DOREL JUVENILE GROUP,Dorel Juvenile Group,Dorel Juvenile Group,18,표기 통일,없음,,,
 "DORSEY TRAILERS, INC.","DORSEY TRAILERS, INC.","DORSEY TRAILERS, INC.",18,원문,없음,,,
 GOSHEN COACH,Goshen Coach,Goshen Coach,18,표기 통일,없음,,,
 HOME & PARK MOTORHOMES,HOME & PARK MOTORHOMES,HOME & PARK MOTORHOMES,18,원문,없음,,,
-JAGUAR CARS LTD,JAGUAR CARS,JAGUAR CARS,18,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 소유주가 바뀐 브랜드(과거 Ford 등), JLR NA(2009~)와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
+JAGUAR CARS LTD,JAGUAR CARS,JAGUAR CARS,18,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Jaguar Land Rover North America와 묶지 않음(JAGUAR CARS 표기끼리만 묶임) — 소유주가 바뀐 브랜드(과거 Ford 등), JLR NA(2009~)와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
 Rosenbauer America,Rosenbauer America,Rosenbauer America,18,원문,없음,,,
 "TEREX TELELECT, INC.","TEREX TELELECT, INC.","TEREX TELELECT, INC.",18,표기 통일,없음,,,
 Takata Corporation,Takata Corporation,Takata Corporation,18,표기 통일,없음,,,
@@ -312,7 +312,7 @@ Collins Bus Corporation,Collins Bus Corporation,Collins Bus Corporation,16,표�
 KELSEY-HAYES COMPANY,KELSEY-HAYES COMPANY,KELSEY-HAYES COMPANY,16,원문,없음,,,
 "KOLCRAFT ENTERPRISES, INC.","KOLCRAFT ENTERPRISES, INC.","KOLCRAFT ENTERPRISES, INC.",16,원문,없음,,,
 ORION BUS INDUSTRIES LTD.,ORION BUS INDUSTRIES LTD.,ORION BUS INDUSTRIES LTD.,16,법인 형태 통일,없음,,,
-Piaggio Group Americas. Inc.,"Piaggio Group Americas, Inc.","Piaggio Group Americas, Inc.",16,표기 통일,없음,확인 완료,필요,"maker: 합쳐진 원문에 마침표 오타('. Inc.')가 있어 대표 이름(철자) 확인 | 확인(우지훈, D 대행, 2026-10-07): 대표 이름 `Piaggio Group Americas, Inc.`(쉼표)가 맞음. `. Inc.`는 신고서 원문 오타"
+Piaggio Group Americas. Inc.,"Piaggio Group Americas, Inc.","Piaggio Group Americas, Inc.",16,표기 통일,없음,확인 완료,필요,"maker: 합쳐진 원문에 마침표 오타('. Inc.')가 있어 대표 이름(철자) 확인 | 확인(우지훈, D 대행, 2026-10-07): 대표 이름 `Piaggio Group Americas, Inc.`(쉼표)가 맞음. `. Inc.`는 신고서 원문 오타. Piaggio & C. SpA의 미국 자회사(출처: Piaggio 배경자료 FY2025 https://www.piaggiogroup.com/sites/default/files/documents/PIAGGIO%20-%20Info%20di%20background%20FY2025_ING.pdf)"
 TRACKER MARINE L.L.C.,"Tracker Marine, LLC","Tracker Marine, LLC",16,법인 형태 통일,없음,,,
 "Trail King Industries, Inc.","Trail King Industries, Inc.","Trail King Industries, Inc.",16,표기 통일,없음,,,
 Turtle Top,Turtle Top,Turtle Top,16,법인 형태 통일,없음,,,
@@ -322,19 +322,19 @@ McLaren Automotive Incorporated,McLaren Automotive Incorporated,McLaren Automoti
 SETRA OF NORTH AMERICA,Setra of North America,Setra of North America,15,표기 통일,없음,,,
 TRANS TECH BUS,Trans Tech Bus,Trans Tech Bus,15,표기 통일,없음,,,
 "Vac-Tron Equipment, LLC","Vac-Tron Equipment, LLC","Vac-Tron Equipment, LLC",15,원문,없음,,,
-"ARVINMERITOR, INC",ARVINMERITOR,"Meritor, Inc.",14,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: MERITOR AUTOMOTIVE(1999~2000) → ARVINMERITOR(2000~11) → Meritor, Inc.(2011~) 이름 승계. Wabco 합작(MERITOR WABCO)은 별도 회사라 묶지 않음"
+"ARVINMERITOR, INC",ARVINMERITOR,"Meritor, Inc.",14,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 합병 승계·개명 — Meritor Automotive가 자회사 ArvinMeritor에 합병되고 Arvin도 합쳐짐(2000), ArvinMeritor → Meritor, Inc.(2011-03-30). 출처: ArvinMeritor 10-K405(2000-12-21) https://content.edgar-online.com/ExternalLink/EDGAR/0000950123-00-011696.html, Meritor 8-K(2011-03-31) https://www.sec.gov/Archives/edgar/data/0001113256/000120677411000675/meritor_8k.htm. Wabco 합작(MERITOR WABCO)은 별도 회사라 묶지 않음"
 Aluminum Trailer Company (ATC),Aluminum Trailer Company (ATC),Aluminum Trailer Company (ATC),14,원문,없음,,,
 CHAMPION HOME BLDR. CO.,CHAMPION HOME BLDR. CO.,CHAMPION HOME BLDR. CO.,14,원문,없음,,,
 "COSCO, INC.","COSCO, INC.","COSCO, INC.",14,원문,없음,,,
 CROSSROADS RV,Crossroads RV,Crossroads RV,14,표기 통일,없음,,,
 FMC CORPORATION,FMC CORPORATION,FMC CORPORATION,14,원문,없음,,,
-"Gulf States Toyota, Inc.","Gulf States Toyota, Inc.",Toyota,14,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 유통사 — Toyota 차량 지역 유통사의 리콜. 브랜드 묶음에 넣음(사용자 결정 2026-10-07)"
+"Gulf States Toyota, Inc.","Gulf States Toyota, Inc.","Gulf States Toyota, Inc.",14,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Toyota 차량 지역 독립 유통사라 Toyota와 다른 회사(결정 2026-10-07, PR #39: maker_group은 회사 단위로만 쓰고 브랜드 묶음은 필요하면 별도 칸으로 후속)"
 "HEARTLAND RECREATIONAL VEHICLES, LLC","Heartland Recreational Vehicles, LLC","Heartland Recreational Vehicles, LLC",14,표기 통일,없음,,,
-"LAND ROVER NORTH AMERICA, INC.","LAND ROVER NORTH AMERICA, INC.",LAND ROVER,14,원문,자동,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 소유주가 바뀐 브랜드(과거 BMW·Ford), JLR NA와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
+"LAND ROVER NORTH AMERICA, INC.","LAND ROVER NORTH AMERICA, INC.",LAND ROVER,14,원문,자동,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Jaguar Land Rover North America와 묶지 않음(LAND ROVER 표기끼리만 묶임) — 소유주가 바뀐 브랜드(과거 BMW·Ford), JLR NA와는 그 시절 회사가 다름(사용자 결정 2026-10-07)"
 "MASERATI NORTH AMERICA, INC.","Maserati North America, Inc.","Maserati North America, Inc.",14,표기 통일,없음,,,
 "TAP Worldwide, LLC","TAP Worldwide, LLC","TAP Worldwide, LLC",14,원문,없음,,,
 TURTLE TOP,Turtle Top,Turtle Top,14,법인 형태 통일,없음,,,
-UTILITY TRAILER MFG. CO.,UTILITY TRAILER MFG. CO.,Utility Trailer Manufacturing Company,14,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 리뷰 반영 — MFG.는 Manufacturing 약어, 데이터 1972~2002 → 2003~ 이어짐"
+UTILITY TRAILER MFG. CO.,UTILITY TRAILER MFG. CO.,Utility Trailer Manufacturing Company,14,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — MFG.는 Manufacturing 약어(데이터 1972~2002 → 2003~)"
 WILSON TRAILER COMPANY,Wilson Trailer Company,Wilson Trailer Company,14,표기 통일,없음,,,
 ATWOOD MOBILE PRODUCTS,Atwood Mobile Products,Atwood Mobile Products,13,표기 통일,없음,,,
 "Bombardier Recreational Products, Inc.","Bombardier Recreational Products, Inc.","Bombardier Recreational Products, Inc.",13,표기 통일,없음,,,
@@ -344,7 +344,7 @@ Dennis Eagle Inc.,Dennis Eagle Inc.,Dennis Eagle Inc.,13,원문,없음,,,
 "E-ONE, INC.",E-One Incorporated,E-One Incorporated,13,표기 통일,없음,,,
 "Evenflo Company, Inc.","Evenflo Company, Inc.","Evenflo Company, Inc.",13,표기 통일,없음,,,
 FISHER-PRICE,FISHER-PRICE,FISHER-PRICE,13,원문,없음,,,
-GREAT DANE LIMITED PARTNERSHIP,GREAT DANE LIMITED PARTNERSHIP,Great Dane Trailers,13,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 같은 회사(법인 형태 표기 차이)"
+GREAT DANE LIMITED PARTNERSHIP,GREAT DANE LIMITED PARTNERSHIP,GREAT DANE LIMITED PARTNERSHIP,13,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 초안 묶음 유지 — Great Dane LP(1997 Pines Trailer 합병)와 현재 Great Dane LLC의 연속성·소유주를 공개 문서로 확인 못 함(결정 2026-10-07 PR #39)"
 GULF STREAM COACH INC.,"Gulf Stream Coach, Inc.","Gulf Stream Coach, Inc.",13,표기 통일,없음,,,
 Harbor Freight Tools,Harbor Freight Tools,Harbor Freight Tools,13,표기 통일,없음,,,
 Motiv Power Systems,Motiv Power Systems,Motiv Power Systems,13,원문,없음,,,
@@ -381,7 +381,7 @@ THOR MOTOR COACH,Thor Motor Coach,Thor Motor Coach,12,표기 통일,없음,,,
 "Terex Advance Mixer, Inc.","Terex Advance Mixer, Inc.","Terex Advance Mixer, Inc.",12,표기 통일,없음,,,
 VERMEER MANUFACTURING COMPANY,Vermeer Manufacturing Company,Vermeer Manufacturing Company,12,표기 통일,없음,,,
 BRIDGESTONE/FIRESTONE NORTH AMERICA TIRE,Bridgestone/Firestone North America Tire,Bridgestone/Firestone North America Tire,11,표기 통일,없음,,,
-"Chrysler (FCA US, LLC) (Stellantis)","Chrysler (FCA US, LLC) (Stellantis)",Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),11,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 회사의 이름 변천 — Chrysler Corp. → DaimlerChrysler(1998 합병) → Chrysler LLC(2007) → Chrysler Group LLC(2009) → FCA US LLC(2014 개명). 미국 법인은 지금도 FCA US LLC이고 Stellantis(2021)는 모회사(출처: en.wikipedia.org/wiki/Chrysler, Stellantis 2021-01 발표). 묶음 맞음"
+"Chrysler (FCA US, LLC) (Stellantis)","Chrysler (FCA US, LLC) (Stellantis)",Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐),11,원문,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): 같은 미국 사업의 이름 변천 — Chrysler Corp. → DaimlerChrysler 자회사(1998) → Chrysler LLC(2007, Cerberus) → 2009-06-10 Chrysler Group LLC가 자산을 사들이며 옛 차량의 리콜 책임까지 넘겨받음 → FCA US LLC(2014-12 개명), Stellantis(2021)는 모회사. 소유주는 바뀌었지만 NHTSA 리콜 책임이 승계돼 같은 신고 주체로 봄. 출처: ① Chrysler Group LLC의 NHTSA PE13-016 답변(2013-08-09) https://static.nhtsa.gov/odi/inv/2013/INRL-PE13016-57509P.pdf ""Chrysler Group LLC assumed responsibility for safety recalls … for vehicles that were manufactured and sold by Chrysler LLC"" ② ""Chrysler Group LLC Announces New Company Name: FCA US LLC""(2014-12-16, 8-K Ex.99.1) https://www.sec.gov/Archives/edgar/data/0001513153/000151315314000022/exhibit991namechange.htm ③ Stellantis 20-F FY2021 Ex.8.1(FCA US LLC 100%) https://www.sec.gov/Archives/edgar/data/1605484/000160548422000023/exhibit8120211231-subsidia.htm. 묶음 맞음"
 "Continental Tire the Americas, LLC.","Continental Tire the Americas, LLC.","Continental Tire the Americas, LLC.",11,표기 통일,없음,,,
 DETROIT DIESEL CORP.,DETROIT DIESEL CORP.,DETROIT DIESEL CORP.,11,원문,없음,,,
 DRV Suites,DRV Suites,DRV Suites,11,표기 통일,없음,,,
@@ -389,11 +389,11 @@ Daimler Coaches North America,Daimler Coaches North America,Daimler Coaches Nort
 ELKHART COACH,Elkhart Coach,Elkhart Coach,11,표기 통일,없음,,,
 Eldorado National- Kansas,Eldorado National- Kansas,Eldorado National- Kansas,11,표기 통일,없음,,,
 "GEORGIE BOY MFG., INC.","GEORGIE BOY MFG., INC.","GEORGIE BOY MFG., INC.",11,법인 형태 통일,없음,,,
-"GULF STATES TOYOTA, INC.","Gulf States Toyota, Inc.",Toyota,11,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 유통사 — Toyota 차량 지역 유통사의 리콜. 브랜드 묶음에 넣음(사용자 결정 2026-10-07)"
+"GULF STATES TOYOTA, INC.","Gulf States Toyota, Inc.","Gulf States Toyota, Inc.",11,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Toyota 차량 지역 독립 유통사라 Toyota와 다른 회사(결정 2026-10-07, PR #39: maker_group은 회사 단위로만 쓰고 브랜드 묶음은 필요하면 별도 칸으로 후속)"
 Hale Products Inc,Hale Products Inc,Hale Products Inc,11,원문,없음,,,
 Isuzu Motors Limited,Isuzu Motors Limited,Isuzu Motors Limited,11,표기 통일,없음,,,
 "JAGUAR LAND ROVER NORTH AMERICA, LLC","Jaguar Land Rover North America, LLC","Jaguar Land Rover North America, LLC",11,표기 통일,없음,,,
-KIA MOTORS CORPORATION,Kia Motors Corporation,Kia,11,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01)(출처: PR Newswire 2021-05-18). 묶음 맞음, 현대와는 별도 유지"
+KIA MOTORS CORPORATION,Kia Motors Corporation,Kia,11,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01) 같은 법인 개명. 출처: ""Kia America Debuts in US.""(PR Newswire, 2021-05-18) https://www.prnewswire.com/news-releases/kia-america-debuts-in-us-301294433.html. 묶음 맞음, 현대와는 별도 유지"
 "Kibbi, LLC","Kibbi, LLC","Kibbi, LLC",11,원문,없음,,,
 "Maintainer Corporation of Iowa, Inc.","Maintainer Corporation of Iowa, Inc.","Maintainer Corporation of Iowa, Inc.",11,원문,없음,,,
 "Michelin North America, Inc.","Michelin North America, Inc.","Michelin North America, Inc.",11,표기 통일,없음,,,
@@ -433,9 +433,9 @@ R-VISION,R-VISION,R-VISION,10,법인 형태 통일,없음,,,
 Ricon Corporation,Ricon Corporation,Ricon Corporation,10,표기 통일,없음,,,
 Starcraft Bus,Starcraft Bus,Starcraft Bus,10,표기 통일,없음,,,
 "Strick Trailers, LLC","Strick Trailers, LLC","Strick Trailers, LLC",10,원문,없음,,,
-"Suzuki Motor USA, LLC","Suzuki Motor USA, LLC",American Suzuki Motor Corp.,10,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — Suzuki 브랜드의 미국 법인(데이터: Suzuki Motor of America ~2020 → Suzuki Motor USA 2021~). 두 법인의 관계는 출처로 확인 못 함 — 미국 법인↔본사 같은 묶음 규칙"
+"Suzuki Motor USA, LLC","Suzuki Motor USA, LLC",American Suzuki Motor Corp.,10,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 같은 본사 자회사 재편 — 2021-04-01 Suzuki Motor of America의 이륜·ATV 사업을 Suzuki Motor USA, LLC로 분리, 둘 다 Suzuki Motor Corporation 연결 자회사. 출처: ""Suzuki Restructures US Subsidiary""(Global Suzuki, 2020-11-19) https://www.globalsuzuki.com/globalnews/2020/1119.html, Suzuki 연결 자회사 목록 https://www.globalsuzuki.com/sustainability/data/scope.html"
 UNION CITY BODY COMPANY,UNION CITY BODY COMPANY,UNION CITY BODY COMPANY,10,법인 형태 통일,없음,,,
-"Volkswagen of America, Inc.","Volkswagen of America, Inc.",Volkswagen,10,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Volkswagen of America와 Volkswagen Group of America는 같은 미국 법인의 이름(개명 연도는 출처로 확인 못 함). 묶음 맞음"
+"Volkswagen of America, Inc.","Volkswagen of America, Inc.",Volkswagen,10,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Volkswagen of America와 Volkswagen Group of America는 같은 미국 법인(개명 날짜는 확인 못 함 — 법원 문서상 2009-05에 이미 새 이름, 리콜 데이터는 2014-08까지 옛 이름). 출처: 연방항소법원 In re Volkswagen of America, Inc. (now known as Volkswagen Group of America, Inc.), Misc. No. 897(2009-05-22) https://www.cafc.uscourts.gov/opinions-orders/09-m897.pdf. 묶음 맞음"
 "WESTERN RV, INC.","WESTERN RV, INC.","WESTERN RV, INC.",10,원문,없음,,,
 WHEELED COACH INDUSTRIES,"Wheeled Coach Industries, Inc.","Wheeled Coach Industries, Inc.",10,법인 형태 통일,없음,,,
 AUTOMOBILI LAMBORGHINI,Automobili Lamborghini,Automobili Lamborghini,9,표기 통일,자동,,,
@@ -456,7 +456,7 @@ NORTH AMERICAN BUS INDUSTRIES,"North American Bus Industries, Inc.","North Ameri
 Newell Coach Corp.,Newell Coach Corp.,Newell Coach Corp.,9,표기 통일,없음,,,
 Proterra Inc.,Proterra Inc.,Proterra Inc.,9,법인 형태 통일,없음,,,
 "SAFARI MOTOR COACHES, INC.","SAFARI MOTOR COACHES, INC.","SAFARI MOTOR COACHES, INC.",9,표기 통일,없음,,,
-SOUTHEAST TOYOTA DISTRIBUTORS,"Southeast Toyota Distributors, LLC",Toyota,9,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 유통사 — Toyota 차량 지역 유통사의 리콜. 브랜드 묶음에 넣음(사용자 결정 2026-10-07)"
+SOUTHEAST TOYOTA DISTRIBUTORS,"Southeast Toyota Distributors, LLC","Southeast Toyota Distributors, LLC",9,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Toyota 차량 지역 독립 유통사라 Toyota와 다른 회사(결정 2026-10-07, PR #39: maker_group은 회사 단위로만 쓰고 브랜드 묶음은 필요하면 별도 칸으로 후속)"
 STARCRAFT BUS AND MOBILITY,STARCRAFT BUS AND MOBILITY,STARCRAFT BUS AND MOBILITY,9,원문,없음,,,
 "Starcraft RV, Inc.",Starcraft RV,Starcraft RV,9,법인 형태 통일,없음,,,
 THOR INDUSTRIES,THOR INDUSTRIES,THOR INDUSTRIES,9,원문,없음,,,
@@ -495,7 +495,7 @@ NORTON/TRIUMPH CORP.,NORTON/TRIUMPH CORP.,NORTON/TRIUMPH CORP.,8,원문,없음,,
 RANSOMES CORPORATION,RANSOMES CORPORATION,RANSOMES CORPORATION,8,원문,없음,,,
 RICON CORPORATION,Ricon Corporation,Ricon Corporation,8,표기 통일,없음,,,
 SUNNYBROOK RV INC.,SUNNYBROOK RV INC.,SUNNYBROOK RV INC.,8,원문,없음,,,
-TIFFIN MOTOR HOMES,TIFFIN MOTOR HOMES,"Tiffin Motorhomes, Inc.",8,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 같은 회사 표기 차이(데이터: ~2003 → 2004~)"
+TIFFIN MOTOR HOMES,TIFFIN MOTOR HOMES,"Tiffin Motorhomes, Inc.",8,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — THOR 공시가 두 철자를 같은 법인에 씀. 2020-12-18 THOR가 인수(이름 유지, 소유주 변경은 이 묶음 안의 시점 차이로 기록). 출처: THOR 8-K(2020-12-18)·Ex.99.1 https://www.sec.gov/Archives/edgar/data/730263/000156459020058038/d11247dex991.htm"
 TRIUMPH MOTORCYCLES (AMERICA) LTD,"Triumph Motorcycles America, LTD","Triumph Motorcycles America, LTD",8,표기 통일,자동,,,
 Tenneco Automotive,Tenneco Automotive,Tenneco Automotive,8,표기 통일,없음,,,
 The Heil Co.,The Heil Co.,The Heil Co.,8,법인 형태 통일,없음,,,
@@ -546,7 +546,7 @@ TIARA MOTOR COACH DIVISION,TIARA MOTOR COACH DIVISION,TIARA MOTOR COACH DIVISION
 TRAVEL EQUIPMENT CORP.,TRAVEL EQUIPMENT CORP.,TRAVEL EQUIPMENT CORP.,7,원문,없음,,,
 Takata (TK Global LLC),Takata (TK Global LLC),Takata (TK Global LLC),7,표기 통일,없음,,,
 Terex Advance,Terex Advance,Terex Advance,7,원문,없음,,,
-"Tesla Motors, Inc.","Tesla Motors, Inc.","Tesla, Inc.",7,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: Tesla Motors(2009~17) → Tesla, Inc.(2018~), 같은 회사 개명"
+"Tesla Motors, Inc.","Tesla Motors, Inc.","Tesla, Inc.",7,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — 2017-02-01. 출처: Tesla 8-K(2017-02-01) https://www.sec.gov/Archives/edgar/data/0001318605/000156459017000802/tsla-8k_20170201.htm"
 UTILITY TRAILER MANUFACTURING COMPANY,Utility Trailer Manufacturing Company,Utility Trailer Manufacturing Company,7,표기 통일,없음,,,
 VILLA INTERNATIONAL,Villa International,Villa International,7,표기 통일,없음,,,
 Vactor Manufacturing,Vactor Manufacturing,Vactor Manufacturing,7,표기 통일,없음,,,
@@ -588,11 +588,11 @@ HENDRICKSON MFG. CO.,HENDRICKSON MFG. CO.,HENDRICKSON MFG. CO.,6,원문,없음,,
 HOLLAND HITCH COMPANY,HOLLAND HITCH COMPANY,HOLLAND HITCH COMPANY,6,원문,없음,,,
 Isuzu Manufacturing Services of America,Isuzu Manufacturing Services of America,Isuzu Manufacturing Services of America,6,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Isuzu의 미국 생산 지원 법인, 다른 법인(사용자 결정 2026-10-07)"
 JAGUAR ROVER TRIUMPH INC.,JAGUAR ROVER TRIUMPH INC.,JAGUAR ROVER TRIUMPH INC.,6,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — 소유주가 바뀐 브랜드(사용자 결정 2026-10-07)"
-Kia Motors Corporation,Kia Motors Corporation,Kia,6,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01)(출처: PR Newswire 2021-05-18). 묶음 맞음, 현대와는 별도 유지"
+Kia Motors Corporation,Kia Motors Corporation,Kia,6,표기 통일,초안,확인 완료,필요,"maker_group: 이름 목록으로 지정한 초안 | 확인(우지훈, D 대행, 2026-10-07): Kia Motors America → Kia America(2021-05), Kia Motors Corp. → Kia Corp.(2021-01) 같은 법인 개명. 출처: ""Kia America Debuts in US.""(PR Newswire, 2021-05-18) https://www.prnewswire.com/news-releases/kia-america-debuts-in-us-301294433.html. 묶음 맞음, 현대와는 별도 유지"
 Lion Bus Inc.,Lion Bus Inc.,Lion Bus Inc.,6,원문,없음,,,
 MAXZONE AUTO PARTS CORPORATION,Maxzone Auto Parts Corporation,Maxzone Auto Parts Corporation,6,표기 통일,없음,,,
 "MIDLAND BRAKE, INC.","MIDLAND BRAKE, INC.","MIDLAND BRAKE, INC.",6,원문,없음,,,
-"MITSUBISHI FUSO TRK, AMER","MITSUBISHI FUSO TRK, AMER","MITSUBISHI FUSO TRK, AMER",6,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Mitsubishi Motors와 다른 회사(트럭)"
+"MITSUBISHI FUSO TRK, AMER","MITSUBISHI FUSO TRK, AMER","Mitsubishi Fuso Truck of America, Inc.",6,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — TRK, AMER는 Truck of America 약어(데이터 1987~2003-08 → 2004-09~). 미국 법인은 1985년부터 같은 회사(일본 모회사는 2003년 전후 Daimler 계열로 바뀜). 출처: ""2020 Marks Mitsubishi Fuso Truck of America's 35th Year in the United States""(MFTA, 2020-03-09) https://www.mitfuso.com/en-us/news-and-events/2020-marks-mitsubishi-fuso-truck-of-americas-35th-year-in-the-united-states"
 New England Wheels,New England Wheels,New England Wheels,6,표기 통일,없음,,,
 Nikola Corporation,Nikola Corporation,Nikola Corporation,6,원문,없음,,,
 PJ Trailers,PJ Trailers,PJ Trailers,6,표기 통일,없음,,,
@@ -657,7 +657,7 @@ H&H Sports Protection,H&H Sports Protection,H&H Sports Protection,5,원문,없�
 HACKNEY,HACKNEY,HACKNEY,5,원문,없음,,,
 HEIL TRAILER INTERNATIONAL,HEIL TRAILER INTERNATIONAL,HEIL TRAILER INTERNATIONAL,5,원문,없음,,,
 HERCULES TIRE & RUBBER COMPANY,Hercules Tire & Rubber Company,Hercules Tire & Rubber Company,5,표기 통일,없음,,,
-HINO DIESEL TRUCKS(USA),HINO DIESEL TRUCKS(USA),"Hino Motors Sales U.S.A., Inc.",5,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 둘 다 Hino(트럭)의 미국 법인(데이터: 1986~2000, 2004~ — 4년 공백). 이름 변경 여부는 출처로 확인 못 함 — 미국 법인↔본사 같은 묶음 규칙"
+HINO DIESEL TRUCKS(USA),HINO DIESEL TRUCKS(USA),HINO DIESEL TRUCKS(USA),5,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 초안 묶음 유지 — Hino Motors Sales U.S.A.로의 개명 문서를 못 찾음. Hino Motors Sales U.S.A.는 Hino Motors 50% 자회사(EPA 합의 요약)라 같은 회사로 단정 못 함(결정 2026-10-07 PR #39)"
 HOST INDUSTRIES,HOST INDUSTRIES,HOST INDUSTRIES,5,원문,없음,,,
 Hendrickson USA. L.L.C.,Hendrickson USA. L.L.C.,Hendrickson USA. L.L.C.,5,표기 통일,없음,,,
 KENTUCKY MFG. CO.,KENTUCKY MFG. CO.,KENTUCKY MFG. CO.,5,원문,없음,,,
@@ -686,11 +686,11 @@ ROADTREK MOTORHOMES INC.,Roadtrek Motorhomes Inc.,Roadtrek Motorhomes Inc.,5,표
 "SABRY LEE, INC.","SABRY LEE, INC.","SABRY LEE, INC.",5,원문,없음,,,
 SALEEN PERFORMANCE INC.,SALEEN PERFORMANCE INC.,SALEEN PERFORMANCE INC.,5,원문,없음,,,
 "SHELBY AUTOMOBILES, INC.","SHELBY AUTOMOBILES, INC.","SHELBY AUTOMOBILES, INC.",5,원문,없음,,,
-"SOUTHEAST TOYOTA DISTRIBUTORS, LLC","Southeast Toyota Distributors, LLC",Toyota,5,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 유통사 — Toyota 차량 지역 유통사의 리콜. 브랜드 묶음에 넣음(사용자 결정 2026-10-07)"
+"SOUTHEAST TOYOTA DISTRIBUTORS, LLC","Southeast Toyota Distributors, LLC","Southeast Toyota Distributors, LLC",5,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Toyota 차량 지역 독립 유통사라 Toyota와 다른 회사(결정 2026-10-07, PR #39: maker_group은 회사 단위로만 쓰고 브랜드 묶음은 필요하면 별도 칸으로 후속)"
 SUBURBAN MANUFACTURING CO,Suburban Manufacturing CO,Suburban Manufacturing CO,5,표기 통일,없음,,,
 SUTPHEN CORPORATION,Sutphen Corporation,Sutphen Corporation,5,표기 통일,없음,,,
 Silver Eagle Manufacturing Company,Silver Eagle Manufacturing Company,Silver Eagle Manufacturing Company,5,법인 형태 통일,없음,,,
-Spartan ERV,Spartan ERV,Spartan Motors USA,5,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 리뷰 반영 — Spartan ERV는 그 시기(2013~15) Spartan Motors의 소방·응급 차량 자회사들을 묶은 이름(조사 에이전트: Crimson·Classic Fire 자회사). Spartan Chassis와 같은 기준. 2020년 REV Group에 매각된 뒤의 Spartan Fire, LLC는 다른 회사라 묶지 않음"
+Spartan ERV,Spartan ERV,Spartan ERV,5,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Spartan Motors의 소방·응급 차량 자회사 이름. 자회사는 묶지 않는 기준(결정 2026-10-07 PR #39)"
 "Sumitomo Rubber USA, LLC","Sumitomo Rubber USA, LLC","Sumitomo Rubber USA, LLC",5,원문,없음,,,
 "SynTec Seating Solutions, LLC","SynTec Seating Solutions, LLC","SynTec Seating Solutions, LLC",5,원문,없음,,,
 TRANSCRAFT CORPORATION,Transcraft Corporation,Transcraft Corporation,5,표기 통일,없음,,,
@@ -785,7 +785,7 @@ Livin' Lite Recreational Vehicles,Livin' Lite Recreational Vehicles,Livin' Lite 
 "MARK III INDUSTRIES, INC.","MARK III INDUSTRIES, INC.","MARK III INDUSTRIES, INC.",4,원문,없음,,,
 MASTERLOCK CO.,MASTERLOCK CO.,MASTERLOCK CO.,4,원문,없음,,,
 MCNEILUS TRUCK & MANUFACTURING,"McNeilus Truck & Manufacturing, Inc.","McNeilus Truck & Manufacturing, Inc.",4,법인 형태 통일,없음,,,
-MERITOR AUTOMOTIVE,MERITOR AUTOMOTIVE,"Meritor, Inc.",4,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — Meritor Automotive가 2000년 Arvin과 합쳐 ArvinMeritor, 2011년 Meritor로 이어짐(데이터 시기 승계)"
+MERITOR AUTOMOTIVE,MERITOR AUTOMOTIVE,"Meritor, Inc.",4,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 합병 승계 — 2000년 Meritor Automotive가 ArvinMeritor에 합병(존속 법인이 권리 승계). 출처: Meritor Automotive 8-K(2000-04-17) https://www.sec.gov/Archives/edgar/data/0001040616/000095012300003696/0000950123-00-003696.txt, ArvinMeritor 10-K405(2000-12-21) https://content.edgar-online.com/ExternalLink/EDGAR/0000950123-00-011696.html"
 "MIRADA CONTROLS, INC.","MIRADA CONTROLS, INC.","MIRADA CONTROLS, INC.",4,원문,없음,,,
 MITSUBISHI MANUFACTURING AMER,MITSUBISHI MANUFACTURING AMER,MITSUBISHI MANUFACTURING AMER,4,원문,없음,,,
 "MOBIL TRAVELER, INC.","MOBIL TRAVELER, INC.","MOBIL TRAVELER, INC.",4,원문,없음,,,
@@ -803,7 +803,7 @@ OUTBOARD MARINE CORP.,OUTBOARD MARINE CORP.,OUTBOARD MARINE CORP.,4,원문,없�
 "Osage Industries, Inc.","Osage Industries, Inc.","Osage Industries, Inc.",4,원문,없음,,,
 PEP BOYS,PEP BOYS,PEP BOYS,4,원문,없음,,,
 "POLAR TANK TRAILER, LLC.","Polar Tank Trailer, LLC.","Polar Tank Trailer, LLC.",4,법인 형태 통일,없음,,,
-"Piaggio Group Americas, Inc.","Piaggio Group Americas, Inc.","Piaggio Group Americas, Inc.",4,표기 통일,없음,확인 완료,필요,"maker: 합쳐진 원문에 마침표 오타('. Inc.')가 있어 대표 이름(철자) 확인 | 확인(우지훈, D 대행, 2026-10-07): 대표 이름 `Piaggio Group Americas, Inc.`(쉼표)가 맞음. `. Inc.`는 신고서 원문 오타"
+"Piaggio Group Americas, Inc.","Piaggio Group Americas, Inc.","Piaggio Group Americas, Inc.",4,표기 통일,없음,확인 완료,필요,"maker: 합쳐진 원문에 마침표 오타('. Inc.')가 있어 대표 이름(철자) 확인 | 확인(우지훈, D 대행, 2026-10-07): 대표 이름 `Piaggio Group Americas, Inc.`(쉼표)가 맞음. `. Inc.`는 신고서 원문 오타. Piaggio & C. SpA의 미국 자회사(출처: Piaggio 배경자료 FY2025 https://www.piaggiogroup.com/sites/default/files/documents/PIAGGIO%20-%20Info%20di%20background%20FY2025_ING.pdf)"
 "Polar Tank Trailer, LLC.","Polar Tank Trailer, LLC.","Polar Tank Trailer, LLC.",4,법인 형태 통일,없음,,,
 Prime-Time Specialty Vehicles,Prime-Time Specialty Vehicles,Prime-Time Specialty Vehicles,4,표기 통일,없음,,,
 "QINGQI GROUP MOTORCYCLE CO., LTD","QINGQI GROUP MOTORCYCLE CO., LTD","QINGQI GROUP MOTORCYCLE CO., LTD",4,원문,없음,,,
@@ -865,7 +865,7 @@ ADVENTURE MANUFACTURING,ADVENTURE MANUFACTURING,ADVENTURE MANUFACTURING,3,원문
 "AFX NORTH AMERICA, INC.","AFX North America, Inc.","AFX North America, Inc.",3,표기 통일,없음,,,
 ALLISON,ALLISON,ALLISON,3,원문,없음,,,
 ALUMINUM TRAILER COMPANY,Aluminum Trailer Company,Aluminum Trailer Company,3,표기 통일,없음,,,
-AM GENERAL LLC,AM GENERAL CORPORATION,AM GENERAL CORPORATION,3,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — General Motors와 다른 회사"
+AM GENERAL LLC,AM GENERAL CORPORATION,AM GENERAL CORPORATION,3,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): General Motors와 묶지 않음(AM GENERAL 표기끼리만 묶임) — General Motors와 다른 회사"
 AMERICAN,AMERICAN,AMERICAN,3,원문,없음,,,
 "AMERICAN CAR CARE CENTERS, INC.","AMERICAN CAR CARE CENTERS, INC.","AMERICAN CAR CARE CENTERS, INC.",3,원문,없음,,,
 AMERICAN RACING WHEELS,AMERICAN RACING WHEELS,AMERICAN RACING WHEELS,3,원문,없음,,,
@@ -997,7 +997,7 @@ MANSFIELD,MANSFIELD,MANSFIELD,3,원문,없음,,,
 MARATHON HOMES CORP.,Marathon Homes Corp,Marathon Homes Corp,3,표기 통일,없음,,,
 MCCREARY TIRE & RUBBER CO,MCCREARY TIRE & RUBBER CO,MCCREARY TIRE & RUBBER CO,3,원문,없음,,,
 "MEKRA Lang North America, LLC","MEKRA Lang North America, LLC","MEKRA Lang North America, LLC",3,원문,없음,,,
-"MERCEDES-BENZ USA, LLC - DBA SPRINTER","Mercedes-Benz USA, LLC - DBA Sprinter","Mercedes-Benz USA, LLC.",3,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 'DBA'(다른 상호로 영업)로 같은 법인 Mercedes-Benz USA가 Sprinter를 신고한 것"
+"MERCEDES-BENZ USA, LLC - DBA SPRINTER","Mercedes-Benz USA, LLC - DBA Sprinter","Mercedes-Benz USA, LLC.",3,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — 'DBA'(다른 상호로 영업)로 같은 법인 Mercedes-Benz USA가 Sprinter를 신고한 것"
 MERITOR WABCO,MERITOR WABCO,MERITOR WABCO,3,원문,없음,,,
 MERITOR WABCO VEHICLE CONTROL SYSTEMS,Meritor Wabco Vehicle Control Systems,Meritor Wabco Vehicle Control Systems,3,표기 통일,없음,,,
 METZELER MOTORCYCLE TIRE,METZELER MOTORCYCLE TIRE,METZELER MOTORCYCLE TIRE,3,원문,없음,,,
@@ -1008,7 +1008,7 @@ MOLONEY COACH BUILDERS,MOLONEY COACH BUILDERS,MOLONEY COACH BUILDERS,3,원문,�
 MONROE AUTO CORP.,MONROE AUTO CORP.,MONROE AUTO CORP.,3,원문,없음,,,
 "MOSS MOTORS, LTD","MOSS MOTORS, LTD","MOSS MOTORS, LTD",3,원문,없음,,,
 "MOTOBECANE AMERICA, LTD.","MOTOBECANE AMERICA, LTD.","MOTOBECANE AMERICA, LTD.",3,원문,없음,,,
-"Mercedes-Benz USA, LLC - DBA Sprinter","Mercedes-Benz USA, LLC - DBA Sprinter","Mercedes-Benz USA, LLC.",3,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 'DBA'(다른 상호로 영업)로 같은 법인 Mercedes-Benz USA가 Sprinter를 신고한 것"
+"Mercedes-Benz USA, LLC - DBA Sprinter","Mercedes-Benz USA, LLC - DBA Sprinter","Mercedes-Benz USA, LLC.",3,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — 'DBA'(다른 상호로 영업)로 같은 법인 Mercedes-Benz USA가 Sprinter를 신고한 것"
 "Mickey Truck Bodies, Inc.","Mickey Truck Bodies, Inc.","Mickey Truck Bodies, Inc.",3,표기 통일,없음,,,
 Midway Specialty Vehicles,Midway Specialty Vehicles,Midway Specialty Vehicles,3,원문,없음,,,
 "Mobility Specialists, Inc.","Mobility Specialists, Inc.","Mobility Specialists, Inc.",3,원문,없음,,,
@@ -1038,7 +1038,7 @@ PROLine Products LLC,PROLine Products LLC,PROLine Products LLC,3,원문,없음,,
 PT. Elangperdana Tyre Industry,PT. Elangperdana Tyre Industry,PT. Elangperdana Tyre Industry,3,원문,없음,,,
 Pleasure Way Industries Ltd.,"Pleasure Way Industries, Ltd.","Pleasure Way Industries, Ltd.",3,표기 통일,없음,,,
 "Pleasure Way Industries, Ltd.","Pleasure Way Industries, Ltd.","Pleasure Way Industries, Ltd.",3,표기 통일,없음,,,
-Polaris Inc.,Polaris Inc.,"Polaris Industries, Inc.",3,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 같은 회사 개명(데이터: Polaris Inc. 2019~)"
+Polaris Inc.,Polaris Inc.,"Polaris Industries, Inc.",3,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — Polaris Industries Inc. → Polaris Inc.(2019-07-29). 출처: Polaris 8-K(2019-07-29) https://www.sec.gov/Archives/edgar/data/931015/000115752319001610/a52017896.htm"
 "Proterra, Inc.",Proterra Inc.,Proterra Inc.,3,법인 형태 통일,없음,,,
 Q VALE AUTOMOTIVE GROUP,Q VALE AUTOMOTIVE GROUP,Q VALE AUTOMOTIVE GROUP,3,원문,없음,,,
 "QUALITY VAN SALES, INC.","Quality Van Sales, Inc.","Quality Van Sales, Inc.",3,표기 통일,없음,,,
@@ -1493,7 +1493,7 @@ PRESVAC SYS (BURL) LTD.,PRESVAC SYS (BURL) LTD.,PRESVAC SYS (BURL) LTD.,2,원문
 "PT. Multistrada Arah Sarana, Tbk","PT. Multistrada Arah Sarana, Tbk","PT. Multistrada Arah Sarana, Tbk",2,표기 통일,없음,,,
 "PUROLATOR PRODUCTS, INC.","PUROLATOR PRODUCTS, INC.","PUROLATOR PRODUCTS, INC.",2,원문,없음,,,
 Pagani Automobili SpA,Pagani Automobili SpA,Pagani Automobili SpA,2,원문,없음,,,
-"Palfinger, Inc.","Palfinger, Inc.","Palfinger, Inc.",2,원문,자동,확인 완료,필요,"maker_group: 핵심 단어가 하나뿐이라 우연히 같은 이름일 수 있음 | 확인(우지훈, D 대행, 2026-10-07): Palfinger Inc.는 Palfinger AG의 캐나다 법인(1989), Palfinger USA는 미국 법인(2001)(출처: palfinger.com 연혁) — 같은 회사 계열. 묶음 맞음"
+"Palfinger, Inc.","Palfinger, Inc.","Palfinger, Inc.",2,원문,자동,확인 완료,필요,"maker_group: 핵심 단어가 하나뿐이라 우연히 같은 이름일 수 있음 | 확인(우지훈, D 대행, 2026-10-07): Palfinger, Inc.(캐나다)와 Palfinger USA는 Palfinger AG 그룹 법인. 출처: ""List of all companies of the PALFINGER Group""(2025-06) https://www.palfinger.com/privacypolicy/other/legal-entities_en.pdf, PALFINGER History(1989 캐나다·2001 PALFINGER USA 설립) https://www.palfinger.com/en-us/about-palfinger/history. 묶음 맞음"
 Par Nado inc,Par Nado inc,Par Nado inc,2,원문,없음,,,
 "Performance Machine, Inc.","Performance Machine, Inc.","Performance Machine, Inc.",2,표기 통일,없음,,,
 Phoenix Motorcars,Phoenix Motorcars,Phoenix Motorcars,2,원문,없음,,,
@@ -1570,7 +1570,7 @@ Sentury Tire Thailand,Sentury Tire Thailand,Sentury Tire Thailand,2,원문,없�
 Shred-Tech Corporation,Shred-Tech Corporation,Shred-Tech Corporation,2,원문,없음,,,
 Silverstone Associates LLC,Silverstone Associates LLC,Silverstone Associates LLC,2,원문,없음,,,
 Snake River Trailer Company,Snake River Trailer Company,Snake River Trailer Company,2,표기 통일,없음,,,
-"Spartan Chassis, Inc.","Spartan Chassis, Inc.",Spartan Motors USA,2,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): Spartan Chassis는 Spartan Motors의 자회사 Spartan Motors Chassis, Inc.의 약칭(출처: SEC 10-K, 조사 에이전트 확인) — 이름 승계가 아니라 모자 관계(데이터상 2011~12 겹침). 그 시기 Spartan Motors 계열이라 같은 묶음"
+"Spartan Chassis, Inc.","Spartan Chassis, Inc.","Spartan Chassis, Inc.",2,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 묶지 않음 — Spartan Motors의 자회사(Spartan Motors Chassis, Inc.). 자회사는 묶지 않는 기준(Winnebago of Indiana·Thomas Built Buses와 같음, 결정 2026-10-07 PR #39)"
 "Spyder Controls, Corp","Spyder Controls, Corp","Spyder Controls, Corp",2,원문,없음,,,
 Stanley Assembly Technologies,Stanley Assembly Technologies,Stanley Assembly Technologies,2,원문,없음,,,
 Streamline Industries Incorporated,Streamline Industries Incorporated,Streamline Industries Incorporated,2,원문,없음,,,
@@ -1783,7 +1783,7 @@ ARI LEGACY SLEEPERS,ARI LEGACY SLEEPERS,ARI LEGACY SLEEPERS,1,원문,없음,,,
 ARIZONA MOBILITY PRODUCTS,ARIZONA MOBILITY PRODUCTS,ARIZONA MOBILITY PRODUCTS,1,원문,없음,,,
 ARMOR REX INC,ARMOR REX INC,ARMOR REX INC,1,원문,없음,,,
 "AROUND TOWN TRANSPORTATION PRODUCTS, LLC","AROUND TOWN TRANSPORTATION PRODUCTS, LLC","AROUND TOWN TRANSPORTATION PRODUCTS, LLC",1,원문,없음,,,
-ARVINMERITOR AUTOMOTIVE,ARVINMERITOR AUTOMOTIVE,"Meritor, Inc.",1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — ArvinMeritor 계열 이름 승계"
+ARVINMERITOR AUTOMOTIVE,ARVINMERITOR AUTOMOTIVE,"Meritor, Inc.",1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 합병 승계·개명 — ArvinMeritor 계열(출처는 ARVINMERITOR 줄과 같음)"
 ARVINMERITOR WABCO,ARVINMERITOR WABCO,ARVINMERITOR WABCO,1,원문,없음,,,
 ASC COLAMCO,ASC COLAMCO,ASC COLAMCO,1,원문,없음,,,
 ASC/SAN DIEGO,ASC/SAN DIEGO,ASC/SAN DIEGO,1,원문,없음,,,
@@ -2184,7 +2184,7 @@ DAIRY EQUIP. COMPANY,DAIRY EQUIP. COMPANY,DAIRY EQUIP. COMPANY,1,원문,없음,,
 DALEWOOD MANUFACTURING CO,DALEWOOD MANUFACTURING CO,DALEWOOD MANUFACTURING CO,1,원문,없음,,,
 DAMON MOTOR COACH,DAMON MOTOR COACH,DAMON MOTOR COACH,1,원문,없음,,,
 DANA CORP.,Dana Incorporated,Dana Incorporated,1,법인 형태 통일,없음,,,
-DANA HOLDING CORPORATION,DANA HOLDING CORPORATION,Dana Incorporated,1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 같은 회사(지주 표기), 데이터 시기 겹침"
+DANA HOLDING CORPORATION,DANA HOLDING CORPORATION,Dana Incorporated,1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — 2016-08-01. 출처: ""Dana Holding Corporation to Change Name to Dana Incorporated""(2016-07-21) https://dana.mediaroom.com/2016-07-21-Dana-Holding-Corporation-to-Change-Name-to-Dana-Incorporated"
 "DAVINCI COACHWORKS, INC","DAVINCI COACHWORKS, INC","DAVINCI COACHWORKS, INC",1,원문,없음,,,
 DAVIS EQUIPMENT CORPORATION,DAVIS EQUIPMENT CORPORATION,DAVIS EQUIPMENT CORPORATION,1,원문,없음,,,
 DAYBROOK-OTTAWA DIVISION,DAYBROOK-OTTAWA DIVISION,DAYBROOK-OTTAWA DIVISION,1,원문,없음,,,
@@ -2906,11 +2906,11 @@ MAXON INDUSTRIES,MAXON INDUSTRIES,MAXON INDUSTRIES,1,원문,없음,,,
 MCCABE POWERS BODY CO.,MCCABE POWERS BODY CO.,MCCABE POWERS BODY CO.,1,원문,없음,,,
 "MCCLAIN TRAILERS, INC.","McClain Trailers, Inc.","McClain Trailers, Inc.",1,표기 통일,없음,,,
 MCCULLOCH MOTORS,MCCULLOCH MOTORS,MCCULLOCH MOTORS,1,원문,없음,,,
-MCNEILUS TRUCK & MFG.CORP,MCNEILUS TRUCK & MFG.CORP,"McNeilus Truck & Manufacturing, Inc.",1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — MFG.는 Manufacturing 약어, 같은 법인"
+MCNEILUS TRUCK & MFG.CORP,MCNEILUS TRUCK & MFG.CORP,"McNeilus Truck & Manufacturing, Inc.",1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — MFG.는 Manufacturing 약어"
 ME,ME,ME,1,원문,없음,,,
 MEDTEC AMBULANCE CORP.,Medtec Ambulance Corporation,Medtec Ambulance Corporation,1,표기 통일,없음,,,
 "MENARD, INC","MENARD, INC","MENARD, INC",1,원문,없음,,,
-"MERITOR AUTOMOTIVE, INC.",MERITOR AUTOMOTIVE,"Meritor, Inc.",1,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — Meritor Automotive가 2000년 Arvin과 합쳐 ArvinMeritor, 2011년 Meritor로 이어짐(데이터 시기 승계)"
+"MERITOR AUTOMOTIVE, INC.",MERITOR AUTOMOTIVE,"Meritor, Inc.",1,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 합병 승계 — 2000년 Meritor Automotive가 ArvinMeritor에 합병(존속 법인이 권리 승계). 출처: Meritor Automotive 8-K(2000-04-17) https://www.sec.gov/Archives/edgar/data/0001040616/000095012300003696/0000950123-00-003696.txt, ArvinMeritor 10-K405(2000-12-21) https://content.edgar-online.com/ExternalLink/EDGAR/0000950123-00-011696.html"
 MERRITT EQUIP. CO.,MERRITT EQUIP. CO.,MERRITT EQUIP. CO.,1,원문,없음,,,
 "MERTZ MANUFACTURING, LLC","Mertz Manufacturing, LLC","Mertz Manufacturing, LLC",1,표기 통일,없음,,,
 MESA,MESA,MESA,1,원문,없음,,,
@@ -3150,7 +3150,7 @@ POLAR COMPANY,POLAR COMPANY,POLAR COMPANY,1,원문,없음,,,
 POLLET AUTOMOTIVE,POLLET AUTOMOTIVE,POLLET AUTOMOTIVE,1,원문,없음,,,
 "POLYMER PROCESS DEVELOPMENT, LLC","POLYMER PROCESS DEVELOPMENT, LLC","POLYMER PROCESS DEVELOPMENT, LLC",1,원문,없음,,,
 POP'S TOP SHOP,POP'S TOP SHOP,POP'S TOP SHOP,1,원문,없음,,,
-PORSCHE CARS OF NORTH AMERICA,PORSCHE CARS OF NORTH AMERICA,"Porsche Cars North America, Inc.",1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 'OF'만 다른 같은 법인 표기"
+PORSCHE CARS OF NORTH AMERICA,PORSCHE CARS OF NORTH AMERICA,"Porsche Cars North America, Inc.",1,원문,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 표기 차이 — 'OF'만 다른 같은 법인 이름"
 "PORT TRAILERS, INC.","PORT TRAILERS, INC.","PORT TRAILERS, INC.",1,원문,없음,,,
 POTOMAC RV LLC,POTOMAC RV LLC,POTOMAC RV LLC,1,원문,없음,,,
 "POWERGROUP INTERNATIONAL, LLC","POWERGROUP INTERNATIONAL, LLC","POWERGROUP INTERNATIONAL, LLC",1,원문,없음,,,
@@ -3175,7 +3175,7 @@ PUROLATOR,PUROLATOR,PUROLATOR,1,원문,없음,,,
 Pacific Coachworks,Pacific Coachworks,Pacific Coachworks,1,표기 통일,없음,,,
 "Pacific Trailer Products, Inc","Pacific Trailer Products, Inc","Pacific Trailer Products, Inc",1,원문,없음,,,
 Pagani S.p.A,Pagani S.p.A,Pagani S.p.A,1,원문,없음,,,
-"Palfinger USA, LLC","Palfinger USA, LLC","Palfinger, Inc.",1,원문,자동,확인 완료,필요,"maker_group: 핵심 단어가 하나뿐이라 우연히 같은 이름일 수 있음 | 확인(우지훈, D 대행, 2026-10-07): Palfinger Inc.는 Palfinger AG의 캐나다 법인(1989), Palfinger USA는 미국 법인(2001)(출처: palfinger.com 연혁) — 같은 회사 계열. 묶음 맞음"
+"Palfinger USA, LLC","Palfinger USA, LLC","Palfinger, Inc.",1,원문,자동,확인 완료,필요,"maker_group: 핵심 단어가 하나뿐이라 우연히 같은 이름일 수 있음 | 확인(우지훈, D 대행, 2026-10-07): Palfinger, Inc.(캐나다)와 Palfinger USA는 Palfinger AG 그룹 법인. 출처: ""List of all companies of the PALFINGER Group""(2025-06) https://www.palfinger.com/privacypolicy/other/legal-entities_en.pdf, PALFINGER History(1989 캐나다·2001 PALFINGER USA 설립) https://www.palfinger.com/en-us/about-palfinger/history. 묶음 맞음"
 "Palfleet Truck Equipment Company, LLC","Palfleet Truck Equipment Company, LLC","Palfleet Truck Equipment Company, LLC",1,원문,없음,,,
 Peach Cargo LLC,Peach Cargo LLC,Peach Cargo LLC,1,원문,없음,,,
 Pebble Mobility Inc.,Pebble Mobility Inc.,Pebble Mobility Inc.,1,원문,없음,,,
@@ -3188,7 +3188,7 @@ Pioneer Coach Interiors Inc.,Pioneer Coach Interiors Inc.,Pioneer Coach Interior
 Plastic Omnium,Plastic Omnium,Plastic Omnium,1,원문,없음,,,
 "Platinum Driveline, Inc.","Platinum Driveline, Inc.","Platinum Driveline, Inc.",1,원문,없음,,,
 Polaris Industries Inc.,"Polaris Industries, Inc.","Polaris Industries, Inc.",1,표기 통일,없음,,,
-"Polaris, Inc.",Polaris Inc.,"Polaris Industries, Inc.",1,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 같은 회사 개명(데이터: Polaris Inc. 2019~)"
+"Polaris, Inc.",Polaris Inc.,"Polaris Industries, Inc.",1,표기 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — Polaris Industries Inc. → Polaris Inc.(2019-07-29). 출처: Polaris 8-K(2019-07-29) https://www.sec.gov/Archives/edgar/data/931015/000115752319001610/a52017896.htm"
 Pony.ai,Pony.ai,Pony.ai,1,원문,없음,,,
 "Power Solutions International, Inc.","Power Solutions International, Inc.","Power Solutions International, Inc.",1,원문,없음,,,
 Power Stop LLC,Power Stop LLC,Power Stop LLC,1,원문,없음,,,
@@ -3552,8 +3552,8 @@ TEREX LOAD KING,TEREX LOAD KING,TEREX LOAD KING,1,원문,없음,,,
 "TEREX-TELELECT, INC.","TEREX TELELECT, INC.","TEREX TELELECT, INC.",1,표기 통일,없음,,,
 TERRA TRANSIT DIVISION,TERRA TRANSIT DIVISION,TERRA TRANSIT DIVISION,1,원문,없음,,,
 TERRY POE AUTOMOTIVE,TERRY POE AUTOMOTIVE,TERRY POE AUTOMOTIVE,1,원문,없음,,,
-TESLA MOTORS,"Tesla Motors, Inc.","Tesla, Inc.",1,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: Tesla Motors(2009~17) → Tesla, Inc.(2018~), 같은 회사 개명"
-"TESLA MOTORS, INC","Tesla Motors, Inc.","Tesla, Inc.",1,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: Tesla Motors(2009~17) → Tesla, Inc.(2018~), 같은 회사 개명"
+TESLA MOTORS,"Tesla Motors, Inc.","Tesla, Inc.",1,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — 2017-02-01. 출처: Tesla 8-K(2017-02-01) https://www.sec.gov/Archives/edgar/data/0001318605/000156459017000802/tsla-8k_20170201.htm"
+"TESLA MOTORS, INC","Tesla Motors, Inc.","Tesla, Inc.",1,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — 2017-02-01. 출처: Tesla 8-K(2017-02-01) https://www.sec.gov/Archives/edgar/data/0001318605/000156459017000802/tsla-8k_20170201.htm"
 TEST RITE PRODUCTS CORP.,TEST RITE PRODUCTS CORP.,TEST RITE PRODUCTS CORP.,1,원문,없음,,,
 TEXAS AUTO TOPS OF AUSTIN,TEXAS AUTO TOPS OF AUSTIN,TEXAS AUTO TOPS OF AUSTIN,1,원문,없음,,,
 TEXAS AUTO TRIM,TEXAS AUTO TRIM,TEXAS AUTO TRIM,1,원문,없음,,,
@@ -3651,7 +3651,7 @@ Team Spirit Trailers of Elkhart,Team Spirit Trailers of Elkhart,Team Spirit Trai
 "Temp-Air, a division of Sunbelt Rentals","Temp-Air, a division of Sunbelt Rentals","Temp-Air, a division of Sunbelt Rentals",1,원문,없음,,,
 Tenco Inc.,Tenco Inc.,Tenco Inc.,1,원문,없음,,,
 Terex Environmental Equipment,Terex Environmental Equipment,Terex Environmental Equipment,1,원문,없음,,,
-"Tesla Motors, Inc","Tesla Motors, Inc.","Tesla, Inc.",1,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 범위 확대 — 데이터: Tesla Motors(2009~17) → Tesla, Inc.(2018~), 같은 회사 개명"
+"Tesla Motors, Inc","Tesla Motors, Inc.","Tesla, Inc.",1,법인 형태 통일,없음,확인 완료,," | 확인(우지훈, D 대행, 2026-10-07): 개명 — 2017-02-01. 출처: Tesla 8-K(2017-02-01) https://www.sec.gov/Archives/edgar/data/0001318605/000156459017000802/tsla-8k_20170201.htm"
 Tex Trail Trailer Parts,Tex Trail Trailer Parts,Tex Trail Trailer Parts,1,원문,없음,,,
 "The Chamberlain Group, Inc.","The Chamberlain Group, Inc.","The Chamberlain Group, Inc.",1,원문,없음,,,
 The Gates Corporation,The Gates Corporation,The Gates Corporation,1,법인 형태 통일,없음,,,
