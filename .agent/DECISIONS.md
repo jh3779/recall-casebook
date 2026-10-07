@@ -204,3 +204,11 @@
 - **영향**: DEC-029(이전 주제, #17 브랜치에만 있음)를 대체한다 — 그 근거를 보존하려고 #17 브랜치를 남겨 둘 필요가 없어진다(`.agent/HANDOFF.md` Current State의 DEC-029 보존 서술은 이 PR 병합 뒤 갱신, 브랜치 정리는 사용자 확인 뒤).
 - **Status**: Accepted (사용자 결정 2026-10-07)
 - **Date**: 2026-10-07
+
+## DEC-034: 데이터는 Supabase(Postgres)에 올린다 — 날짜는 date 타입, 리콜 번호 앞 6자리는 생성 칸으로 잇는다
+- **Decision**: 정리된 데이터(`recalls`·`eval_questions`·`causes`, 이어서 `maker_aliases`)와 어느 원본에서 만들었는지(`data_builds`)를 Supabase의 Postgres에 올린다. ① 날짜는 문자열이 아니라 `date` 타입으로 올리고, 형식이 틀리면 추측해 고치지 않고 적재를 중단한다. ② `recalls`에 `campaign6`(= `left(campno, 6)`) **생성 칸**을 두어 `causes.campaign`(6자리)과 잇는다 — 한 캠페인이 `recalls` 여러 건(`campno`)에 붙을 수 있어 조인은 일대다다(282개 캠페인). ③ 모든 테이블은 RLS를 켜고 정책을 두지 않아 API 키로는 읽히지 않게 한다. ④ 적재는 `scripts/defect_precedent/load_db.py`로 하고 upsert라 여러 번 돌려도 된다. 올리기 전에 `build.json`의 sha256과 파일을 대조한다.
+- **Reason**: 2026-10-07 사용자 결정(Supabase 사용, 조인 칸 추가, 날짜 `date`). 시점 평가(질문 기준일 이전 리콜만 색인)에 날짜 비교가 필요하다. `recalls.campno`(9자리)와 `causes.campaign`(6자리)은 길이가 달라 쿼리마다 자르면 틀리기 쉽다. 답변 → 근거 → 데이터 버전 추적(AGENTS.md 2절 4항)을 DB에서도 지키려 `data_builds`를 둔다.
+- **Alternatives**: 파일 기반(기획서 4절 "파일 기반으로도 시작 가능") — 임베딩·시점 필터 단계에서 다시 옮겨야 해 기각. `campno`를 6자리로 잘라 저장 — 원본을 잃어 기각. 날짜를 문자열로 유지 — 시점 평가에서 형식 오류에 약해 기각.
+- **미결**: ① 벡터 칸(`recall_embeddings`)은 임베딩 모델·차원이 정해진 뒤 만든다. ② BM25 기준선(0.510)은 Python 스크립트로 잰 값이다. Postgres 전문 검색은 BM25와 점수 방식이 달라 바로 비교할 수 없으므로, 검색을 DB로 옮길 때는 같은 749개 시험지로 before/after를 다시 낸다(AGENTS.md 5절 1항). ③ 부품 트리(`components`)는 연결 규칙(HANDOFF 22번)이 정해진 뒤 만든다. ④ `recalls.maker`는 회사명 대응표(PR #29, DEC-033)를 카드에 적용하기 전까지 `raw_maker`와 같다.
+- **Status**: Accepted (사용자 결정 2026-10-07; 실제 Supabase 프로젝트 적재는 연결 문자열 준비 뒤)
+- **Date**: 2026-10-07

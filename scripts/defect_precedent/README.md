@@ -67,3 +67,18 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
   - `rclrpt sample --baseline`은 일반 `sample`과 같은 파일명에 덮어쓰고, 고른 판본(`selected`)·기대값(`expected`)을 자동 비교하지 않는다. 실패 행은 `pdfs`가 비어 저장되어, 실패가 있는 표본으로 기준을 만들면 그 리콜의 판본 해시가 고정되지 않는다 (2026-10-06 기준은 실패 0건).
   - `rclrpt all`용 재시도·이어받기가 없다.
   - 기준 원본(NHTSA zip·명세·573 PDF)의 팀 공용 보관 위치와 받는 절차를 정한다 (위 "재현 범위").
+
+## DB 적재 (Supabase, DEC-034)
+
+```bash
+uv run python -m scripts.defect_precedent.load_db check                        # DB 없이 파일만 검증 (해시·날짜·정답 리콜·캠페인 연결)
+uv run --env-file .env python -m scripts.defect_precedent.load_db schema      # schema.sql 적용 (여러 번 해도 됨)
+uv run --env-file .env python -m scripts.defect_precedent.load_db load        # upsert + 건수 대조 (오류면 전체 되돌림)
+```
+
+- 연결 문자열은 `.env`의 `DATABASE_URL`(Supabase 대시보드 Connect → 로컬 스크립트는 Direct connection, IPv6가 안 되면 Session pooler). 값은 출력·커밋하지 않는다.
+- 올리는 테이블: `data_builds`(어느 원본에서 만들었나) · `recalls` · `eval_questions` · `causes`(지금은 표본 300건, `causes.jsonl`이 생기면 그 파일 사용). 회사명 대응표(`maker_aliases`)는 PR #29 병합 뒤 추가한다.
+- 날짜는 `date` 타입이다. 원본의 날짜 형식이 틀리면 몇 번째 줄인지 알려 주고 중단한다.
+- `recalls.campaign6`은 DB가 `left(campno, 6)`으로 채우는 생성 칸이다. `causes.campaign`과 이을 때 쓴다. **한 캠페인이 `recalls` 여러 건에 붙을 수 있다** (282개 캠페인) — 카드 수를 셀 때 `distinct campno`를 쓴다.
+- 모든 테이블은 RLS를 켜고 정책을 두지 않았다 — Supabase의 anon·authenticated API 키로는 읽히지 않는다. 서버·스크립트는 `postgres` 계정으로 접속한다.
+- 로컬 확인: `docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=<임시값> -p 54329:5432 postgres:17` 뒤 `DATABASE_URL=postgresql://postgres:<임시값>@localhost:54329/postgres`로 위 명령을 돌린다.
