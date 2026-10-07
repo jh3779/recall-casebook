@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "결함 선례 찾기 도우미 — NHTSA 공개 리콜·결함 조사에서 같은 부품의 선례와 원인 서술을 원문 그대로 찾는 RAG"
 requires-python = ">=3.12"
 # 런타임 의존성은 기술 스택이 확정되면 `uv add <패키지>`로 추가한다 (docs/개발환경.md 4절).
-dependencies = []
+dependencies = [
+    "psycopg[binary]>=3.3.6",
+]
 
 [dependency-groups]
 dev = [
