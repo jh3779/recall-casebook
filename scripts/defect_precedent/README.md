@@ -78,7 +78,7 @@ uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes 
 ```
 
 - 연결 문자열은 `.env`의 `DATABASE_URL`(Supabase 대시보드 Connect → 로컬 스크립트는 Direct connection, IPv6가 안 되면 Session pooler). 값은 출력·커밋하지 않는다.
-- **build 단위로 보관한다.** `build_id`는 입력 파일 4개(원본 명세·카드·시험지·원인 파일)의 sha256으로 정해지는 불변 식별자다. **내용이 하나라도 다르면 다른 build라서 같은 날짜라도 덮어쓰지 않고 둘 다 남는다** (예: 같은 날짜의 표본 build와 전체 build). 줄마다 `build_id`를 두고 `(build_id, 번호)`가 기본키다. 같은 build를 다시 올리면(내용이 같다) 그 build의 줄만 통째로 바꾼다.
+- **build 단위로 보관한다.** `build_id`는 입력 파일 4개(원본 명세·카드·시험지·원인 파일)의 sha256으로 정해지는 불변 식별자다. **내용이 하나라도 다르면 다른 build라서 같은 날짜라도 덮어쓰지 않고 둘 다 남는다** (예: 같은 날짜의 표본 build와 전체 build). 줄마다 `build_id`를 두고 `(build_id, 번호)`가 기본키다. 같은 build를 다시 올리면 저장된 행 해시·원인 명세가 새 계산과 모두 같을 때만 아무것도 바꾸지 않고 끝나고, 하나라도 다르면 덮어쓰지 않고 중단한다.
 - 평소 조회는 `recalls_latest`·`eval_questions_latest`·`causes_latest` 뷰로 한다. 뷰는 `latest_build`가 고른 build 하나만 보여 준다: **가장 최근 날짜 → 같은 날짜면 전체본(full)이 표본(sample)보다 우선 → 나중에 올린 것.** 같은 날짜에 표본이 먼저 올라가 있어도 전체본을 올리면 조회는 전체본을 쓰고, 표본 build는 지워지지 않는다.
 - 올리는 테이블: `data_builds`(build 1개 = 1줄. 원본·원인 파일의 종류·이름·sha256·건수, 대조한 명세, 직전 날짜 build 대비 변경 요약) · `recalls` · `eval_questions` · `causes`. 회사명 대응표(`maker_aliases`)는 PR #29 병합 뒤 추가한다.
 - **원인 파일의 완전성은 사람이 입력한 숫자가 아니라 독립된 명세와 대조한다.** `--causes`는 반드시 적는다 (파일을 자동으로 고르지 않는다).

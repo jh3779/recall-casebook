@@ -121,6 +121,9 @@ def write_full(d, cause_rows, **override):
         "rows": len(cause_rows),
         "file_sha256": sha(d / "causes.jsonl"),
         "campaigns_sha256": load_db.campaigns_digest(r["campaign"] for r in cause_rows),
+        "expected_campaigns_sha256": load_db.campaigns_digest(
+            [r["campaign"] for r in cause_rows] + list(override.get("failed_campaigns", []))
+        ),
         "failures": 0,
         "failed_campaigns": [],
         "failures_sha256": None,
@@ -348,6 +351,55 @@ def test_full_accepts_recorded_failures_only_when_rows_plus_failures_match(tmp_p
     assert build["causes_spec"]["expect_campaigns"] == 3
 
 
+def test_full_requires_success_plus_failed_to_equal_the_expected_campaign_list(tmp_path):
+    expected = load_db.campaigns_digest(["24V001", "23V002", "25V003"])
+    # 실제 기대 목록은 24V001·23V002·25V003인데 파일에는 앞 둘뿐이고 명세가 실패를 25V099라고 잘못 기록함 — 줄 수는 맞는다
+    d = make_data_dir(tmp_path / "a")
+    write_full(
+        d,
+        [cause("24V001"), cause("23V002")],
+        expect_campaigns=3,
+        failures=1,
+        failed_campaigns=["25V099"],
+        expected_campaigns_sha256=expected,
+    )
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(d, "full", make_baseline(tmp_path))
+    assert "기대 캠페인 목록" in str(e.value)
+    # 실패 번호가 맞으면 통과한다
+    d = make_data_dir(tmp_path / "b")
+    write_full(
+        d,
+        [cause("24V001"), cause("23V002")],
+        expect_campaigns=3,
+        failures=1,
+        failed_campaigns=["25V003"],
+        expected_campaigns_sha256=expected,
+    )
+    assert load_db.load_files(d, "full", make_baseline(tmp_path))["build"]["causes_rows"] == 2
+    # 같은 실패 번호를 두 번 적어 줄 수를 맞추는 경우
+    d = make_data_dir(tmp_path / "c")
+    write_full(
+        d,
+        [cause("24V001"), cause("23V002")],
+        expect_campaigns=4,
+        failures=2,
+        failed_campaigns=["25V003", "25V003"],
+    )
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(d, "full", make_baseline(tmp_path))
+    assert "겹친다" in str(e.value)
+    # 기대 목록 지문이 명세에 없으면 중단
+    d = make_data_dir(tmp_path / "d")
+    write_full(d, [cause("24V001"), cause("23V002")])
+    m = json.loads((d / "causes.manifest.json").read_text(encoding="utf-8"))
+    del m["expected_campaigns_sha256"]
+    (d / "causes.manifest.json").write_text(json.dumps(m), encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(d, "full", make_baseline(tmp_path))
+    assert "expected_campaigns_sha256 칸이 없다" in str(e.value)
+
+
 def test_full_stops_when_the_file_was_edited_after_the_manifest(tmp_path):
     d = make_data_dir(tmp_path)
     write_full(d, [cause("24V001"), cause("23V002")])
@@ -464,10 +516,8 @@ def test_sql_helpers():
     assert sql.startswith(
         "insert into eval_questions (build_id, snapshot_date, action_no, question, open_date, gold_campnos, sets, row_sha256) values"
     )
-    build_sql = load_db.upsert_build_sql()
-    assert (
-        "on conflict (build_id) do update set change_summary = excluded.change_summary" in build_sql
-    )
+    # 이미 있는 build를 고쳐 쓰는 SQL은 없다
+    assert "on conflict" not in load_db.insert_build_sql()
 
 
 def test_schema_has_build_keys_join_column_views_and_row_level_security():
@@ -707,6 +757,43 @@ def test_pg_rls_blocks_api_roles_even_through_views(pgconn, tmp_path):
     finally:
         pgconn.execute("reset role")
     assert pgconn.execute("select count(*) from recalls_latest").fetchone()[0] == 2
+
+
+@pg
+def test_pg_reloading_an_existing_build_never_rewrites_it(pgconn, tmp_path, capsys):
+    baseline = make_baseline(tmp_path)
+    d = make_data_dir(tmp_path / "x", "2026-10-06")
+    load(d, baseline=baseline)
+    (b1,) = build_ids(pgconn)
+    before = pgconn.execute(
+        "select loaded_at, change_summary::text from data_builds where build_id = %s", (b1,)
+    ).fetchone()
+    capsys.readouterr()
+    load(d, baseline=baseline)  # 같은 내용 — 아무것도 바꾸지 않고 성공한다
+    assert "아무것도 바꾸지 않았다" in capsys.readouterr().out
+    assert (
+        pgconn.execute(
+            "select loaded_at, change_summary::text from data_builds where build_id = %s", (b1,)
+        ).fetchone()
+        == before
+    )
+    # 같은 build_id인데 저장된 행의 내용이 다르면(적재 코드가 바뀐 경우 등) 덮어쓰지 않고 중단한다
+    pgconn.execute("update recalls set row_sha256 = repeat('0', 64) where build_id = %s", (b1,))
+    with pytest.raises(SystemExit) as e:
+        load(d, baseline=baseline)
+    assert "recalls 행" in str(e.value) and "덮어쓰지 않는다" in str(e.value)
+    assert (
+        pgconn.execute(
+            "select count(*) from recalls where build_id = %s and row_sha256 = repeat('0', 64)",
+            (b1,),
+        ).fetchone()[0]
+        == 2
+    )  # 고쳐 쓰지 않았다
+    # 원인 명세만 다른 경우도 마찬가지
+    pgconn.execute("update data_builds set causes_spec = '{}'::jsonb where build_id = %s", (b1,))
+    with pytest.raises(SystemExit) as e:
+        load(d, baseline=baseline)
+    assert "원인 명세" in str(e.value)
 
 
 @pg

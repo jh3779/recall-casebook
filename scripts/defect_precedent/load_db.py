@@ -9,7 +9,7 @@
 - `check`는 DB 없이 파일만 검증한다 (해시·날짜·겹침·정답 리콜·캠페인 연결·원인 파일 명세 대조).
 - **build 단위로 보관한다.** build_id는 입력 파일 4개(원본 명세·카드·시험지·원인 파일)의 sha256으로 정해지는 불변 식별자다.
   내용이 하나라도 다르면 다른 build라서, 같은 날짜(snapshot_date)라도 덮어쓰지 않고 둘 다 보관한다
-  (예: 같은 날짜의 표본 build와 전체 build). 같은 build를 다시 올리면 그 build의 줄만 통째로 바꾼다 (내용이 같다).
+  (예: 같은 날짜의 표본 build와 전체 build). 같은 build를 다시 올리면 저장된 행 해시·원인 명세가 새 계산과 모두 같을 때만 아무것도 바꾸지 않고 끝나고, 하나라도 다르면 덮어쓰지 않고 중단한다.
   조회용 `*_latest` 뷰는 가장 최근 날짜의 build를 고르고, 같은 날짜면 전체본이 표본보다 우선한다.
 - 원인 파일의 완전성은 **사람이 입력한 숫자가 아니라 독립된 명세**와 대조한다. `--causes`는 반드시 적는다 (자동으로 고르지 않는다).
   - `sample`: 커밋된 기준 파일(`baseline_2026-10-06.json`)의 `rclrpt_sample` 캠페인 목록과 정확히 같아야 한다.
@@ -173,7 +173,8 @@ def causes_spec(data_dir: Path, kind: str, baseline: Path) -> dict:
         )
     manifest = json.loads(path.read_text(encoding="utf-8"))
     for key in (
-        "kind", "rows", "file_sha256", "campaigns_sha256", "expect_campaigns", "failures", "failed_campaigns",
+        "kind", "rows", "file_sha256", "campaigns_sha256", "expected_campaigns_sha256", "expect_campaigns",
+        "failures", "failed_campaigns",
     ):  # fmt: skip
         if key not in manifest:
             sys.exit(f"{MANIFEST_NAME}에 {key} 칸이 없다")
@@ -296,10 +297,19 @@ def load_files(data_dir: Path, causes_kind: str, baseline: Path = BASELINE) -> d
             sys.exit(
                 f"{causes_file.name}의 캠페인 목록이 {MANIFEST_NAME}의 campaigns_sha256과 다르다"
             )
+        failed = spec["failed_campaigns"]
+        if len(set(failed)) != len(failed):
+            sys.exit(f"{MANIFEST_NAME}의 실패 캠페인 목록에 같은 번호가 겹친다")
         if found & set(spec["failed_campaigns"]):
             sys.exit(
                 f"{causes_file.name}에 {MANIFEST_NAME}이 실패로 기록한 캠페인이 들어 있다 "
                 f"{sorted(found & set(spec['failed_campaigns']))[:5]}"
+            )
+        # 성공 ∪ 실패가 수집을 시작할 때의 기대 캠페인 목록과 정확히 같아야 한다 (실패 번호를 잘못 적어도 빠진 캠페인을 못 숨긴다)
+        if campaigns_digest(found | set(failed)) != spec["expected_campaigns_sha256"]:
+            sys.exit(
+                f"{causes_file.name}의 성공 캠페인과 {MANIFEST_NAME}의 실패 캠페인을 합친 목록이 기대 캠페인 목록"
+                "(expected_campaigns_sha256)과 다르다 — 빠졌거나 기대 목록에 없는 캠페인이 있다"
             )
 
     return {
@@ -366,14 +376,11 @@ def describe_changes(summary: dict) -> list[str]:
     return lines
 
 
-def upsert_build_sql() -> str:
+def insert_build_sql() -> str:
     names = ", ".join(BUILD_COLS)
     marks = ", ".join(f"%({c})s" for c in BUILD_COLS)
-    # build_id가 같으면 입력 파일이 모두 같다 — 바뀌는 것은 비교 결과와 올린 시각뿐이다
-    return (
-        f"insert into data_builds ({names}) values ({marks}) "
-        "on conflict (build_id) do update set change_summary = excluded.change_summary, loaded_at = now()"
-    )
+    # 이미 있는 build_id는 건드리지 않는다 (cmd_load가 내용이 같은지 확인한 뒤 아무것도 쓰지 않고 끝낸다)
+    return f"insert into data_builds ({names}) values ({marks})"
 
 
 def insert_sql(table: str) -> str:
@@ -421,6 +428,33 @@ def cmd_schema(args) -> None:
     print("schema.sql 적용 완료")
 
 
+def same_build_unchanged(cur, existing: dict, data: dict) -> None:
+    """이미 있는 build_id를 다시 올릴 때: 저장된 행 해시와 원인 명세가 새 계산과 모두 같아야 한다. 하나라도 다르면 중단한다.
+
+    build_id는 입력 파일의 해시뿐이라, 적재 코드를 고친 뒤 같은 파일을 올리면 같은 번호가 다른 내용을 가리킬 수 있다.
+    예전 답변에 남은 build_id가 당시 내용을 계속 가리키도록, 이미 있는 build는 지우거나 다시 쓰지 않는다."""
+    build_id = data["build"]["build_id"]
+    problems = []
+    if json.dumps(existing["causes_spec"], sort_keys=True, ensure_ascii=False) != json.dumps(
+        data["build"]["causes_spec"], sort_keys=True, ensure_ascii=False
+    ):
+        problems.append("원인 명세(causes_spec)")
+    for table, spec in TABLES.items():
+        stored = {
+            r[spec["key"]]: r["row_sha256"]
+            for r in cur.execute(
+                f"select {spec['key']}, row_sha256 from {table} where build_id = %s", (build_id,)
+            ).fetchall()
+        }
+        if stored != {r[spec["key"]]: r["row_sha256"] for r in data[table]}:
+            problems.append(f"{table} 행")
+    if problems:
+        sys.exit(
+            f"build {build_id}가 이미 있는데 {', '.join(problems)}의 내용이 다르다 — 같은 번호가 다른 내용을 가리키게 되므로 "
+            "덮어쓰지 않는다. 입력 파일이 같은데 적재 코드가 바뀐 것이면 먼저 원인을 확인한다 (DEC-034)"
+        )
+
+
 def cmd_load(args) -> None:
     from psycopg.rows import dict_row
 
@@ -435,6 +469,15 @@ def cmd_load(args) -> None:
                 "order by snapshot_date desc, (causes_kind = 'full') desc, loaded_at desc limit 1",
                 (snapshot,),
             ).fetchone()
+            existing = cur.execute(
+                "select causes_spec from data_builds where build_id = %s", (build_id,)
+            ).fetchone()
+            if existing:
+                same_build_unchanged(cur, existing, data)
+                print(
+                    f"build {build_id}는 이미 올라가 있고 내용(행 해시·원인 명세)이 같다 — 아무것도 바꾸지 않았다"
+                )
+                return
             prev_tables: dict[str, dict] = {}
             if prev:
                 for table, spec in TABLES.items():
@@ -446,12 +489,9 @@ def cmd_load(args) -> None:
                     prev_tables[table] = {r[spec["key"]]: r for r in rows}
             summary = summarize_changes(prev, prev_tables, data)
 
-            cur.execute(upsert_build_sql(), _params({**build, "change_summary": summary}))
+            cur.execute(insert_build_sql(), _params({**build, "change_summary": summary}))
             for table in TABLES:
                 rows = data[table]
-                cur.execute(
-                    f"delete from {table} where build_id = %s", (build_id,)
-                )  # 같은 build(내용이 같다)만 통째로 바꾼다
                 sql = insert_sql(table)
                 for start in range(0, len(rows), BATCH):
                     cur.executemany(sql, [_params(r) for r in rows[start : start + BATCH]])
