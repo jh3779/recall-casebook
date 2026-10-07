@@ -36,7 +36,7 @@ PR #25를 `6f2624a`로 병합(`0801f51`)한 뒤 PR #23에 main을 합치고 리�
 ## Current State
 
 (2026-10-07, `git log`·`gh pr list`·`uv run pytest`(102 passed)·`ruff check`로 확인)
-- main = `e26c171` (#22·#27·#28 병합까지, 2026-10-07). 이 갱신은 브랜치 `docs/raw-copy-drive`.
+- main = `e26c171` (#22·#27·#28 병합까지, 2026-10-07). 이 갱신은 PR #33(`docs/data-storage-and-supabase`).
 - 기준선 재현 확인: `bm25_baseline --baseline` → Hit@10 0.510 / 0.503, 원본·카드·시험지 sha256 일치(2026-10-07).
 - **PR #22 병합(2026-10-07, main `d1019a5`)**: 프런트엔드 규칙·감지형 CI. 근거는 새 주제 기준 [[DEC-032]](화면 React `frontend/`·npm, Node 버전·프런트 초기 설정 우지훈, 화면 구현 C 박성호, 프런트 CI 비필수, 프런트 환경변수 키 금지 — AGENTS.md 4·7절)로 바꿨다. 이전 주제의 DEC-029는 옮기지 않았으므로 #17 브랜치를 근거 보관용으로 남길 필요가 없다. #27·#28은 2026-10-07 병합. 지금 열린 PR은 박예원 님의 **#29**(회사명 대응표 초안, DEC-033)·**#30**(Supabase 적재, DEC-034)·**#32**(573 전체 수집용 재시도)와 이 인계 문서 PR **#33**(우지훈). 병합 순서는 **#29 → #30 → #32 → #33**을 권장한다 — 네 PR 모두 이 문서·`SESSION_LOG.md`를 고치고, #30·#32는 `scripts/defect_precedent/README.md`도 고쳐 마지막에 들어가는 #33이 충돌을 맞춘다. 합칠 때 **할 일 13번은 "보관 위치 = 팀 구글 드라이브(정함)"를 유지**한다(#32 브랜치는 아직 "정하기"로 적고 있음). 기획서 4절 DB 칸은 #30이 정한다.
 - worktree·브랜치 정리 완료(2026-10-07, 사용자 결정): `wt-b`·`wt-f`·`wt-fe`·`LG_CNS_RAG_main-research` 제거(모두 커밋 안 된 변경 없음 확인), 원격 `docs/sales-support-design-prd-erd`(d2b2ca9)·`research/sales-support-baseline`(462a7e0)·`docs/add-finance-domain`(bb1b071) 삭제 — 필요하면 이 SHA로 되살린다. 남은 원격 브랜치 중 출처 미확인: `docs/finance-domain-notes`·`docs/onboarding-plan`·`docs/onboarding-plan-draft`(이전 주제로 보임, 손대지 않음). 팀원 작업 중: `data/maker-alias-draft`(#29)·`data/supabase-load`·`data/rclrpt-full-run`(573 전체 수집으로 보임 — 팀 결정 여부 확인 필요).
