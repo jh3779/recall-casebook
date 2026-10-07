@@ -209,7 +209,7 @@
 - **Decision**: 결함 선례 데이터를 담을 DB를 **Supabase(PostgreSQL)**로 확정한다. 처음 적재할 것은 `data/processed/defect/`의 리콜 카드(`recalls.jsonl`, 30,350행), 시험지(`eval.jsonl`, 749행), 573 원인·공급사 표본(`causes_sample.jsonl`, 300행)이다. **적재 담당은 A 파트 박예원**이다. 테이블은 SQL(`CREATE TABLE`)로 만들어 Supabase SQL 편집기에서 실행하고, 데이터는 저장소 스크립트(`uv run`)가 `.env`의 키로 보낸다. 리콜 번호 등 고유 키로 덮어쓰게(upsert) 해 여러 번 실행해도 중복이 생기지 않게 한다. 어떤 원본에서 만든 데이터인지 추적할 수 있도록 `build.json`의 sha256·`snapshot_date`를 함께 저장한다(AGENTS.md 2절 4항).
 - **Reason**: 사용자 결정(2026-10-07, "확정해줘, 적재 담당은 박예원"). 기획서 4절의 DB 칸이 미정(⬜)이었고, 규모(최대 약 3만 행, 27MB)가 무료 한도 안이다. 같은 DB에서 나중에 뜻 검색용 벡터(pgvector)를 붙일 수 있다.
 - **Alternatives**: ① 파일 기반 유지(기획서 4절 "파일 기반으로도 시작 가능") — 화면(C)·RAG(B)가 같은 데이터를 함께 읽기 어려워 사용자가 DB를 선택. ② 다른 관리형 DB — 검토 없이 Supabase로 결정.
-- **보안**: 쓰기 키(service_role)는 보안 규칙(RLS)을 우회하므로 `.env`에만 두고 화면(`frontend/`) 환경변수에 넣지 않는다(AGENTS.md 7절, DEC-032). 테이블에는 RLS를 켜고, 화면이 읽어야 하면 읽기 전용 키(anon)와 읽기만 허용하는 정책을 따로 둔다.
+- **보안**: 쓰기 키(비밀 키 `sb_secret_…`, 예전 service_role — `.env` 이름 `SUPABASE_SECRET_KEY`)는 보안 규칙(RLS)을 우회하므로 `.env`에만 두고 화면(`frontend/`) 환경변수에 넣지 않는다(AGENTS.md 7절, DEC-032). 테이블에는 RLS를 켜고, 화면이 읽어야 하면 읽기 전용 키(anon)와 읽기만 허용하는 정책을 따로 둔다.
 - **미결**: 화면·RAG가 DB를 직접 읽을지, 결과 파일을 읽을지(DEC-032 미결과 같음). 원본 PDF·NHTSA zip은 DB에 넣지 않는다(구글 드라이브 보관, 할 일 13).
 - **Status**: Accepted (사용자 결정 2026-10-07)
 - **Date**: 2026-10-07
