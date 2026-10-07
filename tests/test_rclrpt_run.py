@@ -90,6 +90,12 @@ def test_download_skips_files_that_already_exist(monkeypatch, tmp_path):
 CAMPAIGNS = [f"24V{n:03d}" for n in range(1, 6)]
 
 
+def tok(campaign, kind, keys=None):
+    """`--accept-failures`에 적는 토큰 — env 픽스처의 원본 파일 이름 규칙."""
+    keys = keys or [f"odi/rcl/2024/RCLRPT-{campaign}-0001.PDF"]
+    return f"{campaign}:{kind}:{rclrpt.keys_digest(keys)}"
+
+
 def parsed(campaign):
     return {
         "cause_text": "t",
@@ -288,7 +294,7 @@ def test_accepting_persistent_failures_makes_the_complete_file_with_the_failed_l
         rclrpt.run("all", expect_campaigns=5)
     assert not (env / "causes.jsonl").exists()
     # 실패 목록을 확인한 뒤 건수를 정확히 적어 수용하면 완성본과 명세가 생긴다
-    rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003:non_pdf_response"])
+    rclrpt.run("all", expect_campaigns=5, accept_failures=[tok("24V003", "non_pdf_response")])
     assert [r["campaign"] for r in lines(env / "causes.jsonl")] == [
         c for c in CAMPAIGNS if c != "24V003"
     ]
@@ -321,19 +327,20 @@ def test_accept_failures_must_name_exactly_the_failed_campaigns(env, monkeypatch
     monkeypatch.setattr(rclrpt, "latest_parsed", _fail_on("24V003"))
     # 건수는 맞지만 다른 캠페인을 적음 — 확인하지 않은 실패를 수용하는 경우
     with pytest.raises(SystemExit) as e:
-        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V001:non_pdf_response"])
+        rclrpt.run("all", expect_campaigns=5, accept_failures=[tok("24V001", "non_pdf_response")])
     assert e.value.code == 1
     assert not (env / "causes.jsonl").exists() and not (env / "causes.manifest.json").exists()
     out = capsys.readouterr().out
     assert (
-        "--accept-failures 24V003:non_pdf_response 로 다시 실행한다" in out and "이번 실패" in out
+        f"--accept-failures {tok('24V003', 'non_pdf_response')} 로 다시 실행한다" in out
+        and "이번 실패" in out
     )
     # 목록에 더 넣어도(건수 불일치) 받지 않는다
     with pytest.raises(SystemExit):
         rclrpt.run(
             "all",
             expect_campaigns=5,
-            accept_failures=["24V003:non_pdf_response", "24V001:non_pdf_response"],
+            accept_failures=[tok("24V003", "non_pdf_response"), tok("24V001", "non_pdf_response")],
         )
     assert not (env / "causes.jsonl").exists()
 
@@ -348,13 +355,55 @@ def test_the_same_campaign_failing_for_a_different_reason_is_not_accepted(env, m
 
     monkeypatch.setattr(rclrpt, "latest_parsed", fake)
     with pytest.raises(SystemExit):
-        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003:non_pdf_response"])
+        rclrpt.run("all", expect_campaigns=5, accept_failures=[tok("24V003", "non_pdf_response")])
     assert not (env / "causes.jsonl").exists()
     # 일시 오류 종류는 목록을 그대로 적어도 수용할 수 없다
     with pytest.raises(SystemExit):
-        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003:download_failed"])
+        rclrpt.run("all", expect_campaigns=5, accept_failures=[tok("24V003", "download_failed")])
     assert not (env / "causes.jsonl").exists()
     assert "수용할 수 없는 실패 종류" in capsys.readouterr().out
+
+
+def test_the_same_failure_on_a_different_source_file_is_not_accepted(env, monkeypatch):
+    # 사람이 확인한 것은 파일 하나(…-0001.PDF)의 HTML 응답인데, 목록이 바뀌어 다른 파일이 같은 이유로 실패한 경우
+    monkeypatch.setattr(rclrpt, "latest_parsed", _fail_on("24V003"))
+    monkeypatch.setattr(
+        rclrpt,
+        "list_reports",
+        lambda years: {
+            c: [f"odi/rcl/2024/RCLRPT-{c}-{'0002' if c == '24V003' else '0001'}.PDF"]
+            for c in CAMPAIGNS
+        },
+    )
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5, accept_failures=[tok("24V003", "non_pdf_response")])
+    assert not (env / "causes.jsonl").exists()
+    other = tok("24V003", "non_pdf_response", ["odi/rcl/2024/RCLRPT-24V003-0002.PDF"])
+    rclrpt.run("all", expect_campaigns=5, accept_failures=[other])  # 바뀐 파일을 확인했다면 통과
+    assert (env / "causes.jsonl").exists()
+
+
+def test_previous_failures_file_is_archived_with_the_complete_file_and_stays_verifiable(
+    env, monkeypatch
+):
+    monkeypatch.setattr(rclrpt, "latest_parsed", _fail_on("24V003"))
+    rclrpt.run("all", expect_campaigns=5, accept_failures=[tok("24V003", "non_pdf_response")])
+    old_hash = json.loads((env / "causes.manifest.json").read_text(encoding="utf-8"))[
+        "failures_sha256"
+    ]
+    # 다음 실행은 다른 캠페인이 실패해서 실패 기록이 덮어써진다
+    monkeypatch.setattr(rclrpt, "latest_parsed", _fail_on("24V004"))
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5)
+    (prev_failures,) = env.glob("causes_failures.2*.prev.jsonl")
+    (prev_manifest,) = env.glob("causes.manifest.2*.prev.json")
+    assert (env / "causes.jsonl").exists() is False
+    assert hashlib.sha256(prev_failures.read_bytes()).hexdigest() == old_hash
+    assert json.loads(prev_manifest.read_text(encoding="utf-8"))["failures_sha256"] == old_hash
+    # 같은 실행의 세 파일은 같은 시각 표시를 쓴다
+    stamps = {p.name.split(".")[-3] for p in (prev_failures, prev_manifest)}
+    assert len(stamps) == 1 or all("T" in s for s in stamps)
+    assert [f["campaign"] for f in lines(env / "causes_failures.jsonl")] == ["24V004"]
 
 
 def test_unexpected_errors_cannot_be_accepted(env, monkeypatch, capsys):
@@ -366,7 +415,7 @@ def test_unexpected_errors_cannot_be_accepted(env, monkeypatch, capsys):
 
     monkeypatch.setattr(rclrpt, "latest_parsed", fake)
     with pytest.raises(SystemExit):
-        rclrpt.run("all", expect_campaigns=5, accept_failures=["24V003:unexpected"])
+        rclrpt.run("all", expect_campaigns=5, accept_failures=[tok("24V003", "unexpected")])
     assert not (env / "causes.jsonl").exists()
     assert "수용할 수 없는 실패 종류" in capsys.readouterr().out
 

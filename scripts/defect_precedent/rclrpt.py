@@ -5,7 +5,7 @@
     uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defect_precedent/baseline_2026-10-06.json  # 기준 표본 그대로
     uv run python -m scripts.defect_precedent.rclrpt sample 1000 --out data/processed/defect/causes_pilot_1000.jsonl  # 파일럿 (표본 파일을 덮어쓰지 않는다)
     uv run python -m scripts.defect_precedent.rclrpt all --expect-campaigns 11737   # 전체 (수 시간) — 기대 캠페인 수는 필수
-    uv run python -m scripts.defect_precedent.rclrpt all --expect-campaigns 11737 --accept-failures 14E059:non_pdf_response 15E040:no_confirmable_date  # 확인한 실패 (예시)
+    uv run python -m scripts.defect_precedent.rclrpt all --expect-campaigns 11737 --accept-failures <확인한 실패 토큰들>  # 실패했을 때 화면에 나오는 토큰을 복사한다
 
 먼저 `scripts.defect_precedent.nhtsa build`로 recalls.jsonl을 만들어 둔다.
 PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew install poppler`).
@@ -23,11 +23,11 @@ PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew ins
   대조해 올린다 — 중간까지만 만들어진 파일은 명세가 없거나 맞지 않아 올라가지 않는다.
 - 원본 자체의 결함으로 다시 해도 같은 실패가 있다 (예: `RCLRPT-14E059-8941.PDF`는 HTTP 200·`application/pdf`로 응답하지만
   내용은 "Artemis Login Page" HTML, 글자 없는 이미지 PDF에 사람이 확인한 제출일이 없는 경우). 이런 실패는 목록을 확인한 뒤
-  `--accept-failures 캠페인:실패종류…`로 확인한 **캠페인과 실패 종류**를 적어 수용해야 완성본을 만든다 (이번 실행의 실패와 정확히
-  같아야 하고 건수만 맞거나 같은 캠페인이 다른 이유로 실패한 것은 받지 않는다. 수용할 수 있는 종류는 `non_pdf_response`·
+  `--accept-failures 캠페인:실패종류:원본파일지문…`(실패했을 때 화면에 나오는 토큰을 복사한다)로 확인한 **캠페인·실패 종류·원본 파일**을
+  적어 수용해야 완성본을 만든다 (이번 실행의 실패와 정확히 같아야 하고 건수만 맞거나 같은 캠페인이 다른 이유나 다른 파일로 실패한 것은 받지 않는다. 수용할 수 있는 종류는 `non_pdf_response`·
   `no_confirmable_date`뿐이고 일시 오류(`download_failed`)·코드 오류(`unexpected`)는 수용할 수 없다). 수용한 캠페인 목록·실패 목록 파일의 sha256·
   **기대 캠페인 전체 목록의 sha256**은 명세에 남고, `load_db`는 `성공 ∪ 실패 = 기대 목록`을 대조한다.
-- `all`을 시작하면(목록 조회·poppler 검사보다 먼저) 이전 실행의 완성본과 명세는 `<이름>.<UTC 시각>.prev.<확장자>`로 옮겨 둔다 — 이번 실행이 실패해도 기본 경로에 이전
+- `all`을 시작하면(목록 조회·poppler 검사보다 먼저) 이전 실행의 완성본·명세·실패 기록은 `<이름>.<UTC 시각>.prev.<확장자>`(같은 시각이 한 묶음)로 옮겨 둔다 — 이번 실행이 실패해도 기본 경로에 이전
   결과가 최신처럼 남아 `load_db`가 올리지 않게 한다.
 - `all` 모드는 **실패가 하나도 없거나 `--accept-failures`로 수용했을 때만** `causes.jsonl`을 만든다 (일부만 담긴 파일이 완성본으로 올라가는 것을 막는다).
   실패가 있으면 `causes.partial.jsonl`과 `causes_failures.jsonl`만 남기니, 원인을 보고 다시 실행한다 (실패한 건만 다시 받는다).
@@ -303,6 +303,16 @@ def failure_kind(error: str) -> str:
     return next((kind for prefix, kind in FAILURE_KINDS if error.startswith(prefix)), "unknown")
 
 
+def keys_digest(keys: list[str]) -> str:
+    """실패한 캠페인의 원본 파일 목록 지문(앞 8자리) — 같은 캠페인이라도 다른 파일이면 다른 실패로 본다."""
+    return hashlib.sha256("\n".join(sorted(keys)).encode()).hexdigest()[:8]
+
+
+def failure_token(f: dict) -> str:
+    """`--accept-failures`에 적는 값: 캠페인:실패종류:원본파일지문."""
+    return f"{f['campaign']}:{failure_kind(f['error'])}:{keys_digest(f['keys'])}"
+
+
 def with_kind(failures: list[dict]) -> list[dict]:
     return [{**f, "kind": failure_kind(f["error"])} for f in failures]
 
@@ -325,7 +335,9 @@ def run(
     if mode == "all":
         # 목록 조회·poppler 검사 등 어디서 중단되더라도 이전 완성본·명세가 최신 결과처럼 기본 경로에 남지 않게 맨 먼저 옮긴다
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-        for old in (out_path, manifest_path):
+        failures_prev = out_path.with_name(out_path.stem + "_failures.jsonl")
+        # 완성본·명세와 그 실행의 실패 기록은 한 묶음(같은 시각)으로 보관한다 — 실패 목록 지문(failures_sha256)을 나중에도 검증할 수 있게
+        for old in (out_path, manifest_path, failures_prev):
             if old.exists():
                 kept = old.with_name(f"{old.stem}.{stamp}.prev{old.suffix}")
                 old.replace(kept)
@@ -445,7 +457,7 @@ def run(
         interrupted = True
 
     # 다시 해도 같은 실패(원본 결함)는 확인한 `캠페인:실패종류` 목록이 이번 실패와 정확히 같을 때만 수용한다
-    failed_now = sorted(f"{f['campaign']}:{failure_kind(f['error'])}" for f in failures)
+    failed_now = sorted(failure_token(f) for f in failures)
     unacceptable = [t for t in failed_now if t.split(":")[1] not in ACCEPTABLE_KINDS]
     accepted = (
         mode == "all"
@@ -496,6 +508,7 @@ def run(
             "failures": len(failures),
             "failed_campaigns": sorted(f["campaign"] for f in failures),
             "failed_kinds": {f["campaign"]: failure_kind(f["error"]) for f in failures},
+            "failed_sources": {f["campaign"]: sorted(f["keys"]) for f in failures},
             "failures_sha256": hashlib.sha256(failures_path.read_bytes()).hexdigest()
             if failures
             else None,
@@ -541,8 +554,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--accept-failures",
         nargs="+",
-        metavar="CAMPAIGN:KIND",
-        help="all 모드에서 다시 해도 같은 실패(원본 결함)를 수용한다. 확인한 `캠페인:실패종류` 목록이 이번 실패와 정확히 같아야 한다 (예: 14E059:non_pdf_response)",
+        metavar="CAMPAIGN:KIND:FILES",
+        help="all 모드에서 다시 해도 같은 실패(원본 결함)를 수용한다. 확인한 `캠페인:실패종류:원본파일지문` 목록이 이번 실패와 정확히 같아야 한다 (실패했을 때 화면에 나오는 토큰을 복사)",
     )
     args = parser.parse_args()
     if args.mode == "all" and args.baseline is not None:
