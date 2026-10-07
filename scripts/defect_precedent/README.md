@@ -32,7 +32,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
   2. 같은 도구로 기준 표본을 재현한다: `rclrpt sample --baseline scripts/defect_precedent/baseline_2026-10-06.json` → 채워짐 205 · 비어 있음 95 · 미확정 0이 나와야 한다. 다르면 도구 버전 차이이므로 전체 수집으로 넘어가지 않는다.
   3. 파일럿: `rclrpt sample 1000 --out data/processed/defect/causes_pilot_1000.jsonl`로 실패율·시간을 잰다 (받은 PDF는 전체 수집에서 그대로 쓴다).
   4. 전체: `rclrpt all --expect-campaigns 11737` — 시작할 때 목록의 수집 대상 수가 기대 값과 다르면 PDF를 받기 전에 중단한다(서버가 일부만 돌려줘도 완성본처럼 보이는 것을 막음). 일시 오류는 자동 재시도, 이미 받은 PDF는 건너뛰므로 끊겨도 같은 명령으로 이어서 한다. 200건마다 `causes.partial.jsonl`에 중간 저장하고, **실패가 하나라도 있으면 `causes.jsonl`을 만들지 않는다** (`causes_failures.jsonl`을 보고 원인을 정한 뒤 다시 실행).
-  5. 끝나면 출력되는 줄 수로 `load_db load --causes full --expect-rows <그 줄 수>`로 올린다. 받은 PDF가 HTML 오류 문서(`%PDF`로 시작하지 않음)이면 저장하지 않고, `pdftotext`가 읽지 못한 PDF는 `.bad`로 옮겨 다음 실행에서 다시 받는다. `pdftotext` 출력은 `-enc UTF-8`로 고정하고 컴퓨터 기본 인코딩에 기대지 않는다.
+  5. 끝나면 완성본 `causes.jsonl`과 **명세 `causes.manifest.json`**(줄 수·파일 sha256·캠페인 목록 sha256·기대 캠페인 수·pdftotext 버전)이 함께 생긴다. `load_db load --causes full`이 사람이 입력한 숫자 대신 이 명세와 대조해 올린다. 받은 PDF가 HTML 오류 문서(`%PDF`로 시작하지 않음)이면 저장하지 않고, `pdftotext`가 읽지 못한 PDF는 `.bad`로 옮겨 다음 실행에서 다시 받는다. `pdftotext` 출력은 `-enc UTF-8`로 고정하고 컴퓨터 기본 인코딩에 기대지 않는다.
 - 원본 줄의 칸 수가 명세와 다르면 `build`가 그 줄 번호를 보여 주고 중단한다 (값이 옆 칸으로 밀렸을 수 있어 추측해 맞추지 않는다).
 
 ## 만들어지는 파일 (`data/processed/defect/`)

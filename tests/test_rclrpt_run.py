@@ -1,5 +1,6 @@
 """rclrpt의 긴 실행 대비 동작 테스트 — 네트워크·PDF 없이 가짜로 확인한다."""
 
+import hashlib
 import http.client
 import json
 import urllib.error
@@ -373,12 +374,47 @@ def test_failed_rerun_says_the_old_complete_file_is_not_this_runs_result(env, mo
     assert "이전 실행의 causes.jsonl이 그대로 남아 있다" in capsys.readouterr().out
 
 
+def test_campaigns_digest_is_order_independent_and_pinned():
+    # load_db.campaigns_digest와 같은 값이어야 한다 (두 모듈의 골든 값이 같다)
+    assert rclrpt.campaigns_digest(["24V002", "24V001"]) == rclrpt.campaigns_digest(
+        ["24V001", "24V002"]
+    )
+    assert rclrpt.campaigns_digest(["24V001", "24V002"]) == (
+        "7d8d70be5ca2cbddacab9b80813f827e412aca999b939a204b31b10ada753aff"
+    )
+    assert rclrpt.campaigns_digest(["24V001"]) != rclrpt.campaigns_digest(["24V001", "24V002"])
+
+
+def test_all_success_writes_a_manifest_that_matches_the_complete_file(env, monkeypatch):
+    monkeypatch.setattr(
+        rclrpt, "latest_parsed", lambda keys, manual=None: (keys[0], parsed(keys[0].split("-")[1]))
+    )
+    rclrpt.run("all", expect_campaigns=5)
+    manifest = json.loads((env / "causes.manifest.json").read_text(encoding="utf-8"))
+    complete = env / "causes.jsonl"
+    assert manifest["kind"] == "full" and manifest["rows"] == 5 == len(lines(complete))
+    assert manifest["file_sha256"] == hashlib.sha256(complete.read_bytes()).hexdigest()
+    assert manifest["campaigns_sha256"] == rclrpt.campaigns_digest(CAMPAIGNS)
+    assert manifest["expect_campaigns"] == 5 and manifest["listing_campaigns"] == 5
+    assert manifest["pdftotext"] == "pdftotext version 25.07.0" and manifest["generated_at"]
+
+
+def test_failed_run_never_writes_or_touches_a_manifest(env, monkeypatch):
+    def fake(keys, manual=None):
+        raise rclrpt.ReportError("일시 오류")
+
+    monkeypatch.setattr(rclrpt, "latest_parsed", fake)
+    with pytest.raises(SystemExit):
+        rclrpt.run("all", expect_campaigns=5)
+    assert not (env / "causes.manifest.json").exists()  # 명세는 완성본과 함께만 생긴다
+
+
 def test_all_success_prints_the_row_count_to_use_for_loading(env, monkeypatch, capsys):
     monkeypatch.setattr(
         rclrpt, "latest_parsed", lambda keys, manual=None: (keys[0], parsed(keys[0].split("-")[1]))
     )
     rclrpt.run("all", expect_campaigns=5)
-    assert "load_db load --causes full --expect-rows 5" in capsys.readouterr().out
+    assert "causes.manifest.json" in capsys.readouterr().out
 
 
 def test_write_jsonl_always_uses_lf_so_file_hashes_match_across_platforms(tmp_path):

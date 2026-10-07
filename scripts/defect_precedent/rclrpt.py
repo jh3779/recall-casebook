@@ -17,6 +17,9 @@ PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew ins
   Ctrl+C로 멈춰도 `*.partial.jsonl`만 남긴다.
 - `all` 모드는 시작할 때 목록에서 얻은 수집 대상 수가 `--expect-campaigns N`과 같은지 먼저 확인한다 (서버가 빈 목록이나
   일부 연도만 돌려줘도 완성본처럼 보이는 것을 막는다). N은 같은 실행 앞부분이 출력하는 "그중 … 접수·리콜 파일에 있음" 값이다.
+- `all` 모드가 끝나면 완성본 `causes.jsonl`과 함께 **명세 `causes.manifest.json`**을 남긴다 (종류·줄 수·파일 sha256·캠페인 목록
+  sha256·기대 캠페인 수·목록의 전체 캠페인 수·pdftotext 버전·생성 시각). `load_db`는 사람이 입력한 숫자 대신 이 명세와
+  대조해 올린다 — 중간까지만 만들어진 파일은 명세가 없거나 맞지 않아 올라가지 않는다.
 - `all` 모드는 **실패가 하나도 없을 때만** `causes.jsonl`을 만든다 (일부만 담긴 파일이 완성본으로 올라가는 것을 막는다).
   실패가 있으면 `causes.partial.jsonl`과 `causes_failures.jsonl`만 남기니, 원인을 보고 다시 실행한다 (실패한 건만 다시 받는다).
 - 시점 평가에서는 질문 기준일 이전 판본만 써야 한다 (docs/기획_결함선례.md 6절) — 여기서는 최신 판본만 만든다.
@@ -35,7 +38,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from scripts.defect_precedent.nhtsa import OUT_DIR, RCLRPT_FROM, REPO_ROOT, write_jsonl
@@ -178,6 +181,11 @@ def require_poppler() -> str:
     return banner.strip().splitlines()[0]
 
 
+def campaigns_digest(campaigns) -> str:
+    """캠페인 번호 목록의 지문 — 정렬한 번호를 줄바꿈으로 이은 문자열의 sha256. load_db와 같은 규칙을 쓴다 (골든 테스트로 고정)."""
+    return hashlib.sha256("\n".join(sorted(campaigns)).encode()).hexdigest()
+
+
 def _quarantine(path: Path) -> None:
     """읽지 못한 PDF를 `.bad`로 옮긴다 — 같은 이름으로 남으면 다음 실행이 "이미 받음"으로 건너뛰어 계속 실패한다."""
     if path.exists():
@@ -284,7 +292,8 @@ def run(
         sys.exit(
             "pdftotext가 없다 — poppler를 설치한다 (macOS: brew install poppler, Windows: winget install oschwartz10612.Poppler)"
         )
-    print(f"pdftotext: {require_poppler()}")
+    poppler_version = require_poppler()
+    print(f"pdftotext: {poppler_version}")
     manual = load_manual_dates()
     if baseline is not None:
         # 기준 실행과 같은 입력: 당시 판본 목록만 쓰고, 각 PDF가 당시 sha256과 같은지 확인한다
@@ -410,8 +419,24 @@ def run(
     write_jsonl(failures_path, failures)
     partial_path.unlink(missing_ok=True)
     if mode == "all":
+        manifest = {
+            "kind": "full",
+            "rows": len(rows),
+            "file_sha256": hashlib.sha256(out_path.read_bytes()).hexdigest(),
+            "campaigns_sha256": campaigns_digest(r["campaign"] for r in rows),
+            "expect_campaigns": expect_campaigns,
+            "listing_campaigns": len(reports),
+            "pdftotext": poppler_version,
+            "generated_at": datetime.now(UTC).isoformat(),
+        }
+        manifest_path = out_path.with_name(out_path.stem + ".manifest.json")
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
         print(
-            f"  완성본 {len(rows):,}줄 — 올릴 때: load_db load --causes full --expect-rows {len(rows)}"
+            f"  완성본 {len(rows):,}줄 + 명세 {manifest_path.name} — 올릴 때: load_db load --causes full"
         )
     manual_used = sum(1 for r in rows if r["resolution"] == "manual")
     print(
