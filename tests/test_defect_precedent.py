@@ -508,14 +508,50 @@ def test_maker_alias_representative_avoids_period_typo():
 def test_maker_alias_unreviewed_blocks_until_every_row_is_confirmed():
     from scripts.defect_precedent.maker_aliases import unreviewed
 
+    def row(name, review, required=""):
+        return {"raw_maker": name, "review": review, "review_required": required}
+
     rows = [
-        {"raw_maker": "A", "review": ""},
-        {"raw_maker": "B", "review": "확인 완료"},
-        {"raw_maker": "C", "review": "보류"},
-        {"raw_maker": "D", "review": "확인 필요"},
+        row("A", ""),
+        row("B", "확인 완료", "필요"),
+        row("C", "보류", "필요"),
+        row("D", "확인 필요", "필요"),
     ]
     assert [r["raw_maker"] for r in unreviewed(rows)] == ["C", "D"]
     assert unreviewed(rows[:2]) == []
+
+
+def test_maker_alias_unreviewed_does_not_let_blank_or_typo_pass_as_confirmed():
+    from scripts.defect_precedent.maker_aliases import unreviewed
+
+    # 검토가 필요했던 줄(review_required = 필요)의 review를 지우면 통과하지 못하고 미확인으로 남는다
+    blanked = {"raw_maker": "E", "review": "", "review_required": "필요"}
+    assert unreviewed([blanked]) == [blanked]
+    # 띄어쓰기 오타 `확인완료`는 확인한 것으로 보지 않고 오류로 멈춘다
+    with pytest.raises(ValueError, match="알 수 없는 검토 상태"):
+        unreviewed([{"raw_maker": "F", "review": "확인완료", "review_required": "필요"}])
+    # review_required는 스크립트가 쓰는 고정 칸 — 고쳐졌으면 멈춘다
+    with pytest.raises(ValueError, match="review_required"):
+        unreviewed([{"raw_maker": "G", "review": "확인 완료", "review_required": "불필요"}])
+
+
+def test_maker_alias_every_pending_row_in_the_draft_is_marked_required():
+    from collections import Counter
+
+    from scripts.defect_precedent.maker_aliases import build_table
+
+    rows = build_table(
+        Counter(
+            {
+                "Piaggio Group Americas. Inc.": 16,
+                "Piaggio Group Americas, Inc.": 4,
+                "PIAGGIO USA, INC.": 15,
+            }
+        )
+    )
+    pending = [r for r in rows if r["review"] == "확인 필요"]
+    assert pending and all(r["review_required"] == "필요" for r in pending)
+    assert all(r["review_required"] == "" for r in rows if r["review"] == "")
 
 
 def test_maker_alias_draft_csv_is_read_with_bom_aware_encoding():
@@ -527,5 +563,5 @@ def test_maker_alias_draft_csv_is_read_with_bom_aware_encoding():
     with OUT.open(encoding="utf-8-sig", newline="") as f:
         header = next(csv.reader(f))
     assert header[0] == "raw_maker"
-    assert "review" in header and "review_note" in header
+    assert {"review", "review_required", "review_note"} <= set(header)
     assert OUT.read_bytes().startswith(b"\xef\xbb\xbf")
