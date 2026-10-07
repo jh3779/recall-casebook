@@ -637,6 +637,30 @@ def test_maker_alias_unreviewed_checks_company_name_columns_against_the_draft():
     assert unreviewed(fixed_a, DRAFT) == []
 
 
+def test_maker_alias_unreviewed_needs_a_real_reason_kept_after_the_draft_note():
+    from scripts.defect_precedent.maker_aliases import reason_added, unreviewed
+
+    draft = [
+        _row("A"),
+        _row("B", "확인 필요", "필요", review_note="maker_group: 이름 목록으로 지정한 초안"),
+    ]
+    note = draft[1]["review_note"]
+
+    def changed(note_value, **over):
+        row = _row("B", "확인 완료", "필요", maker_group="X", review_note=note_value, **over)
+        return [_row("A"), row]
+
+    # 초안 메모를 지우거나 빈칸·공백·`;`만 덧붙이면 이유를 적은 것으로 보지 않는다
+    for bad in ("", "   ", None, note + "; ", note + " ;; ", "다른 설명만 적고 초안 메모는 지움"):
+        with pytest.raises(ValueError, match="이유를 적어야"):
+            unreviewed(changed(bad), draft)
+    # 초안 메모를 그대로 두고 설명을 덧붙이면 통과한다
+    assert unreviewed(changed(note + "; 같은 계열로 확인"), draft) == []
+    assert reason_added("초안; 설명", "초안") and not reason_added("초안", "초안")
+    # 초안 메모가 없던 줄은 설명만 있으면 된다
+    assert reason_added("설명", "") and not reason_added(None, None)
+
+
 def test_maker_alias_committed_draft_is_a_valid_input_for_unreviewed():
     from scripts.defect_precedent.maker_aliases import OUT, read_table, unreviewed
 

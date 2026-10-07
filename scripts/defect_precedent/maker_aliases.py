@@ -183,6 +183,12 @@ def read_table(path: Path) -> list[dict]:
         return list(csv.DictReader(f))
 
 
+def reason_added(note: str | None, draft_note: str | None) -> bool:
+    """초안 메모는 그대로 두고 그 뒤에 실제 설명이 덧붙었는가 (빈칸·공백·`;`만 덧붙인 것, 초안 메모 삭제, 빈 칸(None)은 아니다)."""
+    note, draft_note = note or "", draft_note or ""
+    return note.startswith(draft_note) and bool(note[len(draft_note) :].strip(" ;\t\r\n"))
+
+
 def unreviewed(rows: list[dict], draft: list[dict]) -> list[dict]:
     """확인이 끝나지 않은 줄. 카드에 적용하기 전에 비어 있어야 한다.
 
@@ -190,8 +196,8 @@ def unreviewed(rows: list[dict], draft: list[dict]) -> list[dict]:
     - 줄이 사라졌거나 늘었거나 같은 `raw_maker`가 겹치면 오류로 멈춘다 (검토 대상 줄을 통째로 지운 경우를 잡는다).
     - `review_required`가 초안과 다르면 오류로 멈춘다 (`review`와 `review_required`를 함께 지운 경우를 잡는다).
     - 알 수 없는 상태값(오타 `확인완료` 등)은 짐작하지 않고 오류로 멈춘다.
-    - `maker`·`maker_group`이 비어 있으면 오류로 멈춘다. 초안과 값이 다른 줄은 `review`가 `확인 완료`이고 `review_note`도
-      초안에서 바뀌어 있어야 한다 (이유 없이 고친 줄을 잡는다). `count`·`maker_basis`·`group_basis`는 사람이 고치지 않는 칸이라
+    - `maker`·`maker_group`이 비어 있으면 오류로 멈춘다. 초안과 값이 다른 줄은 `review`가 `확인 완료`이고 `review_note`가
+      초안 메모를 그대로 둔 채 그 뒤에 실제 설명이 덧붙어 있어야 한다 (이유 없이 고치거나 메모를 지운 줄을 잡는다). `count`·`maker_basis`·`group_basis`는 사람이 고치지 않는 칸이라
       초안과 같아야 한다 (열 하나만 정렬이 어긋난 경우를 잡는다).
     - `확인 필요`·`보류`는 끝나지 않은 줄이고, 검토가 필요했던 줄(`review_required = 필요`)은 `review`가 정확히
       `확인 완료`일 때만 끝난 것이다.
@@ -216,7 +222,9 @@ def unreviewed(rows: list[dict], draft: list[dict]) -> list[dict]:
             f"review_required가 초안과 다르다 {changed[:5]} (총 {len(changed)}줄) — 이 칸은 스크립트가 쓰는 고정 칸이다"
         )
     empty = sorted(
-        r["raw_maker"] for r in rows if not r["maker"].strip() or not r["maker_group"].strip()
+        r["raw_maker"]
+        for r in rows
+        if not (r["maker"] or "").strip() or not (r["maker_group"] or "").strip()
     )
     if empty:
         raise ValueError(f"maker·maker_group이 빈 줄이 있다 {empty[:5]} (총 {len(empty)}줄)")
@@ -238,7 +246,7 @@ def unreviewed(rows: list[dict], draft: list[dict]) -> list[dict]:
         )
         and (
             r["review"] != "확인 완료"
-            or r["review_note"] == original[r["raw_maker"]]["review_note"]
+            or not reason_added(r["review_note"], original[r["raw_maker"]]["review_note"])
         )
     )
     if unexplained:
