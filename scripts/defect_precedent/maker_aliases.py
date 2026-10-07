@@ -3,7 +3,7 @@
 사용법:
     uv run python -m scripts.defect_precedent.maker_aliases   # maker_aliases.csv 만들기
 
-칸 두 개를 따로 채운다 (DEC-032).
+칸 두 개를 따로 채운다 (DEC-033).
 - `maker`: 신고서 이름을 정리한 이름. 대소문자·문장부호·Inc/Incorporated류 표기 차이와 법인 형태 차이
   (Corp ↔ LLC, 법인 표기 유무)는 한 이름으로 통일한다. 지역(America·North America·USA)이 다르면 따로 둔다.
 - `maker_group`: 사용자가 "같은 회사의 선례"로 묶어 보고 싶은 단위. 미국 법인과 본사(Hyundai Motor America ↔

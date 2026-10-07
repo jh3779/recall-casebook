@@ -34,7 +34,9 @@
 4. **목표를 먼저 정하고 확인한다.** "버그 수정" → 재현하는 테스트를 먼저 쓰고 통과시킨다. "다 됐다"는 말 대신 통과한 테스트·명령 결과를 보여준다.
 5. **테스트를 코드에 맞춰 고치지 않는다.** 테스트가 실패하면 코드를 고친다. 테스트가 틀렸다고 판단되면 고치기 전에 이유를 보고하고 확인을 받는다.
 
-## 4. 개발 명령 — uv만 쓴다
+## 4. 개발 명령 — Python은 uv만, 프런트(`frontend/`)는 npm만
+
+**Python**
 
 | 할 일 | 명령 |
 |---|---|
@@ -44,9 +46,20 @@
 | 린트·포맷 | `uv run ruff check --fix .` · `uv run ruff format .` |
 | 실행 | `uv run python <script>` |
 
+**프런트엔드**(React, 저장소 루트 `frontend/`, DEC-032) — `frontend/`에서 실행한다.
+
+| 할 일 | 명령 |
+|---|---|
+| 의존성 설치(락 파일 그대로) | `npm ci` |
+| 패키지 추가 | `npm install <pkg>` / 개발용 `npm install -D <pkg>` |
+| 린트·빌드·테스트 | `npm run lint` · `npm run build` · `npm test` |
+| 개발 서버 | `npm run dev` |
+
+- `package.json`에 없는 스크립트는 만들어 쓰지 말고 없다고 보고한다. 스크립트 이름은 `frontend/package.json`이 정본이다.
 - `pip install`, `python -m venv`, `requirements.txt` 생성은 하지 않는다.
 - `pyproject.toml`을 바꾸면 `uv.lock`도 같이 커밋한다.
-- 작업을 끝냈다고 말하기 전에 `uv run ruff check . && uv run ruff format --check . && uv run pytest`를 돌리고 결과를 보고한다.
+- 프런트는 npm만 쓴다(`yarn`·`pnpm`으로 락 파일이 둘이 되지 않게). `package.json`의 의존성을 바꾸면 npm으로 `package-lock.json`을 갱신해 같이 커밋한다(실행 스크립트·설명만 바꿨다면 락 파일은 그대로이고 직접 고치지 않는다). Node 버전은 `frontend/.nvmrc`가 정본이다.
+- 작업을 끝냈다고 말하기 전에 `uv run ruff check . && uv run ruff format --check . && uv run pytest`를 돌리고 결과를 보고한다. `frontend/package.json`이 있는 상태에서 `frontend/`를 바꿨다면(`.nvmrc`·`.gitkeep`·`README.md`만 추가한 준비 단계는 제외, 그 사실을 보고한다) `cd frontend && npm ci && npm run lint --if-present && npm run build --if-present && npm test --if-present`도 돌리고 결과를 보고한다. 건너뛴(없는) 스크립트는 없어서 못 돌렸다고 적는다.
 
 ## 5. RAG 실험 규칙
 
@@ -76,6 +89,7 @@
 
 - `.env`를 읽거나 내용을 출력하지 않는다. 필요한 키 이름은 `.env.example`에서 확인한다.
 - API 키·토큰을 코드, 로그, 커밋, PR 본문, 노트북 출력에 넣지 않는다.
+- 프런트(`frontend/`)의 환경변수(`VITE_*` 등 빌드 때 화면 코드에 들어가는 값)에 API 키·토큰을 넣지 않는다. 빌드 결과는 브라우저로 내려가 공개된다 — 키가 필요한 호출은 화면 밖에서 한다 (DEC-032).
 - 원본 데이터·벡터 인덱스는 커밋하지 않는다. 다시 만드는 스크립트를 커밋한다.
 - 유료 API(LLM·임베딩)를 대량 호출하는 작업은 예상 호출 수·비용을 먼저 말하고 확인을 받는다.
 

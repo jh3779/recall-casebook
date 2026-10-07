@@ -40,7 +40,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 | `causes_*_failures.jsonl` | 읽지 못한 리콜 1건 | `campaign, keys[], error` (받기·변환 실패, 기준 sha256 불일치 — "원인 칸 없음"과 구분) |
 | `build.json` | build 1회 | `raw_manifest_sha256, recalls_sha256, eval_sha256, snapshot_date` — 카드·시험지가 어떤 원본에서 나왔는지. build는 이 셋을 한 폴더에 만든 뒤 폴더째 교체한다 |
 
-- `maker`는 회사명 대응표(`maker_aliases.csv`, 안내 `docs/회사명_대응표_안내.md`, DEC-032)를 카드에 적용하기 전까지 `raw_maker`와 같다. 대응표는 `maker`(정리한 이름)와 `maker_group`(같은 회사로 묶어 볼 단위) 두 칸을 담는다 — 확인 전이라 아직 카드에는 적용하지 않았다.
+- `maker`는 회사명 대응표(`maker_aliases.csv`, 안내 `docs/회사명_대응표_안내.md`, DEC-033)를 카드에 적용하기 전까지 `raw_maker`와 같다. 대응표는 `maker`(정리한 이름)와 `maker_group`(같은 회사로 묶어 볼 단위) 두 칸을 담는다 — 확인 전이라 아직 카드에는 적용하지 않았다.
 - `dup_group`이 같은 리콜은 결함 설명 본문이 같다 (약어를 고려해 자른 첫 문장 = 회사·차종 나열을 뺀 본문이 60자 넘게 같음). **서로 다른 회사가 같은 공급사 부품 설명을 그대로 쓴 경우도 여기 묶인다** (예: Gillig·Cummins 구동계, Unicell·Mickey Truck의 ASA 모니터). 검색에서 묶음당 1건만 보여 주면 "다른 회사의 같은 부품 선례"가 숨겨질 수 있으니, 묶음의 회사 목록은 함께 보여 준다.
 - `set`의 `rclrpt_range`는 **첫 번째 정답 리콜**의 접수일이 2014-08-20 이후인 질문이다 (정답 중 하나라도 기준이면 94개).
 - `campaign`은 리콜 번호 앞 6자리(예: `24V412`)다. `recalls.jsonl`의 `campno`(예: `24V412000`) 앞 6자리와 잇는다.

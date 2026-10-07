@@ -64,7 +64,7 @@ PR #25를 `6f2624a`로 병합(`0801f51`)한 뒤 PR #23에 main을 합치고 리�
   20. **"왜" 집계 스크립트화** (PR #23 리뷰 `e35956e` 🟢2): 기획 5절 원인 근거 비율(31%·12,008·18,339 등)은 탐색 다운로드(30,347건)로 계산했고 스크립트가 없다 → `scripts/defect_precedent/`에 넣고 30,350 기준으로 다시 계산해 문서 건수를 하나로 통일(DEC-031).
   21. **판정 패턴 오탐 반례 테스트** (PR #23 리뷰 `e35956e` 🟢6): `recall[_\s-]?required`가 573 원문 인용 같은 일반 영어 문장("a recall required …")도 막을 수 있다. `principle-ok:` 통과·반례 테스트를 B 파트가 프롬프트를 쓸 때 추가.
   22. **결함 문장 → 부품 트리(`COMPNAME`) 연결 규칙** (PR #23 Codex `6e8a21c5`·`c5eac97d` 선택 개선): 영어 결함 문장을 부품 트리 노드에 잇는 규칙과 연결 실패 시 처리(범위 좁히기 생략 등)를 B 파트 구현 전에 정한다.
-  23. **회사명 대응표 (A 파트, PR #29, [[DEC-032]])**: `scripts/defect_precedent/maker_aliases.csv`·`maker_aliases.py` 초안 완료(원문 3,889 → `maker` 3,326 → `maker_group` 3,303, `review = 확인 필요` 25줄). 남은 것: 이승노 님이 안내문(`docs/회사명_대응표_안내.md`)대로 확인 → 확인본을 `recalls.jsonl`의 `maker`·`maker_group`에 반영 → 새 기준 freeze로 재현 확인(적용하면 카드 sha256이 바뀌어 기존 `baseline_2026-10-06.json` 재현은 깨진다). 기준 원본 사본(`data/raw/nhtsa/`, 2026-10-07 로컬에 확보)으로 0.510 / 0.503 재현 확인함.
+  23. **회사명 대응표 (A 파트, PR #29, [[DEC-033]])**: `scripts/defect_precedent/maker_aliases.csv`·`maker_aliases.py` 초안 완료(원문 3,889 → `maker` 3,326 → `maker_group` 3,303, `review = 확인 필요` 25줄). 남은 것: 이승노 님이 안내문(`docs/회사명_대응표_안내.md`)대로 확인 → 확인본을 `recalls.jsonl`의 `maker`·`maker_group`에 반영 → 새 기준 freeze로 재현 확인(적용하면 카드 sha256이 바뀌어 기존 `baseline_2026-10-06.json` 재현은 깨진다). 기준 원본 사본(`data/raw/nhtsa/`, 2026-10-07 로컬에 확보)으로 0.510 / 0.503 재현 확인함.
 - 역할 확정(이슈 #24): A 박예원 · B 우지훈 · C 박성호(발표) · D 이승노.
 - **주의(재발 방지)**: `.gitignore`에 `docs/handbook/*`가 없는 브랜치에서 `uv run ruff format .` 금지. 결과 코멘트는 수정하지 말고 새로 올린다.
 

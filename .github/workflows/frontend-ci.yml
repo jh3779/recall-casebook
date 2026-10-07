@@ -1,0 +1,96 @@
+name: Frontend CI
+
+# React 화면(frontend/, DEC-032)을 검사한다.
+# - 필수 체크가 아니다: main 보호 룰셋의 필수 체크는 lint-and-test 등 4개 그대로이고, 이 잡은 올리지 않는다.
+# - frontend/ 또는 이 파일이 바뀐 PR에서만 돈다. 그 안에서도 frontend/package.json이 있을 때만 검사한다.
+#   frontend/가 없거나 .nvmrc·.gitkeep·README.md만 있으면 도입 전으로 보고 "건너뜀" 안내만 남기고 통과하고,
+#   그 밖의 파일이 추적되는데 package.json이 없으면 설정 누락으로 실패한다.
+# - Node 버전은 frontend/.nvmrc가 정본이다. 없으면 실패시킨다(버전이 고정되지 않은 채 돌리지 않는다).
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-check:
+    runs-on: ubuntu-latest
+    env:
+      # vitest 등 테스트 러너가 watch 모드로 멈추지 않게 한다
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Detect frontend
+        id: detect
+        run: |
+          if [ ! -f frontend/package.json ]; then
+            # 도입 전(frontend/에 .nvmrc 등 준비 파일만 있음)에는 건너뛰고, 다른 파일이 추적되는데 package.json이 없으면 설정 누락이다
+            others=$(git ls-files frontend | grep -vE '^frontend/(\.nvmrc|\.gitkeep|README\.md)$' || true)
+            if [ -n "$others" ]; then
+              echo "::error::frontend/에 파일이 있는데 frontend/package.json이 없습니다 - 삭제·이름 변경이 아닌지 확인하세요"
+              exit 1
+            fi
+            echo "::notice::frontend/package.json 없음 - 프런트 검사를 건너뜁니다"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          for f in frontend/.nvmrc frontend/package-lock.json; do
+            if [ ! -f "$f" ]; then
+              echo "::error::$f 없음 - Node 버전(.nvmrc)과 락 파일(package-lock.json)을 커밋해야 합니다 (AGENTS.md 4절)"
+              exit 1
+            fi
+          done
+
+      - name: Set up Node (from frontend/.nvmrc)
+        if: steps.detect.outputs.found == 'true'
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm ci: package-lock.json과 package.json이 어긋나면 실패 (락 갱신 누락 방지)
+      - name: Install dependencies
+        if: steps.detect.outputs.found == 'true'
+        working-directory: frontend
+        run: npm ci
+
+      # 없는 스크립트는 --if-present 때문에 조용히 통과하므로, 어떤 검사가 생략됐는지 로그에 남긴다.
+      # 비필수 도입 단계의 선택이다 — 필수 체크로 올리기 전에는 누락을 실패로 바꾼다.
+      - name: Report missing scripts
+        if: steps.detect.outputs.found == 'true'
+        working-directory: frontend
+        run: |
+          for s in lint build test; do
+            if ! node -e "process.exit(require('./package.json').scripts?.['$s'] ? 0 : 1)"; then
+              echo "::warning::package.json에 '$s' 스크립트가 없어 이 검사는 건너뜁니다 (실제로 검사되지 않았음)"
+            fi
+          done
+
+      # --if-present: package.json에 정의된 스크립트만 돌린다 (AGENTS.md 4절)
+      - name: Lint
+        if: steps.detect.outputs.found == 'true'
+        working-directory: frontend
+        run: npm run lint --if-present
+
+      - name: Build
+        if: steps.detect.outputs.found == 'true'
+        working-directory: frontend
+        run: npm run build --if-present
+
+      - name: Test
+        if: steps.detect.outputs.found == 'true'
+        working-directory: frontend
+        run: npm test --if-present
