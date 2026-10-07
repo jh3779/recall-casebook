@@ -10,7 +10,8 @@
 - **build 단위로 보관한다.** build_id는 입력 파일 4개(원본 명세·카드·시험지·원인 파일)의 sha256으로 정해지는 불변 식별자다.
   내용이 하나라도 다르면 다른 build라서, 같은 날짜(snapshot_date)라도 덮어쓰지 않고 둘 다 보관한다
   (예: 같은 날짜의 표본 build와 전체 build). 같은 build를 다시 올리면 저장된 행 해시·원인 명세가 새 계산과 모두 같을 때만 아무것도 바꾸지 않고 끝나고, 하나라도 다르면 덮어쓰지 않고 중단한다.
-  조회용 `*_latest` 뷰는 가장 최근 날짜의 build를 고르고, 같은 날짜면 전체본이 표본보다 우선한다.
+  조회용 `*_latest` 뷰는 전체본이 있으면 가장 최근 전체본을, 없을 때만 가장 최근 표본을 고른다 (나중 날짜의 표본이 전체본을
+  가리지 않는다). 표본만 보려면 `*_latest_sample` 뷰를 쓴다.
 - 원인 파일의 완전성은 **사람이 입력한 숫자가 아니라 독립된 명세**와 대조한다. `--causes`는 반드시 적는다 (자동으로 고르지 않는다).
   - `sample`: 커밋된 기준 파일(`baseline_2026-10-06.json`)의 `rclrpt_sample` 캠페인 목록과 정확히 같아야 한다.
   - `full`: `rclrpt all`이 완성본과 함께 만드는 `causes.manifest.json`(줄 수·파일 sha256·캠페인 목록 sha256·기대 캠페인 수)과
@@ -199,10 +200,10 @@ def causes_source(data_dir: Path, kind: str) -> Path:
     return path
 
 
-def load_files(data_dir: Path, causes_kind: str, baseline: Path = BASELINE) -> dict:
+def load_files(data_dir: Path, causes_kind: str, baseline: Path | None = None) -> dict:
     """파일을 읽어 검증하고 테이블별 행을 돌려준다. DB는 쓰지 않는다."""
     causes_file = causes_source(data_dir, causes_kind)
-    spec = causes_spec(data_dir, causes_kind, baseline)
+    spec = causes_spec(data_dir, causes_kind, baseline or BASELINE)
     causes_sha = sha256_of(causes_file)
     if causes_kind == "full" and causes_sha != spec["file_sha256"]:
         sys.exit(
@@ -410,7 +411,7 @@ def _data_dir(args) -> Path:
 
 
 def cmd_check(args) -> None:
-    data = load_files(_data_dir(args), args.causes, Path(args.baseline))
+    data = load_files(_data_dir(args), args.causes)
     b = data["build"]
     print(
         f"data_builds: 1줄 (build {b['build_id']}, 스냅샷 {b['snapshot_date']}, 원인 파일 {b['causes_file']}, 명세 {b['causes_spec']['source']})"
@@ -458,7 +459,7 @@ def same_build_unchanged(cur, existing: dict, data: dict) -> None:
 def cmd_load(args) -> None:
     from psycopg.rows import dict_row
 
-    data = load_files(_data_dir(args), args.causes, Path(args.baseline))
+    data = load_files(_data_dir(args), args.causes)
     build = data["build"]
     build_id, snapshot = build["build_id"], build["snapshot_date"]
     with connect() as conn:  # 블록이 정상 종료하면 commit, 예외(SystemExit 포함)면 rollback
@@ -520,11 +521,6 @@ def build_parser() -> argparse.ArgumentParser:
             help="올릴 원인 파일 종류 (자동으로 고르지 않는다)",
         )
         p.add_argument("--data-dir", help=f"파일 폴더 (기본 {PROCESSED.relative_to(REPO_ROOT)})")
-        p.add_argument(
-            "--baseline",
-            default=str(BASELINE),
-            help="표본 원인 파일의 기대 캠페인 목록이 든 기준 파일 (기본: 커밋된 baseline_2026-10-06.json)",
-        )
 
     add_source_args(sub.add_parser("check", help="DB 없이 파일만 검증"))
     sub.add_parser("schema", help="schema.sql 적용")

@@ -88,12 +88,14 @@ create table if not exists causes (
 );
 create index if not exists causes_submission_date_idx on causes (build_id, submission_date);
 
--- 평소 조회용: build 하나만 고른다 — 가장 최근 날짜, 같은 날짜면 전체본(full)이 표본(sample)보다 우선, 그다음 나중에 올린 것.
--- 같은 날짜에 표본 build가 먼저 올라가 있어도 전체 build가 올라가면 조회에서는 전체본이 쓰이고, 표본 build는 지워지지 않고 남는다.
+-- 평소 조회용: build 하나만 고른다 — 전체본(full)이 하나라도 있으면 가장 최근 날짜의 전체본, 없을 때만 가장 최근 표본(sample).
+-- 날짜보다 종류가 먼저다: 나중 날짜의 표본(300건)이 이전 날짜의 전체본(약 1.2만 건)을 평소 조회에서 가리지 않게 한다.
+-- 같은 종류 안에서는 가장 최근 날짜, 같은 날짜면 나중에 올린 것. 표본·옛 build는 지워지지 않고 남는다.
+-- 표본만 보고 싶으면 아래 *_latest_sample 뷰를 쓴다.
 -- security_invoker = true — 뷰가 호출한 사람의 권한으로 테이블을 읽게 해서 아래 RLS를 우회하지 않는다 (뷰는 기본이 만든 사람 권한).
 create or replace view latest_build with (security_invoker = true) as
     select build_id, snapshot_date from data_builds
-    order by snapshot_date desc, (causes_kind = 'full') desc, loaded_at desc
+    order by (causes_kind = 'full') desc, snapshot_date desc, loaded_at desc
     limit 1;
 create or replace view recalls_latest with (security_invoker = true) as
     select r.* from recalls r join latest_build l using (build_id);
@@ -101,6 +103,19 @@ create or replace view eval_questions_latest with (security_invoker = true) as
     select q.* from eval_questions q join latest_build l using (build_id);
 create or replace view causes_latest with (security_invoker = true) as
     select c.* from causes c join latest_build l using (build_id);
+
+-- 표본 전용 조회: 가장 최근 날짜의 표본 build (전체본이 있어도 표본을 따로 볼 때)
+create or replace view latest_sample_build with (security_invoker = true) as
+    select build_id, snapshot_date from data_builds
+    where causes_kind = 'sample'
+    order by snapshot_date desc, loaded_at desc
+    limit 1;
+create or replace view recalls_latest_sample with (security_invoker = true) as
+    select r.* from recalls r join latest_sample_build l using (build_id);
+create or replace view eval_questions_latest_sample with (security_invoker = true) as
+    select q.* from eval_questions q join latest_sample_build l using (build_id);
+create or replace view causes_latest_sample with (security_invoker = true) as
+    select c.* from causes c join latest_sample_build l using (build_id);
 
 -- Supabase는 public 테이블을 REST API로 열어 준다. 정책 없이 RLS를 켜서 anon·authenticated 키로는 아무것도 못 읽게 막는다.
 -- 서버·스크립트는 postgres 계정으로 접속하므로 영향이 없다 (RLS를 우회한다).

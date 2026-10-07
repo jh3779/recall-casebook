@@ -432,7 +432,10 @@ def test_the_human_typed_expect_rows_option_no_longer_exists(tmp_path):
     assert e.value.code == 2
 
 
-def test_check_command_reports_the_build_and_the_spec(tmp_path, capsys):
+def test_check_command_reports_the_build_and_the_spec(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(
+        load_db, "BASELINE", make_baseline(tmp_path)
+    )  # 명령에는 기준 파일을 바꾸는 옵션이 없다
     d = make_data_dir(tmp_path)
     load_db.main(
         [
@@ -441,8 +444,6 @@ def test_check_command_reports_the_build_and_the_spec(tmp_path, capsys):
             "sample",
             "--data-dir",
             str(d),
-            "--baseline",
-            str(make_baseline(tmp_path)),
         ]
     )
     out = capsys.readouterr().out
@@ -520,6 +521,16 @@ def test_sql_helpers():
     assert "on conflict" not in load_db.insert_build_sql()
 
 
+def test_the_official_sample_baseline_cannot_be_replaced_from_the_command_line(tmp_path):
+    # 임의의 기준 파일로 300건 미만의 불완전한 표본이 정상 데이터로 올라가는 것을 막는다
+    for command in ("check", "load"):
+        with pytest.raises(SystemExit) as e:
+            load_db.main(
+                [command, "--causes", "sample", "--baseline", str(make_baseline(tmp_path))]
+            )
+        assert e.value.code == 2
+
+
 def test_schema_has_build_keys_join_column_views_and_row_level_security():
     text = load_db.SCHEMA.read_text(encoding="utf-8")
     assert "generated always as (left(campno, 6)) stored" in text
@@ -538,6 +549,17 @@ def test_schema_has_build_keys_join_column_views_and_row_level_security():
             rf"create or replace view {table}_latest with \(security_invoker = true\)", text
         )
     assert "alter table data_builds" in text and "enable row level security" in text
+    # 표본 전용 뷰도 같은 보호(security_invoker)를 받는다
+    for view in (
+        "latest_sample_build",
+        "recalls_latest_sample",
+        "eval_questions_latest_sample",
+        "causes_latest_sample",
+    ):
+        assert re.search(rf"create or replace view {view} with \(security_invoker = true\)", text)
+    assert (
+        "order by (causes_kind = 'full') desc, snapshot_date desc" in text
+    )  # 날짜보다 종류가 먼저
 
 
 # ---------------------------------------------------------------------------
@@ -569,7 +591,15 @@ def pgconn(monkeypatch):
 
 def load(d, kind="sample", baseline=None):
     argv = ["load", "--causes", kind, "--data-dir", str(d)]
-    load_db.main([*argv, "--baseline", str(baseline)] if baseline else argv)
+    old = load_db.BASELINE
+    if baseline:
+        load_db.BASELINE = (
+            baseline  # 운영 명령에는 기준 파일을 바꾸는 옵션이 없다 — 테스트만 상수를 바꾼다
+        )
+    try:
+        load_db.main(argv)
+    finally:
+        load_db.BASELINE = old
 
 
 def counts(conn, table, build_id):
@@ -736,6 +766,31 @@ def test_pg_has_no_command_that_deletes_builds(pgconn, tmp_path):
 
 
 @pg
+def test_pg_a_newer_sample_never_hides_an_older_full_build_from_the_default_views(pgconn, tmp_path):
+    baseline = make_baseline(tmp_path)
+    old = make_data_dir(tmp_path / "old", "2026-10-06", manifest="a1" * 32)
+    write_full(old, [cause("24V001"), cause("23V002")])
+    load(old, "full", baseline)
+    (full_build,) = build_ids(pgconn)
+    # 이후 날짜의 표본(원인 1건)을 올려도 평소 조회는 전체본(원인 2건)을 그대로 보여 준다
+    new = make_data_dir(tmp_path / "new", "2026-10-07", manifest="b2" * 32)
+    load(new, "sample", baseline)
+    sample_build = next(b for b in build_ids(pgconn) if b != full_build)
+    assert latest(pgconn) == full_build
+    assert pgconn.execute("select count(*) from causes_latest").fetchone()[0] == 2
+    # 표본만 보는 뷰는 가장 최근 표본을 보여 준다
+    assert pgconn.execute("select build_id from latest_sample_build").fetchone()[0] == sample_build
+    assert pgconn.execute("select count(*) from causes_latest_sample").fetchone()[0] == 1
+    assert pgconn.execute("select count(*) from recalls_latest_sample").fetchone()[0] == 2
+    # 전체본이 아직 없을 때는 표본이 기본 조회가 된다
+    pgconn.execute("delete from causes where build_id = %s", (full_build,))
+    pgconn.execute("delete from eval_questions where build_id = %s", (full_build,))
+    pgconn.execute("delete from recalls where build_id = %s", (full_build,))
+    pgconn.execute("delete from data_builds where build_id = %s", (full_build,))
+    assert latest(pgconn) == sample_build
+
+
+@pg
 def test_pg_rls_blocks_api_roles_even_through_views(pgconn, tmp_path):
     load(make_data_dir(tmp_path), baseline=make_baseline(tmp_path))
     pgconn.execute("drop role if exists api_user")
@@ -751,6 +806,10 @@ def test_pg_rls_blocks_api_roles_even_through_views(pgconn, tmp_path):
             "causes_latest",
             "eval_questions_latest",
             "latest_build",
+            "recalls_latest_sample",
+            "causes_latest_sample",
+            "eval_questions_latest_sample",
+            "latest_sample_build",
             "data_builds",
         ):
             assert pgconn.execute(f"select count(*) from {relation}").fetchone()[0] == 0, relation
