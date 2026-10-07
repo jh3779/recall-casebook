@@ -73,6 +73,7 @@ PR #25를 `6f2624a`로 병합(`0801f51`)한 뒤 PR #23에 main을 합치고 리�
   25. **브랜치 정리 범위** (PR #26 Codex `ad11ed68` 선택, PR #22 병합으로 갱신): #17·#20·#21 원격 브랜치와 worktree 4개(`wt-b`·`wt-f`·`wt-fe`·`LG_CNS_RAG_main-research`)는 더 보존할 이유가 없다 — 사용자 확인 뒤 정리.
   26. **`frontend/.nvmrc` 고정과 프런트 초기 설정 — 담당 우지훈** ([[DEC-032]]): Node 버전을 정해 `frontend/.nvmrc`로 올리고, 빌드 도구(Vite 등)·TypeScript 여부를 C 파트(박성호)와 정한다. 화면과 RAG 사이 전달 방식(결과 파일 / 서버 API)도 B·C가 정한다(DEC-032 미결). API 호출 상한도 미결.
   27. **PR #27 리뷰 후속 문구 보완** (리뷰 에이전트 `7e68404` 🟢1~4, PR #27 결과 코멘트): `docs/git_명령어.md`의 `pr.md`를 저장소 밖에 만들도록 안내(템플릿 복사 명령 포함), `-D` 확인에서 두 커밋이 다르면 "병합 뒤 새 커밋 또는 로컬이 PR보다 뒤처짐", `git worktree add -b <새-브랜치> ../폴더 main`(시작점 main), `docs/환경셋팅.md`의 "PDF 약 580개·118MB"에 2026-10-06 표본 기준 표기. 공통 설치 절차가 `docs/시작하기.md`와 겹치므로 명령이 바뀌면 두 문서를 함께 고친다.
+  28. **Supabase 적재 — 담당 A(박예원)** ([[DEC-033]], 2026-10-07 결정): ① 테이블 SQL(`recalls`·`eval_questions`·`causes`·`builds`) 작성 → Supabase SQL 편집기에서 실행, RLS 켜기 ② `.env`에 `SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`(이름은 `.env.example`) ③ `scripts/defect_precedent/`에 적재 스크립트(500행씩 upsert, 키는 출력하지 않음) ④ 적재 뒤 행 수(30,350 / 749 / 300)와 `build.json` sha256 대조. 라이브러리(supabase-py 등) 사용법은 공식 문서로 확인. 패키지 추가는 `uv add` + `uv.lock` 함께 커밋.
 - 역할 확정(이슈 #24): A 박예원 · B 우지훈 · C 박성호(발표) · D 이승노.
 - **주의(재발 방지)**: `.gitignore`에 `docs/handbook/*`가 없는 브랜치에서 `uv run ruff format .` 금지. 결과 코멘트는 수정하지 말고 새로 올린다.
 
@@ -82,6 +83,7 @@ PR #25를 `6f2624a`로 병합(`0801f51`)한 뒤 PR #23에 main을 합치고 리�
 - [[DEC-020]]·[[DEC-021]]·[[DEC-022]] 온보딩 도메인·평가 규칙 — Superseded by DEC-030 / [[DEC-024]](세션 분리)·[[DEC-013]]·[[DEC-016]](비식별)은 원칙으로 유지
 - [[DEC-030]] 주제를 결함 선례 찾기 도우미로 전환 (Accepted 2026-10-06, PR #23)
 - [[DEC-032]] 결함 선례 화면은 React(`frontend/`)·npm, Node 고정은 우지훈 (Accepted 2026-10-07, PR #22)
+- [[DEC-033]] 데이터 DB는 Supabase, 적재는 A 박예원 (Accepted 2026-10-07)
 - [[DEC-031]] 수치는 저장소 스크립트·테스트로 재현한 뒤에만 확정값으로 적는다 (이번 세션 반복 실수에서 나온 작업 규칙, 사용자 확인 전)
 
 ## Failed Attempts
