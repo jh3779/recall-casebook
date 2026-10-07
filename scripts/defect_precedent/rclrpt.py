@@ -342,6 +342,9 @@ def run(
     PDF_DIR.mkdir(parents=True, exist_ok=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = out or OUT_DIR / ("causes.jsonl" if mode == "all" else "causes_sample.jsonl")
+    out_path.parent.mkdir(
+        parents=True, exist_ok=True
+    )  # --out 폴더가 없으면 긴 작업 도중 첫 중간 저장에서 죽는다
     partial_path = out_path.with_name(out_path.stem + ".partial.jsonl")
     failures_path = out_path.with_name(out_path.stem + "_failures.jsonl")
     counts = {"filled": 0, "empty": 0, "no_field": 0}

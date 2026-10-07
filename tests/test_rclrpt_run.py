@@ -241,6 +241,15 @@ def test_sample_mode_with_out_does_not_touch_the_baseline_sample_file(env, monke
     assert (env / "causes_pilot_3_failures.jsonl").exists()
 
 
+def test_out_in_a_folder_that_does_not_exist_yet_is_created_before_the_long_run(env, monkeypatch):
+    monkeypatch.setattr(
+        rclrpt, "latest_parsed", lambda keys, manual=None: (keys[0], parsed(keys[0].split("-")[1]))
+    )
+    target = env / "artifacts" / "pilot.jsonl"
+    rclrpt.run("sample", n=3, out=target)
+    assert len(lines(target)) == 3
+
+
 class Completed:
     """subprocess.run의 가짜 결과 — 실제처럼 stdout·stderr는 바이트다 (글자 해독은 코드가 직접 UTF-8로 한다)."""
 
