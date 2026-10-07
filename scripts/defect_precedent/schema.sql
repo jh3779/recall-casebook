@@ -5,7 +5,7 @@
 --
 -- 스냅샷별로 보관한다: 데이터 줄마다 snapshot_date를 두고 (snapshot_date, 번호)를 기본키로 쓴다.
 -- 새 스냅샷을 올려도 지난 스냅샷은 그대로 남고(과거 답변이 쓴 데이터를 되살릴 수 있다), 평소 조회는 *_latest 뷰로 한다.
--- 오래된 스냅샷은 load_db prune으로 데이터 줄만 지우고 data_builds 줄은 pruned_at 표시와 함께 남긴다.
+-- 스냅샷을 지우는 명령은 두지 않는다 — 지운 데이터를 되살릴 보관소(아카이브)가 생길 때 추가한다 (DEC-034 미결).
 --
 -- 날짜 칸은 date 타입이다. 원본은 YYYYMMDD(snapshot_date는 YYYY-MM-DD) 문자열이고, 적재 스크립트가 칸마다 정해진
 -- 형식만 받아 틀리면 중단한다 (추측해 고치지 않는다).
@@ -21,10 +21,10 @@ create table if not exists data_builds (
     causes_file          text not null,
     causes_sha256        text not null,
     causes_rows          integer not null,
-    causes_expected_rows integer,             -- full일 때 사람이 알려 준 기대 건수 (파일이 중간까지만 만들어진 경우를 막는다)
+    causes_expected_rows integer not null,    -- 사람이 알려 준 기대 건수 (파일이 중간까지만 만들어진 경우를 막는다)
     change_summary       jsonb not null default '{}',  -- 직전 스냅샷 대비 새로 생김·바뀜(칸별)·사라짐·그대로 건수
-    loaded_at            timestamptz not null default now(),
-    pruned_at            timestamptz              -- 데이터 줄을 지운 시각 (prune). 비어 있으면 데이터가 남아 있다
+    causes_history       jsonb not null default '[]',  -- 같은 날짜에 원인 파일을 바꿨을 때 이전 파일의 종류·이름·해시·건수 (--replace-causes)
+    loaded_at            timestamptz not null default now()
 );
 
 -- 리콜 카드 1건 = 1줄 (recalls.jsonl)
@@ -81,10 +81,10 @@ create table if not exists causes (
 );
 create index if not exists causes_submission_date_idx on causes (snapshot_date, submission_date);
 
--- 평소 조회용: 데이터가 남아 있는 스냅샷 중 가장 최근 것만 보여 준다.
+-- 평소 조회용: 가장 최근 스냅샷만 보여 준다.
 -- security_invoker = true — 뷰가 호출한 사람의 권한으로 테이블을 읽게 해서 아래 RLS를 우회하지 않는다 (뷰는 기본이 만든 사람 권한).
 create or replace view latest_snapshot with (security_invoker = true) as
-    select max(snapshot_date) as snapshot_date from data_builds where pruned_at is null;
+    select max(snapshot_date) as snapshot_date from data_builds;
 create or replace view recalls_latest with (security_invoker = true) as
     select r.* from recalls r join latest_snapshot l using (snapshot_date);
 create or replace view eval_questions_latest with (security_invoker = true) as

@@ -128,7 +128,7 @@ def test_parse_compact_stops_instead_of_guessing(bad):
 
 
 def test_load_files_reads_and_seals_rows(tmp_path):
-    data = load_db.load_files(make_data_dir(tmp_path), "sample")
+    data = load_db.load_files(make_data_dir(tmp_path), "sample", 1)
     assert [len(data[t]) for t in load_db.TABLES] == [2, 1, 1]
     r = data["recalls"][0]
     assert r["snapshot_date"] == date(2026, 10, 6) and r["received_date"] == date(2023, 1, 30)
@@ -165,25 +165,25 @@ def test_load_files_stops_on_tampered_file(tmp_path):
         (d / "recalls.jsonl").read_text(encoding="utf-8") + "\n", encoding="utf-8"
     )
     with pytest.raises(SystemExit) as e:
-        load_db.load_files(d, "sample")
+        load_db.load_files(d, "sample", 1)
     assert "build.json과 다르다" in str(e.value)
 
 
 def test_load_files_stops_when_gold_recall_or_campaign_is_missing(tmp_path):
     bad_q = make_data_dir(tmp_path / "a", questions=[{**QUESTION, "gold_campnos": ["99V999000"]}])
     with pytest.raises(SystemExit) as e:
-        load_db.load_files(bad_q, "sample")
+        load_db.load_files(bad_q, "sample", 1)
     assert "정답 리콜이 recalls에 없다" in str(e.value)
     bad_c = make_data_dir(tmp_path / "b", causes=[cause("99V999")])
     with pytest.raises(SystemExit) as e:
-        load_db.load_files(bad_c, "sample")
+        load_db.load_files(bad_c, "sample", 1)
     assert "앞 6자리와도 맞지 않는다" in str(e.value)
 
 
 def test_load_files_stops_when_snapshot_date_differs_from_build(tmp_path):
     d = make_data_dir(tmp_path, recalls=[recall("24V001000", snapshot_date="2026-10-05")])
     with pytest.raises(SystemExit) as e:
-        load_db.load_files(d, "sample")
+        load_db.load_files(d, "sample", 1)
     assert "snapshot_date가 build.json과 다르다" in str(e.value)
 
 
@@ -192,18 +192,31 @@ def test_causes_file_is_never_chosen_automatically(tmp_path):
     write_jsonl(
         d / "causes.jsonl", [cause("24V001")]
     )  # 전체 파일이 있어도 sample을 고르면 표본을 쓴다
-    assert load_db.load_files(d, "sample")["build"]["causes_file"] == "causes_sample.jsonl"
-    # full은 기대 건수가 필요하고, 파일이 그보다 짧으면(중간까지만 만들어짐) 올리지 않는다
-    with pytest.raises(SystemExit) as e:
-        load_db.load_files(d, "full")
-    assert "--expect-rows" in str(e.value)
-    with pytest.raises(SystemExit) as e:
-        load_db.load_files(d, "full", expect_rows=1000)
-    assert "기대 건수 1,000줄과 다르다" in str(e.value)
+    assert load_db.load_files(d, "sample", 1)["build"]["causes_file"] == "causes_sample.jsonl"
+    # 기대 건수는 표본·전체 모두 필요하다 — 없으면 올리지 않는다
+    for kind in ("sample", "full"):
+        with pytest.raises(SystemExit) as e:
+            load_db.load_files(d, kind)
+        assert "--expect-rows" in str(e.value)
+    # 파일이 기대보다 짧으면(중간까지만 만들어짐) 표본이든 전체든 올리지 않는다
+    for kind, expected in (("full", 1000), ("sample", 300)):
+        with pytest.raises(SystemExit) as e:
+            load_db.load_files(d, kind, expect_rows=expected)
+        assert f"기대 건수 {expected:,}줄과 다르다" in str(e.value)
     full = load_db.load_files(d, "full", expect_rows=1)
     assert full["build"]["causes_kind"] == "full" and full["build"]["causes_expected_rows"] == 1
-    with pytest.raises(SystemExit):  # sample에는 기대 건수를 쓰지 않는다
-        load_db.load_files(d, "sample", expect_rows=1)
+
+
+def test_check_command_requires_expect_rows_and_stops_on_a_short_sample(tmp_path, capsys):
+    d = make_data_dir(tmp_path)
+    with pytest.raises(SystemExit) as e:  # argparse가 필수 인자로 막는다
+        load_db.main(["check", "--causes", "sample", "--data-dir", str(d)])
+    assert e.value.code == 2
+    with pytest.raises(SystemExit) as e:  # 300건짜리 표본이 1건만 남은 경우
+        load_db.main(["check", "--causes", "sample", "--expect-rows", "300", "--data-dir", str(d)])
+    assert "기대 건수 300줄과 다르다" in str(e.value)
+    load_db.main(["check", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(d)])
+    assert "검증 통과" in capsys.readouterr().out
 
 
 # ---------------------------------------------------------------------------
@@ -264,8 +277,8 @@ def test_loader_columns_match_schema():
     assert set(schema) == {"data_builds", *load_db.TABLES}
     for table in load_db.TABLES:
         assert set(load_db.db_columns(table)) == set(schema[table]), table
-    # loaded_at·pruned_at처럼 DB가 기본값으로 채우거나 prune이 쓰는 칸만 적재 칸에 없다
-    assert set(schema["data_builds"]) - set(load_db.BUILD_COLS) == {"loaded_at", "pruned_at"}
+    # loaded_at처럼 DB가 기본값으로 채우는 칸만 적재 칸에 없다
+    assert set(schema["data_builds"]) - set(load_db.BUILD_COLS) == {"loaded_at"}
 
 
 def test_sql_helpers():
@@ -274,9 +287,7 @@ def test_sql_helpers():
         "insert into eval_questions (snapshot_date, action_no, question, open_date, gold_campnos, sets, row_sha256) values"
     )
     build_sql = load_db.upsert_build_sql()
-    assert (
-        "on conflict (snapshot_date) do update set" in build_sql and "pruned_at = null" in build_sql
-    )
+    assert "on conflict (snapshot_date) do update set" in build_sql
 
 
 def test_schema_has_snapshot_keys_join_column_views_and_row_level_security():
@@ -301,9 +312,11 @@ def test_schema_has_snapshot_keys_join_column_views_and_row_level_security():
 # 로컬 Postgres (TEST_DATABASE_URL이 있을 때만)
 
 PG_URL = os.environ.get("TEST_DATABASE_URL", "")
+PG_USABLE = bool(PG_URL) and urlparse(PG_URL).hostname in ("localhost", "127.0.0.1")
+# CI는 REQUIRE_DB_TESTS=1로 돌려서 DB 테스트가 조용히 건너뛰어지지 않게 한다 (DB가 없으면 건너뛰는 대신 실패)
+REQUIRE_DB = os.environ.get("REQUIRE_DB_TESTS") == "1"
 pg = pytest.mark.skipif(
-    not PG_URL or urlparse(PG_URL).hostname not in ("localhost", "127.0.0.1"),
-    reason="TEST_DATABASE_URL이 없거나 localhost가 아니다",
+    not PG_USABLE and not REQUIRE_DB, reason="TEST_DATABASE_URL이 없거나 localhost가 아니다"
 )
 
 
@@ -311,6 +324,10 @@ pg = pytest.mark.skipif(
 def pgconn(monkeypatch):
     import psycopg
 
+    if not PG_USABLE:
+        pytest.fail(
+            "REQUIRE_DB_TESTS=1인데 TEST_DATABASE_URL이 없거나 localhost가 아니다 — DB 테스트를 건너뛸 수 없다"
+        )
     monkeypatch.setenv("DATABASE_URL", PG_URL)
     with psycopg.connect(PG_URL, autocommit=True) as conn:
         conn.execute("drop schema public cascade; create schema public;")
@@ -343,9 +360,9 @@ def test_pg_two_snapshots_are_kept_and_compared(pgconn, tmp_path):
         ],
         manifest="a1" * 32,
     )
-    load_db.main(["load", "--causes", "sample", "--data-dir", str(s1)])
+    load_db.main(["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(s1)])
     load_db.main(
-        ["load", "--causes", "sample", "--data-dir", str(s1)]
+        ["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(s1)]
     )  # 같은 스냅샷을 다시 올려도 줄 수는 그대로
     d1, d2 = date(2026, 10, 6), date(2026, 10, 7)
     assert [counts(pgconn, t, d1) for t in load_db.TABLES] == [3, 1, 1]
@@ -370,7 +387,7 @@ def test_pg_two_snapshots_are_kept_and_compared(pgconn, tmp_path):
         ],
         manifest="b2" * 32,
     )
-    load_db.main(["load", "--causes", "sample", "--data-dir", str(s2)])
+    load_db.main(["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(s2)])
     # 두 스냅샷이 모두 남는다
     assert [counts(pgconn, t, d1) for t in load_db.TABLES] == [3, 1, 1]
     assert [counts(pgconn, t, d2) for t in load_db.TABLES] == [3, 1, 1]
@@ -402,6 +419,8 @@ def test_pg_same_date_different_build_is_not_overwritten(pgconn, tmp_path):
             "load",
             "--causes",
             "sample",
+            "--expect-rows",
+            "1",
             "--data-dir",
             str(make_data_dir(tmp_path / "a", "2026-10-06", manifest="a1" * 32)),
         ]
@@ -415,7 +434,7 @@ def test_pg_same_date_different_build_is_not_overwritten(pgconn, tmp_path):
         ],
     )
     with pytest.raises(SystemExit) as e:
-        load_db.main(["load", "--causes", "sample", "--data-dir", str(other)])
+        load_db.main(["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(other)])
     assert "덮어쓰지 않는다" in str(e.value)
     assert (
         pgconn.execute("select defect from recalls where campno = '24V001000'").fetchone()[0]
@@ -424,43 +443,89 @@ def test_pg_same_date_different_build_is_not_overwritten(pgconn, tmp_path):
 
 
 @pg
-def test_pg_prune_keeps_latest_and_marks_old_builds(pgconn, tmp_path, capsys):
+def test_pg_same_date_with_a_different_causes_file_is_refused_unless_replaced(pgconn, tmp_path):
+    d1 = date(2026, 10, 6)
+    sample = make_data_dir(tmp_path / "s", "2026-10-06")
+    load_db.main(["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(sample)])
+    # 같은 스냅샷에 전체 원인 파일(내용이 다른 2줄)을 올리려 하면 기본은 중단 — 이전 근거를 되살릴 수 없게 되기 때문이다
+    write_jsonl(sample / "causes.jsonl", [cause("24V001", "Different text."), cause("23V002")])
+    args = ["load", "--causes", "full", "--expect-rows", "2", "--data-dir", str(sample)]
+    with pytest.raises(SystemExit) as e:
+        load_db.main(args)
+    assert "--replace-causes" in str(e.value)
+    assert (
+        pgconn.execute("select cause_text from causes where campaign = '24V001'").fetchone()[0]
+        == "The gauge of the tube is insufficient."
+    )
+    assert pgconn.execute(
+        "select causes_kind, jsonb_array_length(causes_history) from data_builds"
+    ).fetchone() == ("sample", 0)
+    # 의도한 교체는 --replace-causes로 하고, 이전 파일 정보가 causes_history에 남는다
+    load_db.main([*args, "--replace-causes"])
+    kind, expected, history = pgconn.execute(
+        "select causes_kind, causes_expected_rows, causes_history from data_builds"
+    ).fetchone()
+    assert (kind, expected) == ("full", 2) and counts(pgconn, "causes", d1) == 2
+    assert len(history) == 1
+    assert (
+        history[0]["causes_kind"] == "sample"
+        and history[0]["causes_rows"] == 1
+        and history[0]["causes_expected_rows"] == 1
+    )
+    assert (
+        history[0]["causes_sha256"]
+        == hashlib.sha256((sample / "causes_sample.jsonl").read_bytes()).hexdigest()
+    )
+    # 같은 파일을 다시 올리는 것은 교체가 아니라서 이력이 늘지 않는다
+    load_db.main(args)
+    assert (
+        pgconn.execute("select jsonb_array_length(causes_history) from data_builds").fetchone()[0]
+        == 1
+    )
+
+
+@pg
+def test_pg_has_no_command_that_deletes_snapshots(pgconn, tmp_path):
     for day, manifest in (("2026-10-06", "a1" * 32), ("2026-10-07", "b2" * 32)):
         load_db.main(
             [
                 "load",
                 "--causes",
                 "sample",
+                "--expect-rows",
+                "1",
                 "--data-dir",
-                str(
-                    make_data_dir(
-                        tmp_path,
-                        day,
-                        manifest=manifest,
-                        recalls=[
-                            recall("24V001000", snapshot_date=day),
-                            recall("23V002000", snapshot_date=day),
-                        ],
-                    )
-                ),
+                str(make_data_dir(tmp_path, day, manifest=manifest)),
             ]
         )
-    d1, d2 = date(2026, 10, 6), date(2026, 10, 7)
-    load_db.main(["prune", "--keep", "1"])  # --apply 없이는 지우지 않는다
-    assert counts(pgconn, "recalls", d1) == 2
-    load_db.main(["prune", "--keep", "1", "--apply"])
-    assert counts(pgconn, "recalls", d1) == 0 and counts(pgconn, "recalls", d2) == 2
-    pruned = dict(
-        pgconn.execute("select snapshot_date, pruned_at is not null from data_builds").fetchall()
-    )
-    assert pruned == {d1: True, d2: False}  # data_builds 줄은 남는다
-    with pytest.raises(SystemExit):
-        load_db.main(["prune", "--keep", "0"])
+    with pytest.raises(
+        SystemExit
+    ):  # prune 명령은 없다 — 지운 데이터를 되살릴 보관소가 생기기 전에는 두지 않는다
+        load_db.main(["prune", "--keep", "1", "--apply"])
+    assert (
+        pgconn.execute("select count(*) from recalls").fetchone()[0] == 4
+    )  # 두 스냅샷이 그대로 남는다
+    assert "pruned_at" not in [
+        r[0]
+        for r in pgconn.execute(
+            "select column_name from information_schema.columns where table_name = 'data_builds'"
+        ).fetchall()
+    ]
 
 
 @pg
 def test_pg_rls_blocks_api_roles_even_through_views(pgconn, tmp_path):
-    load_db.main(["load", "--causes", "sample", "--data-dir", str(make_data_dir(tmp_path))])
+    load_db.main(
+        [
+            "load",
+            "--causes",
+            "sample",
+            "--expect-rows",
+            "1",
+            "--data-dir",
+            str(make_data_dir(tmp_path)),
+        ]
+    )
     pgconn.execute("drop role if exists api_user")
     pgconn.execute("create role api_user nologin")
     pgconn.execute("grant usage on schema public to api_user")
@@ -486,14 +551,24 @@ def test_pg_failed_load_rolls_back_everything(pgconn, tmp_path):
     import psycopg
 
     load_db.main(
-        ["load", "--causes", "sample", "--data-dir", str(make_data_dir(tmp_path, "2026-10-06"))]
+        [
+            "load",
+            "--causes",
+            "sample",
+            "--expect-rows",
+            "1",
+            "--data-dir",
+            str(make_data_dir(tmp_path, "2026-10-06")),
+        ]
     )
     # 둘째 스냅샷의 마지막 테이블(causes)에서 제약 위반이 나게 한다 — 앞서 올린 recalls·eval·data_builds도 함께 되돌아가야 한다
     broken = make_data_dir(
         tmp_path, "2026-10-07", causes=[cause("24V001", cause_status="bogus")], manifest="b2" * 32
     )
     with pytest.raises(psycopg.errors.CheckViolation):
-        load_db.main(["load", "--causes", "sample", "--data-dir", str(broken)])
+        load_db.main(
+            ["load", "--causes", "sample", "--expect-rows", "1", "--data-dir", str(broken)]
+        )
     d1, d2 = date(2026, 10, 6), date(2026, 10, 7)
     assert pgconn.execute("select snapshot_date from data_builds").fetchall() == [(d1,)]
     assert [counts(pgconn, t, d2) for t in load_db.TABLES] == [0, 0, 0]

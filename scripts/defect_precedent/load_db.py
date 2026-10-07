@@ -1,22 +1,27 @@
 """결함 선례 데이터를 Supabase(Postgres)에 올린다. DEC-034.
 
 사용법 (연결 문자열은 .env의 DATABASE_URL — 이 스크립트는 값을 출력하지 않는다):
-    uv run python -m scripts.defect_precedent.load_db check --causes sample
+    uv run python -m scripts.defect_precedent.load_db check --causes sample --expect-rows 300
     uv run --env-file .env python -m scripts.defect_precedent.load_db schema
-    uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes sample
-    uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes full --expect-rows 12000
-    uv run --env-file .env python -m scripts.defect_precedent.load_db prune --keep 2 [--apply]
+    uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes sample --expect-rows 300
+    uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes full --expect-rows 11737
 
-- `check`는 DB 없이 파일만 검증한다 (해시·날짜·겹침·정답 리콜·캠페인 연결).
-- 스냅샷별로 보관한다: 줄마다 snapshot_date를 두고 새 스냅샷을 올려도 지난 스냅샷은 그대로 둔다. 같은 스냅샷을 다시 올리면
-  그 스냅샷의 줄만 통째로 바꾼다. 같은 날짜인데 원본·카드·시험지 해시가 다르면 덮어쓰지 않고 중단한다.
-- `--causes`는 반드시 적는다 (파일을 자동으로 고르지 않는다). `sample`은 causes_sample.jsonl, `full`은 causes.jsonl이고
-  `full`은 `--expect-rows N`(사람이 아는 기대 건수)이 같아야 올린다 — 중간까지만 만들어진 파일을 막는다.
-- 올리기 전에 `build.json`의 sha256과 파일을 대조하고, 어느 원인 파일을 올렸는지(종류·이름·sha256·건수)를 data_builds에 남긴다.
+- `check`는 DB 없이 파일만 검증한다 (해시·날짜·겹침·정답 리콜·캠페인 연결·원인 파일 줄 수).
+- 스냅샷별로 보관한다: 줄마다 snapshot_date를 두고 새 스냅샷을 올려도 지난 스냅샷은 그대로 둔다.
+  같은 스냅샷을 같은 파일로 다시 올리면 그 스냅샷의 줄만 통째로 바꾼다.
+  같은 날짜인데 원본·카드·시험지 해시가 다르면 덮어쓰지 않고 중단한다.
+  같은 날짜인데 원인 파일(종류·해시)이 다르면 기본은 중단한다 — 이전 근거를 되살릴 수 없게 되기 때문이다.
+  표본을 전체본으로 바꾸는 것처럼 의도한 교체는 `--replace-causes`를 붙이고, 이전 파일의 종류·이름·해시·건수는
+  data_builds.causes_history에 남는다.
+- `--causes`와 `--expect-rows`는 반드시 적는다 (파일을 자동으로 고르지 않는다). `sample`은 causes_sample.jsonl,
+  `full`은 causes.jsonl이다. 기대 건수(사람이 아는 값)가 파일 줄 수와 같아야 올린다 — 중간까지만 만들어진 파일을 막는다.
+- 올리기 전에 `build.json`의 sha256과 파일을 대조하고, 어느 원인 파일을 올렸는지(종류·이름·sha256·건수·기대 건수)를
+  data_builds에 남긴다.
 - 직전 스냅샷과 비교해 새로 생김·바뀜(칸별)·사라짐·그대로 건수를 계산해 data_builds.change_summary에 남긴다.
 - 날짜는 칸마다 정해진 형식(YYYYMMDD, snapshot_date는 YYYY-MM-DD)만 받는다. 틀리면 몇 번째 줄인지 알려 주고 중단한다.
 - 빈 문자열은 NULL로 바꾸지 않고 원본 그대로 올린다.
-- `prune`은 오래된 스냅샷의 데이터 줄만 지우고 data_builds 줄은 pruned_at 표시와 함께 남긴다. `--apply` 없이는 지우지 않는다.
+- 오래된 스냅샷을 지우는 명령(prune)은 두지 않는다. 지운 데이터를 되살릴 보관소(아카이브)가 없으면 NHTSA가 옛 파일을
+  다시 주지 않아 근거를 잃는다 — 보관소와 복원 절차가 생길 때 추가한다 (DEC-034 미결).
 - 오류가 나면 트랜잭션 전체를 되돌린다.
 """
 
@@ -27,7 +32,7 @@ import os
 import re
 import sys
 from collections import Counter
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -78,7 +83,7 @@ TABLES = {
 }
 BUILD_COLS = [
     "snapshot_date", "raw_manifest_sha256", "recalls_sha256", "eval_sha256", "causes_kind", "causes_file",
-    "causes_sha256", "causes_rows", "causes_expected_rows", "change_summary",
+    "causes_sha256", "causes_rows", "causes_expected_rows", "change_summary", "causes_history",
 ]  # fmt: skip
 
 
@@ -128,12 +133,10 @@ def _seal(rows: list[dict], table: str, snapshot: date) -> list[dict]:
 
 
 def causes_source(data_dir: Path, kind: str, expect_rows: int | None) -> Path:
-    if kind == "full" and expect_rows is None:
+    if expect_rows is None:
         sys.exit(
-            "--causes full은 --expect-rows N(기대 건수)이 필요하다 — 중간까지만 만들어진 파일을 막기 위해서다"
+            "--expect-rows N(기대 건수)이 필요하다 — 중간까지만 만들어진 원인 파일을 막기 위해서다"
         )
-    if kind == "sample" and expect_rows is not None:
-        sys.exit("--expect-rows는 --causes full에서만 쓴다")
     path = data_dir / CAUSES_FILES[kind]
     if not path.exists():
         sys.exit(f"{path.name}이 없다 ({data_dir})")
@@ -208,7 +211,7 @@ def load_files(data_dir: Path, causes_kind: str, expect_rows: int | None = None)
         )
     if len({c["campaign"] for c in causes}) != len(causes):
         sys.exit("causes에 campaign이 겹치는 줄이 있다")
-    if expect_rows is not None and len(causes) != expect_rows:
+    if len(causes) != expect_rows:
         sys.exit(
             f"{causes_file.name}이 {len(causes):,}줄이다 — 기대 건수 {expect_rows:,}줄과 다르다 "
             "(중간까지만 만들어진 파일인지 확인한다)"
@@ -281,7 +284,7 @@ def upsert_build_sql() -> str:
     updates = ", ".join(f"{c} = excluded.{c}" for c in BUILD_COLS if c != "snapshot_date")
     return (
         f"insert into data_builds ({names}) values ({marks}) "
-        f"on conflict (snapshot_date) do update set {updates}, loaded_at = now(), pruned_at = null"
+        f"on conflict (snapshot_date) do update set {updates}, loaded_at = now()"
     )
 
 
@@ -293,7 +296,10 @@ def insert_sql(table: str) -> str:
 def _params(row: dict) -> dict:
     from psycopg.types.json import Jsonb
 
-    return {k: Jsonb(v) if k in ("pdfs", "change_summary") else v for k, v in row.items()}
+    return {
+        k: Jsonb(v) if k in ("pdfs", "change_summary", "causes_history") else v
+        for k, v in row.items()
+    }
 
 
 def connect():
@@ -336,17 +342,56 @@ def cmd_load(args) -> None:
     with connect() as conn:  # 블록이 정상 종료하면 commit, 예외(SystemExit 포함)면 rollback
         with conn.cursor(row_factory=dict_row) as cur:
             same = cur.execute(
-                "select raw_manifest_sha256, recalls_sha256, eval_sha256 from data_builds where snapshot_date = %s",
+                "select raw_manifest_sha256, recalls_sha256, eval_sha256, causes_kind, causes_file, causes_sha256, "
+                "causes_rows, causes_expected_rows, loaded_at, causes_history from data_builds where snapshot_date = %s",
                 (snapshot,),
             ).fetchone()
-            hashes = (build["raw_manifest_sha256"], build["recalls_sha256"], build["eval_sha256"])
-            if same and tuple(same.values()) != hashes:
-                sys.exit(
-                    f"스냅샷 {snapshot}이 이미 올라가 있는데 원본·카드·시험지 해시가 다르다 — "
-                    "같은 날짜의 다른 빌드를 덮어쓰지 않는다 (날짜가 다르게 새로 받거나 prune으로 지운 뒤 올린다)"
+            history: list = []
+            if same:
+                hashes = (
+                    build["raw_manifest_sha256"],
+                    build["recalls_sha256"],
+                    build["eval_sha256"],
                 )
+                if (
+                    same["raw_manifest_sha256"],
+                    same["recalls_sha256"],
+                    same["eval_sha256"],
+                ) != hashes:
+                    sys.exit(
+                        f"스냅샷 {snapshot}이 이미 올라가 있는데 원본·카드·시험지 해시가 다르다 — "
+                        "같은 날짜의 다른 빌드를 덮어쓰지 않는다 (날짜가 다르게 새로 받아 올린다)"
+                    )
+                history = list(same["causes_history"])
+                if (same["causes_kind"], same["causes_sha256"]) != (
+                    build["causes_kind"],
+                    build["causes_sha256"],
+                ):
+                    if not args.replace_causes:
+                        sys.exit(
+                            f"스냅샷 {snapshot}에 이미 {same['causes_kind']} 원인 파일({same['causes_sha256'][:12]}…)이 올라가 있는데 "
+                            f"{build['causes_kind']}({build['causes_sha256'][:12]}…)로 바꾸려 한다 — 그 날짜의 원인 데이터를 덮어쓰면 "
+                            "이전 근거를 되살릴 수 없다. 의도한 교체면 --replace-causes를 붙인다 "
+                            "(이전 파일의 종류·이름·해시·건수는 data_builds.causes_history에 남는다)"
+                        )
+                    history.append(
+                        {
+                            **{
+                                k: same[k]
+                                for k in (
+                                    "causes_kind",
+                                    "causes_file",
+                                    "causes_sha256",
+                                    "causes_rows",
+                                    "causes_expected_rows",
+                                )
+                            },
+                            "loaded_at": same["loaded_at"].isoformat(),
+                            "replaced_at": datetime.now(UTC).isoformat(),
+                        }
+                    )
             prev_date = cur.execute(
-                "select max(snapshot_date) as d from data_builds where snapshot_date < %s and pruned_at is null",
+                "select max(snapshot_date) as d from data_builds where snapshot_date < %s",
                 (snapshot,),
             ).fetchone()["d"]
             prev: dict[str, dict] = {}
@@ -360,7 +405,10 @@ def cmd_load(args) -> None:
                     prev[table] = {r[spec["key"]]: r for r in rows}
             summary = summarize_changes(prev_date, prev, data)
 
-            cur.execute(upsert_build_sql(), _params({**build, "change_summary": summary}))
+            cur.execute(
+                upsert_build_sql(),
+                _params({**build, "change_summary": summary, "causes_history": history}),
+            )
             for table in TABLES:
                 rows = data[table]
                 cur.execute(
@@ -380,41 +428,6 @@ def cmd_load(args) -> None:
     print("\n".join(describe_changes(summary)))
 
 
-def cmd_prune(args) -> None:
-    if args.keep < 1:
-        sys.exit("--keep은 1 이상이다 (최신 스냅샷은 남긴다)")
-    with connect() as conn:
-        snaps = [
-            r[0]
-            for r in conn.execute(
-                "select snapshot_date from data_builds where pruned_at is null order by snapshot_date desc"
-            ).fetchall()
-        ]
-        old = snaps[args.keep :]
-        if not old:
-            print(f"데이터가 남아 있는 스냅샷 {len(snaps)}개 — 지울 것이 없다 (--keep {args.keep})")
-            return
-        for snap in old:
-            counts = {
-                t: conn.execute(
-                    f"select count(*) from {t} where snapshot_date = %s", (snap,)
-                ).fetchone()[0]
-                for t in TABLES
-            }
-            print(f"{snap}: " + " · ".join(f"{t} {n:,}줄" for t, n in counts.items()))
-        if not args.apply:
-            print(
-                f"위 스냅샷 {len(old)}개의 데이터 줄을 지우고 data_builds에는 pruned_at을 표시한다 — 실행하려면 --apply"
-            )
-            return
-        for table in TABLES:
-            conn.execute(f"delete from {table} where snapshot_date = any(%s)", (old,))
-        conn.execute(
-            "update data_builds set pruned_at = now() where snapshot_date = any(%s)", (old,)
-        )
-    print(f"스냅샷 {len(old)}개 정리 완료 — data_builds 줄은 pruned_at 표시와 함께 남아 있다")
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="load_db", description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -426,25 +439,29 @@ def build_parser() -> argparse.ArgumentParser:
             choices=sorted(CAUSES_FILES),
             help="올릴 원인 파일 종류 (자동으로 고르지 않는다)",
         )
-        p.add_argument("--expect-rows", type=int, help="--causes full일 때 기대 건수")
+        p.add_argument(
+            "--expect-rows",
+            type=int,
+            required=True,
+            help="원인 파일의 기대 줄 수 (파일 줄 수와 같아야 올린다)",
+        )
         p.add_argument("--data-dir", help=f"파일 폴더 (기본 {PROCESSED.relative_to(REPO_ROOT)})")
 
     add_source_args(sub.add_parser("check", help="DB 없이 파일만 검증"))
     sub.add_parser("schema", help="schema.sql 적용")
-    add_source_args(sub.add_parser("load", help="스냅샷 1개를 올린다"))
-    prune = sub.add_parser("prune", help="오래된 스냅샷의 데이터 줄을 지운다")
-    prune.add_argument("--keep", type=int, required=True, help="남길 스냅샷 개수 (최신부터)")
-    prune.add_argument(
-        "--apply", action="store_true", help="실제로 지운다 (없으면 목록만 보여 준다)"
+    load = sub.add_parser("load", help="스냅샷 1개를 올린다")
+    add_source_args(load)
+    load.add_argument(
+        "--replace-causes",
+        action="store_true",
+        help="같은 날짜의 다른 원인 파일로 의도해서 교체한다 (이전 파일 정보는 causes_history에 남는다)",
     )
     return parser
 
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    {"check": cmd_check, "schema": cmd_schema, "load": cmd_load, "prune": cmd_prune}[args.command](
-        args
-    )
+    {"check": cmd_check, "schema": cmd_schema, "load": cmd_load}[args.command](args)
 
 
 if __name__ == "__main__":

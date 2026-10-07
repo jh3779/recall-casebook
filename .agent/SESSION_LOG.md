@@ -63,3 +63,4 @@
 - 2026-10-07: PR #22 병합(d1019a5, DEC-032), HANDOFF에 #22 후속(할 일 25 갱신·26 추가)·DEC-032 인용 정정
 - 2026-10-07: Supabase 적재 준비 — schema.sql·load_db.py·테스트, date 타입·campaign6 생성 칸(DEC-034). 로컬 Postgres 17 컨테이너에서 스키마 2회·적재 2회·질의 검증 (실제 Supabase 미적재)
 - 2026-10-07: PR #30 Codex 리뷰 반영 — 스냅샷별 보관(DEC-034 개정: 복합 기본키·row_sha256·변경 요약·prune), 원인 파일 명시 선택(--causes)·기대 건수, 날짜 형식 칸별 분리, 로컬 Postgres에서 스냅샷 2개 연속 적재 검증
+- 2026-10-07: PR #30 Codex 재리뷰(7deffafc) 반영 — prune 삭제(아카이브 전까지), 표본도 기대 건수 필수, 같은 날짜 다른 원인 파일은 --replace-causes + causes_history, CI에 Postgres 17 서비스(DB 테스트 항상 실행)
