@@ -38,8 +38,9 @@ PR #25를 `6f2624a`로 병합(`0801f51`)한 뒤 PR #23에 main을 합치고 리�
 (2026-10-07, `git log`·`gh pr list`·`uv run pytest`(102 passed)·`ruff check`로 확인)
 - main = `3e35593`. 이 체크포인트는 브랜치 `docs/checkpoint-after-handoff-merge`에 커밋(push·PR 전).
 - 기준선 재현 확인: `bm25_baseline --baseline` → Hit@10 0.510 / 0.503, 원본·카드·시험지 sha256 일치(2026-10-07).
-- 열린 PR: #22(프런트엔드 규칙·감지형 CI, 초안) 하나. 근거 결정 DEC-029는 닫힌 #17 브랜치(`docs/sales-support-design-prd-erd`, `d2b2ca9`의 `.agent/DECISIONS.md`)에만 있어 **그 브랜치를 지우면 근거가 사라진다(삭제 금지)** — C 파트가 화면 방식을 정할 때까지 보류(기한 10/10은 준비 기간 끝 기준 **제안** — C 파트와 확인 필요): React면 DEC-029 내용을 main의 `.agent/DECISIONS.md`(#22)로 옮긴 뒤 #17 브랜치를 정리하고, 아니면 #22를 닫는다.
-- 로컬에 다른 세션이 만든 worktree가 남아 있다: `wt-b`(브랜치 `docs/sales-support-design-prd-erd`, 닫힌 #17)·`wt-f`(`docs/add-finance-domain`, 닫힌 #21)·`wt-fe`(`chore/add-frontend-ci-rules`, **열린 #22 — 유지**)는 다른 세션의 임시 폴더(`/private/tmp/…/scratchpad/`), `LG_CNS_RAG_main-research`(`research/sales-support-baseline`, 닫힌 #20)는 홈 아래. 원격 브랜치 삭제 금지는 **#17(DEC-029 보관)과 #22에만** 적용한다. #20·#21 브랜치·worktree는 보존 이유가 없어 사용자 확인 뒤 정리한다.
+- **PR #22 병합(2026-10-07, main `d1019a5`)**: 프런트엔드 규칙·감지형 CI. 근거는 새 주제 기준 [[DEC-032]](화면 React `frontend/`·npm, Node 버전·프런트 초기 설정 우지훈, 화면 구현 C 박성호, 프런트 CI 비필수, 프런트 환경변수 키 금지 — AGENTS.md 4·7절)로 바꿨다. 이전 주제의 DEC-029는 옮기지 않았으므로 #17 브랜치를 근거 보관용으로 남길 필요가 없다. 지금 열린 PR은 #27(환경셋팅·git 문서)·#28(이 인계 문서).
+- 로컬에 다른 세션이 만든 worktree가 남아 있다: `wt-b`(브랜치 `docs/sales-support-design-prd-erd`, 닫힌 #17)·`wt-f`(`docs/add-finance-domain`, 닫힌 #21)·`wt-fe`(`chore/add-frontend-ci-rules`, 병합된 #22)는 다른 세션의 임시 폴더(`/private/tmp/…/scratchpad/`), `LG_CNS_RAG_main-research`(`research/sales-support-baseline`, 닫힌 #20)는 홈 아래. DEC-032로 #17 보존 이유도 없어져 네 worktree와 닫힌·병합된 원격 브랜치 모두 사용자 확인 뒤 정리할 수 있다(할 일 25).
+- 저장소 루트에 추적되지 않은 `data.zip`(약 112MB, 2026-10-07 11:18 생성)이 있다 — 에이전트가 만든 것이 아니어서 손대지 않음. 커밋 금지(원본 데이터), 출처는 사용자 확인.
 - **로컬 원본 데이터(gitignore)**: `data/raw/nhtsa/`가 `baseline_2026-10-06.json`과 sha256이 같은 **유일한 사본**(NHTSA는 옛 스냅샷을 다시 주지 않음 — 팀 공용 보관 위치를 정해 옮겨야 함, 할 일 13번). `data/raw/rclrpt/`에 573 PDF(표본 판본 582개), `data/processed/defect/`에 카드·시험지·build.json·표본 판독 결과.
 
 ## Open Issues
@@ -69,7 +70,8 @@ PR #25를 `6f2624a`로 병합(`0801f51`)한 뒤 PR #23에 main을 합치고 리�
   22. **결함 문장 → 부품 트리(`COMPNAME`) 연결 규칙** (PR #23 Codex `6e8a21c5`·`c5eac97d` 선택 개선): 영어 결함 문장을 부품 트리 노드에 잇는 규칙과 연결 실패 시 처리(범위 좁히기 생략 등)를 B 파트 구현 전에 정한다.
   23. **기획서 정정 4곳** (2026-10-07 학습 중 발견, 사용자 확인 뒤): `docs/기획_결함선례.md:219` 미결 표의 "팀 주제 채택 여부"(이미 채택됨) · `:225` "평가 질문 출처 규칙(AGENTS.md 5-2, 온보딩 기준 3세트)"(PR #23에서 5-2를 다시 씀) · `:165` 20V476의 "결함 설명에 …caused by…"(실제로는 573 보고서의 "Description of the Noncompliance" 칸, 원본 PDF로 확인) · `:146` "탐색 다운로드는 보존하지 않아 다시 확인할 수 없다"(실제로는 `scratchpad/nhtsa/`에 남아 있으나 임시 폴더라 사라질 수 있음). 함께: 엔진 2가 원인 칸 외에 어느 칸까지 읽을지(20V476처럼 원인이 다른 칸에 있는 경우) → B 설계 항목.
   24. **시점 평가 질문 후보에 신고 문서 포함 여부** (PR #26 리뷰 `ad11ed6` 🟢2): 할 일 18번 확인 순서(①개시 당시 문서 ②현재판 요약 + 공개일)에 기획 `:275`의 세 번째 후보 "기준일 이전 접수일이 찍힌 신고 문서"를 ③으로 넣을지, 뺀다면 이유를 적는다.
-  25. **브랜치 정리 범위** (PR #26 Codex `ad11ed68` 선택): 위 Current State대로 반영함 — #20·#21 원격 브랜치·worktree 정리는 사용자 확인 대기.
+  25. **브랜치 정리 범위** (PR #26 Codex `ad11ed68` 선택, PR #22 병합으로 갱신): #17·#20·#21 원격 브랜치와 worktree 4개(`wt-b`·`wt-f`·`wt-fe`·`LG_CNS_RAG_main-research`)는 더 보존할 이유가 없다 — 사용자 확인 뒤 정리.
+  26. **`frontend/.nvmrc` 고정과 프런트 초기 설정 — 담당 우지훈** ([[DEC-032]]): Node 버전을 정해 `frontend/.nvmrc`로 올리고, 빌드 도구(Vite 등)·TypeScript 여부를 C 파트(박성호)와 정한다. 화면과 RAG 사이 전달 방식(결과 파일 / 서버 API)도 B·C가 정한다(DEC-032 미결). API 호출 상한도 미결.
 - 역할 확정(이슈 #24): A 박예원 · B 우지훈 · C 박성호(발표) · D 이승노.
 - **주의(재발 방지)**: `.gitignore`에 `docs/handbook/*`가 없는 브랜치에서 `uv run ruff format .` 금지. 결과 코멘트는 수정하지 말고 새로 올린다.
 
@@ -78,6 +80,7 @@ PR #25를 `6f2624a`로 병합(`0801f51`)한 뒤 PR #23에 main을 합치고 리�
 - [[DEC-010]] 주제 전환(온보딩 체크리스트 RAG) — Superseded by DEC-030
 - [[DEC-020]]·[[DEC-021]]·[[DEC-022]] 온보딩 도메인·평가 규칙 — Superseded by DEC-030 / [[DEC-024]](세션 분리)·[[DEC-013]]·[[DEC-016]](비식별)은 원칙으로 유지
 - [[DEC-030]] 주제를 결함 선례 찾기 도우미로 전환 (Accepted 2026-10-06, PR #23)
+- [[DEC-032]] 결함 선례 화면은 React(`frontend/`)·npm, Node 고정은 우지훈 (Accepted 2026-10-07, PR #22)
 - [[DEC-031]] 수치는 저장소 스크립트·테스트로 재현한 뒤에만 확정값으로 적는다 (이번 세션 반복 실수에서 나온 작업 규칙, 사용자 확인 전)
 
 ## Failed Attempts
