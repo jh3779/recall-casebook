@@ -505,34 +505,101 @@ def test_maker_alias_representative_avoids_period_typo():
     assert abbr["UTILITY TRAILER MFG. CO."]["review"] == ""
 
 
+def _row(name, review="", required=""):
+    return {"raw_maker": name, "review": review, "review_required": required}
+
+
+# 스크립트가 만든 초안: A는 볼 필요 없음, B·C·D는 검토가 필요한 줄
+DRAFT = [
+    _row("A"),
+    _row("B", "확인 필요", "필요"),
+    _row("C", "확인 필요", "필요"),
+    _row("D", "확인 필요", "필요"),
+]
+
+
 def test_maker_alias_unreviewed_blocks_until_every_row_is_confirmed():
     from scripts.defect_precedent.maker_aliases import unreviewed
 
-    def row(name, review, required=""):
-        return {"raw_maker": name, "review": review, "review_required": required}
-
     rows = [
-        row("A", ""),
-        row("B", "확인 완료", "필요"),
-        row("C", "보류", "필요"),
-        row("D", "확인 필요", "필요"),
+        _row("A"),
+        _row("B", "확인 완료", "필요"),
+        _row("C", "보류", "필요"),
+        _row("D", "확인 필요", "필요"),
     ]
-    assert [r["raw_maker"] for r in unreviewed(rows)] == ["C", "D"]
-    assert unreviewed(rows[:2]) == []
+    assert [r["raw_maker"] for r in unreviewed(rows, DRAFT)] == ["C", "D"]
+    done = [
+        _row("A"),
+        _row("B", "확인 완료", "필요"),
+        _row("C", "확인 완료", "필요"),
+        _row("D", "확인 완료", "필요"),
+    ]
+    assert unreviewed(done, DRAFT) == []  # 모든 검토 대상이 확인 완료면 비어 있다
 
 
 def test_maker_alias_unreviewed_does_not_let_blank_or_typo_pass_as_confirmed():
     from scripts.defect_precedent.maker_aliases import unreviewed
 
-    # 검토가 필요했던 줄(review_required = 필요)의 review를 지우면 통과하지 못하고 미확인으로 남는다
-    blanked = {"raw_maker": "E", "review": "", "review_required": "필요"}
-    assert unreviewed([blanked]) == [blanked]
+    # 검토가 필요했던 줄의 review를 지우면 통과하지 못하고 미확인으로 남는다
+    blanked = [
+        _row("A"),
+        _row("B", "", "필요"),
+        _row("C", "확인 완료", "필요"),
+        _row("D", "확인 완료", "필요"),
+    ]
+    assert [r["raw_maker"] for r in unreviewed(blanked, DRAFT)] == ["B"]
     # 띄어쓰기 오타 `확인완료`는 확인한 것으로 보지 않고 오류로 멈춘다
+    typo = [
+        _row("A"),
+        _row("B", "확인완료", "필요"),
+        _row("C", "확인 완료", "필요"),
+        _row("D", "확인 완료", "필요"),
+    ]
     with pytest.raises(ValueError, match="알 수 없는 검토 상태"):
-        unreviewed([{"raw_maker": "F", "review": "확인완료", "review_required": "필요"}])
-    # review_required는 스크립트가 쓰는 고정 칸 — 고쳐졌으면 멈춘다
-    with pytest.raises(ValueError, match="review_required"):
-        unreviewed([{"raw_maker": "G", "review": "확인 완료", "review_required": "불필요"}])
+        unreviewed(typo, DRAFT)
+
+
+def test_maker_alias_unreviewed_compares_with_the_draft_so_deleted_rows_and_columns_cannot_pass():
+    from scripts.defect_precedent.maker_aliases import unreviewed
+
+    full = [
+        _row("A"),
+        _row("B", "확인 완료", "필요"),
+        _row("C", "확인 완료", "필요"),
+        _row("D", "확인 완료", "필요"),
+    ]
+    # 검토 대상 줄을 통째로 지움 — 남은 줄이 모두 완료여도 통과하지 못한다
+    with pytest.raises(ValueError, match="사라진 줄 1개"):
+        unreviewed([r for r in full if r["raw_maker"] != "C"], DRAFT)
+    # review와 review_required를 함께 지움 — 초안의 review_required와 달라져 멈춘다
+    both_cleared = [
+        _row("A"),
+        _row("B", "확인 완료", "필요"),
+        _row("C", "", ""),
+        _row("D", "확인 완료", "필요"),
+    ]
+    with pytest.raises(ValueError, match="review_required가 초안과 다르다"):
+        unreviewed(both_cleared, DRAFT)
+    # review_required를 엉뚱한 값으로 고침
+    with pytest.raises(ValueError, match="review_required가 초안과 다르다"):
+        unreviewed([*full[:3], _row("D", "확인 완료", "불필요")], DRAFT)
+    # 줄을 새로 넣거나 같은 줄을 복사해 붙임
+    with pytest.raises(ValueError, match="늘어난 줄 1개"):
+        unreviewed([*full, _row("E")], DRAFT)
+    with pytest.raises(ValueError, match="겹치는 줄"):
+        unreviewed([*full, _row("B", "확인 완료", "필요")], DRAFT)
+
+
+def test_maker_alias_committed_draft_is_a_valid_input_for_unreviewed():
+    from scripts.defect_precedent.maker_aliases import OUT, read_table, unreviewed
+
+    draft = read_table(OUT)
+    pending = unreviewed(draft, draft)  # 초안 그대로면 검토 대상 27줄이 모두 미확인이다
+    assert pending and all(r["review_required"] == "필요" for r in pending)
+    confirmed = [
+        {**r, "review": "확인 완료"} if r["review_required"] == "필요" else r for r in draft
+    ]
+    assert unreviewed(confirmed, draft) == []  # 검토 대상을 모두 확인 완료로 바꾸면 통과한다
 
 
 def test_maker_alias_every_pending_row_in_the_draft_is_marked_required():

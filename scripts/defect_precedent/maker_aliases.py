@@ -20,8 +20,9 @@
 `review`는 확인 상태다: `확인 필요`(검토 전) · `확인 완료` · `보류`(판단 못 함) · 빈칸(사람이 볼 필요 없음).
 `review_note`에 이유(무엇을 확인할지)와 사람의 메모를 적는다. `review_required`는 스크립트가 쓰는 고정 칸이다:
 검토가 필요했던 줄은 `필요`라고 적혀 있어서 사람이 `review`를 지우거나 오타를 내도 "확인했다"로 통과하지 못한다.
-카드에 적용하는 코드는 `unreviewed()`가 비어 있을 때만 진행한다 — 검토가 필요했던 줄은 `review`가 정확히
-`확인 완료`일 때만 통과하고, `확인 필요`·`보류`가 남거나 알 수 없는 값(오타)이 있으면 중단한다.
+카드에 적용하는 코드는 `unreviewed(확인본, 초안)`이 비어 있을 때만 진행한다 — 초안과 대조해서 줄이 사라지거나 늘거나
+`review_required`가 바뀌면 중단하고, 검토가 필요했던 줄은 `review`가 정확히 `확인 완료`일 때만 통과하며,
+`확인 필요`·`보류`가 남거나 알 수 없는 값(오타)이 있으면 중단한다.
 
 이 표는 아직 recalls.jsonl의 maker에 적용하지 않는다. 적용하면 카드 sha256이 바뀌어 기준 파일 재현이 깨지므로
 사람 확인 뒤 새 기준(freeze)과 함께 적용한다.
@@ -173,24 +174,45 @@ def build_table(counts: Counter) -> list[dict]:
     return rows
 
 
-def unreviewed(rows: list[dict]) -> list[dict]:
+def read_table(path: Path) -> list[dict]:
+    """대응표 CSV를 읽는다 (엑셀용 UTF-8 BOM)."""
+    with path.open(encoding="utf-8-sig", newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def unreviewed(rows: list[dict], draft: list[dict]) -> list[dict]:
     """확인이 끝나지 않은 줄. 카드에 적용하기 전에 비어 있어야 한다.
 
-    - `확인 필요`·`보류`는 끝나지 않은 줄이다.
-    - 검토가 필요했던 줄(`review_required = 필요`)은 `review`가 정확히 `확인 완료`일 때만 끝난 것이다 — 값이 지워져도 통과하지 못한다.
+    사람이 고친 확인본(rows)만 믿지 않고 스크립트가 만든 초안(draft)과 대조한다:
+    - 줄이 사라졌거나 늘었거나 같은 `raw_maker`가 겹치면 오류로 멈춘다 (검토 대상 줄을 통째로 지운 경우를 잡는다).
+    - `review_required`가 초안과 다르면 오류로 멈춘다 (`review`와 `review_required`를 함께 지운 경우를 잡는다).
     - 알 수 없는 상태값(오타 `확인완료` 등)은 짐작하지 않고 오류로 멈춘다.
+    - `확인 필요`·`보류`는 끝나지 않은 줄이고, 검토가 필요했던 줄(`review_required = 필요`)은 `review`가 정확히
+      `확인 완료`일 때만 끝난 것이다.
     """
+    names = Counter(r["raw_maker"] for r in rows)
+    duplicated = sorted(n for n, c in names.items() if c > 1)
+    if duplicated:
+        raise ValueError(f"raw_maker가 겹치는 줄이 있다 {duplicated[:5]} (총 {len(duplicated)}개)")
+    original = {r["raw_maker"]: r for r in draft}
+    missing, extra = sorted(set(original) - set(names)), sorted(set(names) - set(original))
+    if missing or extra:
+        raise ValueError(
+            f"확인본의 줄이 초안과 다르다 — 사라진 줄 {len(missing)}개 {missing[:5]}, 늘어난 줄 {len(extra)}개 {extra[:5]}"
+        )
+    changed = sorted(
+        r["raw_maker"]
+        for r in rows
+        if r["review_required"] != original[r["raw_maker"]]["review_required"]
+    )
+    if changed:
+        raise ValueError(
+            f"review_required가 초안과 다르다 {changed[:5]} (총 {len(changed)}줄) — 이 칸은 스크립트가 쓰는 고정 칸이다"
+        )
     unknown = sorted({r["review"] for r in rows if r["review"] not in REVIEW_STATES})
     if unknown:
         raise ValueError(
             f"알 수 없는 검토 상태 {unknown} — {', '.join(repr(s) for s in REVIEW_STATES)}만 쓴다"
-        )
-    bad = sorted(
-        {r["review_required"] for r in rows if r["review_required"] not in ("", REVIEW_REQUIRED)}
-    )
-    if bad:
-        raise ValueError(
-            f"review_required 칸이 고쳐졌다 {bad} — 이 칸은 스크립트가 쓰는 고정 칸이다"
         )
     return [
         r
