@@ -2,12 +2,13 @@
  "draw_sha256": "c1d5fbfc0bed1f696151b5ebb93725b2776b94ba3f103461f58f83648b22263b",
  "draw_seed": 20261008,
  "query_source": "ODI Resume",
+ "basis": "개시 문서 기준 근사 시점 평가 - PDF 수정일이 개시일 + 3일 이내, 질문 본문에 개시일보다 늦은 날짜 없음 (DEC-037 ⑥). 공개 시점의 증명은 아니다",
  "counts": {
   "pilot": 5,
   "main": 45,
   "check_passed": 50,
   "check_failed": 0,
-  "replacements": 35
+  "replacements": 41
  },
  "pilot": [
   {
@@ -23,21 +24,6 @@
    "question": "ODI has received a total of 9 reports from consumers alleging steering wheel clock spring/steering column control module (SCCM) failures in 2012 Volkswagen Passat and CC models. The SCCM is a module within the steering column that incorporates a spiral conductor (a ribbon cable) to electrically connect the steering wheel to the vehicle's electrical system while allowing for the turning of the steering wheel. Typical steering wheel mounted electrical components include the air bag as well as the horn and other electronic controls for such things as the radio. A failure of the SCCM results in a loss of connectivity of the steering wheel electrical devices to the rest of the vehicle, potentially affecting the performance of the driver side air bag, as well as the other steering wheel mounted components. Consumer reports indicate that failures occur during normal driving conditions and are sometimes accompanied by an audible noise from the steering column. When the SCCM fails, an air bag warning light is illuminated on the dash of the vehicle. If a vehicle with a failed SCCM were to be involved in a crash of sufficient severity to require deployment, the driver air bag may not deploy properly. NHTSA is opening this investigation to assess the scope, frequency, and consequence of the alleged defect. The ODI reports cited above can be reviewed at www-odi.nhtsa.dot.gov/owners/SearchSafetyIssues under the following identification (ODI) numbers; 10691906, 10683944, 10682136, 10672715, 10670517, 10669312, 10628549, 10575783, 10552113.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
-   "check": "통과"
-  },
-  {
-   "action_no": "PE21001",
-   "open_date": "20210108",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2021/INOA-PE21001-4908.PDF",
-   "pdf_sha256": "1d880be8ce36f89e3fac3671f224d1b19022cc07c3c6b548b50179bcc81c8df7",
-   "pdf_mod_date": "20210118",
-   "pdf_mod_gap_days": 10,
-   "query_source": "ODI Resume",
-   "status": "확보",
-   "doc_date_opened": "20210108",
-   "question": "ODI has received seven complaints alleging incidents of front roof panel detachment while driving in 2015 Mercedes- Benz C-Class vehicles. The subject panel is the fixed glass panel that extends across the width of the roof forward of the sliding roof panel. The detachments occurred at speeds ranging from 60 to 65 miles per hour. Each of the incident vehicles had received a service replacement of the front roof panel prior to the detachment incident. The replacements were performed to address customer concerns with the appearance of the polycarbonate panel (e.g., crazing or delamination). On average, the detachment incidents occurred approximately 23 months after receiving the service replacements. The subject vehicles for this investigation are all 2015 Mercedes-Benz C-Class vehicles that have received service replacements of the subject front roof panel. The Office of Defects Investigation has opened this Preliminary Evaluation to evaluate the scope, frequency and consequences of the alleged defect. The reports cited above can be reviewed at NHTSA.gov under the following reference numbers: 11352686, 11351629, 11349158, 11341541, 11324100, 11311591, 11222127.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 0,
-   "hyphen_line_breaks": 1,
    "check": "통과"
   },
   {
@@ -71,6 +57,21 @@
    "check": "통과"
   },
   {
+   "action_no": "EA12003",
+   "open_date": "20120423",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2012/INOA-EA12003-5507.PDF",
+   "pdf_sha256": "03f69f59b7289786b546a95f8b77f802e738a840ee4f9979edb2188d449d0969",
+   "pdf_mod_date": "20120425",
+   "pdf_mod_gap_days": 2,
+   "query_source": "ODI Resume",
+   "status": "확보",
+   "doc_date_opened": "20120423",
+   "question": "ODI has received 18 complaints on the subject vehicles from the salt belt states that allege severe corrosion at the rear wheel wells. Additionally, ODI identified 4 similar reports from Ford's response to the investigation. Ford submitted a total of 10 reports to ODI (6 of 10 Ford reports are duplicates of ODI reports). The complaints indicated difficulty or inability to latch the rear seat as some of the complaints reported the entire anchor plate completely detached from the vehicle (rear wheel well). The first report of this condition was received in March 2011 and subsequent reporting frequency indicates a potentially increasing trend over time ODI seeks to evaluate the potential occupant safety risks resulting from structurally degraded seat anchorages. In addition to the subject vehicles, ODI also will collect and review information on MY 2005-2007 Freestar/Monterey vehicles that appear to have a seat design identical to the subject vehicles. To date, ODI is not aware of any similar complaints on the MY 2005-2007 vehicles. ODI also will collect and review information on Freestar/Monterey vehicles used outside of the salt belt states. An Engineering Analysis has been opened to further assess whether a safety defect exists in the subject vehicles. The ODI reports cited above can be reviewed online at www-odi.nhtsa.dot.gov/complaints under the following identification (ODI) numbers: 10454977, 10453826, 10452933, 10450587, 10450559, 10450295, 10446564, 10442809, 10441641, 10441489, 10440616, 10438529, 10436592, 10433928, 10424850, 10420028, 10410491 and 10399896.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 0,
+   "hyphen_line_breaks": 0,
+   "check": "통과"
+  },
+  {
    "action_no": "EA18004",
    "open_date": "20180702",
    "source_url": "https://static.nhtsa.gov/odi/inv/2018/INOA-EA18004-5402.PDF",
@@ -88,16 +89,16 @@
  ],
  "main": [
   {
-   "action_no": "EA12003",
-   "open_date": "20120423",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2012/INOA-EA12003-5507.PDF",
-   "pdf_sha256": "03f69f59b7289786b546a95f8b77f802e738a840ee4f9979edb2188d449d0969",
-   "pdf_mod_date": "20120425",
-   "pdf_mod_gap_days": 2,
+   "action_no": "PE12017",
+   "open_date": "20120619",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2012/INOA-PE12017-2131.PDF",
+   "pdf_sha256": "1c69e4258ca24b67bb600dd1b31acef2e55cf7b00972d22e9b9408d1075bc4e8",
+   "pdf_mod_date": "20120620",
+   "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20120423",
-   "question": "ODI has received 18 complaints on the subject vehicles from the salt belt states that allege severe corrosion at the rear wheel wells. Additionally, ODI identified 4 similar reports from Ford's response to the investigation. Ford submitted a total of 10 reports to ODI (6 of 10 Ford reports are duplicates of ODI reports). The complaints indicated difficulty or inability to latch the rear seat as some of the complaints reported the entire anchor plate completely detached from the vehicle (rear wheel well). The first report of this condition was received in March 2011 and subsequent reporting frequency indicates a potentially increasing trend over time ODI seeks to evaluate the potential occupant safety risks resulting from structurally degraded seat anchorages. In addition to the subject vehicles, ODI also will collect and review information on MY 2005-2007 Freestar/Monterey vehicles that appear to have a seat design identical to the subject vehicles. To date, ODI is not aware of any similar complaints on the MY 2005-2007 vehicles. ODI also will collect and review information on Freestar/Monterey vehicles used outside of the salt belt states. An Engineering Analysis has been opened to further assess whether a safety defect exists in the subject vehicles. The ODI reports cited above can be reviewed online at www-odi.nhtsa.dot.gov/complaints under the following identification (ODI) numbers: 10454977, 10453826, 10452933, 10450587, 10450559, 10450295, 10446564, 10442809, 10441641, 10441489, 10440616, 10438529, 10436592, 10433928, 10424850, 10420028, 10410491 and 10399896.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "doc_date_opened": "20120619",
+   "question": "The Office of Defects Investigation (ODI) has received 15 complaints alleging loss of power steering assist and increased steering effort in model year 2011 Ford Explorer vehicles equipped with Electric Power Assisted Steering (EPAS). In addition, ODI has identified field reports provided in Ford's Early Warning Reporting data submissions that relate to the alleged defect. Some of the complaints indicated observing a power steering warning message when the failure occurred. In some cases, the condition was corrected by turning the vehicle off and restarting. However, some reports indicate the condition returned after restart. A Preliminary Evaluation has been opened to assess the cause, scope and frequency of the alleged defect.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
@@ -113,21 +114,6 @@
    "status": "확보",
    "doc_date_opened": "20110718",
    "question": "Consumers state that while driving smoke would appear in the interior of the vehicle, or an oil leak would become otherwise apparent. On further examination the consumer discovered an oil cooler line had failed causing oil to spray within the engine compartment area, and/or near one of the wheel or brake assemblies. One report alleges an engine compartment fire, while others allege a vehicle control concern due to oil leakage on a tire. ODI is opening this PE to further examine the issue.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 0,
-   "hyphen_line_breaks": 0,
-   "check": "통과"
-  },
-  {
-   "action_no": "PE12017",
-   "open_date": "20120619",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2012/INOA-PE12017-2131.PDF",
-   "pdf_sha256": "1c69e4258ca24b67bb600dd1b31acef2e55cf7b00972d22e9b9408d1075bc4e8",
-   "pdf_mod_date": "20120620",
-   "pdf_mod_gap_days": 1,
-   "query_source": "ODI Resume",
-   "status": "확보",
-   "doc_date_opened": "20120619",
-   "question": "The Office of Defects Investigation (ODI) has received 15 complaints alleging loss of power steering assist and increased steering effort in model year 2011 Ford Explorer vehicles equipped with Electric Power Assisted Steering (EPAS). In addition, ODI has identified field reports provided in Ford's Early Warning Reporting data submissions that relate to the alleged defect. Some of the complaints indicated observing a power steering warning message when the failure occurred. In some cases, the condition was corrected by turning the vehicle off and restarting. However, some reports indicate the condition returned after restart. A Preliminary Evaluation has been opened to assess the cause, scope and frequency of the alleged defect.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
@@ -163,6 +149,21 @@
    "check": "통과"
   },
   {
+   "action_no": "PE10046",
+   "open_date": "20101122",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2010/INOA-PE10046-2261.PDF",
+   "pdf_sha256": "e236c157b8799ca97d38763a0e1d819086d6eeb19060e121c5df803a57c50f24",
+   "pdf_mod_date": "20101123",
+   "pdf_mod_gap_days": 1,
+   "query_source": "ODI Resume",
+   "status": "확보",
+   "doc_date_opened": "20101122",
+   "question": "ODI has received three complaints concerning automatic transmission shift cable detachment and inability to select and engage the gears (park, drive and reverse) in model year 2007 Kia Optima vehicles. One of the complaints also reported a rollaway incident after parking the vehicle. In 2007, Kia Motors issued a technical service bulletin (NHTSA TSB # 10023005) concerning incorrectly installed automatic transmission shift cables in certain model year 2006 and 2007 Kia Optima vehicles. According to the TSB, over time these cables can detach from the shifter assemblies' dowel pins resulting in the inability to select or engage drive gears. ODI notes that difficulty engaging park may also occur.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 0,
+   "hyphen_line_breaks": 0,
+   "check": "통과"
+  },
+  {
    "action_no": "PE15018",
    "open_date": "20150501",
    "source_url": "https://static.nhtsa.gov/odi/inv/2015/INOA-PE15018-6283.PDF",
@@ -178,16 +179,16 @@
    "check": "통과"
   },
   {
-   "action_no": "PE18008",
-   "open_date": "20180803",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2018/INOA-PE18008-3750.PDF",
-   "pdf_sha256": "218948fce2968fcea65783c56ff43118438d604af0cdc26d51cae8cb6bff3ef5",
-   "pdf_mod_date": "20180828",
-   "pdf_mod_gap_days": 25,
+   "action_no": "PE14019",
+   "open_date": "20140624",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2014/INOA-PE14019-4542.PDF",
+   "pdf_sha256": "dc0b92b72de4a44fa14e2b69e4eb634c2b2ed63c46a278a3860fb44ffd4748d0",
+   "pdf_mod_date": "20140625",
+   "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20180803",
-   "question": "The Office of Defects Investigation (ODI) has received five Vehicle Owner Questionnaires (VOQs) alleging fires resulting from activation of the ZF TRW or Takata seatbelt pretensioner during a crash in model year 2015-2018 Ford F-150 vehicles. Two fires self-extinguished, while the other three vehicles were totally destroyed by the fire. The sequence of events leading to fire propagating inside the B pillar has not been fully established. A Preliminary Evaluation has been opened to assess the scope, frequency, and safety-related consequence of the alleged defect. The VOQ's associated with the opening of this investigation are: 11078447, 11111822, 11097937,11014688,and 11113160", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "doc_date_opened": "20140624",
+   "question": "The Office of Defects Investigation (ODI) has received 15 complaints alleging that the rear differential locked up or the driveshaft separated at the rear connection to the differential in model year 2005 Dodge Ram 1500 pickups. The reports indicate that there was little or no noise or other warning prior to the lock-up and/or separation. Seven incidents occurred at speeds of 50 mph or greater and 2 allege that the rear axle lockup caused the truck to go into a spin (VOQs 10502707 and 10499587). A Preliminary Evaluation has been opened to assess the scope, frequency and safety-related consequences of the alleged defect. The VOQs associated with the opening of this investigation are: 10595057, 10563747, 10551216, 10533970, 10512746, 10508477, 10507139, 10503157, 10502707, 10502402, 10499587, 10487800, 10479516, 10446068, 10446048.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
@@ -223,62 +224,62 @@
    "check": "통과"
   },
   {
-   "action_no": "PE10046",
-   "open_date": "20101122",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2010/INOA-PE10046-2261.PDF",
-   "pdf_sha256": "e236c157b8799ca97d38763a0e1d819086d6eeb19060e121c5df803a57c50f24",
-   "pdf_mod_date": "20101123",
+   "action_no": "PE21022",
+   "open_date": "20211209",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2021/INOA-PE21022-6066.PDF",
+   "pdf_sha256": "458263c11d81ef245723fd5d8c75d40151a59c3c45eba70f0f26c9e62a8053fd",
+   "pdf_mod_date": "20211210",
    "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20101122",
-   "question": "ODI has received three complaints concerning automatic transmission shift cable detachment and inability to select and engage the gears (park, drive and reverse) in model year 2007 Kia Optima vehicles. One of the complaints also reported a rollaway incident after parking the vehicle. In 2007, Kia Motors issued a technical service bulletin (NHTSA TSB # 10023005) concerning incorrectly installed automatic transmission shift cables in certain model year 2006 and 2007 Kia Optima vehicles. According to the TSB, over time these cables can detach from the shifter assemblies' dowel pins resulting in the inability to select or engage drive gears. ODI notes that difficulty engaging park may also occur.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "doc_date_opened": "20211209",
+   "question": "The Office of Defects Investigation (ODI) has identified fourteen Vehicle Owner Questionnaires (VOQs) alleging hood latch failures, while subject vehicles were being driven, resulting in the hood opening and obstructing the vision of the driver. The office has also received Early Warning Reports (EWR) on this issue. Sudden and unexpected opening of the hood can startle drivers, block their visibility, and could lead to a crash into other vehicles or objects. Nissan is currently collecting field parts to asses the alleged failure of the hood latch. A root cause has not been identified at this time. ODI has opened this Preliminary Evaluation to evaluate the scope and risk to motor vehicle safety. The VOQs cited above can be found with ID numbers: 11436637, 11431131, 11427702, 11423321, 11406574, 11398825, 11389741, 11387952, 11375938, 11349105, 11306735, 11302647, 11190468, 11166607", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
   },
   {
-   "action_no": "PE14019",
-   "open_date": "20140624",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2014/INOA-PE14019-4542.PDF",
-   "pdf_sha256": "dc0b92b72de4a44fa14e2b69e4eb634c2b2ed63c46a278a3860fb44ffd4748d0",
-   "pdf_mod_date": "20140625",
+   "action_no": "EA18001",
+   "open_date": "20180418",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2018/INOA-EA18001-4405.PDF",
+   "pdf_sha256": "47cf4924ffac7aabde93072197de04a94214db1044f1d8208e0d4601ac3caad1",
+   "pdf_mod_date": "20180421",
+   "pdf_mod_gap_days": 3,
+   "query_source": "ODI Resume",
+   "status": "확보",
+   "doc_date_opened": "20180418",
+   "question": "The Office of Defects Investigation (ODI) is upgrading Preliminary Evaluation (PE) 17-002 to an Engineering Analysis. During the PE, ODI requested and reviewed information provided by Nissan including consumer complaints and other field and technical data related to failures of the hydraulic control unit (HCU), an electro-mechanical brake system component that provides antilock braking and other functionality in the subject model year (MY) 2009 Murano. The subject failure of the HCU, which involves improper operation of an internal hydraulic control valve, can cause extended brake pedal travel and may result in a reduction in overall braking effectiveness. Tier-one supplier Continental manufactured the HCU for Nissan. ODI currently recognizes 484 subject vehicle complaints that appear related to the alleged defect. Fourteen crash allegations, with three non-life threatening injuries are under evaluation also. ODI has been monitoring consumer complaints received, and in some cases has obtained suspect HCUs from complainants' vehicles. Recovered HCUs sent to NHTSA's Vehicle Research and Test Center (VRTC) in East Liberty, Ohio are under evaluation, and VRTC has conducted limited vehicle testing also. In a July 28, 2017 submission, Nissan acknowledged that a failure of the HCU can result in increased brake pedal travel during braking. Nissan's analysis of returned parts revealed that a zinc coating used on the normally closed valve assemblies inside the HCU may react with certain brake fluid constituents. The reaction results in the formation of a gelatinous material that can harden with time and prevent the valve from closing after opening in an ABS event. When this occurs, Nissan maintains that the hydraulic brake system remains intact and that full braking is available once the pedal travels an additional distance, about 36 mm according to Nissan. Although still under investigation, Nissan states it has not determined the condition represents an unreasonable risk to motor vehicle safety, citing low rate and vehicle age as additional factors. In March 2018, Nissan began conducting a customer satisfaction campaign on certain MY 2009 Murano to service (flush and replace the brake fluid), and then test and replace the HCU as needed. The campaign is being conducted free of charge to customers. During the EA, ODI will request VRTC continue to evaluate the cause and consequence of HCU failures, including the affects of multi-valve failures. ODI will further study the potential scope of the alleged defect as it understands similar HCUs and brake fluid is used in other MY Muranos, and potentially in other Nissan models as well. ODI notes that improved valve coatings were introduced on Nissan HCUs at some subsequent stage. The reports cited above can be reviewed at NHTSA.gov under the following ID numbers: 10349668, 10441563, 10492374, 10553652, 10555533, 10567250, 10622526, 10625677, 10705135, 10790348, 10642004, 10648258, 10732695, 10783262, 10785892, 10807329, 10807866, 10811609, 10811908, 10824204, 10837139, 10837342, 10845756, 10850354, 10864775, 10873697, 10884073, 10885682, 10893542, 10894785, 10907040, 10907346, 10909760, 10909850, 10911067, 10913911, 10916005, 10918518, 10925681, 10926733, 10927763, 10928683, 10935209, 10935444, 10938572, 10938849, 10939532, 10943704, 10943991, 10947315, 10948997, 10950185, 10954587, 10956268, 10958510, 10958943, 10967958, 10968136, 10968503, 10971135, 10983808, 10983820, 10983869, 10983892, 10984159, 10984164, 10984171, 10984189, 10984191, 10984197, 10984232, 10984540, 10984755, 10984822, 10985031, 10985414, 10985458, 10990578, 10993115, 10993229, 10993290, 10993323, 10993779, 10994185, 10995126, 10995646, 10995884, 11000055, 11002561, 11003607, 11003981, 11005944, 11005947, 11010036, 11010176, 11010474, 11011412, 11014081, 11014605, 11014933, 11015301, 11018640, 11018786, 11019395, 11020726, 11021176, 11022806, 11025053, 11025404, 11030682, 11032181, 11032601, 11032897, 11032911, 11041621, 11044139, 11044658, 11045210, 11046236, 11048291, 11050945, 11051037, 11051399, 11051626, 11052030, 11052222, 11052872, 11053377, 11053818, 11054094, 11054298, 11054715, 11054985, 11055250, 11055539, 11055633, 11055715, 11055823, 11056002, 11056029, 11056094, 11056233, 11056342, 11056349, 11056587, 11056648, 11056651, 11057210, 11057455, 11057720, 11058371, 11058609, 11061033, 11061637, 11062216, 11062284, 11062370, 11062726, 11062787, 11063007, 11063209, 11063954, 11064185, 11064606, 11065460, 11067398, 11071558, 11071749, 11072093, 11072367, 11072371, 11073120, 11073378, 11075349, 11075833", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 3,
+   "hyphen_line_breaks": 0,
+   "check": "통과"
+  },
+  {
+   "action_no": "PE12010",
+   "open_date": "20120328",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2012/INOA-PE12010-2629.PDF",
+   "pdf_sha256": "0997bd66cb371b79d79779cd4d723ba9fc229cf5aa65cf2fe8c84ae17954f66e",
+   "pdf_mod_date": "20120329",
    "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20140624",
-   "question": "The Office of Defects Investigation (ODI) has received 15 complaints alleging that the rear differential locked up or the driveshaft separated at the rear connection to the differential in model year 2005 Dodge Ram 1500 pickups. The reports indicate that there was little or no noise or other warning prior to the lock-up and/or separation. Seven incidents occurred at speeds of 50 mph or greater and 2 allege that the rear axle lockup caused the truck to go into a spin (VOQs 10502707 and 10499587). A Preliminary Evaluation has been opened to assess the scope, frequency and safety-related consequences of the alleged defect. The VOQs associated with the opening of this investigation are: 10595057, 10563747, 10551216, 10533970, 10512746, 10508477, 10507139, 10503157, 10502707, 10502402, 10499587, 10487800, 10479516, 10446068, 10446048.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "doc_date_opened": "20120328",
+   "question": "The Office of Defects Investigation (ODI) has received 2 complaints of engine compartment fire in model year 2011 Chevrolet Cruze vehicles. Both complaints were received within the last month and allege engulfing fires resulting in total vehicle loss. In addition, ODI has identified field reports submitted as part of Early Warning Reporting data that relate to the alleged defect. A Preliminary Evaluation has been opened to assess the cause, scope and frequency of the alleged defect. The ODI reports cited above can be viewed at www-odi.nhtsa.dot.gov/complaints under the following identification numbers (ODI Nos.): 10450556, 10446718", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
   },
   {
-   "action_no": "PE11038",
-   "open_date": "20111214",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2011/INOA-PE11038-2345.PDF",
-   "pdf_sha256": "8de4892045cb725dfe5b372b94ba70fb7f0c0d5768ce432d3937f7a763579701",
-   "pdf_mod_date": "20111220",
-   "pdf_mod_gap_days": 6,
+   "action_no": "PE15023",
+   "open_date": "20150609",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2015/INOA-PE15023-5847.PDF",
+   "pdf_sha256": "533ddedccc7f62a160ba8b9dc9db80c098cbacb81b789f497e4875af04ab52d8",
+   "pdf_mod_date": "20150610",
+   "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20111214",
-   "question": "The Office of Defects Investigation has received 43 complaints alleging inaccurate fuel gauge reading in model year 2003 through 2004 Infiniti M45 vehicles, including 26 incidents alleged to result in engine stall. All 26 incidents reported stalling because the fuel level reading indicated fuel in the tank when there was none. The complaints show an apparent increasing trend, with most received within the past year. A Preliminary Evaluation has been opened to assess the scope, frequency and potential safety consequences associated with the alleged defect.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 0,
-   "hyphen_line_breaks": 0,
-   "check": "통과"
-  },
-  {
-   "action_no": "PE22004",
-   "open_date": "20220410",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2022/INOA-PE22004-8906.PDF",
-   "pdf_sha256": "32212b2be87174b82c0d30b9f3eb07ce0952b7e1a4291a95fea02c4bf7c4a47a",
-   "pdf_mod_date": "20220414",
-   "pdf_mod_gap_days": 4,
-   "query_source": "ODI Resume",
-   "status": "확보",
-   "doc_date_opened": "20220410",
-   "question": "The Office of Defects Investigation (ODI) has opened this Preliminary Evaluation (PE) on model year (MY) 2022 Kia Carnival based on allegations of auto reverse malfunction of the Power Sliding Doors (PSD). Since July 2021, ODI has received 5 consumer complaints alleging PSD auto reverse malfunction in the MY 2022 Kia Carnival minivans. Three of the complaints reported injuries to a vehicle user's arm, hand or shoulder caused by the force of the closing PSD and being trapped against the door . Consumers are also alleging excessive force is needed to reverse the direction of the closing door. The PSD auto reverse function is designed to automatically reverse the direction of the closing door if it meets a certain amount of force from an object or person. This PE has been opened to evaluate the frequency, scope, severity, and contributing factors related to the alleged failure of the PSD auto reverse function. The ODI reports cited above can be reviewed at: http://www-odi.nhtsa.dot.gov/owners/SearchNHTSAID The referenced ODI numbers for the 5 Vehicle Owner Questionnaires (VOQs) cited above are also available at NHTSA.gov: 11458125, 11450964, 11448290, 11447955, 11423165", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 0,
+   "doc_date_opened": "20150609",
+   "question": "On March 1, 2011 Fontaine Fifth Wheel issued Service Bulletin SB-10036732-7541 (ODI #10036732) describing a condition in which its Ultra LT 5th wheel could become partially closed during a trailer coupling process. The partial closing could allow a driver who only conducts a pull test during the process to believe the fifth wheel lock is properly coupled to the trailer king pin when in fact it is not. ODI opened an investigation (PE11-012) on April 15, 2011 to better understand the false latch conditions on the Ultra LT 5th. The investigation resulted in recalls from DTNA (11V289), PACCAR (11V388), Volvo (11V460) and Mack (11V461). Fontaine did not issue an equipment recall. On April 4, 2012, Fontaine issued a second Service Bulletin SB-10044108-5115 (ODI #10044108) describing another issue with the Ultra LT 5th wheel. In this case the operating lever in the fifth wheel could become bent (due to improper coupling techniques) to such a degree that the locking mechanism would not extend completely across the throat of the fifth wheel or seat fully behind the locking jaw. As a result of the bent operating lever condition, Fontaine stated that a trailer could disconnect from the towing vehicle. Fontaine later ceased production of the Ultra LT 5th wheel all together. In its 2014 second quarter Early Warning Report, Fontaine reported one Death & Injury (D&I) crash. The crash resulted in two fatalities. On January 24, 2014, a semi trailer separated from a 2012 International ProStar. The trailer struck two oncoming vehicles killing both drivers. In April 2015 Fontaine requested a meeting with ODI and on May 13, 2015 met to discuss the D&I event and a third service campaign they are considering for the Ultra LT 5th wheels. ODI has opened this investigation to gather additional information, assess the conditions described in the two Fontaine service bulletins, and conduct testing of the Ultra LT 5th wheel.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 2,
    "hyphen_line_breaks": 0,
    "check": "통과"
   },
@@ -313,16 +314,16 @@
    "check": "통과"
   },
   {
-   "action_no": "PE21022",
-   "open_date": "20211209",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2021/INOA-PE21022-6066.PDF",
-   "pdf_sha256": "458263c11d81ef245723fd5d8c75d40151a59c3c45eba70f0f26c9e62a8053fd",
-   "pdf_mod_date": "20211210",
+   "action_no": "PE14035",
+   "open_date": "20141121",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2014/INOA-PE14035-9327.PDF",
+   "pdf_sha256": "e93397fd5dd09fadcadb2b7cf079c45f79cf2d4797353486c50718c130cfb805",
+   "pdf_mod_date": "20141122",
    "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20211209",
-   "question": "The Office of Defects Investigation (ODI) has identified fourteen Vehicle Owner Questionnaires (VOQs) alleging hood latch failures, while subject vehicles were being driven, resulting in the hood opening and obstructing the vision of the driver. The office has also received Early Warning Reports (EWR) on this issue. Sudden and unexpected opening of the hood can startle drivers, block their visibility, and could lead to a crash into other vehicles or objects. Nissan is currently collecting field parts to asses the alleged failure of the hood latch. A root cause has not been identified at this time. ODI has opened this Preliminary Evaluation to evaluate the scope and risk to motor vehicle safety. The VOQs cited above can be found with ID numbers: 11436637, 11431131, 11427702, 11423321, 11406574, 11398825, 11389741, 11387952, 11375938, 11349105, 11306735, 11302647, 11190468, 11166607", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "doc_date_opened": "20141121",
+   "question": "In March 2014 a rescue vehicle repair facility in the Washington metropolitan area reported to the Office of Defects Investigation (ODI) that several 2010 Wheeled Coach Emergency Response vehicles experienced loss of instrument panel cluster functions (IPC) and dash lights. The repair facility alleged that this problem occurred numerous times on multiple vehicles while en-route to emergency calls. The repair facility indicated to ODI that the manufacturer sent technicians on multiple occasions to fix the defect however, the problem still exists. A review of Early Warning Reporting data submitted to ODI by the manufacturer revealed similar failures. The alleged failure involves a combination of issues: the transmission control pad failing, emergency lights flashing randomly on the cab/chassis, complete loss of the instrument cluster, and windshield wipers turning on without the ability to turn them off. Without cab or instrument lighting, the EMS responders are unable to service patients. A Preliminary Evaluation has been opened to assess the scope, frequency and safety-related consequences of the alleged defect.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
@@ -418,17 +419,17 @@
    "check": "통과"
   },
   {
-   "action_no": "EA18001",
-   "open_date": "20180418",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2018/INOA-EA18001-4405.PDF",
-   "pdf_sha256": "47cf4924ffac7aabde93072197de04a94214db1044f1d8208e0d4601ac3caad1",
-   "pdf_mod_date": "20180421",
-   "pdf_mod_gap_days": 3,
+   "action_no": "EA12008",
+   "open_date": "20120913",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2012/INOA-EA12008-1521.PDF",
+   "pdf_sha256": "ae667b1d49b5913d0477862b5650c62bd580c510a2530da07cbac4bf2798bbd6",
+   "pdf_mod_date": "20120914",
+   "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20180418",
-   "question": "The Office of Defects Investigation (ODI) is upgrading Preliminary Evaluation (PE) 17-002 to an Engineering Analysis. During the PE, ODI requested and reviewed information provided by Nissan including consumer complaints and other field and technical data related to failures of the hydraulic control unit (HCU), an electro-mechanical brake system component that provides antilock braking and other functionality in the subject model year (MY) 2009 Murano. The subject failure of the HCU, which involves improper operation of an internal hydraulic control valve, can cause extended brake pedal travel and may result in a reduction in overall braking effectiveness. Tier-one supplier Continental manufactured the HCU for Nissan. ODI currently recognizes 484 subject vehicle complaints that appear related to the alleged defect. Fourteen crash allegations, with three non-life threatening injuries are under evaluation also. ODI has been monitoring consumer complaints received, and in some cases has obtained suspect HCUs from complainants' vehicles. Recovered HCUs sent to NHTSA's Vehicle Research and Test Center (VRTC) in East Liberty, Ohio are under evaluation, and VRTC has conducted limited vehicle testing also. In a July 28, 2017 submission, Nissan acknowledged that a failure of the HCU can result in increased brake pedal travel during braking. Nissan's analysis of returned parts revealed that a zinc coating used on the normally closed valve assemblies inside the HCU may react with certain brake fluid constituents. The reaction results in the formation of a gelatinous material that can harden with time and prevent the valve from closing after opening in an ABS event. When this occurs, Nissan maintains that the hydraulic brake system remains intact and that full braking is available once the pedal travels an additional distance, about 36 mm according to Nissan. Although still under investigation, Nissan states it has not determined the condition represents an unreasonable risk to motor vehicle safety, citing low rate and vehicle age as additional factors. In March 2018, Nissan began conducting a customer satisfaction campaign on certain MY 2009 Murano to service (flush and replace the brake fluid), and then test and replace the HCU as needed. The campaign is being conducted free of charge to customers. During the EA, ODI will request VRTC continue to evaluate the cause and consequence of HCU failures, including the affects of multi-valve failures. ODI will further study the potential scope of the alleged defect as it understands similar HCUs and brake fluid is used in other MY Muranos, and potentially in other Nissan models as well. ODI notes that improved valve coatings were introduced on Nissan HCUs at some subsequent stage. The reports cited above can be reviewed at NHTSA.gov under the following ID numbers: 10349668, 10441563, 10492374, 10553652, 10555533, 10567250, 10622526, 10625677, 10705135, 10790348, 10642004, 10648258, 10732695, 10783262, 10785892, 10807329, 10807866, 10811609, 10811908, 10824204, 10837139, 10837342, 10845756, 10850354, 10864775, 10873697, 10884073, 10885682, 10893542, 10894785, 10907040, 10907346, 10909760, 10909850, 10911067, 10913911, 10916005, 10918518, 10925681, 10926733, 10927763, 10928683, 10935209, 10935444, 10938572, 10938849, 10939532, 10943704, 10943991, 10947315, 10948997, 10950185, 10954587, 10956268, 10958510, 10958943, 10967958, 10968136, 10968503, 10971135, 10983808, 10983820, 10983869, 10983892, 10984159, 10984164, 10984171, 10984189, 10984191, 10984197, 10984232, 10984540, 10984755, 10984822, 10985031, 10985414, 10985458, 10990578, 10993115, 10993229, 10993290, 10993323, 10993779, 10994185, 10995126, 10995646, 10995884, 11000055, 11002561, 11003607, 11003981, 11005944, 11005947, 11010036, 11010176, 11010474, 11011412, 11014081, 11014605, 11014933, 11015301, 11018640, 11018786, 11019395, 11020726, 11021176, 11022806, 11025053, 11025404, 11030682, 11032181, 11032601, 11032897, 11032911, 11041621, 11044139, 11044658, 11045210, 11046236, 11048291, 11050945, 11051037, 11051399, 11051626, 11052030, 11052222, 11052872, 11053377, 11053818, 11054094, 11054298, 11054715, 11054985, 11055250, 11055539, 11055633, 11055715, 11055823, 11056002, 11056029, 11056094, 11056233, 11056342, 11056349, 11056587, 11056648, 11056651, 11057210, 11057455, 11057720, 11058371, 11058609, 11061033, 11061637, 11062216, 11062284, 11062370, 11062726, 11062787, 11063007, 11063209, 11063954, 11064185, 11064606, 11065460, 11067398, 11071558, 11071749, 11072093, 11072367, 11072371, 11073120, 11073378, 11075349, 11075833", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 3,
+   "doc_date_opened": "20120913",
+   "question": "The Office of Defects Investigation (ODI) is aware of one incident of an improper deployment of the driver-side curtain air bag that deployed as a result of a crash involving a model year (MY) 2012 Hyundai Elantra. An inspection of this vehicle showed that a metal bracket (stiffener) in the headliner assembly had detached and was forced downward by the deploying air bag. The metal bracket caused a laceration to the driver's ear and other possible injuries. Approximately 75,000 MY 2012 Hyundai Elantra vehicles, built in Korea and sold in the U.S., have stiffeners in the headliners while the MY 2012 Elantra vehicles built in the U.S. utilize a different headliner that does not use a stiffener. Thus, the latter vehicles are not included in this investigation. Hyundai has inspected the headliner assemblies from eight Elantra vehicles (which were sold in the Korean market) with production dates in the same range as the field incident vehicle. Hyundai reported to ODI that the metal brackets from these vehicles were found to be securely attached to the headliners. Hyundai also has conducted several static deployment tests in attempts to replicate the field incident. In one test, the metal bracket detached from the headliner but the test condition did not replicate or explain the condition observed in the incident vehicle. An Engineering Analysis has been opened to further assess whether incidents like the single field incident could potentially occur with other subject vehicles. In addition to the subject vehicles, ODI also will collect and review information on MY 2011 and 2013 Elantra vehicles that have headliners with stiffeners similar to those in the subject vehicles. To date, there have been no reports on the MY 2011 and 2013 vehicles. The ODI report cited above can be viewed at www-odi.nhtsa.dot.gov/complaints under the following identification number: 10457696", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
   },
@@ -443,66 +444,6 @@
    "status": "확보",
    "doc_date_opened": "20160225",
    "question": "Riders report random, low speed, stalling occurs while underway. Typically occurring when accelerating from a stop or when slowing, four operators allege they were injured when they lost control after their motorcycle stalled while they were turning at low speed. This investigation is opened to better understand the cause and frequency of the stalling events. The Canadian Ministry of Transport (CMOT) has an open investigation concerning this subject as well (CMOT inv# 2015455). VOQs cited in this resume: 10821672,10790572,10789351,10789342,10788508,10787535,10787458, 10787434,10786180,10785842,10780424,10730973,10630327,10627338, 10622575,10621506,10620773,10618382,10617574,10617568", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 0,
-   "hyphen_line_breaks": 0,
-   "check": "통과"
-  },
-  {
-   "action_no": "PE12010",
-   "open_date": "20120328",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2012/INOA-PE12010-2629.PDF",
-   "pdf_sha256": "0997bd66cb371b79d79779cd4d723ba9fc229cf5aa65cf2fe8c84ae17954f66e",
-   "pdf_mod_date": "20120329",
-   "pdf_mod_gap_days": 1,
-   "query_source": "ODI Resume",
-   "status": "확보",
-   "doc_date_opened": "20120328",
-   "question": "The Office of Defects Investigation (ODI) has received 2 complaints of engine compartment fire in model year 2011 Chevrolet Cruze vehicles. Both complaints were received within the last month and allege engulfing fires resulting in total vehicle loss. In addition, ODI has identified field reports submitted as part of Early Warning Reporting data that relate to the alleged defect. A Preliminary Evaluation has been opened to assess the cause, scope and frequency of the alleged defect. The ODI reports cited above can be viewed at www-odi.nhtsa.dot.gov/complaints under the following identification numbers (ODI Nos.): 10450556, 10446718", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 0,
-   "hyphen_line_breaks": 0,
-   "check": "통과"
-  },
-  {
-   "action_no": "PE15023",
-   "open_date": "20150609",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2015/INOA-PE15023-5847.PDF",
-   "pdf_sha256": "533ddedccc7f62a160ba8b9dc9db80c098cbacb81b789f497e4875af04ab52d8",
-   "pdf_mod_date": "20150610",
-   "pdf_mod_gap_days": 1,
-   "query_source": "ODI Resume",
-   "status": "확보",
-   "doc_date_opened": "20150609",
-   "question": "On March 1, 2011 Fontaine Fifth Wheel issued Service Bulletin SB-10036732-7541 (ODI #10036732) describing a condition in which its Ultra LT 5th wheel could become partially closed during a trailer coupling process. The partial closing could allow a driver who only conducts a pull test during the process to believe the fifth wheel lock is properly coupled to the trailer king pin when in fact it is not. ODI opened an investigation (PE11-012) on April 15, 2011 to better understand the false latch conditions on the Ultra LT 5th. The investigation resulted in recalls from DTNA (11V289), PACCAR (11V388), Volvo (11V460) and Mack (11V461). Fontaine did not issue an equipment recall. On April 4, 2012, Fontaine issued a second Service Bulletin SB-10044108-5115 (ODI #10044108) describing another issue with the Ultra LT 5th wheel. In this case the operating lever in the fifth wheel could become bent (due to improper coupling techniques) to such a degree that the locking mechanism would not extend completely across the throat of the fifth wheel or seat fully behind the locking jaw. As a result of the bent operating lever condition, Fontaine stated that a trailer could disconnect from the towing vehicle. Fontaine later ceased production of the Ultra LT 5th wheel all together. In its 2014 second quarter Early Warning Report, Fontaine reported one Death & Injury (D&I) crash. The crash resulted in two fatalities. On January 24, 2014, a semi trailer separated from a 2012 International ProStar. The trailer struck two oncoming vehicles killing both drivers. In April 2015 Fontaine requested a meeting with ODI and on May 13, 2015 met to discuss the D&I event and a third service campaign they are considering for the Ultra LT 5th wheels. ODI has opened this investigation to gather additional information, assess the conditions described in the two Fontaine service bulletins, and conduct testing of the Ultra LT 5th wheel.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 2,
-   "hyphen_line_breaks": 0,
-   "check": "통과"
-  },
-  {
-   "action_no": "PE14035",
-   "open_date": "20141121",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2014/INOA-PE14035-9327.PDF",
-   "pdf_sha256": "e93397fd5dd09fadcadb2b7cf079c45f79cf2d4797353486c50718c130cfb805",
-   "pdf_mod_date": "20141122",
-   "pdf_mod_gap_days": 1,
-   "query_source": "ODI Resume",
-   "status": "확보",
-   "doc_date_opened": "20141121",
-   "question": "In March 2014 a rescue vehicle repair facility in the Washington metropolitan area reported to the Office of Defects Investigation (ODI) that several 2010 Wheeled Coach Emergency Response vehicles experienced loss of instrument panel cluster functions (IPC) and dash lights. The repair facility alleged that this problem occurred numerous times on multiple vehicles while en-route to emergency calls. The repair facility indicated to ODI that the manufacturer sent technicians on multiple occasions to fix the defect however, the problem still exists. A review of Early Warning Reporting data submitted to ODI by the manufacturer revealed similar failures. The alleged failure involves a combination of issues: the transmission control pad failing, emergency lights flashing randomly on the cab/chassis, complete loss of the instrument cluster, and windshield wipers turning on without the ability to turn them off. Without cab or instrument lighting, the EMS responders are unable to service patients. A Preliminary Evaluation has been opened to assess the scope, frequency and safety-related consequences of the alleged defect.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 0,
-   "hyphen_line_breaks": 0,
-   "check": "통과"
-  },
-  {
-   "action_no": "EA12008",
-   "open_date": "20120913",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2012/INOA-EA12008-1521.PDF",
-   "pdf_sha256": "ae667b1d49b5913d0477862b5650c62bd580c510a2530da07cbac4bf2798bbd6",
-   "pdf_mod_date": "20120914",
-   "pdf_mod_gap_days": 1,
-   "query_source": "ODI Resume",
-   "status": "확보",
-   "doc_date_opened": "20120913",
-   "question": "The Office of Defects Investigation (ODI) is aware of one incident of an improper deployment of the driver-side curtain air bag that deployed as a result of a crash involving a model year (MY) 2012 Hyundai Elantra. An inspection of this vehicle showed that a metal bracket (stiffener) in the headliner assembly had detached and was forced downward by the deploying air bag. The metal bracket caused a laceration to the driver's ear and other possible injuries. Approximately 75,000 MY 2012 Hyundai Elantra vehicles, built in Korea and sold in the U.S., have stiffeners in the headliners while the MY 2012 Elantra vehicles built in the U.S. utilize a different headliner that does not use a stiffener. Thus, the latter vehicles are not included in this investigation. Hyundai has inspected the headliner assemblies from eight Elantra vehicles (which were sold in the Korean market) with production dates in the same range as the field incident vehicle. Hyundai reported to ODI that the metal brackets from these vehicles were found to be securely attached to the headliners. Hyundai also has conducted several static deployment tests in attempts to replicate the field incident. In one test, the metal bracket detached from the headliner but the test condition did not replicate or explain the condition observed in the incident vehicle. An Engineering Analysis has been opened to further assess whether incidents like the single field incident could potentially occur with other subject vehicles. In addition to the subject vehicles, ODI also will collect and review information on MY 2011 and 2013 Elantra vehicles that have headliners with stiffeners similar to those in the subject vehicles. To date, there have been no reports on the MY 2011 and 2013 vehicles. The ODI report cited above can be viewed at www-odi.nhtsa.dot.gov/complaints under the following identification number: 10457696", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
@@ -523,21 +464,6 @@
    "check": "통과"
   },
   {
-   "action_no": "PE10011",
-   "open_date": "20100421",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2010/INOA-PE10011-2767.PDF",
-   "pdf_sha256": "b97177cd1aab5afcf3b1492301e49bcd6b885d873ce0db9ca0090837627d2b3e",
-   "pdf_mod_date": "20100428",
-   "pdf_mod_gap_days": 7,
-   "query_source": "ODI Resume",
-   "status": "확보",
-   "doc_date_opened": "20100421",
-   "question": "ODI has learned of two dash fires that occurred on 2008 rear engine school buses. This investigation is opened to further study these fires and assess the risk.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 0,
-   "hyphen_line_breaks": 0,
-   "check": "통과"
-  },
-  {
    "action_no": "PE13001",
    "open_date": "20130115",
    "source_url": "https://static.nhtsa.gov/odi/inv/2013/INOA-PE13001-7914.PDF",
@@ -548,6 +474,81 @@
    "status": "확보",
    "doc_date_opened": "20130115",
    "question": "The Office of Defects Investigation (ODI) has received Early Warning Reporting (EWR) data from the manufacturer that indicates some number of subject vehicles may allegedly experience an electronic multiplexing switch hub module failure. This failure may result in inadvertent activation of accessory equipment such as external lighting, outriggers, crane, or power takeoff. The subject vehicles are equipped with a SmartPlexTM electrical system that facilitates the installation and control of accessory equipment and body electrical integration. According to the EWR field report data, under certain heat and humidity conditions, a SmartPlexTM module may short internally and outputs may activate independent of any operator request. A Preliminary Evaluation has been opened to assess the alleged defect in the subject vehicles.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 0,
+   "hyphen_line_breaks": 0,
+   "check": "통과"
+  },
+  {
+   "action_no": "PE14010",
+   "open_date": "20140415",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2014/INOA-PE14010-6790.PDF",
+   "pdf_sha256": "0431c912de7a9856e9d8f6a28856a72d41677562e3ca94bb9ee9a0f52fe09c32",
+   "pdf_mod_date": "20140416",
+   "pdf_mod_gap_days": 1,
+   "query_source": "ODI Resume",
+   "status": "확보",
+   "doc_date_opened": "20140415",
+   "question": "The Office of Defects Investigation (ODI) has received one Vehicle Owner Complaint (VOQ) of inappropriate activation of the emergency braking system in a model year (MY) 2014 Chevrolet Impala vehicle (VOQ 10574799). The consumer alleges that the driver assist system inappropriately activated emergency braking bringing the vehicle to a complete stop under what the driver considered to be full braking force. The complaint alleged experiencing multiple events at different locations and road conditions. In one of those incidents, the complainant reported that while traveling at 40 mph with no traffic directly in front of them, they heard 3 to 4 beeps from the Forward Collision Avoidance system. This was immediately followed by an autonomous brake activation resulting in their vehicle being struck from the rear by another vehicle. A Preliminary Evaluation has been opened to assess the frequency, scope and consequences of the alleged defect.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 0,
+   "hyphen_line_breaks": 0,
+   "check": "통과"
+  },
+  {
+   "action_no": "PE12014",
+   "open_date": "20120614",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2012/INOA-PE12014-4299.PDF",
+   "pdf_sha256": "c0b47bf62b3e15d1ec6a778eacd98e0fcc7d4b1ec5e5511459b42c7a17b5e2e8",
+   "pdf_mod_date": "20120615",
+   "pdf_mod_gap_days": 1,
+   "query_source": "ODI Resume",
+   "status": "확보",
+   "doc_date_opened": "20120614",
+   "question": "ODI was contacted by a fleet which operates two of the subject trailers Within the first year of service the fleet had experienced multiple wheel-end failures on both trailers. Failures range form broken wheel studs to wheel-off events. Both trailers were used to haul identical backhoes, just as the other trailers used by the fleet do. ODI visited the fleet and verified that the trailer gross and axle weights were within specified limits. ODI has opened this investigation to further evaluate the cause of these wheel-end failures, assess the scope, frequency, and safety consequences of the alleged defect. VOQ: 10407241", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 0,
+   "hyphen_line_breaks": 0,
+   "check": "통과"
+  },
+  {
+   "action_no": "PE20018",
+   "open_date": "20201105",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2020/INOA-PE20018-7737.PDF",
+   "pdf_sha256": "66c2149556a82108e00bd7f7ebbae37c89abc7278f9444888ea48ccc6d418d77",
+   "pdf_mod_date": "20201106",
+   "pdf_mod_gap_days": 1,
+   "query_source": "ODI Resume",
+   "status": "확보",
+   "doc_date_opened": "20201105",
+   "question": "The subject vehicles are model year (MY) 2010 through 2011 Land Rover LR4 (L319) and Range Rover Sport (L320) vehicles equipped with fuel tank flange part number AH229039AB. The Office of Defects Investigation (ODI) has received six consumer complaints (VOQs) alleging fuel leakage from cracked tank flanges in the subject vehicles. In addition, ODI identified 5 field reports and 200 warranty claims related to the alleged defect in the subject vehicles as part of the peer vehicle field data analysis in Recall Query RQ19-004 regarding tank flange leaks in MY 2010 through 2012 Jaguar XF vehicles. In 2013 Jaguar Land Rover LLC (JLR) submitted a foreign recall report related to the alleged defect in the subject vehicles (Foreign Recall 13F-098). The foreign recall was conducted in eight Middle East countries (Bahrain, Kuwait, Lebanon, Oman, Qatar, Saudi Arabia, United Arab Emirates, and Yemen). In response to ODI's information request letter for RQ19-004, JLR indicated that a modified fuel tank flange was implemented as a running change in MY 2011 production of the subject vehicles. Internal ribbing was added to the modified flanges, which increased the strength and creep resistance of the parts in the areas were cracking had been observed. Tank flanges with internal ribbing are identified by part numbers AH229039AC and AH229039AD. The modified flanges were used in approximately 27,882 MY 2011 through 2015 LR4 vehicles and 32,822 MY 2011 through 2013 Range Rover Sport vehicles (peer vehicles). A Preliminary Evaluation has been opened to assess the failure rate and severity of the fuel tank flange cracking condition in subject and peer vehicles sold in the United States. The following VOQ numbers are associated with this opening resume: 11280630, 11220260, 11155570, 11139276, 11132102, 11098107.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 0,
+   "hyphen_line_breaks": 0,
+   "check": "통과"
+  },
+  {
+   "action_no": "EA10006",
+   "open_date": "20100818",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2010/INOA-EA10006-7281.PDF",
+   "pdf_sha256": "fe52dbea370e766682d7fe74f7a30b0d54578444f75c384037cf1ae072222e7a",
+   "pdf_mod_date": "20100819",
+   "pdf_mod_gap_days": 1,
+   "query_source": "ODI Resume",
+   "status": "확보",
+   "doc_date_opened": "20100818",
+   "question": "On November 30, 2009, the Office of Defects Investigation (ODI) opened Preliminary Evaluation (PE09-054) to investigate alleged engine stalling, while driving model year (MY) 2006 Toyota Corolla and Corolla Matrix vehicles. In its response to ODI's information request submitted on March 2, 2010, Toyota indicated that it had identified two possible causes of production defects of the engine control units (ECU) used in MY 2005 through 2007 Toyota Corollas and Matrixs. Failure mode A1 - BGA ball failure caused by improperly cured conformal coating applied to circuit boards. This can cause cracks to form in the soldered joints of some components. Failure mode A2 - varistor over heat, a glass coating is created on the surface of the varistor during its production process. In the case of an insufficient coating, a crack can occur in the surface of the glass coating. When ions are charged in the plating electrolytes after the glass coating process, the plating electrolytes can penetrate into the varistor through the glass crack then an electrical short occurs. With respect to these failures, if the condition arises, it can potentially lead to one or more of the following: MIL on, engine stall, engine no start, or harsh shifting. An Engineering Analysis has been opened to further assess the scope, frequency and safety risks associated with the failure of the ECU that can result in engine stalling.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 0,
+   "hyphen_line_breaks": 0,
+   "check": "통과"
+  },
+  {
+   "action_no": "EA11012",
+   "open_date": "20110912",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2011/INOA-EA11012-7035.pdf",
+   "pdf_sha256": "baa73396e81ac94a3834e08adcc9a2678213f882fa4ce5b516054742822c2f7f",
+   "pdf_mod_date": "20110913",
+   "pdf_mod_gap_days": 1,
+   "query_source": "ODI Resume",
+   "status": "확보",
+   "doc_date_opened": "20110912",
+   "question": "The Office of Defects Investigation (ODI) opened this investigation as Preliminary Evaluation (PE) 11-017 based on 12 reports from consumers alleging that both low beam headlights stopped working simultaneously. Several of the complainants reported that the headlight switch and/or its wiring harness connector required replacement to repair the low beam headlight circuit, and also reported that the switch and/or the wire harness connector were damaged from overheating. Based on information provided by Honda in response to ODI's PE information request letter, ODI is upgrading the investigation to an Engineering Analysis.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
@@ -583,31 +584,31 @@
    "check": "통과"
   },
   {
-   "action_no": "PE14010",
-   "open_date": "20140415",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2014/INOA-PE14010-6790.PDF",
-   "pdf_sha256": "0431c912de7a9856e9d8f6a28856a72d41677562e3ca94bb9ee9a0f52fe09c32",
-   "pdf_mod_date": "20140416",
+   "action_no": "EA15003",
+   "open_date": "20150401",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2015/INOA-EA15003-6364.PDF",
+   "pdf_sha256": "5eebd6ca427c390fb425787947d6763dd6bd70ca85295fa176ed3357e5d8e64b",
+   "pdf_mod_date": "20150402",
    "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20140415",
-   "question": "The Office of Defects Investigation (ODI) has received one Vehicle Owner Complaint (VOQ) of inappropriate activation of the emergency braking system in a model year (MY) 2014 Chevrolet Impala vehicle (VOQ 10574799). The consumer alleges that the driver assist system inappropriately activated emergency braking bringing the vehicle to a complete stop under what the driver considered to be full braking force. The complaint alleged experiencing multiple events at different locations and road conditions. In one of those incidents, the complainant reported that while traveling at 40 mph with no traffic directly in front of them, they heard 3 to 4 beeps from the Forward Collision Avoidance system. This was immediately followed by an autonomous brake activation resulting in their vehicle being struck from the rear by another vehicle. A Preliminary Evaluation has been opened to assess the frequency, scope and consequences of the alleged defect.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
-   "removed_header_lines": 0,
+   "doc_date_opened": "20150401",
+   "question": "On June 24, 2014, the Office of Defects Investigation (ODI) opened PE14-018 to investigate allegations that the tunnel carpet cover trim panel on model year (MY) 2012 through 2014 Nissan Versa, Versa Sedan and Versa Note vehicles has, in certain situations, interfered with the driver's ability to promptly release the accelerator pedal and transition to the brake pedal. This may result in delayed brake application or brief incidents of unwanted acceleration. At the opening of PE14-018, ODI had identified one complaint, VOQ 10597004, alleging that the driver's foot became caught by the subject trim panel to the extent that the driver decided that it was necessary to pull on their leg to get the foot free of the interference, almost causing a crash. The trim panel in question (Figure 1) is located next to the accelerator pedal and the lower corner is positioned such that it is near the right outer edge of the driver's shoe. The complainant supplied a photograph (Figure 2) showing how the edge of the panel wedged itself in the driver's shoe. Complainant 10573057 alleged that when attempting to remove their foot from the accelerator pedal to apply the brake, their shoe was caught by the trim panel which delayed braking ability several times. During the investigation, ODI received a VOQ, 10614957, that alleged that the driver's foot was interfered with by the trim panel, delaying the driver's ability to apply the brakes, resulting in a crash and minor injuries to the driver. In addition, ODI has received VOQs alleging that the HVAC relay actuator, Figures 3 and 4, can also interfere with the driver's ability to react quickly to apply the brakes. MY 2015 Versa Sedan and Note vehicles have been added to the scope of the investigation as they are believed to have the same panel design and actuator placement as the subject vehicles. An Engineering Analysis has been opened to asses the scope, frequency and safety-related consequences of the alleged defect. The subject vehicles from PE14-018 have been revised to exclude the MY 2012 Versa models because they do not use the same trim panel design. The VOQs associated with this investigation are: 10649259, 10614957, 10610356, 10606766, 10606670, 10597004, 10498000, 10640644, 10606832, 10573057, and 10503811.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "removed_header_lines": 2,
    "hyphen_line_breaks": 0,
    "check": "통과"
   },
   {
-   "action_no": "PE12014",
-   "open_date": "20120614",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2012/INOA-PE12014-4299.PDF",
-   "pdf_sha256": "c0b47bf62b3e15d1ec6a778eacd98e0fcc7d4b1ec5e5511459b42c7a17b5e2e8",
-   "pdf_mod_date": "20120615",
+   "action_no": "PE13002",
+   "open_date": "20130207",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2013/INOA-PE13002-5718.PDF",
+   "pdf_sha256": "003c41f2a8fcd453d3f7fadb051b37d8945debd9aee516eda786ce10776bd600",
+   "pdf_mod_date": "20130208",
    "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20120614",
-   "question": "ODI was contacted by a fleet which operates two of the subject trailers Within the first year of service the fleet had experienced multiple wheel-end failures on both trailers. Failures range form broken wheel studs to wheel-off events. Both trailers were used to haul identical backhoes, just as the other trailers used by the fleet do. ODI visited the fleet and verified that the trailer gross and axle weights were within specified limits. ODI has opened this investigation to further evaluate the cause of these wheel-end failures, assess the scope, frequency, and safety consequences of the alleged defect. VOQ: 10407241", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "doc_date_opened": "20130207",
+   "question": "The Office of Defects Investigation (ODI) has received Early Warning Reporting (EWR) data from the manufacturer that indicates some number of subject vehicles have allegedly experienced a condition where the I-Shift transmission fails to automatically disengage from the engine as intended. This may result in extended stopping distances and/or unintended forward motion of a vehicle previously at rest. A Preliminary Evaluation has been opened to assess the alleged defect in the subject vehicles.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
@@ -718,31 +719,31 @@
    "check": "통과"
   },
   {
-   "action_no": "PE20018",
-   "open_date": "20201105",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2020/INOA-PE20018-7737.PDF",
-   "pdf_sha256": "66c2149556a82108e00bd7f7ebbae37c89abc7278f9444888ea48ccc6d418d77",
-   "pdf_mod_date": "20201106",
+   "action_no": "PE11027",
+   "open_date": "20110816",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2011/INOA-PE11027-8808.pdf",
+   "pdf_sha256": "4783ec8eb38c8f62560c2b71f30ad59d192f638b891fe1b9599dd556f35d51cc",
+   "pdf_mod_date": "20110817",
    "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20201105",
-   "question": "The subject vehicles are model year (MY) 2010 through 2011 Land Rover LR4 (L319) and Range Rover Sport (L320) vehicles equipped with fuel tank flange part number AH229039AB. The Office of Defects Investigation (ODI) has received six consumer complaints (VOQs) alleging fuel leakage from cracked tank flanges in the subject vehicles. In addition, ODI identified 5 field reports and 200 warranty claims related to the alleged defect in the subject vehicles as part of the peer vehicle field data analysis in Recall Query RQ19-004 regarding tank flange leaks in MY 2010 through 2012 Jaguar XF vehicles. In 2013 Jaguar Land Rover LLC (JLR) submitted a foreign recall report related to the alleged defect in the subject vehicles (Foreign Recall 13F-098). The foreign recall was conducted in eight Middle East countries (Bahrain, Kuwait, Lebanon, Oman, Qatar, Saudi Arabia, United Arab Emirates, and Yemen). In response to ODI's information request letter for RQ19-004, JLR indicated that a modified fuel tank flange was implemented as a running change in MY 2011 production of the subject vehicles. Internal ribbing was added to the modified flanges, which increased the strength and creep resistance of the parts in the areas were cracking had been observed. Tank flanges with internal ribbing are identified by part numbers AH229039AC and AH229039AD. The modified flanges were used in approximately 27,882 MY 2011 through 2015 LR4 vehicles and 32,822 MY 2011 through 2013 Range Rover Sport vehicles (peer vehicles). A Preliminary Evaluation has been opened to assess the failure rate and severity of the fuel tank flange cracking condition in subject and peer vehicles sold in the United States. The following VOQ numbers are associated with this opening resume: 11280630, 11220260, 11155570, 11139276, 11132102, 11098107.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "doc_date_opened": "20110816",
+   "question": "On August 9th 2011 the Office of Defects Investigation (ODI) received a Vehicle Owners Questionnaire (VOQ) concerning an alleged failure related to a fire truck's aerial ladder. The electronic over hydraulic controller that is used to move the aerial bucket fails, causing the ladder to move in the wrong direction unexpectedly. Moreover, a secondary mechanism that controls the aerial bucket from the ground called a \"dead man's switch\" also allegedly fails to control the aerial bucket, moving it in an unwanted direction. The complainant alleged this is a second failure related to the fleet, both on different fire trucks but related to the same models. Improper movement of the aerial bucket could present a safety. This PE is open to ascertain the scope and failure mechanism related to this alleged safety defect.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
   },
   {
-   "action_no": "EA10006",
-   "open_date": "20100818",
-   "source_url": "https://static.nhtsa.gov/odi/inv/2010/INOA-EA10006-7281.PDF",
-   "pdf_sha256": "fe52dbea370e766682d7fe74f7a30b0d54578444f75c384037cf1ae072222e7a",
-   "pdf_mod_date": "20100819",
+   "action_no": "PE17009",
+   "open_date": "20171228",
+   "source_url": "https://static.nhtsa.gov/odi/inv/2017/INOA-PE17009-5650.PDF",
+   "pdf_sha256": "c5695632361dc28807e04999f1d9306044ae000299db00c63fc8e47a57741896",
+   "pdf_mod_date": "20171229",
    "pdf_mod_gap_days": 1,
    "query_source": "ODI Resume",
    "status": "확보",
-   "doc_date_opened": "20100818",
-   "question": "On November 30, 2009, the Office of Defects Investigation (ODI) opened Preliminary Evaluation (PE09-054) to investigate alleged engine stalling, while driving model year (MY) 2006 Toyota Corolla and Corolla Matrix vehicles. In its response to ODI's information request submitted on March 2, 2010, Toyota indicated that it had identified two possible causes of production defects of the engine control units (ECU) used in MY 2005 through 2007 Toyota Corollas and Matrixs. Failure mode A1 - BGA ball failure caused by improperly cured conformal coating applied to circuit boards. This can cause cracks to form in the soldered joints of some components. Failure mode A2 - varistor over heat, a glass coating is created on the surface of the varistor during its production process. In the case of an insufficient coating, a crack can occur in the surface of the glass coating. When ions are charged in the plating electrolytes after the glass coating process, the plating electrolytes can penetrate into the varistor through the glass crack then an electrical short occurs. With respect to these failures, if the condition arises, it can potentially lead to one or more of the following: MIL on, engine stall, engine no start, or harsh shifting. An Engineering Analysis has been opened to further assess the scope, frequency and safety risks associated with the failure of the ECU that can result in engine stalling.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
+   "doc_date_opened": "20171228",
+   "question": "As the result of a court order authorizing the release of Goodyear records to NHTSA, the agency obtained claim and complaint data alleging that Goodyear G159 tires installed on Class A motor homes failed in service, causing deaths or personal injuries. The number of these claims suggests that the failures may stem from a safety related defect. Many of these claims were not required to be reported under 49 CFR Part 579 and the data produced in litigation was sealed under protective orders and confidential settlement agreements, precluding claimants from submitting it to NHTSA. The Office of Defects investigation has also received 10 consumer complaints alleging failures of Goodyear G159 tires on motor homes. Two of these complaints allege a crash occurred as a result of the tire failures. Goodyear separately reported 9 claims under 49 CFR Part 579 alleging 1 death and 13 injuries. Among many concerns, claimants contend the Goodyear G159 tires were allegedly not designed for extended use at highway speeds as would be experienced during motor home operation. The complaints referenced above can be viewed at NHTSA.gov under the following ID numbers: 558091, 558307, 558654, 562430, 785967, 891399, 891480, 8022066, 10037738, 10959176.", "question_note": "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장",
    "removed_header_lines": 0,
    "hyphen_line_breaks": 0,
    "check": "통과"
@@ -765,8 +766,8 @@
  ],
  "replacements": [
   {
-   "skipped": "EA07008",
-   "reason": "추출 불가",
+   "skipped": "PE21001",
+   "reason": "판본 근거 부족",
    "replaced_by": "EA09014",
    "slot": "pilot"
   },
@@ -777,25 +778,25 @@
    "slot": "pilot"
   },
   {
-   "skipped": "PE07060",
+   "skipped": "EA07008",
    "reason": "추출 불가",
    "replaced_by": "PE10050",
    "slot": "pilot"
   },
   {
-   "skipped": "PE09049",
+   "skipped": "PE07060",
    "reason": "추출 불가",
    "replaced_by": "EA09016",
-   "slot": "main"
+   "slot": "pilot"
   },
   {
    "skipped": "EA09016",
    "reason": "추출 불가",
    "replaced_by": "EA12003",
-   "slot": "main"
+   "slot": "pilot"
   },
   {
-   "skipped": "PE09037",
+   "skipped": "PE09049",
    "reason": "추출 불가",
    "replaced_by": "EA08001",
    "slot": "main"
@@ -819,31 +820,31 @@
    "slot": "main"
   },
   {
-   "skipped": "EA09007",
+   "skipped": "PE09037",
    "reason": "추출 불가",
    "replaced_by": "PE18009",
    "slot": "main"
   },
   {
-   "skipped": "PE09035",
+   "skipped": "EA09007",
    "reason": "추출 불가",
    "replaced_by": "PE13024",
    "slot": "main"
   },
   {
-   "skipped": "PE09006",
+   "skipped": "PE09035",
    "reason": "추출 불가",
    "replaced_by": "PE10046",
    "slot": "main"
   },
   {
-   "skipped": "PE08043",
-   "reason": "추출 불가",
+   "skipped": "PE18008",
+   "reason": "판본 근거 부족",
    "replaced_by": "PE14019",
    "slot": "main"
   },
   {
-   "skipped": "PE07026",
+   "skipped": "PE09006",
    "reason": "추출 불가",
    "replaced_by": "PE07017",
    "slot": "main"
@@ -861,7 +862,7 @@
    "slot": "main"
   },
   {
-   "skipped": "PE08012",
+   "skipped": "PE08043",
    "reason": "추출 불가",
    "replaced_by": "PE08034",
    "slot": "main"
@@ -879,8 +880,8 @@
    "slot": "main"
   },
   {
-   "skipped": "EA08023",
-   "reason": "추출 불가",
+   "skipped": "PE11038",
+   "reason": "판본 근거 부족",
    "replaced_by": "PE07004",
    "slot": "main"
   },
@@ -891,20 +892,20 @@
    "slot": "main"
   },
   {
-   "skipped": "PE10009",
-   "reason": "추출 불가",
+   "skipped": "PE22004",
+   "reason": "판본 근거 부족",
    "replaced_by": "PE15023",
    "slot": "main"
   },
   {
-   "skipped": "PE07054",
+   "skipped": "PE07026",
    "reason": "추출 불가",
    "replaced_by": "PE14035",
    "slot": "main"
   },
   {
-   "skipped": "PE07043",
-   "reason": "판본 근거 부족",
+   "skipped": "PE08012",
+   "reason": "추출 불가",
    "replaced_by": "PE09046",
    "slot": "main"
   },
@@ -921,7 +922,7 @@
    "slot": "main"
   },
   {
-   "skipped": "EA09019",
+   "skipped": "EA08023",
    "reason": "추출 불가",
    "replaced_by": "EA08003",
    "slot": "main"
@@ -933,13 +934,13 @@
    "slot": "main"
   },
   {
-   "skipped": "PE08008",
+   "skipped": "PE10009",
    "reason": "추출 불가",
    "replaced_by": "PE13001",
    "slot": "main"
   },
   {
-   "skipped": "PE09053",
+   "skipped": "PE07054",
    "reason": "추출 불가",
    "replaced_by": "PE18003",
    "slot": "main"
@@ -957,21 +958,57 @@
    "slot": "main"
   },
   {
-   "skipped": "PE09052",
-   "reason": "문서 없음",
+   "skipped": "PE07043",
+   "reason": "판본 근거 부족",
    "replaced_by": "PE12014",
    "slot": "main"
   },
   {
-   "skipped": "PE07002",
+   "skipped": "EA09019",
    "reason": "추출 불가",
    "replaced_by": "PE20018",
    "slot": "main"
   },
   {
+   "skipped": "PE10011",
+   "reason": "판본 근거 부족",
+   "replaced_by": "EA10006",
+   "slot": "main"
+  },
+  {
+   "skipped": "PE08008",
+   "reason": "추출 불가",
+   "replaced_by": "EA11012",
+   "slot": "main"
+  },
+  {
+   "skipped": "PE09053",
+   "reason": "추출 불가",
+   "replaced_by": "PE07035",
+   "slot": "main"
+  },
+  {
+   "skipped": "PE07035",
+   "reason": "추출 불가",
+   "replaced_by": "EA15003",
+   "slot": "main"
+  },
+  {
+   "skipped": "PE09052",
+   "reason": "문서 없음",
+   "replaced_by": "PE13002",
+   "slot": "main"
+  },
+  {
+   "skipped": "PE07002",
+   "reason": "추출 불가",
+   "replaced_by": "PE11027",
+   "slot": "main"
+  },
+  {
    "skipped": "PE09018",
    "reason": "추출 불가",
-   "replaced_by": "EA10006",
+   "replaced_by": "PE17009",
    "slot": "main"
   }
  ]

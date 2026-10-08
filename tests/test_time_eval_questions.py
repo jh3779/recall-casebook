@@ -240,3 +240,42 @@ def test_every_committed_question_has_version_evidence_and_no_page_header_left()
             and 0 <= r["pdf_mod_gap_days"] <= tq.MOD_GAP_MAX_DAYS
         )
         assert not tq.LEFTOVER_HEADER.search(r["question"])
+
+
+def test_the_modification_gap_limit_is_three_days_as_decided_in_dec_037():
+    assert tq.MOD_GAP_MAX_DAYS == 3
+    assert make_record("20180705")["status"] == "확보"  # 개시 3일 뒤까지 받는다
+    assert make_record("20180706")["status"] == "판본 근거 부족"  # 4일 뒤는 뺀다
+
+
+def test_later_dates_finds_dates_after_the_opening_in_the_common_forms():
+    text = "On 03/05/2019 the maker said so. In March 2019 and on June 3, 2019 and 4 July 2019 more reports came."
+    assert tq.later_dates(text, "20180702") == ["201903", "20190305", "20190603", "20190704"]
+    assert tq.later_dates(text, "20191231") == []  # 개시일이 더 늦으면 모두 이전 날짜
+    assert tq.later_dates("Reports from March 2018 and 07/01/2018 exist.", "20180702") == []
+    assert (
+        tq.later_dates("Model year 2019 vehicles, 60 to 65 miles per hour", "20180702") == []
+    )  # 연식·속도는 날짜가 아니다
+
+
+def test_a_question_that_mentions_a_date_after_the_opening_is_not_used(tmp_path, monkeypatch):
+    monkeypatch.setattr(tq, "DOC_DIR", tmp_path)
+    text = ONE_PAGE.replace("01/08/2021", "07/02/2018").replace(
+        "The reports cited", "A recall was filed on 09/10/2018. The reports cited"
+    )
+    rec = tq.build_record(
+        "EA18004",
+        "20180702",
+        finder=lambda a: ["odi/inv/2018/INOA-EA18004-5402.PDF"],
+        fetch=lambda key: b"%PDF-1.4 fake",
+        text_of=lambda path: text,
+        mod_of=lambda path: "20180704",
+    )
+    assert rec["status"] == "판본 근거 부족" and rec["later_dates_in_text"] == ["20180910"]
+
+
+def test_the_committed_questions_state_the_approximate_basis_and_have_no_later_date_in_the_text():
+    q = json.loads(tq.OUT.read_text(encoding="utf-8"))
+    assert q["basis"] == tq.BASIS and "근사" in q["basis"]
+    for r in q["pilot"] + q["main"]:
+        assert tq.later_dates(r["question"], r["open_date"]) == []

@@ -10,9 +10,10 @@
    글자를 뽑을 수 없는 문서(2010년 이전 개시 문서는 대부분 스캔한 이미지라 글자 정보가 없다, 개시 문서가 아닌 편지 등)도
    같은 이유로 건너뛴다 — OCR은 원문 그대로라고 보장할 수 없어 쓰지 않는다. 대체 목록을 다 쓰면 같은 해시 순위로 이어서 채운다.
 2. PDF를 받아 sha256을 잰다 (원본은 커밋하지 않는다: data/raw/time_eval_docs/).
-   기준일 당시 판본이라는 근거로 PDF 안에 적힌 수정일(ModDate)을 기록하고, 개시일보다 30일 넘게 늦거나 없으면 쓰지 않는다
-   ("판본 근거 부족", 다른 건너뜀과 같이 대체 목록으로 채움). 파일 서버의 수정 시각은 2022-02-28 일괄 이전 날짜라 근거가 못 된다.
-   한계: ModDate는 파일 안의 기록이라 공개 시점을 증명하지는 못한다 - 팀 확인이 필요한 가정이다.
+   기준일 당시 판본이라는 근거로 PDF 안에 적힌 수정일(ModDate)을 기록하고, 개시일보다 3일 넘게 늦거나 없으면 쓰지 않는다.
+   질문 본문에 개시일보다 늦은 날짜가 나와도 쓰지 않는다 ("판본 근거 부족", 다른 건너뜀과 같이 대체 목록으로 채움).
+   이 기준은 DEC-037 ⑥에서 팀이 정했다. 파일 서버의 수정 시각은 2022-02-28 일괄 이전 날짜라 근거가 못 된다.
+   한계: ModDate는 파일 안의 기록이라 공개 시점을 증명하지는 못한다 - 그래서 결과는 "개시 문서 기준 근사 시점 평가"로만 보고한다.
 3. `pdftotext -raw`로 텍스트를 뽑아 `Summary:` 뒤의 요약을 질문으로 옮긴다. AI가 요약하거나 고치지 않는다.
    쪽을 넘는 문서에는 쪽 머리글(`Resume Page 2 of 2` 등)이 요약 사이에 끼므로 그 줄만 뺀다. 단어는 바꾸지 않는다.
 4. 줄바꿈·여러 칸 공백을 한 칸으로 바꾼 상태로, 옮긴 질문이 문서 텍스트 안에 그대로 들어 있는지 대조한다
@@ -45,8 +46,11 @@ QUESTION_NOTE = "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로
 # 요약 사이에 끼는 쪽 머리글 줄 (줄 전체가 이 모양일 때만 뺀다)
 SKIP = ("문서 없음", "추출 불가", "판본 근거 부족")  # 이 상태면 건너뛰고 대체 목록으로 채운다
 # 파일 서버의 수정 시각은 2022-02-28 일괄 이전 날짜라 공개 시점의 증거가 못 된다. 대신 PDF 안에 적힌 수정일(ModDate)이 개시일에서
-# 이 일수 안이면 "개시 직후 만든 판본에서 나중에 고치지 않았다"는 근거로 본다. 수정일이 없거나 이보다 늦으면 쓰지 않는다 (팀 확인 필요)
-MOD_GAP_MAX_DAYS = 30
+# 이 일수 안이면 "개시 직후 만든 판본에서 나중에 고치지 않았다"는 근거로 본다. 수정일이 없거나 이보다 늦으면 쓰지 않는다 (DEC-037 ⑥)
+MOD_GAP_MAX_DAYS = 3
+BASIS = "개시 문서 기준 근사 시점 평가 - PDF 수정일이 개시일 + 3일 이내, 질문 본문에 개시일보다 늦은 날짜 없음 (DEC-037 ⑥). 공개 시점의 증명은 아니다"
+MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December"
+MONTH_NO = {m: i for i, m in enumerate(MONTHS.split("|"), 1)}
 HEADER_LINES = [
     re.compile(r"ODI RESUME"),
     re.compile(r"Resume Page \d+ of \d+"),
@@ -175,6 +179,25 @@ def pdf_text(path: Path) -> str:
     return out.stdout.decode("utf-8", errors="replace")
 
 
+def later_dates(question: str, open_date: str) -> list[str]:
+    """질문 본문에 나오는 날짜 중 개시일보다 늦은 것 (YYYYMMDD 또는 월만 아는 날짜는 YYYYMM). 모르는 꼴의 날짜는 잡지 못한다."""
+    found = []
+    # 완전한 날짜를 먼저 찾고 그 글자를 지운 뒤에 월만 아는 날짜를 찾는다 (같은 날짜가 두 번 잡히지 않게)
+    for mo, d, y in re.findall(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b", question):
+        found.append(f"{int(y):04d}{int(mo):02d}{int(d):02d}")
+    question = re.sub(r"\b\d{1,2}/\d{1,2}/\d{4}\b", " ", question)
+    for mo, d, y in re.findall(rf"\b({MONTHS})\.? (\d{{1,2}}),? (\d{{4}})\b", question):
+        found.append(f"{int(y):04d}{MONTH_NO[mo]:02d}{int(d):02d}")
+    for d, mo, y in re.findall(rf"\b(\d{{1,2}}) ({MONTHS}),? (\d{{4}})\b", question):
+        found.append(f"{int(y):04d}{MONTH_NO[mo]:02d}{int(d):02d}")
+    question = re.sub(
+        rf"\b({MONTHS})\.? \d{{1,2}},? \d{{4}}\b|\b\d{{1,2}} ({MONTHS}),? \d{{4}}\b", " ", question
+    )
+    for mo, y in re.findall(rf"\b({MONTHS}),? (\d{{4}})\b", question):
+        found.append(f"{int(y):04d}{MONTH_NO[mo]:02d}")
+    return sorted({d for d in found if d > open_date[: len(d)]})
+
+
 def pdf_mod_date(path: Path) -> str | None:
     """PDF 안에 적힌 수정일(`pdfinfo`의 ModDate)을 YYYYMMDD로. 없거나 읽을 수 없으면 None."""
     out = subprocess.run(["pdfinfo", str(path)], capture_output=True, timeout=60).stdout
@@ -245,6 +268,13 @@ def build_record(
             **base,
             "status": "판본 근거 부족",
         }  # 개시 이후에 고쳐졌을 수 있어 기준일 당시 판본이라고 말할 수 없다
+    later = later_dates(got["question"] or "", open_date)
+    if later:
+        return {
+            **base,
+            "status": "판본 근거 부족",
+            "later_dates_in_text": later,
+        }  # 개시일 뒤의 일이 본문에 나온다
     return {**base, "query_source": QUERY_SOURCE, "status": "확보", **got}
 
 
@@ -292,6 +322,7 @@ def build() -> dict:
         "draw_sha256": draw_digest(),
         "draw_seed": draw["seed"],
         "query_source": QUERY_SOURCE,
+        "basis": BASIS,
         "counts": {
             "pilot": len(filled["pilot"]),
             "main": len(filled["main"]),
