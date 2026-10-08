@@ -63,7 +63,7 @@
 | 스테이징을 취소하고 싶다 | `git restore --staged <파일>` | 파일 내용은 그대로, 스테이징 목록에서만 뺀다 |
 | 아직 `add`하지 않은 변경을 버리고 싶다 | `git restore <파일>` | 스테이징된 상태로 되돌린다(`add`한 내용은 남는다). 마지막 커밋 상태로 완전히 되돌리려면 `git restore --staged --worktree <파일>`. **버린 변경은 복구되지 않는다** |
 | 커밋 안 한 변경을 잠시 치우고 다른 브랜치로 가야 한다 | `git stash` → (작업 후) `git stash pop` | 변경을 임시 보관했다가 다시 꺼낸다. **새로 만든(추적 안 되는) 파일은 기본으로 치우지 않는다** — 함께 치우려면 `git stash -u` |
-| 방금 한 커밋 메시지를 고치고 싶다 (아직 push 전) | `git commit --amend -m "docs: 새 메시지"` | push한 뒤에는 쓰지 않는다 — 이력이 바뀌어 다시 올리려면 force push가 필요하다 |
+| 방금 한 커밋 메시지를 고치고 싶다 (아직 push 전) | `git commit --amend -m "docs: 새 메시지"` | push한 뒤에는 쓰지 않는다 — 이력이 바뀌어 다시 올리려면 force push가 필요하다. **훅에 막혀 커밋이 만들어지지 않았을 때는 `--amend`를 쓰지 않는다** — 바로 앞의 (이미 push했을 수 있는) 커밋이 고쳐진다. 메시지를 고쳐 `git commit -m`을 다시 실행한다 |
 | 브랜치 이름을 잘못 지었다 | `git branch -m docs/correct-name` | 지금 브랜치 이름을 바꾼다. 새 이름도 규칙(영문 소문자·숫자·하이픈)을 지켜야 push가 통과한다 |
 | PR이 병합된 뒤 정리 | `git switch main` → `git pull` → `git branch -d <브랜치>` | 원격 브랜치는 병합 때 자동 삭제된다. squash merge라 로컬 브랜치가 git 이력상 "병합 안 됨"으로 보여 `-d`가 거부할 수 있다. 그때는 ① PR이 Merged이고 ② 로컬 브랜치 끝 커밋이 PR의 마지막 커밋과 같은지(`git rev-parse <브랜치>`와 `gh pr view <번호> --json headRefOid -q .headRefOid`) 확인한 뒤에만 `git branch -D <브랜치>`로 지운다. 다르면 병합 뒤 새 커밋이 있다는 뜻이니 지우지 않는다 |
 | 두 작업을 동시에 (AI 세션 두 개 등) | 기존 브랜치: `git worktree add ../폴더 <브랜치>` / 새 브랜치: `git worktree add -b <새-브랜치> ../폴더` | 한 저장소에서 폴더를 하나 더 만들어 다른 브랜치를 연다. 같은 폴더에서 두 세션이 git을 만지지 않게 한다. 이미 다른 폴더에서 열린 브랜치는 열 수 없다 |

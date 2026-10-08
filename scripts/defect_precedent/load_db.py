@@ -228,7 +228,7 @@ def load_files(data_dir: Path, causes_kind: str, baseline: Path | None = None) -
     if recall_rows and "maker_group" not in recall_rows[0]:
         sys.exit(
             "recalls.jsonl에 maker_group 칸이 없다 — 회사명 대응표를 반영하기 전의 카드다. "
-            "`nhtsa build`로 다시 만든 카드가 필요하다 (DEC-035)"
+            "`nhtsa build`로 다시 만든 카드가 필요하다 (DEC-036)"
         )
     recalls = []
     for i, r in enumerate(recall_rows, 1):

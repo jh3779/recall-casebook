@@ -24,7 +24,7 @@ from pathlib import Path
 from scripts.defect_precedent import maker_aliases
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-# 회사명 대응표: 사람이 확인한 표(maker_aliases.csv)와 스크립트가 만든 초안. 카드의 maker·maker_group은 확인본에서 온다 (DEC-035)
+# 회사명 대응표: 사람이 확인한 표(maker_aliases.csv)와 스크립트가 만든 초안. 카드의 maker·maker_group은 확인본에서 온다 (DEC-036)
 MAKER_ALIASES = Path(__file__).resolve().parent / "maker_aliases.csv"
 MAKER_ALIASES_DRAFT = Path(__file__).resolve().parent / "maker_aliases_draft.csv"
 RAW_DIR = REPO_ROOT / "data" / "raw" / "nhtsa"

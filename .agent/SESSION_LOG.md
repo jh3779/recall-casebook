@@ -74,4 +74,13 @@
 - 2026-10-07: rclrpt all이 완성본과 함께 causes.manifest.json(줄 수·파일/캠페인 해시·기대 캠페인 수)을 남기도록 변경 — load_db가 사람이 입력한 기대 건수 대신 명세와 대조 (PR #30 Codex c0906973 반영 준비)
 - 2026-10-07: 전체 수집 중 원본 결함 발견(RCLRPT-14E059-8941.PDF가 HTTP 200·application/pdf인데 내용은 로그인 페이지 HTML) — rclrpt all에 --accept-failures N(실패 건수와 정확히 같아야 함)·명세에 failed_campaigns 추가, load_db가 줄 수+실패=기대 캠페인 수 대조
 - 2026-10-07: "왜" 집계 스크립트 `why_stats.py` 추가(할 일 20) — 30,350건 기준 재현, 기획 5절 건수 통일 (data/why-stats)
-- 2026-10-07: #34 회사명 대응표 확인본을 카드에 반영하는 코드 — `nhtsa build`가 `maker_aliases.csv`를 읽어 `maker`·`maker_group` 채움(DEC-035), DB `recalls.maker_group`(NULL 허용·`alter`), `build.json`에 대응표 해시. #39 병합 뒤 실제 `build`·새 기준 freeze (data/maker-group-apply)
+- 2026-10-07: 573 전체 수집 완료(11,737개, 성공 11,719·수용한 실패 18) — `why_stats --full`로 "왜" 집계를 전수 확인값(하한~상한)으로 확정(이후 리콜 원인 근거 77.5~77.7%, 전체 49.2%), 기획 5절·HANDOFF 갱신 (data/why-full)
+- 2026-10-07: PR #27·#28 병합(80ce10f·e26c171), 기준 원본 사본을 팀 구글 드라이브(data.zip)에 보관한 것 기록, 저장소의 data.zip은 휴지통으로, 할 일 29(PR #27 후속, 병합 뒤 번호) 추가
+- 2026-10-07: DB를 Supabase로 확정(사용자), 적재 담당 박예원 — 이후 박예원 PR #30(DEC-034)이 이미 같은 결정을 담고 있어 이 브랜치의 DEC-033·할 일 28은 철회
+- 2026-10-07: 이슈 #31(Supabase 적재, 박예원) 생성, 키·드라이브 링크 전달 완료, 박예원 작업 시작
+- 2026-10-07: 기획서 정정 4곳, worktree 4개·원격 브랜치 3개 정리
+- 2026-10-07: 이슈 정리 — #18 닫음, #24 결정 사항 갱신, #35 결정(법인 형태 통일 유지, 문구만 정리) 기록, 할 일 30~32 추가, 할 일 기록 규칙 보완(결정은 즉시 기록·순차 할 일은 HANDOFF)
+- 2026-10-07: 저녁 체크포인트 — #29·#30 병합(박예원), 이승노 임시 제외·이슈 #38, PR #37(force push 차단, DEC-035), PR #39 회사명 대응표 확인본(402ebc1, 재리뷰 게시 전 중지), 할 일 33·34 추가
+- 2026-10-08: #33에 main(#29·#30·#32·#40·#41) 합침 — 기획 5절 건수 정의 문장에 탐색 다운로드 보관 정정 유지, README 보관 위치 결정 반영, HANDOFF 할 일 13·20·27·28을 main 문구로 맞추고 13에 드라이브 보관 결정 합침, 할 일 33 갱신(PR #39 head 1694e43)
+- 2026-10-08: data.zip을 빈 폴더에 풀어 기준 재현 확인(BM25 0.510/0.503 재현, 573 표본 205/95/0) — 환경셋팅 4절·HANDOFF 할 일 13에 기록(PR #33 Codex 1c99086e)
+- 2026-10-07: #34 회사명 대응표 확인본을 카드에 반영하는 코드 — `nhtsa build`가 `maker_aliases.csv`를 읽어 `maker`·`maker_group` 채움(DEC-036), DB `recalls.maker_group`(NULL 허용·`alter`), `build.json`에 대응표 해시. #39 병합 뒤 실제 `build`·새 기준 freeze (data/maker-group-apply)

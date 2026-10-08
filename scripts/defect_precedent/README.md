@@ -3,7 +3,7 @@
 결함 선례 찾기 도우미(현행 팀 주제, DEC-030, 기획 `docs/기획_결함선례.md`)의 데이터·시험지·기준 점수를 만드는 스크립트다.
 원본과 결과물은 커밋하지 않는다 (`data/raw/`, `data/processed/`는 `.gitignore`). 기준 실행을 고정하는 작은 파일(`baseline_2026-10-06.json` — 원본·카드·시험지·573 판본의 sha256)만 커밋한다.
 
-> **재현 범위**: 2026-10-06 기준 점수(0.510)와 573 표본(205/95)은 **그날의 원본 사본이 있을 때만** 같은 값으로 다시 만들 수 있다. NHTSA는 같은 주소에 매일 새 파일을 덮어쓰고 옛 파일을 주지 않으며, 원본은 저장소에 커밋하지 않는다(AGENTS.md 7절). 지금 사본은 작업자 로컬(`data/raw/nhtsa/`, `data/raw/rclrpt/`)에만 있다 — **팀 공용 보관 위치는 아직 정하지 않았다**(후속). 사본이 없으면 `fetch`로 받은 새 원본에서 `--allow-drift`로 같은 질문 번호만 "재평가"할 수 있고, 그 값은 기준 점수와 다를 수 있다.
+> **재현 범위**: 2026-10-06 기준 점수(0.510)와 573 표본(205/95)은 **그날의 원본 사본이 있을 때만** 같은 값으로 다시 만들 수 있다. NHTSA는 같은 주소에 매일 새 파일을 덮어쓰고 옛 파일을 주지 않으며, 원본은 저장소에 커밋하지 않는다(AGENTS.md 7절). 사본은 **팀 구글 드라이브**에 `data/` 폴더 압축본(`data.zip` — `raw/nhtsa`·`raw/rclrpt`·`processed/defect`, 2026-10-07 보관)으로 둔다. 링크는 저장소에 적지 않는다 — 우지훈에게 받는다. 받은 사본이 같은지는 `bm25_baseline --baseline`(원본·카드·시험지)과 `rclrpt sample --baseline`(573 PDF)이 각각 sha256으로 확인한다. 사본이 없으면 `fetch`로 받은 새 원본에서 `--allow-drift`로 같은 질문 번호만 "재평가"할 수 있고, 그 값은 기준 점수와 다를 수 있다.
 
 ## 실행 순서
 
@@ -12,6 +12,7 @@ uv run python -m scripts.defect_precedent.nhtsa fetch          # NHTSA 원본 zi
 uv run python -m scripts.defect_precedent.nhtsa build          # recalls.jsonl · eval.jsonl (약 2초, 원본 sha256 검증 후)
 uv run python -m scripts.defect_precedent.bm25_baseline        # 기준 점수 Hit@1·3·5·10 (약 1분)
 uv run python -m scripts.defect_precedent.rclrpt sample 300    # 원본 보고서(Part 573) 무작위 표본 판독 (pdftotext 필요)
+uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json --full  # 573 전수 확인(완성본·명세 필요, 하한~상한). `--full` 없이 돌리면 표본 추정.
 uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json  # 기획 5절 "왜" 집계 (원인 표현·조사 요약·표본 추정·질문의 회사 이름 겹침, 추가 수집 없음)
 ```
 
@@ -19,7 +20,7 @@ uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_pr
 
 - `bm25_baseline --baseline`: 원본 manifest·`recalls.jsonl`·`eval.jsonl`의 sha256이 기준 파일과 모두 같을 때만 "재현"으로 실행하고, 다르면 중단한다. 같은 원본 사본이 없어 현재 데이터로 같은 질문 번호만 다시 재려면 `--allow-drift`를 붙인다 — 출력에 "재평가 (재현 아님)"으로 표시된다.
 - `rclrpt sample --baseline`: 현재 목록을 다시 조회하지 않고 기준 파일에 적힌 **당시 판본 목록(582개)**만 받아 각 PDF의 sha256을 확인한 뒤 판독한다. 해시가 다르면 그 리콜은 실패 목록으로 간다.
-- `why_stats --baseline`: 원본 manifest·카드·시험지 sha256과 573 표본의 캠페인·원인 칸 내용(기준 파일의 `causes_sample.content_sha256`)이 모두 같을 때만 "재현"으로 실행하고, 다르면 멈춘다(`--allow-drift`는 현재 데이터로 "재계산"). 입력 사본은 구글 드라이브 `defect_data_2026-10-06`(저장소와 같은 `data/` 구조, 원본 `data/raw/nhtsa/`와 `data/processed/defect/`의 4개 파일)이고, 링크는 `.agent/HANDOFF.md` 할 일 20번에 적었다. 2014-08-20 이후 리콜이 캠페인과 1:1이 아니면 전체 추정을 내지 않는다.
+- `why_stats --baseline`: 원본 manifest·카드·시험지 sha256과 573 표본의 캠페인·원인 칸 내용(기준 파일의 `causes_sample.content_sha256`)이 모두 같을 때만 "재현"으로 실행하고, 다르면 멈춘다(`--allow-drift`는 현재 데이터로 "재계산"). 입력 사본은 구글 드라이브 `defect_data_2026-10-06`(저장소와 같은 `data/` 구조, 원본 `data/raw/nhtsa/`와 `data/processed/defect/`의 4개 파일)이고, 링크는 `.agent/HANDOFF.md` 할 일 20번에 적었다. 2014-08-20 이후 리콜이 캠페인과 1:1이 아니면 전체 추정을 내지 않는다. `--full`은 `--baseline`이 필수이고 기준 파일의 `causes_full`(대상 목록·실패 목록·원인 파일·명세 파일 지문, 줄 수)과도 대조해서 일부 캠페인만 모은 파일은 통과하지 못한다.
 
 ```bash
 uv run python -m scripts.defect_precedent.bm25_baseline --baseline scripts/defect_precedent/baseline_2026-10-06.json
@@ -28,7 +29,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 
 - 새 기준을 만들 때: `uv run python -m scripts.defect_precedent.nhtsa freeze scripts/defect_precedent/baseline_<날짜>.json` (원본과 다른 날 만든 eval이면 중단한다)
 - `fetch`는 옛 원본을 지우지 않고 `data/raw/nhtsa.<받은 시각>`으로 보관한다.
-- `build`는 사람이 확인한 회사명 대응표(`maker_aliases.csv`)를 읽어 카드의 `maker`(정리한 이름)와 `maker_group`(같은 회사로 묶어 볼 단위)을 채운다 (DEC-035). 신고서 원문은 `raw_maker`에 그대로 남는다. 확인이 끝나지 않은 표이거나 표에 없는 이름이 있으면 중단한다. `build.json`에 표의 sha256(`maker_aliases_sha256`)이 남고 `verify_build`가 대조한다. 회사명 반영 전의 기준(`baseline_2026-10-06.json`)은 카드가 달라져 "재현"이 되지 않는다(옛 값이 필요하면 커밋 `9e8381f`를 체크아웃). 새 기준은 `baseline_2026-10-06_maker-aliases.json`.
+- `build`는 사람이 확인한 회사명 대응표(`maker_aliases.csv`)를 읽어 카드의 `maker`(정리한 이름)와 `maker_group`(같은 회사로 묶어 볼 단위)을 채운다 (DEC-036). 신고서 원문은 `raw_maker`에 그대로 남는다. 확인이 끝나지 않은 표이거나 표에 없는 이름이 있으면 중단한다. `build.json`에 표의 sha256(`maker_aliases_sha256`)이 남고 `verify_build`가 대조한다. 회사명 반영 전의 기준(`baseline_2026-10-06.json`)은 카드가 달라져 "재현"이 되지 않는다(옛 값이 필요하면 커밋 `9e8381f`를 체크아웃). 새 기준은 `baseline_2026-10-06_maker-aliases.json`.
 - NHTSA 원본 URL은 매일 덮어써져서 옛 스냅샷을 다시 받을 수 없다. 원본은 커밋하지 않으므로 **같은 원본 사본(`data/raw/nhtsa` 또는 fetch가 보관한 `data/raw/nhtsa.<받은 시각>`)을 지우지 않는다** — 다른 사람은 사본을 넘겨받아야 재현할 수 있다.
 - **573 전체 수집(`rclrpt all`)은 하기로 결정했다 (2026-10-07 사용자 결정).** 대상은 접수일 2014-08-20 이후이면서 573 보고서가 있는 **11,737개 캠페인**(2026-10-07 목록 기준 — 접수일 이후 카드는 12,011건이지만 보고서가 없는 리콜이 있다)이다. PDF 약 2.3만 개, 약 5GB. 파일럿 1,000건(15.5분, 읽음 999·실패 1)으로 잰 전체 소요 시간은 **약 3.5~4시간**이다. 순서:
   1. `pdftotext --version`이 **poppler**인지 확인한다 (xpdf 등 다른 도구는 시작 단계에서 멈춘다. Windows: `winget install oschwartz10612.Poppler`).
@@ -75,7 +76,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
   - `freeze`는 `causes_sample*.jsonl`이 이번 build와 같은 입력·시드에서 나왔는지 확인하지 않는다 → `causes_sample`에 build 해시와 시드를 함께 적고 freeze에서 대조한다.
   - `rclrpt sample --baseline`은 일반 `sample`과 같은 파일명에 덮어쓰고, 고른 판본(`selected`)·기대값(`expected`)을 자동 비교하지 않는다. 실패 행은 `pdfs`가 비어 저장되어, 실패가 있는 표본으로 기준을 만들면 그 리콜의 판본 해시가 고정되지 않는다 (2026-10-06 기준은 실패 0건).
   - ~~`rclrpt all`용 재시도·이어받기가 없다.~~ (2026-10-07: 자동 재시도·중간 저장·진행률·불완전 파일 차단을 넣었다. PDF 단위 이어받기는 원래 있었다.)
-  - 기준 원본(NHTSA zip·명세·573 PDF)의 팀 공용 보관 위치와 받는 절차를 정한다 (위 "재현 범위").
+  - ~~기준 원본의 팀 공용 보관 위치와 받는 절차를 정한다~~ — 2026-10-07 팀 구글 드라이브로 정함 (위 "재현 범위", `docs/환경셋팅.md` 4절).
 
 ## DB 적재 (Supabase, DEC-034)
 
