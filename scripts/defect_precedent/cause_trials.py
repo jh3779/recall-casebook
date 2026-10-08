@@ -141,6 +141,16 @@ def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
             w = csv.writer(f)
             w.writerow(["campaign", "cause_text", "text_sha256", "label", "labeler_id", "note"])
             w.writerows([r["campaign"], r["text"], text_sha(r["text"]), "", "", ""] for r in rows)
+        # 시트가 어느 판본·표본에서 나왔는지 — 채점 때 결과 메타를 지금 로컬 파일이 아니라 이 값과 대조한다
+        sheet_meta = {
+            "causes_sha256": data["causes_sha256"],
+            "sample_sha256": hashlib.sha256(
+                "\n".join(f"{r['campaign']}:{text_sha(r['text'])}" for r in rows).encode()
+            ).hexdigest()[:16],
+            "seed": SEED,
+            "n": len(rows),
+        }
+        sheet.with_suffix(".meta.json").write_text(json.dumps(sheet_meta, indent=1), "utf-8")
     print(
         json.dumps(
             {
@@ -207,7 +217,7 @@ def text_sha(text: str) -> str:
 
 def score(sheet: Path, results: list[Path]) -> None:
     """표시한 시트와 결과가 같은 원문·같은 판본인지 확인한 뒤 잰다(서비스 원칙 4)."""
-    with sheet.open(encoding="utf-8") as f:
+    with sheet.open(encoding="utf-8-sig") as f:  # 엑셀이 BOM을 붙여 저장해도 읽는다
         sheet_rows = list(csv.DictReader(f))
     edited = [r["campaign"] for r in sheet_rows if text_sha(r["cause_text"]) != r["text_sha256"]]
     if edited:  # 표시자가 본 원문 셀이 처음 만든 시트와 다르다(스프레드시트가 자르거나 고친 경우)
@@ -217,7 +227,10 @@ def score(sheet: Path, results: list[Path]) -> None:
         sys.exit(f"labeler_id가 빈 행 {len(unnamed)}개 (AGENTS.md 5-2): {unnamed[:5]}")
     labels = {r["campaign"]: r["label"].strip() for r in sheet_rows}
     shown = {r["campaign"]: r["text_sha256"] for r in sheet_rows}
-    now = provenance()["causes_sha256"]
+    sheet_meta = json.loads(sheet.with_suffix(".meta.json").read_text("utf-8"))
+    now = sheet_meta[
+        "causes_sha256"
+    ]  # 시트를 만든 판본 — 로컬 파일이 바뀌어도 그 시트·결과끼리 채점한다
     bad = {k: v for k, v in labels.items() if v not in ("stated", "unknown", "mixed")}
     if bad:
         sys.exit(f"label이 stated/unknown/mixed가 아닌 행 {len(bad)}개: {list(bad)[:5]}")
@@ -232,9 +245,12 @@ def score(sheet: Path, results: list[Path]) -> None:
         if changed:
             sys.exit(f"{path.name}의 원문이 표시한 시트와 다르다: {changed[:5]}")
         meta = json.loads(path.with_suffix(".meta.json").read_text("utf-8"))
-        if meta["data"]["causes_sha256"] != now:
-            sys.exit(f"{path.name}은 다른 causes.jsonl 판본에서 나왔다 — 섞인 판본으로 재지 않는다")
+        if meta["data"]["causes_sha256"] != now:  # 시트와 다른 판본의 결과
+            sys.exit(
+                f"{path.name}은 시트와 다른 causes.jsonl 판본에서 나왔다 — 섞인 판본으로 재지 않는다"
+            )
         out[path.stem] = score_rows(rows, labels)
+    out["verified"] = sheet_meta  # 대조한 판본·표본 해시를 결과에 남긴다
     print(json.dumps(out, ensure_ascii=False, indent=1))
 
 

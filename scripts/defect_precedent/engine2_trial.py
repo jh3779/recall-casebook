@@ -91,6 +91,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(f"{meta.name}이 없다 — 원본 결과의 판본을 알 수 없어 재검사하지 않는다")
         m = json.loads(meta.read_text("utf-8"))
         m["recheck_of"] = {
+            "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "file": a.recheck.name,
             "sha256": hashlib.sha256(a.recheck.read_bytes()).hexdigest(),
             "check_code_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),

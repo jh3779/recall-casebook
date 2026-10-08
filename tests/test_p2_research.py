@@ -160,6 +160,6 @@ def test_engine2_recheck_requires_meta(tmp_path):
 
     res = tmp_path / "r.jsonl"
     res.write_text('{"cause_text": "x y", "returned": ["x y"]}\n', encoding="utf-8")
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match="meta"):
         e2.main(["--recheck", str(res)])
     assert not (tmp_path / "r.recheck.jsonl").exists()
