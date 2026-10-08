@@ -13,6 +13,7 @@
 """
 
 import argparse
+import hashlib
 import json
 import sys
 import time
@@ -59,7 +60,10 @@ def summarize(model: str, rows: list[dict]) -> dict:
         "n": n,
         "exact_all_kept": sum(1 for r in rows if r["returned"] and not r["dropped"]),
         "some_dropped": sum(1 for r in rows if r["dropped"]),
-        "empty": sum(1 for r in rows if not r["returned"]),
+        "empty": sum(1 for r in rows if not r["returned"] and not r.get("parse_failed")),
+        "parse_failed": sum(
+            1 for r in rows if r.get("parse_failed")
+        ),  # 이 칸이 없는 옛 결과는 빈 목록과 구분되지 않는다
         "whole_cause_returned": whole,
         "short_fragments": sum(r["short_fragments"] for r in rows),
         "avg_sec": round(sum(r.get("sec", 0) for r in rows) / n, 2),
@@ -83,8 +87,17 @@ def main(argv: list[str] | None = None) -> None:
             r.update(check(r["cause_text"], r["returned"]))
         out = a.recheck.with_suffix(".recheck.jsonl")  # 원래 결과는 그대로 둔다
         meta = a.recheck.with_suffix(".meta.json")
-        if meta.exists():  # 어느 판본·모델에서 나온 결과인지 함께 남긴다
-            out.with_suffix(".meta.json").write_text(meta.read_text("utf-8"), "utf-8")
+        if not meta.exists():  # 어느 판본·모델에서 나온 결과인지 모르면 재검사하지 않는다
+            sys.exit(f"{meta.name}이 없다 — 원본 결과의 판본을 알 수 없어 재검사하지 않는다")
+        m = json.loads(meta.read_text("utf-8"))
+        m["recheck_of"] = {
+            "file": a.recheck.name,
+            "sha256": hashlib.sha256(a.recheck.read_bytes()).hexdigest(),
+            "check_code_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        }
+        out.with_suffix(".meta.json").write_text(
+            json.dumps(m, ensure_ascii=False, indent=1), "utf-8"
+        )
         out.write_text(
             "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8"
         )
@@ -132,13 +145,15 @@ def main(argv: list[str] | None = None) -> None:
         secs = time.perf_counter() - t
         tokens_in += rsp.usage.input_tokens
         tokens_out += rsp.usage.output_tokens
-        got = rsp.output_parsed.cause_sentences if rsp.output_parsed else []
+        failed = rsp.output_parsed is None  # 거부·해석 실패 — "원인 없음"(빈 목록)과 따로 센다
+        got = [] if failed else rsp.output_parsed.cause_sentences
         rows.append(
             {
                 "action_no": q["action_no"],
                 "campno": card["campno"],
                 "cause_text": c["cause_text"],
                 "returned": got,
+                "parse_failed": failed,
                 **check(c["cause_text"], got),
                 "sec": round(secs, 2),
             }

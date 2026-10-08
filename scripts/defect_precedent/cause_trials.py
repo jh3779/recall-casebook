@@ -209,6 +209,12 @@ def score(sheet: Path, results: list[Path]) -> None:
     """표시한 시트와 결과가 같은 원문·같은 판본인지 확인한 뒤 잰다(서비스 원칙 4)."""
     with sheet.open(encoding="utf-8") as f:
         sheet_rows = list(csv.DictReader(f))
+    edited = [r["campaign"] for r in sheet_rows if text_sha(r["cause_text"]) != r["text_sha256"]]
+    if edited:  # 표시자가 본 원문 셀이 처음 만든 시트와 다르다(스프레드시트가 자르거나 고친 경우)
+        sys.exit(f"시트의 cause_text가 text_sha256과 다르다: {edited[:5]}")
+    unnamed = [r["campaign"] for r in sheet_rows if not r["labeler_id"].strip()]
+    if unnamed:
+        sys.exit(f"labeler_id가 빈 행 {len(unnamed)}개 (AGENTS.md 5-2): {unnamed[:5]}")
     labels = {r["campaign"]: r["label"].strip() for r in sheet_rows}
     shown = {r["campaign"]: r["text_sha256"] for r in sheet_rows}
     now = provenance()["causes_sha256"]

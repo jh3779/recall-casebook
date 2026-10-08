@@ -2,7 +2,7 @@
 
 사용법:
     uv run python -m scripts.defect_precedent.retrieval_compare bm25            # v0·v0a·v4 (표준 라이브러리만)
-    uv run --with fastembed python -m scripts.defect_precedent.retrieval_compare dense --model BAAI/bge-small-en-v1.5 [--limit 2000]
+    uv run --with fastembed==0.9.0 python -m scripts.defect_precedent.retrieval_compare dense --model BAAI/bge-small-en-v1.5 [--limit 2000]
 
 변형 (정답을 보고 정한 규칙은 없다 — AGENTS.md 5-2):
 - v0   BM25, 색인 = 결함·결과·시정 (기준선 0.510과 같은 방식)
@@ -33,6 +33,7 @@ from scripts.defect_precedent.why_stats import GENERIC_WORDS
 ALIASES = Path(__file__).resolve().parent / "maker_aliases.csv"
 CACHE = Path(os.environ.get("RETRIEVAL_CACHE", "/tmp/retrieval_compare_cache"))
 RRF_K = 60  # 관례값, 이 시험지로 고르지 않았다
+FASTEMBED_VERSION = "0.9.0"  # 보고서 수치를 잰 판본 — 다르면 멈춘다(캐시한 카드 벡터와 질문 벡터가 다른 계산에서 나오지 않게)
 BRANDS = set(
     "ford gm gmc chevrolet chevy buick cadillac oldsmobile pontiac saturn hummer chrysler dodge jeep plymouth "
     "daimlerchrysler fca stellantis freightliner daimler navistar volkswagen vw audi bmw mercedes benz honda acura "
@@ -207,6 +208,11 @@ def embed_cards(model_name: str, texts: list[str]):
     import fastembed
     import numpy as np
     from fastembed import TextEmbedding
+
+    if fastembed.__version__ != FASTEMBED_VERSION:
+        sys.exit(
+            f"fastembed {fastembed.__version__} — 보고서는 {FASTEMBED_VERSION}로 쟀다 (`uv run --with fastembed=={FASTEMBED_VERSION}`)"
+        )
 
     CACHE.mkdir(parents=True, exist_ok=True)
     key = hashlib.sha256("\n".join(texts).encode()).hexdigest()[:12]

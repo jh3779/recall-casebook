@@ -132,3 +132,34 @@ def test_unknown_rule_does_not_match_north_america_na():
 
     assert not ct.rule_unknown("Parts supplied by Toyota Motor Sales NA.")
     assert ct.rule_unknown("N/A")
+
+
+def test_cause_trials_score_rejects_edited_sheet_text_and_missing_labeler(tmp_path):
+    import csv
+
+    from scripts.defect_precedent import cause_trials as ct
+
+    def sheet(rows):
+        path = tmp_path / "s.csv"
+        with path.open("w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["campaign", "cause_text", "text_sha256", "label", "labeler_id", "note"])
+            w.writerows(rows)
+        return path
+
+    text = "Manufacturing error."
+    # 표시자가 본 원문 셀이 해시와 다르면(스프레드시트가 자름 등) 채점하지 않는다
+    with pytest.raises(SystemExit, match="cause_text"):
+        ct.score(sheet([["A", "Manufacturing", ct.text_sha(text), "stated", "L1", ""]]), [])
+    with pytest.raises(SystemExit, match="labeler_id"):
+        ct.score(sheet([["A", text, ct.text_sha(text), "stated", "", ""]]), [])
+
+
+def test_engine2_recheck_requires_meta(tmp_path):
+    from scripts.defect_precedent import engine2_trial as e2
+
+    res = tmp_path / "r.jsonl"
+    res.write_text('{"cause_text": "x y", "returned": ["x y"]}\n', encoding="utf-8")
+    with pytest.raises(SystemExit):
+        e2.main(["--recheck", str(res)])
+    assert not (tmp_path / "r.recheck.jsonl").exists()

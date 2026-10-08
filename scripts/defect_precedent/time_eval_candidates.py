@@ -1,7 +1,7 @@
 """시점 평가 후보 묶음과 정답 표시 시트 만들기 (DEC-037, 기획 6절 "시점 평가").
 
 사용법:
-    uv run --with fastembed python -m scripts.defect_precedent.time_eval_candidates \
+    uv run --with fastembed==0.9.0 python -m scripts.defect_precedent.time_eval_candidates \
         --questions scripts/defect_precedent/time_eval_questions.json --set pilot --out-dir <폴더>
 
 - 색인: 문항마다 기준일(`open_date`) **이전에 접수된** 리콜 카드만(`received_date < open_date`). 카드 글은 결함·결과·시정이고

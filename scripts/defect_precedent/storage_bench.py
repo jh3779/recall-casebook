@@ -5,7 +5,7 @@
     DATABASE_URL=postgresql://postgres:localtest@localhost:54330/postgres uv run python -m scripts.defect_precedent.load_db schema
     (같은 주소로) ... load_db load --causes full
     BENCH_DB=postgresql://postgres:localtest@localhost:54330/postgres RETRIEVAL_CACHE=<임베딩 캐시> \
-      uv run --with fastembed --env-file .env python -m scripts.defect_precedent.storage_bench --model BAAI/bge-small-en-v1.5
+      uv run --with fastembed==0.9.0 --env-file .env python -m scripts.defect_precedent.storage_bench --model BAAI/bge-small-en-v1.5
 
 - 판본 확인: 파일(build.json 해시)과 DB latest build의 `data_builds.recalls_sha256`이 다르면 중단한다. 임베딩 캐시는 지금 모델로 다시 만든 카드 16장과 비교해 맞을 때만 쓴다. 시험 표는 build·모델 이름을 붙여 실행마다 새로 만든다.
 - FTS: 결함·결과·시정을 `to_tsvector('english', …)` 표 + GIN 색인, 질문 단어를 OR로 이은 `to_tsquery` + `ts_rank_cd` 상위 10.
