@@ -1,7 +1,7 @@
 """P2 엔진 2(원인 문장 옮기기) 소량 시험 — 연구용. LLM이 573 원인 칸에서 원인 문장을 **한 글자도 바꾸지 않고** 고르는지 본다.
 
 사용법: uv run --with openai --env-file .env python -m scripts.defect_precedent.engine2_trial --model gpt-5.4-mini [--n 30] --out <결과.jsonl>
-      다시 검사만(API 호출 없음): uv run python -m scripts.defect_precedent.engine2_trial --recheck <결과.jsonl>
+      다시 검사만(API 호출 없음, `<결과>.recheck.jsonl`에 씀): uv run python -m scripts.defect_precedent.engine2_trial --recheck <결과.jsonl>
 
 - 대상: 시험 질문마다 BM25(v0) 1위 리콜을 고르고, 그 리콜에 573 원인 칸(`cause_text`)이 있는 경우만 앞에서부터 n건
   (정답 여부와 무관하게 "검색이 넘겨준 선례"를 쓴다 — 서비스와 같은 흐름).
@@ -20,7 +20,7 @@ from pathlib import Path
 
 from scripts.defect_precedent.bm25_baseline import BM25, tokenize
 from scripts.defect_precedent.nhtsa import OUT_DIR
-from scripts.defect_precedent.retrieval_compare import card_text, read_jsonl
+from scripts.defect_precedent.retrieval_compare import card_text, provenance, read_jsonl
 
 INSTRUCTIONS = (
     "You copy text. From the manufacturer's 'Description of the Cause' text, return the sentence(s) that state the cause "
@@ -81,7 +81,8 @@ def main(argv: list[str] | None = None) -> None:
         ]
         for r in rows:
             r.update(check(r["cause_text"], r["returned"]))
-        a.recheck.write_text(
+        out = a.recheck.with_suffix(".recheck.jsonl")  # 원래 결과는 그대로 둔다
+        out.write_text(
             "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8"
         )
         print(json.dumps(summarize(a.recheck.stem, rows), ensure_ascii=False, indent=1))
@@ -94,6 +95,7 @@ def main(argv: list[str] | None = None) -> None:
     class Extraction(BaseModel):
         cause_sentences: list[str]
 
+    data = provenance()  # recalls·eval은 build.json과, causes는 명세와 해시가 같아야 진행한다
     cards = read_jsonl(OUT_DIR / "recalls.jsonl")
     questions = read_jsonl(OUT_DIR / "eval.jsonl")
     causes = {
@@ -141,7 +143,16 @@ def main(argv: list[str] | None = None) -> None:
     a.out.write_text(
         "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8"
     )
-    summary = {**summarize(a.model, rows), "tokens_in": tokens_in, "tokens_out": tokens_out}
+    meta = {"data": data, "model": a.model, "n": a.n, "instructions": INSTRUCTIONS}
+    a.out.with_suffix(".meta.json").write_text(
+        json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
+    summary = {
+        **summarize(a.model, rows),
+        "tokens_in": tokens_in,
+        "tokens_out": tokens_out,
+        "data": data,
+    }
     print(json.dumps(summary, ensure_ascii=False, indent=1))
 
 

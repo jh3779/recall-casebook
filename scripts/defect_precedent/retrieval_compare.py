@@ -64,8 +64,12 @@ def provenance() -> dict:
     }
     if sha["recalls.jsonl"] != build["recalls_sha256"] or sha["eval.jsonl"] != build["eval_sha256"]:
         sys.exit("recalls.jsonl·eval.jsonl이 build.json과 다르다 — 섞인 판본으로 비교하지 않는다")
+    manifest = json.loads((OUT_DIR / "causes.manifest.json").read_text(encoding="utf-8"))
+    if sha["causes.jsonl"] != manifest["file_sha256"]:
+        sys.exit("causes.jsonl이 causes.manifest.json과 다르다 — 섞인 판본으로 비교하지 않는다")
     return {
         "snapshot_date": build["snapshot_date"],
+        "recalls_sha256_full": sha["recalls.jsonl"],
         "recalls_sha256": sha["recalls.jsonl"][:16],
         "eval_sha256": sha["eval.jsonl"][:16],
         "causes_sha256": sha["causes.jsonl"][:16],
@@ -197,20 +201,33 @@ def rrf(*rankings: list[str], k: int = RRF_K) -> list[str]:
     return sorted(s, key=lambda c: -s[c])
 
 
-def embed_cards(model_name: str, texts: list[str], key: str):
+def embed_cards(model_name: str, texts: list[str]):
+    """카드 임베딩(캐시). 캐시를 쓰기 전에 카드 16장을 지금 모델로 다시 임베딩해 캐시와 비교한다 —
+    fastembed·모델 파일이 바뀌었으면 값이 달라지므로 캐시를 버리고 다시 만든다(옛 카드 벡터와 새 질문 벡터가 섞이지 않게)."""
+    import fastembed
     import numpy as np
     from fastembed import TextEmbedding
 
     CACHE.mkdir(parents=True, exist_ok=True)
+    key = hashlib.sha256("\n".join(texts).encode()).hexdigest()[:12]
     path = CACHE / f"{model_name.replace('/', '_')}_{key}.npy"
     model = TextEmbedding(model_name)
+    probe_idx = list(range(0, len(texts), max(1, len(texts) // 16)))[:16]
+    probe = np.array(list(model.passage_embed([texts[i] for i in probe_idx])), dtype="float32")
+    info = {
+        "fastembed": fastembed.__version__,
+        "model_fingerprint": hashlib.sha256(np.round(probe, 4).tobytes()).hexdigest()[:16],
+        "cache": path.name,
+    }
     if path.exists():
-        return model, np.load(path), 0.0
+        vecs = np.load(path)
+        if vecs.shape[0] == len(texts) and np.allclose(vecs[probe_idx], probe, atol=1e-4):
+            return model, vecs, 0.0, {**info, "cache_verified": True}
     t = time.perf_counter()
     vecs = np.array(list(model.passage_embed(texts, batch_size=64)), dtype="float32")
     secs = time.perf_counter() - t
     np.save(path, vecs)
-    return model, vecs, secs
+    return model, vecs, secs, {**info, "cache_verified": False}
 
 
 def run_dense(model_name: str, limit: int | None) -> dict:
@@ -234,8 +251,7 @@ def run_dense(model_name: str, limit: int | None) -> dict:
             "cards_per_sec": round(len(texts) / secs, 1),
             "projected_full_min": round(len(cards) / (len(texts) / secs) / 60, 1),
         }
-    key = hashlib.sha256("\n".join(texts).encode()).hexdigest()[:12]
-    model, vecs, embed_secs = embed_cards(model_name, texts, key)
+    model, vecs, embed_secs, emb_info = embed_cards(model_name, texts)
     vecs /= np.linalg.norm(vecs, axis=1, keepdims=True)
     ids = [c["campno"] for c in cards]
     t = time.perf_counter()
@@ -258,6 +274,7 @@ def run_dense(model_name: str, limit: int | None) -> dict:
         "model": model_name,
         "dim": int(vecs.shape[1]),
         "embed_full_sec": round(embed_secs, 1),
+        "embedding": emb_info,
         "v1_dense": {**score(dense_rank, questions), "sec_per_query": round(q_sec, 4)},
         "v2_rrf_bm25_dense": score(fused, questions),
         # 회사 이름을 뺀 질문(실사용에 가까움) — 같은 조건의 BM25(v0b)와 비교한다

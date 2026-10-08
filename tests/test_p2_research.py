@@ -1,5 +1,7 @@
 """P2 실험 스크립트의 순수 함수 — 보고서 수치의 기반이라 데이터·외부 패키지 없이 검사한다."""
 
+import pytest
+
 from scripts.defect_precedent import engine2_trial as e2
 from scripts.defect_precedent import retrieval_compare as rc
 
@@ -48,3 +50,40 @@ def test_engine2_check_requires_exact_substring():
     assert e2.check(src, ["The brake  hose was routed near the exhaust!"])["dropped"]
     # 5단어 미만 조각은 따로 센다
     assert e2.check(src, ["Unknown otherwise."])["short_fragments"] == 1
+
+
+def test_cause_trials_rule_and_confusion():
+    from scripts.defect_precedent import cause_trials as ct
+
+    assert ct.rule_unknown("The root cause has not been determined.")
+    assert ct.rule_unknown("Supplier continues to investigate.")
+    assert not ct.rule_unknown("Manufacturing error.")
+    out = ct.confusion([True, True, False, False], [True, False, True, False])
+    assert out == {"accuracy": 0.5, "tp": 1, "fp": 1, "fn": 1, "precision": 0.5, "recall": 0.5}
+
+
+def test_time_eval_candidates_only_before_open_date():
+    np = pytest.importorskip("numpy")
+    from scripts.defect_precedent import time_eval_candidates as te
+
+    cards = [
+        {"campno": "OLD1", "received_date": "20100101"},
+        {"campno": "NEW1", "received_date": "20150324"},  # 기준일 당일 — 빼야 한다
+        {"campno": "OLD2", "received_date": "20120505"},
+    ]
+    toks = [["brake", "hose"], ["brake", "hose"], ["seat", "belt"]]
+    vecs = np.eye(3, dtype="float32")
+    out = te.candidates_for(
+        {"open_date": "20150324", "question": "brake hose"}, cards, toks, vecs, vecs[1]
+    )
+    assert out["n_indexed"] == 2 and set(out["pool"]) == {"OLD1", "OLD2"}
+    assert out["pool"]["OLD1"]["bm25"] == 1
+
+
+def test_storage_bench_latency_uses_p95_only_with_100_samples():
+    from scripts.defect_precedent import storage_bench as sb
+
+    small = sb.lat([0.001 * i for i in range(1, 11)])
+    assert small == {"n": 10, "p50_ms": 5.5, "max_ms": 10.0}
+    big = sb.lat([0.001 * i for i in range(1, 101)])
+    assert big["p95_ms"] == 95.0 and "max_ms" not in big

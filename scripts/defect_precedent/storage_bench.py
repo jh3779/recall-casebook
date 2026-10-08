@@ -7,7 +7,7 @@
     BENCH_DB=postgresql://postgres:localtest@localhost:54330/postgres RETRIEVAL_CACHE=<임베딩 캐시> \
       uv run --with fastembed --env-file .env python -m scripts.defect_precedent.storage_bench --model BAAI/bge-small-en-v1.5
 
-- 판본 확인: 파일(build.json 해시)과 DB latest build의 리콜 목록이 다르면 중단한다. 시험 표는 build·모델 이름을 붙여 실행마다 새로 만든다.
+- 판본 확인: 파일(build.json 해시)과 DB latest build의 `data_builds.recalls_sha256`이 다르면 중단한다. 임베딩 캐시는 지금 모델로 다시 만든 카드 16장과 비교해 맞을 때만 쓴다. 시험 표는 build·모델 이름을 붙여 실행마다 새로 만든다.
 - FTS: 결함·결과·시정을 `to_tsvector('english', …)` 표 + GIN 색인, 질문 단어를 OR로 이은 `to_tsquery` + `ts_rank_cd` 상위 10.
   (점수 방식이 BM25와 달라 같은 점수가 나오지 않는다 — DEC-034 미결 ②)
 - pgvector: 캐시한 카드 임베딩을 `vector(dim)` 칸 + HNSW(cosine, 기본 ef_search) 색인, 질문 임베딩으로 상위 10.
@@ -16,7 +16,6 @@
 """
 
 import argparse
-import hashlib
 import json
 import os
 import statistics
@@ -27,7 +26,12 @@ import psycopg
 
 from scripts.defect_precedent.bm25_baseline import KS, tokenize
 from scripts.defect_precedent.nhtsa import OUT_DIR
-from scripts.defect_precedent.retrieval_compare import CACHE, card_text, provenance, read_jsonl
+from scripts.defect_precedent.retrieval_compare import (
+    card_text,
+    embed_cards,
+    provenance,
+    read_jsonl,
+)
 
 
 def hits(rankings: list[list[str]], questions: list[dict]) -> dict:
@@ -60,12 +64,13 @@ def vec_literal(v) -> str:
 
 def main(argv: list[str] | None = None) -> None:
     import numpy as np
-    from fastembed import TextEmbedding
 
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--model", required=True)
     a = p.parse_args(argv)
 
+    if "BENCH_DB" not in os.environ:
+        raise SystemExit("BENCH_DB(로컬 Postgres 주소)가 필요하다 — 머리말의 docker 명령 참고")
     if "supabase" in os.environ["BENCH_DB"]:
         raise SystemExit(
             "BENCH_DB가 Supabase를 가리킨다 — 시험 표를 만들므로 로컬 Postgres에서만 돌린다"
@@ -74,27 +79,22 @@ def main(argv: list[str] | None = None) -> None:
     cards = read_jsonl(OUT_DIR / "recalls.jsonl")
     questions = read_jsonl(OUT_DIR / "eval.jsonl")
     texts = [card_text(c) for c in cards]
-    key = hashlib.sha256("\n".join(texts).encode()).hexdigest()[:12]
-    vecs = np.load(CACHE / f"{a.model.replace('/', '_')}_{key}.npy")
-    vecs /= np.linalg.norm(vecs, axis=1, keepdims=True)
+    model, vecs, _, emb_info = embed_cards(a.model, texts)
+    vecs = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
     dim = vecs.shape[1]
-    model = TextEmbedding(a.model)
     qv = np.array(list(model.query_embed([q["question"] for q in questions])), dtype="float32")
     qv /= np.linalg.norm(qv, axis=1, keepdims=True)
-    out: dict = {"data": data, "model": a.model, "dim": int(dim)}
+    out: dict = {"data": data, "model": a.model, "dim": int(dim), "embedding": emb_info}
 
     with psycopg.connect(os.environ["BENCH_DB"], autocommit=True) as conn:
         cur = conn.cursor()
         build = cur.execute("select build_id from latest_build").fetchone()[0]
-        db_ids = [
-            r[0]
-            for r in cur.execute(
-                "select campno from recalls where build_id = %s order by campno", (build,)
-            )
-        ]
-        if db_ids != sorted(c["campno"] for c in cards):
+        row = cur.execute(
+            "select recalls_sha256 from data_builds where build_id = %s", (build,)
+        ).fetchone()
+        if row[0] != data["recalls_sha256_full"]:
             raise SystemExit(
-                f"DB latest build {build}의 리콜 목록이 파일과 다르다 — 섞인 판본으로 재지 않는다"
+                f"DB latest build {build}의 recalls_sha256이 파일과 다르다 — 섞인 판본으로 재지 않는다"
             )
         out["db_build_id"] = build
         tag = f"{build[:8]}_{a.model.split('/')[-1].replace('-', '_').replace('.', '_')}"
