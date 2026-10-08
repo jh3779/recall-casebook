@@ -84,6 +84,11 @@
 - 2026-10-07: #34 회사명 대응표 확인본을 카드에 반영하는 코드 — `nhtsa build`가 `maker_aliases.csv`를 읽어 `maker`·`maker_group` 채움(DEC-036), DB `recalls.maker_group`(NULL 허용·`alter`), `build.json`에 대응표 해시. #39 병합 뒤 실제 `build`·새 기준 freeze (data/maker-group-apply)
 - 2026-10-08: #33에 main(#29·#30·#32·#40·#41) 합침 — 기획 5절 건수 정의 문장에 탐색 다운로드 보관 정정 유지, README 보관 위치 결정 반영, HANDOFF 할 일 13·20·27·28을 main 문구로 맞추고 13에 드라이브 보관 결정 합침, 할 일 33 갱신(PR #39 head 1694e43)
 - 2026-10-08: data.zip을 빈 폴더에 풀어 기준 재현 확인(BM25 0.510/0.503 재현, 573 표본 205/95/0) — 환경셋팅 4절·HANDOFF 할 일 13에 기록(PR #33 Codex 1c99086e)
+- 2026-10-08: #33·#37·#39 병합(0355c24·fa3adef·ed97a82) — 회사명 대응표 확인본(결정 기록 2: 같은 그룹·같은 브랜드, 3,259)·force push 차단·data.zip 재현 확인. 박예원 #34 브랜치(data/maker-group-apply) DEC-035 번호 충돌 발견, 할 일 33 완료·35·36 추가
+- 2026-10-08: Supabase 적재 완료(build 3c15c6bcf7dc7c3a, full, 30,350·749·11,719) — Session pooler, .env 형식·$ 치환 문제 해결. #31 결과·#38 박예원 작업 요청 게시
 - 2026-10-08: #34 병합(PR #42) — 회사명 반영 카드·새 기준 `baseline_2026-10-06_maker-aliases.json`(BM25 0.510/0.503 그대로), 대응표 해시는 줄바꿈 무관. 새 build 파일 5개를 드라이브 `defect_data_2026-10-08_maker-group`로 전달, 우지훈이 새 build `f5cb2f944f36125d` 적재 완료 (#31)
+- 2026-10-08: PR #43에 main(#42 병합, abc674a) 합침 — HANDOFF 상태 모순 정리(Codex 012b901c: 적재 완료·DEC 알림 완료·검사 수치), 할 일 37(#42 리뷰 후속, 🟡2 로컬 재현) 추가, 새 카드 build 적재를 Next Action 1-1로
+- 2026-10-08: 회사명 반영 새 build 적재(f5cb2f944f36125d, #31) — 옛 카드 data/raw/defect_cards_2026-10-06/ 보관. PR #43에 main(#44 병합, d4c0ec2) 합침 — 할 일 27·28은 #44 문구 채택, 열린 PR·Next Action 1-1·파일 모양 확정 상태 정리
+- 2026-10-08: PR #43에 main(#46 병합, 62203f2) 합침 — #46이 처리한 #42 리뷰 후속 반영, 남은 🟡1은 이슈 #45로 연결(할 일 37), pytest 223 passed
 - 2026-10-08: #35 DEC-033 문구 정정(표기·법인 형태 통일, 원문은 `raw_maker`)과 안내문 `maker_group` 정의 정리, HANDOFF의 원인 칸 채움 비율을 공식 값 67.9%(8,160/12,011)로 정정 (docs/dec-033-wording)
 - 2026-10-08: 시점 평가 질문 판본 확인(HANDOFF 할 일 18) — ② 현재판 요약 + 공개일 불가, ① 개시 당시 문서는 2007년 이후 확인, 결과를 #38에 댓글로 남김
