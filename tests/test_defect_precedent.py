@@ -514,7 +514,7 @@ def test_verify_build_checks_the_alias_table_hash_when_build_json_records_it(tmp
     aliases = tmp_path / "maker_aliases.csv"
     aliases.write_text("raw_maker,maker\nA,A\n", encoding="utf-8")
     monkeypatch.setattr(nhtsa, "MAKER_ALIASES", aliases)
-    info = {**info, "maker_aliases_sha256": nhtsa.sha256_file(aliases)}
+    info = {**info, "maker_aliases_sha256": nhtsa.sha256_aliases(aliases)}
     (out / "build.json").write_text(json.dumps(info))
     assert nhtsa.verify_build(raw, out) == info
     # 카드를 만든 뒤 대응표를 고쳤으면 그 카드는 이 표로 만든 것이 아니다

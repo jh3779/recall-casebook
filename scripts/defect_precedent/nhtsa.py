@@ -306,6 +306,11 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def sha256_aliases(path: Path) -> str:
+    """대응표(csv)의 해시. 저장소에는 LF로 들어 있고 Windows 체크아웃은 CRLF라서, 줄바꿈을 LF로 맞춘 뒤 잰다."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def verify_raw(raw_dir: Path) -> dict:
     """manifest의 sha256과 실제 파일을 비교한다. 하나라도 다르면 중단한다."""
     manifest_path = raw_dir / "manifest.json"
@@ -352,7 +357,7 @@ def build() -> None:
         "raw_manifest_sha256": sha256_file(RAW_DIR / "manifest.json"),
         "recalls_sha256": sha256_file(tmp / "recalls.jsonl"),
         "eval_sha256": sha256_file(tmp / "eval.jsonl"),
-        "maker_aliases_sha256": sha256_file(MAKER_ALIASES),
+        "maker_aliases_sha256": sha256_aliases(MAKER_ALIASES),
         "snapshot_date": snapshot_date,
     }
     (tmp / "build.json").write_text(json.dumps(build_info, indent=1) + "\n", encoding="utf-8")
@@ -396,7 +401,8 @@ def verify_build(raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR) -> dict:
     if "maker_aliases_sha256" in info:  # 회사명 대응표를 반영하기 전의 build.json에는 없다
         checks["회사명 대응표(maker_aliases.csv)"] = (MAKER_ALIASES, info["maker_aliases_sha256"])
     for label, (path, expected) in checks.items():
-        if sha256_file(path) != expected:
+        digest = sha256_aliases(path) if path == MAKER_ALIASES else sha256_file(path)
+        if digest != expected:
             sys.exit(f"{label}이 build.json과 다르다 — `... nhtsa build`를 다시 실행한다")
     return info
 
