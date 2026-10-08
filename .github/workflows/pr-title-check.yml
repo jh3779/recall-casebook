@@ -9,6 +9,8 @@ permissions:
 
 jobs:
   validate-pr-title:
+    # 본문만 고친 edited 이벤트는 건너뛴다(건너뛴 작업은 과금되지 않음) — 제목이 바뀐 경우만 다시 검사
+    if: github.event.action != 'edited' || github.event.changes.title != null
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR title (Conventional Commits)

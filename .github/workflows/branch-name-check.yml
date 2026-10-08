@@ -2,7 +2,8 @@ name: Branch Name Check
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened]
+    # edited(제목·본문 수정)는 브랜치 이름을 바꾸지 못하므로 뺀다 — Actions 사용량 절약
+    types: [opened, synchronize, reopened]
 
 jobs:
   check-branch-name:
