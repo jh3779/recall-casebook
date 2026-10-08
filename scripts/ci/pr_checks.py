@@ -5,11 +5,13 @@
   secrets      G-07  PR의 커밋들이 추가한 줄에 비밀값 패턴·.env 파일이 있는가 (중간 커밋 포함)
   rag-evidence G-08  RAG 코드를 바꿨는데 PR 본문 "검증 방법"에 before → after 수치가 없는가
   pr-body      -     PR 본문 필수 항목(변경 요약·변경 유형·관련 이슈)이 비었는가
+  pr-title     -     PR 제목이 `<type>: <대문자로 시작하지 않는 설명>`인가 (pr-title-check와 같은 규칙 — 본문만 고칠 때
+                     pr-title-check는 건너뛰므로, 실패한 제목이 '건너뜀=통과'로 덮이지 않게 여기서도 본다)
   type-lists   -     브랜치·커밋 type 목록이 여러 파일에서 서로 같은가
   md-links     -     문서의 상대 경로 링크가 실제 파일을 가리키는가
   agents-import -    CLAUDE.md가 AGENTS.md를 불러오는가
 
-환경변수: BASE_SHA, HEAD_SHA, PR_BODY (없으면 diff·본문 검사는 건너뛴다)
+환경변수: BASE_SHA, HEAD_SHA, PR_BODY, PR_TITLE (없으면 diff·본문·제목 검사는 건너뛴다)
 로컬 실행: BASE_SHA=$(git merge-base origin/main HEAD) HEAD_SHA=HEAD python3 scripts/ci/pr_checks.py
 """
 
@@ -276,6 +278,18 @@ def check_pr_body(body: str) -> Result:
     return r
 
 
+def check_pr_title(title: str, types: set[str]) -> Result:
+    r = Result("pr-title")
+    m = re.match(r"^([a-z]+)(\([^)]*\))?!?: (.+)$", title)
+    if not m or m.group(1) not in types:
+        r.errors.append(
+            f"PR 제목이 `<type>: <설명>` 꼴이 아니거나 type이 허용 목록({' '.join(sorted(types))})에 없다: {title!r}"
+        )
+    elif not re.match(r"^[^A-Z].+$", m.group(3)):
+        r.errors.append(f"PR 제목의 설명은 대문자(A-Z)로 시작할 수 없다: {title!r}")
+    return r
+
+
 def type_lists() -> dict[str, set[str]]:
     found: dict[str, set[str]] = {}
     for path, pattern in BRANCH_TYPES_SOURCES.items():
@@ -385,6 +399,9 @@ def main() -> int:
 
     if body is not None:
         results.append(check_pr_body(body))
+    title = os.environ.get("PR_TITLE")
+    if title is not None:
+        results.append(check_pr_title(title, type_lists()[".github/workflows/pr-title-check.yml"]))
     results += [check_type_lists(), check_md_links(), check_agents_import()]
     return report(results)
 
