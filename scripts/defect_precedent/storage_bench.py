@@ -71,9 +71,10 @@ def main(argv: list[str] | None = None) -> None:
 
     if "BENCH_DB" not in os.environ:
         raise SystemExit("BENCH_DB(로컬 Postgres 주소)가 필요하다 — 머리말의 docker 명령 참고")
-    if "supabase" in os.environ["BENCH_DB"]:
+    host = psycopg.conninfo.conninfo_to_dict(os.environ["BENCH_DB"]).get("host")
+    if host not in ("localhost", "127.0.0.1"):
         raise SystemExit(
-            "BENCH_DB가 Supabase를 가리킨다 — 시험 표를 만들므로 로컬 Postgres에서만 돌린다"
+            f"BENCH_DB 호스트가 {host!r}이다 — 시험 표를 만들므로 로컬 Postgres(localhost)에서만 돌린다"
         )
     data = provenance()
     cards = read_jsonl(OUT_DIR / "recalls.jsonl")

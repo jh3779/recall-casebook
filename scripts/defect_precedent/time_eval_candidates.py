@@ -9,8 +9,8 @@
 - 후보: BM25 상위 20 + B 방식(BM25 + bge-small, RRF k=60) 상위 20의 합집합. BM25의 IDF도 기준일 이전 카드로 계산한다.
   뜻 검색은 전체 카드 임베딩(캐시)에서 기준일 이전 카드만 남겨 고른다 — 임베딩은 카드마다 따로 계산되므로 결과가 같다.
 - 시트(`labels_<set>.csv`): 문항·후보를 **출처·순위를 숨기고** 문항별로 섞어(action_no·campno 해시 순) 보여 준다.
-  표시자는 `label`(yes = 그때 있던 같은 부품 선례 / no / unsure)과 `labeler_id`·`note`를 적는다. AI는 표시하지 않는다(AGENTS.md 5-2).
-- 숨긴 정보(`candidates_<set>.json`): 후보별 출처·순위, 기준일 이전 카드 수, 입력 해시. 표시가 끝난 뒤 채점에만 쓰고 표시자에게 주지 않는다.
+  같은 리콜의 다른 번호는 `dup_group`이 같다. 표시자는 `label`(yes = 그때 있던 같은 부품 선례 / no / unsure)과 `labeler_id`·`note`를 적는다. AI는 표시하지 않는다(AGENTS.md 5-2).
+- 숨긴 정보(`candidates_<set>.json`): 후보별 출처·순위, 기준일 이전 카드 수, 입력 해시, 코드 커밋. 시트 파일의 sha256은 표시자에게 넘길 때 따로 기록한다. 표시가 끝난 뒤 채점에만 쓰고 표시자에게 주지 않는다.
 """
 
 import argparse
@@ -34,14 +34,32 @@ TOP = 20
 DEPTH = 100  # RRF에 넣는 각 순위의 길이 (retrieval_compare와 같음)
 
 
+def code_commit() -> str:
+    """후보를 만든 코드의 커밋 (DEC-037 ⑦ — 모든 회차가 같은 커밋이어야 한다). 고치지 않은 파일이 있으면 표시한다."""
+    import subprocess
+
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True, text=True
+    ).stdout.strip()
+    dirty = subprocess.run(
+        ["git", "status", "--porcelain", "--", "scripts/"], capture_output=True, text=True
+    ).stdout.strip()
+    return head + ("-dirty" if dirty else "")
+
+
 def shuffle_key(action_no: str, campno: str) -> str:
     return hashlib.sha256(f"{action_no}:{campno}".encode()).hexdigest()
+
+
+def indexed_before(cards: list[dict], open_date: str) -> list[int]:
+    """기준일 **이전에** 접수된 카드만 (당일 접수는 뺀다). 날짜는 둘 다 YYYYMMDD 문자열."""
+    return [i for i, c in enumerate(cards) if c["received_date"] < open_date]
 
 
 def candidates_for(q: dict, cards: list[dict], toks: list[list[str]], vecs, qvec) -> dict:
     import numpy as np
 
-    keep = [i for i, c in enumerate(cards) if c["received_date"] < q["open_date"]]
+    keep = indexed_before(cards, q["open_date"])
     ids = [cards[i]["campno"] for i in keep]
     bm = BM25([toks[i] for i in keep])
     bm_rank = [ids[j] for j in bm.top(tokenize(q["question"]), DEPTH)]
@@ -91,9 +109,10 @@ def main(argv: list[str] | None = None) -> None:
                 [
                     q["action_no"],
                     q["open_date"],
-                    q["question"] if n == 1 else "",
+                    q["question"],
                     n,
                     cid,
+                    c["dup_group"],
                     c["received_date"],
                     c["maker"],
                     "; ".join(c["components"]),
@@ -115,6 +134,7 @@ def main(argv: list[str] | None = None) -> None:
                 "question",
                 "candidate_no",
                 "campno",
+                "dup_group",
                 "received_date",
                 "maker",
                 "components",
@@ -131,6 +151,7 @@ def main(argv: list[str] | None = None) -> None:
         "data": data,
         "questions_file": str(a.questions),
         "questions_sha256": hashlib.sha256(a.questions.read_bytes()).hexdigest(),
+        "code_commit": code_commit(),
         "set": a.set,
         "model": MODEL,
         "embedding": emb_info,

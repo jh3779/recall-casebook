@@ -51,7 +51,7 @@ UNKNOWN_INSTRUCTIONS = (
 UNKNOWN_RE = re.compile(
     r"\b(unknown|not known|under investigation|(continues?|continuing) to investigate|still investigating"
     r"|not (yet )?(been )?(determined|identified|established)|no root cause|root cause (is|has) not"
-    r"|not applicable|n/?a)\b",
+    r"|not applicable|n/a)\b",  # 'NA'(North America)를 잡지 않게 n/a만 (표본 150건에는 영향 없음)
     re.I,
 )
 
@@ -60,7 +60,7 @@ def rule_unknown(text: str) -> bool:
     return bool(UNKNOWN_RE.search(text))
 
 
-def llm(model: str, instructions: str, text: str) -> tuple[list[str], float, int, int]:
+def llm(model: str, instructions: str, text: str) -> tuple[list[str] | None, float, int, int]:
     from openai import OpenAI
     from pydantic import BaseModel
 
@@ -71,7 +71,7 @@ def llm(model: str, instructions: str, text: str) -> tuple[list[str], float, int
     rsp = OpenAI().responses.parse(
         model=model, instructions=instructions, input=text, text_format=Extraction
     )
-    got = rsp.output_parsed.cause_sentences if rsp.output_parsed else []
+    got = rsp.output_parsed.cause_sentences if rsp.output_parsed else None  # None = 거부·해석 실패
     return got, time.perf_counter() - t, rsp.usage.input_tokens, rsp.usage.output_tokens
 
 
@@ -111,8 +111,15 @@ def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
     for it in items:
         got, sec, i, o = llm(model, instructions, it["text"])
         tin, tout = tin + i, tout + o
+        failed, got = got is None, got or []
         rows.append(
-            {**it, "returned": got, **check(it["text"], got), "sec": round(sec, 2)}
+            {
+                **it,
+                "returned": got,
+                "parse_failed": failed,
+                **check(it["text"], got),
+                "sec": round(sec, 2),
+            }
             | ({"rule_unknown": rule_unknown(it["text"])} if mode == "unknown" else {})
         )
     out.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", "utf-8")
@@ -130,8 +137,8 @@ def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
     if sheet:
         with sheet.open("w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
-            w.writerow(["campaign", "cause_text", "label"])
-            w.writerows([r["campaign"], r["text"], ""] for r in rows)
+            w.writerow(["campaign", "cause_text", "label", "labeler_id", "note"])
+            w.writerows([r["campaign"], r["text"], "", "", ""] for r in rows)
     print(
         json.dumps(
             {
@@ -168,6 +175,24 @@ def confusion(pred: list[bool], gold: list[bool]) -> dict:
     }
 
 
+def score_rows(rows: list[dict], labels: dict[str, str]) -> dict:
+    """양성 = 사람이 unknown으로 표시. LLM 예측 = 실제로 빈 목록을 돌려준 것(글자 대조에서 버려진 것·해석 실패는 따로 셈).
+    규칙은 "원문에 미확인 표현이 있음" 표시용이라 unknown+mixed를 양성으로 본 변형도 함께 낸다."""
+    gold = [labels[r["campaign"]] == "unknown" for r in rows]
+    gold_any = [labels[r["campaign"]] in ("unknown", "mixed") for r in rows]
+    ok = [not r.get("parse_failed") for r in rows]
+    return {
+        "llm_empty": confusion(
+            [not r["returned"] for r, k in zip(rows, ok, strict=True) if k],
+            [g for g, k in zip(gold, ok, strict=True) if k],
+        ),
+        "parse_failed": sum(1 for k in ok if not k),
+        "returned_but_all_dropped": sum(1 for r in rows if r["returned"] and not r["spans"]),
+        "rule": confusion([r["rule_unknown"] for r in rows], gold),
+        "rule_vs_unknown_or_mixed": confusion([r["rule_unknown"] for r in rows], gold_any),
+    }
+
+
 def score(sheet: Path, results: list[Path]) -> None:
     with sheet.open(encoding="utf-8") as f:
         labels = {r["campaign"]: r["label"].strip() for r in csv.DictReader(f)}
@@ -181,17 +206,7 @@ def score(sheet: Path, results: list[Path]) -> None:
         rows = [json.loads(line) for line in path.read_text("utf-8").splitlines() if line.strip()]
         if {r["campaign"] for r in rows} != set(labels):
             sys.exit(f"{path.name}의 표본이 시트와 다르다")
-        gold = [labels[r["campaign"]] == "unknown" for r in rows]
-        out[path.stem] = {
-            "llm_empty": confusion([not r["spans"] for r in rows], gold),
-            "rule": confusion([r["rule_unknown"] for r in rows], gold),
-            "mixed_llm_empty": sum(
-                1 for r in rows if labels[r["campaign"]] == "mixed" and not r["spans"]
-            ),
-            "mixed_rule_hit": sum(
-                1 for r in rows if labels[r["campaign"]] == "mixed" and r["rule_unknown"]
-            ),
-        }
+        out[path.stem] = score_rows(rows, labels)
     print(json.dumps(out, ensure_ascii=False, indent=1))
 
 

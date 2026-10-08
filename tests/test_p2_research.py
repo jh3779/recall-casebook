@@ -87,3 +87,40 @@ def test_storage_bench_latency_uses_p95_only_with_100_samples():
     assert small == {"n": 10, "p50_ms": 5.5, "max_ms": 10.0}
     big = sb.lat([0.001 * i for i in range(1, 101)])
     assert big["p95_ms"] == 95.0 and "max_ms" not in big
+
+
+def test_time_eval_indexed_before_excludes_open_date_itself():
+    from scripts.defect_precedent import time_eval_candidates as te
+
+    cards = [
+        {"received_date": "20150323"},
+        {"received_date": "20150324"},  # 기준일 당일
+        {"received_date": "20150325"},
+        {"received_date": "19991231"},
+    ]
+    assert te.indexed_before(cards, "20150324") == [0, 3]
+
+
+def test_cause_trials_score_counts_only_real_empty_lists_as_llm_unknown():
+    from scripts.defect_precedent import cause_trials as ct
+
+    labels = {"a": "unknown", "b": "stated", "c": "mixed", "d": "stated"}
+    rows = [
+        {"campaign": "a", "returned": [], "spans": [], "rule_unknown": True},
+        # 원인을 돌려줬지만 글자를 바꿔 대조에서 버려짐 — LLM의 "미확인" 예측이 아니다
+        {"campaign": "b", "returned": ["x"], "spans": [], "rule_unknown": False},
+        {"campaign": "c", "returned": ["y"], "spans": [{"text": "y"}], "rule_unknown": True},
+        {"campaign": "d", "returned": [], "spans": [], "rule_unknown": False, "parse_failed": True},
+    ]
+    out = ct.score_rows(rows, labels)
+    assert out["llm_empty"]["tp"] == 1 and out["llm_empty"]["fp"] == 0
+    assert out["parse_failed"] == 1 and out["returned_but_all_dropped"] == 1
+    assert out["rule"]["fp"] == 1  # mixed에 걸림
+    assert out["rule_vs_unknown_or_mixed"]["fp"] == 0
+
+
+def test_unknown_rule_does_not_match_north_america_na():
+    from scripts.defect_precedent import cause_trials as ct
+
+    assert not ct.rule_unknown("Parts supplied by Toyota Motor Sales NA.")
+    assert ct.rule_unknown("N/A")
