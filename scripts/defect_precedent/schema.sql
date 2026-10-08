@@ -1,7 +1,8 @@
 -- 결함 선례 데이터 테이블 (Supabase / Postgres). DEC-034.
 -- 적용: uv run --env-file .env python -m scripts.defect_precedent.load_db schema
--- 여러 번 실행해도 된다 (create ... if not exists). 아직 어떤 DB에도 올리기 전의 첫 버전이다 —
--- 올린 뒤에 칸을 바꿀 때는 이 파일의 기존 칸을 고치지 않고 새 migration을 만든다.
+-- 여러 번 실행해도 된다 (create ... if not exists). 이미 Supabase에 올라가 있다 —
+-- 칸을 더할 때는 `create` 본문과 파일 끝의 `alter table … add column if not exists`에 같이 적는다(예: recalls.maker_group, DEC-036).
+-- 기존 칸의 이름·형식을 바꾸는 일은 이 파일을 고치지 않고 새 migration을 만든다.
 --
 -- build 단위로 보관한다. build_id는 입력 파일 4개(원본 명세·카드·시험지·원인 파일)의 sha256으로 정해지는 불변 식별자라서
 -- 내용이 하나라도 다르면 다른 build다 — 같은 날짜(snapshot_date)라도 덮어쓰지 않고 둘 다 남는다
