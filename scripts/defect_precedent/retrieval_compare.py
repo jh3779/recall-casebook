@@ -20,6 +20,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from collections import Counter
@@ -39,6 +40,37 @@ BRANDS = set(
     "volvo suzuki kawasaki isuzu mitsubishi harley davidson winnebago jayco tesla yamaha".split()
 )
 BRAND_PHRASES = [("general", "motors"), ("land", "rover"), ("blue", "bird"), ("forest", "river")]
+
+
+BRAND_RE = re.compile(
+    r"\b(?:"
+    + "|".join([r"\s+".join(ph) for ph in BRAND_PHRASES] + sorted(BRANDS, key=len, reverse=True))
+    + r")\b",
+    re.IGNORECASE,
+)
+
+
+def strip_brands(text: str) -> str:
+    """질문 원문에서 완성차·브랜드 이름(`BRANDS`·`BRAND_PHRASES`)만 지운다. BM25와 뜻 검색에 같은 문장을 쓴다."""
+    return re.sub(r"\s+", " ", BRAND_RE.sub(" ", text)).strip()
+
+
+def provenance() -> dict:
+    """결과가 어느 데이터 판본에서 나왔는지 — build.json 해시와 실제 파일 해시가 다르면 중단한다."""
+    build = json.loads((OUT_DIR / "build.json").read_text(encoding="utf-8"))
+    sha = {
+        n: hashlib.sha256((OUT_DIR / n).read_bytes()).hexdigest()
+        for n in ("recalls.jsonl", "eval.jsonl", "causes.jsonl")
+    }
+    if sha["recalls.jsonl"] != build["recalls_sha256"] or sha["eval.jsonl"] != build["eval_sha256"]:
+        sys.exit("recalls.jsonl·eval.jsonl이 build.json과 다르다 — 섞인 판본으로 비교하지 않는다")
+    return {
+        "snapshot_date": build["snapshot_date"],
+        "recalls_sha256": sha["recalls.jsonl"][:16],
+        "eval_sha256": sha["eval.jsonl"][:16],
+        "causes_sha256": sha["causes.jsonl"][:16],
+        "maker_aliases_sha256": (build.get("maker_aliases_sha256") or "")[:16],
+    }
 
 
 def drop_brands(tokens: list[str]) -> list[str]:
@@ -132,7 +164,7 @@ def run_bm25() -> dict:
         "questions_changed": sum(len(a) != len(b) for a, b in zip(q_tok, q_nomaker, strict=True)),
     }
 
-    q_nobrand = [drop_brands(q) for q in q_tok]
+    q_nobrand = [tokenize(strip_brands(q["question"])) for q in questions]
     r, sec = bm25_rankings(base_docs, q_nobrand, ids)
     results["v0b_bm25_no_brand"] = {
         **score(r, questions),
@@ -204,10 +236,14 @@ def run_dense(model_name: str, limit: int | None) -> dict:
     sims = qv @ vecs.T
     dense_rank = [[ids[i] for i in np.argsort(-row)[:100]] for row in sims]
     q_sec = (time.perf_counter() - t) / len(questions)
+    nb_text = [strip_brands(q["question"]) for q in questions]
+    qv_nb = np.array(list(model.query_embed(nb_text)), dtype="float32")
+    qv_nb /= np.linalg.norm(qv_nb, axis=1, keepdims=True)
+    dense_nb = [[ids[i] for i in np.argsort(-row)[:100]] for row in qv_nb @ vecs.T]
 
-    bm, _ = bm25_rankings(
-        [tokenize(t) for t in texts], [tokenize(q["question"]) for q in questions], ids
-    )
+    docs = [tokenize(t) for t in texts]
+    bm, _ = bm25_rankings(docs, [tokenize(q["question"]) for q in questions], ids)
+    bm_nb, _ = bm25_rankings(docs, [tokenize(t) for t in nb_text], ids)
 
     def rrf(a: list[str], b: list[str]) -> list[str]:
         s: dict[str, float] = {}
@@ -223,6 +259,12 @@ def run_dense(model_name: str, limit: int | None) -> dict:
         "embed_full_sec": round(embed_secs, 1),
         "v1_dense": {**score(dense_rank, questions), "sec_per_query": round(q_sec, 4)},
         "v2_rrf_bm25_dense": score(fused, questions),
+        # 회사 이름을 뺀 질문(실사용에 가까움) — 같은 조건의 BM25(v0b)와 비교한다
+        "v0b_bm25_no_brand": score(bm_nb, questions),
+        "v1b_dense_no_brand": score(dense_nb, questions),
+        "v2b_rrf_no_brand": score(
+            [rrf(a, b) for a, b in zip(bm_nb, dense_nb, strict=True)], questions
+        ),
     }
 
 
@@ -236,7 +278,9 @@ def main(argv: list[str] | None = None) -> None:
     a = p.parse_args(argv)
     if not (OUT_DIR / "recalls.jsonl").exists():
         sys.exit("recalls.jsonl이 없다")
+    prov = provenance()
     res = run_bm25() if a.cmd == "bm25" else run_dense(a.model, a.limit)
+    res = {"data": prov, **res}
     print(json.dumps(res, ensure_ascii=False, indent=1))
 
 
