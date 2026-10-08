@@ -894,3 +894,18 @@ def test_maker_alias_draft_csv_is_read_with_bom_aware_encoding():
     assert header[0] == "raw_maker"
     assert {"review", "review_required", "review_note"} <= set(header)
     assert OUT.read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+def test_the_alias_hash_ignores_line_endings(tmp_path):
+    lf, crlf = tmp_path / "lf.csv", tmp_path / "crlf.csv"
+    lf.write_bytes(b"a,b" + bytes([10]) + b"1,2" + bytes([10]))
+    crlf.write_bytes(b"a,b" + bytes([13, 10]) + b"1,2" + bytes([13, 10]))
+    assert nhtsa.sha256_aliases(lf) == nhtsa.sha256_aliases(crlf)
+    assert nhtsa.sha256_file(lf) != nhtsa.sha256_file(crlf)  # 파일 해시는 줄바꿈까지 본다
+
+
+def test_the_committed_confirmed_aliases_pass_the_review_check():
+    # 저장소에 커밋된 확인본이 초안과 대조해 모두 확인 완료인지 (데이터 없이 CI에서도 돈다)
+    aliases = nhtsa.load_aliases()
+    assert aliases
+    assert all(v["maker"] and v["maker_group"] for v in aliases.values())
