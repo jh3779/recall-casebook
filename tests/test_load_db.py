@@ -26,6 +26,7 @@ def recall(campno, defect="Brake line may leak.", **kw):
     return {
         "campno": campno,
         "maker": "Ford Motor Company",
+        "maker_group": "Ford",
         "raw_maker": "FORD MOTOR COMPANY",
         "components": ["SERVICE BRAKES"],
         "defect": defect,
@@ -522,6 +523,28 @@ def _schema_columns() -> dict[str, list[str]]:
     return tables
 
 
+def test_load_files_stops_with_a_clear_message_when_recalls_have_no_maker_group(tmp_path):
+    old_cards = [
+        {k: v for k, v in recall(c, snapshot_date="2026-10-06").items() if k != "maker_group"}
+        for c in ("24V001000", "23V002000")
+    ]
+    d = make_data_dir(tmp_path, recalls=old_cards)
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(d, "sample", make_baseline(tmp_path))
+    assert "maker_group 칸이 없다" in str(e.value) and "nhtsa build" in str(e.value)
+
+
+def test_load_files_carries_maker_group_into_the_recalls_rows(tmp_path):
+    d = make_data_dir(tmp_path)
+    data = load_db.load_files(d, "sample", make_baseline(tmp_path))
+    assert {r["maker_group"] for r in data["recalls"]} == {"Ford"}
+    # maker_group이 바뀌면 행 해시도 달라져 변경 요약(바뀐 칸)에 잡힌다
+    a = {**data["recalls"][0]}
+    b = {**a, "maker_group": "Other"}
+    cols = load_db.TABLES["recalls"]["cols"]
+    assert load_db.row_sha256(a, cols) != load_db.row_sha256(b, cols)
+
+
 def test_loader_columns_match_schema():
     schema = _schema_columns()
     assert set(schema) == {"data_builds", *load_db.TABLES}
@@ -829,6 +852,23 @@ def test_pg_has_no_command_that_deletes_builds(pgconn, tmp_path):
             "select column_name from information_schema.columns where table_name = 'data_builds'"
         ).fetchall()
     ]
+
+
+@pg
+def test_pg_schema_adds_maker_group_to_a_recalls_table_created_before_it_existed(pgconn):
+    # 대응표를 반영하기 전 스키마로 이미 만들어진 DB를 흉내 낸다 (칸과, 그 칸을 쓰는 뷰를 함께 지운다)
+    pgconn.execute("alter table recalls drop column maker_group cascade")
+    cols = lambda: {  # noqa: E731
+        r[0]
+        for r in pgconn.execute(
+            "select column_name from information_schema.columns where table_name = 'recalls'"
+        ).fetchall()
+    }
+    assert "maker_group" not in cols()
+    load_db.main(["schema"])  # 다시 적용하면 칸이 더해지고 뷰도 다시 만들어진다
+    assert "maker_group" in cols()
+    assert pgconn.execute("select maker_group from recalls_latest limit 1").fetchall() == []
+    load_db.main(["schema"])  # 여러 번 적용해도 된다
 
 
 @pg

@@ -1,6 +1,6 @@
 """시험지(eval.jsonl)로 BM25 기준 점수(Hit@1·3·5·10)를 잰다. 외부 패키지 없이 표준 라이브러리만 쓴다.
 
-사용법: uv run python -m scripts.defect_precedent.bm25_baseline [--baseline scripts/defect_precedent/baseline_2026-10-06.json]
+사용법: uv run python -m scripts.defect_precedent.bm25_baseline [--baseline scripts/defect_precedent/baseline_2026-10-06_maker-aliases.json]
 
 색인 대상은 리콜 카드의 결함·결과·시정 텍스트만이다 (조사 요약은 시험 질문의 출처라 넣지 않는다 — 누수 방지).
 주 지표는 "연결 리콜 중 하나라도 상위 k개 안"이고, "첫 번째 연결 리콜만"은 참고값이다.

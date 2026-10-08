@@ -286,8 +286,9 @@ def test_the_committed_baseline_file_has_no_duplicate_json_keys():
         assert not duplicated, f"중복된 키: {sorted(duplicated)}"
         return dict(pairs)
 
-    path = nhtsa.REPO_ROOT / "scripts/defect_precedent/baseline_2026-10-06.json"
-    json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=refuse_duplicates)
+    for name in ("baseline_2026-10-06.json", "baseline_2026-10-06_maker-aliases.json"):
+        path = nhtsa.REPO_ROOT / "scripts/defect_precedent" / name
+        json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=refuse_duplicates)
 
 
 def test_input_label_for_the_full_mode_does_not_claim_to_reproduce_the_full_result():
@@ -396,7 +397,9 @@ def test_reproduces_the_numbers_of_the_2026_10_06_snapshot():
         why_stats.read_jsonl(nhtsa.OUT_DIR / "eval.jsonl"),
         why_stats.read_jsonl(nhtsa.OUT_DIR / "recalls.jsonl"),
     )
-    assert overlap == {"questions": 749, "overlap": 364, "full_name": 73}  # 이슈 #24 B 파트의 값
+    # 이슈 #24 B 파트의 값은 364 / 73(회사명 정리 전 카드). 회사명 대응표를 반영한 카드(DEC-036)에서는 이름이 정리돼
+    # 회사 이름 전체가 질문에 그대로 든 문항만 73 → 67로 줄고, 핵심 단어가 겹치는 문항(364)은 그대로다
+    assert overlap == {"questions": 749, "overlap": 364, "full_name": 67}
 
 
 @pytest.mark.skipif(
@@ -428,3 +431,28 @@ def test_reproduces_the_full_573_numbers_of_2026_10_07():
     assert (s["unresolved_campaigns"], s["failed_campaigns"], s["unknown_recalls"]) == (23, 18, 41)
     assert (s["post_union"], s["post_union_upper"]) == (9307, 9334)
     assert (s["total_union"], s["total_union_upper"]) == (14918, 14945)
+
+
+def test_the_maker_aliases_baseline_differs_from_the_old_one_only_in_the_cards():
+    # 새 기준(DEC-036)은 같은 2026-10-06 원본·시험지·573 표본·전수 결과 고정값 위에서 카드만 달라진다
+    folder = nhtsa.REPO_ROOT / "scripts/defect_precedent"
+    old = json.loads((folder / "baseline_2026-10-06.json").read_text(encoding="utf-8"))
+    new = json.loads(
+        (folder / "baseline_2026-10-06_maker-aliases.json").read_text(encoding="utf-8")
+    )
+    for key in (
+        "raw",
+        "eval_action_nos",
+        "rclrpt_sample",
+        "causes_sample",
+        "causes_full",
+        "expected",
+    ):
+        assert new[key] == old[key], key
+    assert new["build"]["raw_manifest_sha256"] == old["build"]["raw_manifest_sha256"]
+    assert new["build"]["eval_sha256"] == old["build"]["eval_sha256"]
+    assert new["build"]["recalls_sha256"] != old["build"]["recalls_sha256"]  # 카드가 달라졌다
+    assert len(new["build"]["maker_aliases_sha256"]) == 64  # 어느 대응표로 만든 카드인지
+    assert "maker_aliases_sha256" not in old["build"]
+    # 대응표 확인본(main)의 해시가 새 기준에 적힌 값과 같다
+    assert new["build"]["maker_aliases_sha256"] == nhtsa.sha256_aliases(nhtsa.MAKER_ALIASES)
