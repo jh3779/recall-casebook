@@ -38,7 +38,7 @@ create table if not exists recalls (
     campno        text not null,                                      -- 24V412000 (9자리, 원본 그대로)
     campaign6     text generated always as (left(campno, 6)) stored,  -- 24V412 — causes.campaign과 잇는 칸. DB가 계산한다
     maker         text not null,                                      -- 신고서 이름을 정리한 이름 (표기·법인 형태 통일, 지역은 따로)
-    maker_group   text,                                               -- 같은 회사로 묶어 볼 단위(회사명 대응표 확인본, DEC-033·035). NULL = 대응표를 반영하기 전에 만든 build
+    maker_group   text,                                               -- 같은 회사로 묶어 볼 단위(회사명 대응표 확인본, DEC-033·036). NULL = 대응표를 반영하기 전에 만든 build
     raw_maker     text not null,
     components    text[] not null default '{}',
     defect        text not null,
