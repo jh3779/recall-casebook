@@ -1,4 +1,3 @@
-import hashlib
 import json
 import re
 
@@ -123,8 +122,7 @@ def test_fill_continues_with_the_same_hash_rank_when_the_reserve_runs_out():
 
 def test_the_committed_questions_are_complete_traceable_and_all_checked():
     q = json.loads(tq.OUT.read_text(encoding="utf-8"))
-    draw_file = tq.DRAW.read_bytes()
-    assert q["draw_sha256"] == hashlib.sha256(draw_file).hexdigest()
+    assert q["draw_sha256"] == tq.draw_digest()  # 줄바꿈(LF/CRLF)과 무관하게 같은 값
     recs = q["pilot"] + q["main"]
     assert (len(q["pilot"]), len(q["main"])) == (5, 45) and len(
         {r["action_no"] for r in recs}
@@ -147,3 +145,15 @@ def test_the_committed_questions_are_complete_traceable_and_all_checked():
     assert q["counts"]["check_failed"] == 0 and q["counts"]["replacements"] == len(
         q["replacements"]
     )
+
+
+def test_every_question_line_carries_the_principle_ok_note_and_the_text_is_untouched():
+    # 서비스 원칙 검사(applies 등)에 원문 속 일반 영어 낱말이 걸리지 않게 줄마다 표시를 달았다. 글자는 그대로다
+    text = tq.OUT.read_text(encoding="utf-8")
+    lines = [ln for ln in text.splitlines() if ln.lstrip().startswith('"question":')]
+    assert len(lines) == 50 and all("principle-ok:" in ln for ln in lines)
+    q = json.loads(text)
+    assert all(r["question_note"] == tq.QUESTION_NOTE for r in q["pilot"] + q["main"])
+    for r in q["pilot"] + q["main"]:
+        del r["question_note"]  # 표시는 글을 쓸 때 줄에 붙이는 것이라 읽은 데이터에서 빼고 다시 쓰면 같은 글이 나와야 한다
+    assert tq.dumps(q) == text

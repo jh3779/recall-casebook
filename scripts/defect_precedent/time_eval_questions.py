@@ -35,6 +35,8 @@ DOC_DIR = REPO_ROOT / "data" / "raw" / "time_eval_docs"
 HOST = "https://static.nhtsa.gov"
 MAX_BYTES = 20_000_000
 QUERY_SOURCE = "ODI Resume"
+# 질문은 정부 공개 문서 원문이라 `applies` 같은 일반 영어 낱말이 서비스 원칙 검사에 걸릴 수 있다 — 질문 줄마다 정당한 사용 표시를 단다
+QUESTION_NOTE = "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장"
 
 # 요약 사이에 끼는 쪽 머리글 줄 (줄 전체가 이 모양일 때만 뺀다)
 SKIP = ("문서 없음", "추출 불가")  # 이 상태면 건너뛰고 대체 목록으로 채운다
@@ -44,6 +46,23 @@ HEADER_LINES = [
     re.compile(r"Investigation: [A-Z]{2} ?\d{2}-?\d{3}( Open)?( Resume Page \d+ of \d+)?"),
     re.compile(r"Investigation: [A-Z]{2}\d{5} (Open|Close) Resume Page \d+ of \d+"),
 ]
+
+
+def draw_digest() -> str:
+    """추첨 파일의 해시. 저장소는 LF, Windows 체크아웃은 CRLF라서 줄바꿈을 LF로 맞춘 뒤 잰다."""
+    return hashlib.sha256(DRAW.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
+def dumps(result: dict) -> str:
+    """결과를 JSON 글로 만든다. 질문 줄마다 같은 줄에 `principle-ok:` 표시를 단다 (질문 글자는 바꾸지 않는다)."""
+    text = json.dumps(result, ensure_ascii=False, indent=1)
+    marked = re.sub(
+        r'^(\s*"question": .*),$',
+        lambda m: f'{m.group(1)}, "question_note": "{QUESTION_NOTE}",',
+        text,
+        flags=re.M,
+    )
+    return marked + "\n"
 
 
 def norm(text: str) -> str:
@@ -213,7 +232,7 @@ def build() -> dict:
     filled = fill(draw)
     records = filled["pilot"] + filled["main"]
     return {
-        "draw_sha256": hashlib.sha256(DRAW.read_bytes()).hexdigest(),
+        "draw_sha256": draw_digest(),
         "draw_seed": draw["seed"],
         "query_source": QUERY_SOURCE,
         "counts": {
@@ -233,7 +252,7 @@ def main() -> None:
             "사용법: uv run python -m scripts.defect_precedent.time_eval_questions {--write|--check}"
         )
     result = build()
-    text = json.dumps(result, ensure_ascii=False, indent=1) + "\n"
+    text = dumps(result)
     if sys.argv[1:] == ["--check"]:
         if not OUT.exists() or OUT.read_text(encoding="utf-8") != text:
             sys.exit(f"{OUT.name}이 지금 받은 문서·규칙으로 만든 결과와 다르다")
