@@ -106,6 +106,8 @@ def pick_unknown(n: int) -> list[dict]:
 
 
 def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
+    if sheet and sheet_meta_path(sheet) == out.with_suffix(".meta.json"):
+        sys.exit("결과와 시트의 메타 파일 이름이 겹친다 — --out·--sheet 이름을 다르게")
     data = provenance()
     items = pick_defect(n) if mode == "defect" else pick_unknown(n)
     instructions = DEFECT_INSTRUCTIONS if mode == "defect" else UNKNOWN_INSTRUCTIONS
@@ -144,13 +146,11 @@ def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
         # 시트가 어느 판본·표본에서 나왔는지 — 채점 때 결과 메타를 지금 로컬 파일이 아니라 이 값과 대조한다
         sheet_meta = {
             "causes_sha256": data["causes_sha256"],
-            "sample_sha256": hashlib.sha256(
-                "\n".join(f"{r['campaign']}:{text_sha(r['text'])}" for r in rows).encode()
-            ).hexdigest()[:16],
+            "sample_sha256": sample_sha([(r["campaign"], text_sha(r["text"])) for r in rows]),
             "seed": SEED,
             "n": len(rows),
         }
-        sheet.with_suffix(".meta.json").write_text(json.dumps(sheet_meta, indent=1), "utf-8")
+        sheet_meta_path(sheet).write_text(json.dumps(sheet_meta, indent=1), "utf-8")
     print(
         json.dumps(
             {
@@ -211,6 +211,15 @@ def score_rows(rows: list[dict], labels: dict[str, str]) -> dict:
     }
 
 
+def sheet_meta_path(sheet: Path) -> Path:
+    """`x.csv` → `x.csv.meta.json` — 결과 메타(`x.meta.json`)와 이름이 겹치지 않게."""
+    return sheet.with_name(sheet.name + ".meta.json")
+
+
+def sample_sha(pairs: list[tuple[str, str]]) -> str:
+    return hashlib.sha256("\n".join(f"{c}:{h}" for c, h in pairs).encode()).hexdigest()[:16]
+
+
 def text_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
@@ -227,7 +236,19 @@ def score(sheet: Path, results: list[Path]) -> None:
         sys.exit(f"labeler_id가 빈 행 {len(unnamed)}개 (AGENTS.md 5-2): {unnamed[:5]}")
     labels = {r["campaign"]: r["label"].strip() for r in sheet_rows}
     shown = {r["campaign"]: r["text_sha256"] for r in sheet_rows}
-    sheet_meta = json.loads(sheet.with_suffix(".meta.json").read_text("utf-8"))
+    mpath = sheet_meta_path(sheet)
+    if not mpath.exists():
+        sys.exit(
+            f"{mpath.name}이 없다 — 이 시트가 어느 causes 판본에서 나왔는지 알 수 없어 채점하지 않는다"
+        )
+    sheet_meta = json.loads(mpath.read_text("utf-8"))
+    if (
+        sample_sha([(r["campaign"], r["text_sha256"]) for r in sheet_rows])
+        != sheet_meta["sample_sha256"]
+    ):
+        sys.exit(
+            "시트의 행·원문 해시가 시트를 만들 때와 다르다 — 표본이 바뀐 시트는 채점하지 않는다"
+        )
     now = sheet_meta[
         "causes_sha256"
     ]  # 시트를 만든 판본 — 로컬 파일이 바뀌어도 그 시트·결과끼리 채점한다

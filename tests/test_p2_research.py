@@ -163,3 +163,43 @@ def test_engine2_recheck_requires_meta(tmp_path):
     with pytest.raises(SystemExit, match="meta"):
         e2.main(["--recheck", str(res)])
     assert not (tmp_path / "r.recheck.jsonl").exists()
+
+
+def test_cause_trials_score_checks_sheet_meta_and_result_version(tmp_path):
+    import csv
+    import json
+
+    from scripts.defect_precedent import cause_trials as ct
+
+    text = "Manufacturing error."
+    sheet = tmp_path / "u.csv"
+    with sheet.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["campaign", "cause_text", "text_sha256", "label", "labeler_id", "note"])
+        w.writerow(["A", text, ct.text_sha(text), "stated", "L1", ""])
+    # 시트 메타가 결과 메타(u.meta.json)와 다른 이름이다
+    assert ct.sheet_meta_path(sheet).name == "u.csv.meta.json"
+    with pytest.raises(SystemExit, match="meta.json이 없다"):
+        ct.score(sheet, [])
+
+    meta = {"causes_sha256": "c1", "sample_sha256": ct.sample_sha([("A", ct.text_sha(text))])}
+    ct.sheet_meta_path(sheet).write_text(json.dumps(meta), encoding="utf-8")
+    res = tmp_path / "u.jsonl"
+    res.write_text(
+        json.dumps(
+            {"campaign": "A", "text": text, "returned": [], "spans": [], "rule_unknown": False}
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "u.meta.json").write_text(json.dumps({"data": {"causes_sha256": "c2"}}), "utf-8")
+    with pytest.raises(SystemExit, match="다른 causes.jsonl 판본"):
+        ct.score(sheet, [res])
+
+    (tmp_path / "u.meta.json").write_text(json.dumps({"data": {"causes_sha256": "c1"}}), "utf-8")
+    ct.score(sheet, [res])  # 같은 판본이면 채점한다
+
+    meta["sample_sha256"] = "다른표본"
+    ct.sheet_meta_path(sheet).write_text(json.dumps(meta), encoding="utf-8")
+    with pytest.raises(SystemExit, match="표본이 바뀐"):
+        ct.score(sheet, [res])
