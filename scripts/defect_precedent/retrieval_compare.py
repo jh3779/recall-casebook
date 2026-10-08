@@ -109,12 +109,11 @@ def maker_words(cards: list[dict]) -> set[str]:
 
 def score(rankings: list[list[str]], questions: list[dict]) -> dict:
     out = {}
-    for name, sel in (("all", questions), ("post2014", [q for q in questions if q["_post"]])):
-        idx = (
-            [i for i, q in enumerate(questions) if q in sel]
-            if name != "all"
-            else range(len(questions))
-        )
+    subsets = {
+        "all": list(range(len(questions))),
+        "post2014": [i for i, q in enumerate(questions) if q["_post"]],
+    }
+    for name, idx in subsets.items():
         hits = {"any": Counter(), "first": Counter()}
         for i in idx:
             top, gold = rankings[i], questions[i]["gold_campnos"]
@@ -189,6 +188,15 @@ def run_bm25() -> dict:
     return results
 
 
+def rrf(*rankings: list[str], k: int = RRF_K) -> list[str]:
+    """Reciprocal Rank Fusion — 순위 r(0부터)에 1/(k + r + 1)을 더한다. 점수가 같으면 먼저 나온 순서를 유지한다."""
+    s: dict[str, float] = {}
+    for lst in rankings:
+        for r, cid in enumerate(lst):
+            s[cid] = s.get(cid, 0.0) + 1.0 / (k + r + 1)
+    return sorted(s, key=lambda c: -s[c])
+
+
 def embed_cards(model_name: str, texts: list[str], key: str):
     import numpy as np
     from fastembed import TextEmbedding
@@ -244,13 +252,6 @@ def run_dense(model_name: str, limit: int | None) -> dict:
     docs = [tokenize(t) for t in texts]
     bm, _ = bm25_rankings(docs, [tokenize(q["question"]) for q in questions], ids)
     bm_nb, _ = bm25_rankings(docs, [tokenize(t) for t in nb_text], ids)
-
-    def rrf(a: list[str], b: list[str]) -> list[str]:
-        s: dict[str, float] = {}
-        for lst in (a, b):
-            for r, cid in enumerate(lst):
-                s[cid] = s.get(cid, 0.0) + 1.0 / (RRF_K + r + 1)
-        return sorted(s, key=lambda c: -s[c])
 
     fused = [rrf(a, b) for a, b in zip(bm, dense_rank, strict=True)]
     return {

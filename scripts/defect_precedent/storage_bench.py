@@ -66,6 +66,10 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--model", required=True)
     a = p.parse_args(argv)
 
+    if "supabase" in os.environ["BENCH_DB"]:
+        raise SystemExit(
+            "BENCH_DB가 Supabase를 가리킨다 — 시험 표를 만들므로 로컬 Postgres에서만 돌린다"
+        )
     data = provenance()
     cards = read_jsonl(OUT_DIR / "recalls.jsonl")
     questions = read_jsonl(OUT_DIR / "eval.jsonl")
