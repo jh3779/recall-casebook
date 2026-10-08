@@ -90,3 +90,4 @@
 - 2026-10-08: PR #43에 main(#42 병합, abc674a) 합침 — HANDOFF 상태 모순 정리(Codex 012b901c: 적재 완료·DEC 알림 완료·검사 수치), 할 일 37(#42 리뷰 후속, 🟡2 로컬 재현) 추가, 새 카드 build 적재를 Next Action 1-1로
 - 2026-10-08: 회사명 반영 새 build 적재(f5cb2f944f36125d, #31) — 옛 카드 data/raw/defect_cards_2026-10-06/ 보관. PR #43에 main(#44 병합, d4c0ec2) 합침 — 할 일 27·28은 #44 문구 채택, 열린 PR·Next Action 1-1·파일 모양 확정 상태 정리
 - 2026-10-08: PR #43에 main(#46 병합, 62203f2) 합침 — #46이 처리한 #42 리뷰 후속 반영, 남은 🟡1은 이슈 #45로 연결(할 일 37), pytest 223 passed
+- 2026-10-08: P2 검색 방식 비교(research/p2-retrieval-comparison) — BM25+bge-small RRF 0.542(기준 0.510), Python 메모리 검색 권장(Supabase 왕복 229ms·FTS 0.163), Phase 로드맵·DEC-037(Python API 서버·로컬 임베딩), 엔진 2는 OpenAI 키 401로 미측정

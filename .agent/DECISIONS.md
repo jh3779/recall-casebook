@@ -234,3 +234,11 @@
 - **운영 메모 (2026-10-08, PR #42 리뷰 반영)**: ① 같은 스냅샷 날짜의 옛 build(`3c15c6bcf7dc7c3a`, `maker`가 원문과 같음, `maker_group` 전부 NULL)와 새 build(`f5cb2f944f36125d`, 정리한 이름)는 `data_builds.change_summary`가 날짜 비교라 "첫 build"로 남는다 — 두 build 사이에 `maker`가 바뀐 카드는 `campno`로 직접 조인해 센 10,038건이다. build 사이에 `maker`를 직접 비교하지 않는다. 추적은 build_id → `build.json`의 `recalls_sha256` → 기준 파일 `baseline_2026-10-06_maker-aliases.json`의 `maker_aliases_sha256`(확인본 해시)로 한다. ② 대응표 해시는 파일 전체(줄바꿈만 LF로 맞춤) 기준이라 **확인본을 한 글자라도 고치면**(메모 보강 포함) `verify_build`가 멈춘다 — `nhtsa build`를 다시 하고 새 기준을 freeze해야 한다. 엄격한 쪽이 안전해서 의도한 동작이다. ③ 적재 코드는 새 카드 여부를 첫 줄에 `maker_group` 키가 있는지로만 본다(값 검사는 하지 않음). ④ 한계(후속): `unreviewed`가 대조하는 초안(`maker_aliases_draft.csv`)의 해시는 기록하지 않는다 — 확인본과 초안의 `review_required`를 함께 지우면 검사를 통과할 수 있다. 초안 해시 기록은 `build.json`에 칸을 더하는 일이라 새 기준 재고정이 필요해 별도 이슈(#45)로 둔다.
 - **Status**: Accepted (사용자 결정 2026-10-07). 구현·실제 카드 반영은 PR #42(2026-10-08)에서 끝났고 새 build `f5cb2f944f36125d`가 Supabase에 적재됐다 (#31)
 - **Date**: 2026-10-07
+
+## DEC-037: 화면(React)과 RAG는 Python API 서버로 잇고, 뜻 검색 후보는 로컬 임베딩 모델로 한정한다
+- **Decision**: ① 화면은 Python API 서버(FastAPI 등)를 호출해 결과 JSON만 받는다. 검색·원인 옮기기(LLM)·검사·DB 접속은 서버에서 하며 키(`DATABASE_URL`·LLM 키)는 서버의 `.env`에만 둔다. ② 뜻 검색(임베딩) 후보는 로컬 오픈소스 모델로 한정해 749문항으로 비교한다(OpenAI 임베딩은 이번 비교에서 제외).
+- **Reason**: 2026-10-08 사용자 결정(P2 인터뷰). ① 프런트 환경변수에 키를 넣지 않는 규칙(DEC-032, AGENTS.md 7절)을 지키면서 새 질문을 실시간으로 처리할 수 있다. ② 비용 0, 외부 의존 없음, Supabase 저장 용량이 작다(384차원 기준 build당 약 47MB).
+- **Alternatives**: 결과 파일 미리 만들기 — 서버가 필요 없지만 새 질문을 못 해 데모가 고정돼 제외. Supabase 직접 읽기 — 검색·LLM을 Edge Function으로 따로 만들고 RLS 읽기 정책·anon 키를 새로 설계해야 해 제외. OpenAI small/large 임베딩 — 0.1~0.7달러로 싸지만 외부 의존·저장 용량(1536·3072차원)·large의 pgvector 2,000차원 색인 제약 때문에 이번에는 제외(필요해지면 다시 비교).
+- **영향**: 할 일 26·32(화면↔RAG 전달 방식) 결정. API 서버의 위치·배포 방식, 호출 상한, 원인 옮기기 LLM 모델은 미결(P2 실험 뒤).
+- **Status**: Accepted (사용자 결정 2026-10-08)
+- **Date**: 2026-10-08
