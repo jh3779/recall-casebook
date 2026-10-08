@@ -155,5 +155,7 @@ def test_every_question_line_carries_the_principle_ok_note_and_the_text_is_untou
     q = json.loads(text)
     assert all(r["question_note"] == tq.QUESTION_NOTE for r in q["pilot"] + q["main"])
     for r in q["pilot"] + q["main"]:
-        del r["question_note"]  # 표시는 글을 쓸 때 줄에 붙이는 것이라 읽은 데이터에서 빼고 다시 쓰면 같은 글이 나와야 한다
+        del r[
+            "question_note"
+        ]  # 표시는 글을 쓸 때 줄에 붙이는 것이라 읽은 데이터에서 빼고 다시 쓰면 같은 글이 나와야 한다
     assert tq.dumps(q) == text
