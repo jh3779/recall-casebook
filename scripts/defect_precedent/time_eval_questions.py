@@ -35,7 +35,7 @@ DOC_DIR = REPO_ROOT / "data" / "raw" / "time_eval_docs"
 HOST = "https://static.nhtsa.gov"
 MAX_BYTES = 20_000_000
 QUERY_SOURCE = "ODI Resume"
-# 질문은 정부 공개 문서 원문이라 `applies` 같은 일반 영어 낱말이 서비스 원칙 검사에 걸릴 수 있다 — 질문 줄마다 정당한 사용 표시를 단다
+# 질문은 정부 공개 문서 원문이라 서비스 원칙 검사가 찾는 판정 낱말과 철자가 같은 일반 영어 낱말이 들어 있을 수 있다 — 질문 줄마다 정당한 사용 표시를 단다
 QUESTION_NOTE = "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장"
 
 # 요약 사이에 끼는 쪽 머리글 줄 (줄 전체가 이 모양일 때만 뺀다)

@@ -148,7 +148,7 @@ def test_the_committed_questions_are_complete_traceable_and_all_checked():
 
 
 def test_every_question_line_carries_the_principle_ok_note_and_the_text_is_untouched():
-    # 서비스 원칙 검사(applies 등)에 원문 속 일반 영어 낱말이 걸리지 않게 줄마다 표시를 달았다. 글자는 그대로다
+    # 서비스 원칙 검사에 원문 속 일반 영어 낱말이 걸리지 않게 줄마다 표시를 달았다. 글자는 그대로다
     text = tq.OUT.read_text(encoding="utf-8")
     lines = [ln for ln in text.splitlines() if ln.lstrip().startswith('"question":')]
     assert len(lines) == 50 and all("principle-ok:" in ln for ln in lines)
