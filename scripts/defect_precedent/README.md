@@ -1,7 +1,7 @@
 # 결함 선례 데이터·시험지 스크립트
 
 결함 선례 찾기 도우미(현행 팀 주제, DEC-030, 기획 `docs/기획_결함선례.md`)의 데이터·시험지·기준 점수를 만드는 스크립트다.
-원본과 결과물은 커밋하지 않는다 (`data/raw/`, `data/processed/`는 `.gitignore`). 기준 실행을 고정하는 작은 파일(`baseline_2026-10-06.json` — 원본·카드·시험지·573 판본의 sha256)만 커밋한다.
+원본과 결과물은 커밋하지 않는다 (`data/raw/`, `data/processed/`는 `.gitignore`). 기준 실행을 고정하는 작은 파일(`baseline_2026-10-06.json`은 회사명 반영 전 카드용, `baseline_2026-10-06_maker-aliases.json`는 반영한 카드용 — 원본·카드·시험지·573 판본의 sha256)만 커밋한다.
 
 > **재현 범위**: 2026-10-06 기준 점수(0.510)와 573 표본(205/95)은 **그날의 원본 사본이 있을 때만** 같은 값으로 다시 만들 수 있다. NHTSA는 같은 주소에 매일 새 파일을 덮어쓰고 옛 파일을 주지 않으며, 원본은 저장소에 커밋하지 않는다(AGENTS.md 7절). 사본은 **팀 구글 드라이브**에 `data/` 폴더 압축본(`data.zip` — `raw/nhtsa`·`raw/rclrpt`·`processed/defect`, 2026-10-07 보관)으로 둔다. 링크는 저장소에 적지 않는다 — 우지훈에게 받는다. 받은 사본이 같은지는 `bm25_baseline --baseline`(원본·카드·시험지)과 `rclrpt sample --baseline`(573 PDF)이 각각 sha256으로 확인한다. 사본이 없으면 `fetch`로 받은 새 원본에서 `--allow-drift`로 같은 질문 번호만 "재평가"할 수 있고, 그 값은 기준 점수와 다를 수 있다.
 
@@ -29,7 +29,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 
 - 새 기준을 만들 때: `uv run python -m scripts.defect_precedent.nhtsa freeze scripts/defect_precedent/baseline_<날짜>.json` (원본과 다른 날 만든 eval이면 중단한다)
 - `fetch`는 옛 원본을 지우지 않고 `data/raw/nhtsa.<받은 시각>`으로 보관한다.
-- `build`는 사람이 확인한 회사명 대응표(`maker_aliases.csv`)를 읽어 카드의 `maker`(정리한 이름)와 `maker_group`(같은 회사로 묶어 볼 단위)을 채운다 (DEC-036). 신고서 원문은 `raw_maker`에 그대로 남는다. 확인이 끝나지 않은 표이거나 표에 없는 이름이 있으면 중단한다. `build.json`에 표의 sha256(`maker_aliases_sha256`)이 남고 `verify_build`가 대조한다. 회사명 반영 전의 기준(`baseline_2026-10-06.json`)은 카드가 달라져 "재현"이 되지 않는다(옛 값이 필요하면 커밋 `9e8381f`를 체크아웃). 새 기준은 `baseline_2026-10-06_maker-aliases.json`이다 — 같은 2026-10-06 원본·시험지·573 표본·전수 결과 고정값에서 카드(`maker`·`maker_group`)만 달라졌고, BM25 점수(Hit@10 0.510 / 0.503)는 같다(BM25는 회사 이름을 색인하지 않는다). 옛 기준은 회사명 반영 전 카드용으로 남겨 둔다.
+- `build`는 사람이 확인한 회사명 대응표(`maker_aliases.csv`)를 읽어 카드의 `maker`(정리한 이름)와 `maker_group`(같은 회사로 묶어 볼 단위)을 채운다 (DEC-036). 신고서 원문은 `raw_maker`에 그대로 남는다. 확인이 끝나지 않은 표이거나 표에 없는 이름이 있으면 중단한다. `build.json`에 표의 sha256(`maker_aliases_sha256`)이 남고 `verify_build`가 대조한다. `build`는 `data/processed/defect/`를 통째로 바꾸니 옛 카드가 필요하면 먼저 보관해 둔다. 옛 카드(`build.json`에 `maker_aliases_sha256`이 없음)가 있으면 옛 기준 `baseline_2026-10-06.json`으로 재현되고, 새로 만든 카드는 새 기준으로만 재현된다(코드가 옛 카드를 새로 만들지는 못한다 — 옛 값이 필요하면 커밋 `9e8381f`를 체크아웃). 대응표 해시는 파일 전체 기준이라 확인본을 한 글자라도 고치면 `build`를 다시 하고 새 기준을 freeze해야 한다. 새 기준은 `baseline_2026-10-06_maker-aliases.json`이다 — 같은 2026-10-06 원본·시험지·573 표본·전수 결과 고정값에서 카드(`maker`·`maker_group`)만 달라졌고, BM25 점수(Hit@10 0.510 / 0.503)는 같다(BM25는 회사 이름을 색인하지 않는다). 옛 기준은 회사명 반영 전 카드용으로 남겨 둔다.
 - NHTSA 원본 URL은 매일 덮어써져서 옛 스냅샷을 다시 받을 수 없다. 원본은 커밋하지 않으므로 **같은 원본 사본(`data/raw/nhtsa` 또는 fetch가 보관한 `data/raw/nhtsa.<받은 시각>`)을 지우지 않는다** — 다른 사람은 사본을 넘겨받아야 재현할 수 있다.
 - **573 전체 수집(`rclrpt all`)은 하기로 결정했다 (2026-10-07 사용자 결정).** 대상은 접수일 2014-08-20 이후이면서 573 보고서가 있는 **11,737개 캠페인**(2026-10-07 목록 기준 — 접수일 이후 카드는 12,011건이지만 보고서가 없는 리콜이 있다)이다. PDF 약 2.3만 개, 약 5GB. 파일럿 1,000건(15.5분, 읽음 999·실패 1)으로 잰 전체 소요 시간은 **약 3.5~4시간**이다. 순서:
   1. `pdftotext --version`이 **poppler**인지 확인한다 (xpdf 등 다른 도구는 시작 단계에서 멈춘다. Windows: `winget install oschwartz10612.Poppler`).
@@ -56,7 +56,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 - `campaign`은 리콜 번호 앞 6자리(예: `24V412`)다. `recalls.jsonl`의 `campno`(예: `24V412000`) 앞 6자리와 잇는다.
 - 원본 보고서 판독: 수정본 중 `Submission Date`가 가장 늦은 판본을 쓴다(날짜 형식 `JUN 05, 2024` · `NOV 18,2014` · `Sep 14, 2015`를 모두 읽음). 날짜를 모르는 판본(글자 없는 이미지, 제출일 미판독)이 하나라도 있으면 최신판을 짐작하지 않고 `resolution = "unresolved"`로 두어 원인 칸 통계에서 뺀다. 사람이 이미지 판본을 열어 확인한 제출일은 `manual_submission_dates.json`(PDF 주소 → 제출일·sha256·확인 기록)에 적고, PDF sha256이 같을 때만 쓴다 (`resolution = "manual"`). 원인 칸 중간에 끼는 쪽 꼬리말("The information contained in this report…", "Page 3 of 5")은 지운다.
 
-## 기준값 (2026-10-06, `baseline_2026-10-06.json`)
+## 기준값 (2026-10-06, `baseline_2026-10-06.json` · 회사명 반영 카드는 `baseline_2026-10-06_maker-aliases.json`, 점수 같음)
 
 | 항목 | 값 |
 |---|---|

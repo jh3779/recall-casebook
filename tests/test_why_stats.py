@@ -399,7 +399,10 @@ def test_reproduces_the_numbers_of_the_2026_10_06_snapshot():
     )
     # 이슈 #24 B 파트의 값은 364 / 73(회사명 정리 전 카드). 회사명 대응표를 반영한 카드(DEC-036)에서는 이름이 정리돼
     # 회사 이름 전체가 질문에 그대로 든 문항만 73 → 67로 줄고, 핵심 단어가 겹치는 문항(364)은 그대로다
-    assert overlap == {"questions": 749, "overlap": 364, "full_name": 67}
+    info = json.loads((nhtsa.OUT_DIR / "build.json").read_text(encoding="utf-8"))
+    # 옛 카드(build.json에 maker_aliases_sha256 없음)는 73, 회사명 대응표를 반영한 카드는 67 — 사본 버전에 따라 기대값이 다르다
+    full_name = 67 if "maker_aliases_sha256" in info else 73
+    assert overlap == {"questions": 749, "overlap": 364, "full_name": full_name}
 
 
 @pytest.mark.skipif(
