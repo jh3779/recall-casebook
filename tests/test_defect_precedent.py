@@ -909,3 +909,10 @@ def test_the_committed_confirmed_aliases_pass_the_review_check():
     aliases = nhtsa.load_aliases()
     assert aliases
     assert all(v["maker"] and v["maker_group"] for v in aliases.values())
+
+
+def test_the_committed_group_names_are_company_names_not_explanations():
+    # 묶음 이름은 회사 이름만 쓴다 — 개명·계열 설명은 review_note에 둔다 (이슈 #36, 안내문 4번 규칙 4)
+    names = {v["maker_group"] for v in nhtsa.load_aliases().values()}
+    assert not [n for n in names if "이어짐" in n or "계열" in n]
+    assert "Chrysler" in names
