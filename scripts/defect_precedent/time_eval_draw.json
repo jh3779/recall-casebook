@@ -1,0 +1,332 @@
+{
+ "eval_sha256": "fe5433db5c7864a01aaa98d6b5af0d8a211429bec7a24f0c5f8e19c2d959695c",
+ "seed": 20261008,
+ "cutoff_open_date": "20070101",
+ "pool_size": 333,
+ "pilot": [
+  {
+   "action_no": "PE15010",
+   "open_date": "20150324"
+  },
+  {
+   "action_no": "PE21001",
+   "open_date": "20210108"
+  },
+  {
+   "action_no": "EA07008",
+   "open_date": "20070612"
+  },
+  {
+   "action_no": "PE07060",
+   "open_date": "20071129"
+  },
+  {
+   "action_no": "EA18004",
+   "open_date": "20180702"
+  }
+ ],
+ "main": [
+  {
+   "action_no": "PE09049",
+   "open_date": "20091006"
+  },
+  {
+   "action_no": "PE11022",
+   "open_date": "20110718"
+  },
+  {
+   "action_no": "PE09037",
+   "open_date": "20090812"
+  },
+  {
+   "action_no": "EA09007",
+   "open_date": "20090521"
+  },
+  {
+   "action_no": "PE09035",
+   "open_date": "20090717"
+  },
+  {
+   "action_no": "PE15018",
+   "open_date": "20150501"
+  },
+  {
+   "action_no": "PE18008",
+   "open_date": "20180803"
+  },
+  {
+   "action_no": "PE14031",
+   "open_date": "20141006"
+  },
+  {
+   "action_no": "PE11008",
+   "open_date": "20110329"
+  },
+  {
+   "action_no": "PE09006",
+   "open_date": "20090203"
+  },
+  {
+   "action_no": "PE08043",
+   "open_date": "20080717"
+  },
+  {
+   "action_no": "PE11038",
+   "open_date": "20111214"
+  },
+  {
+   "action_no": "PE22004",
+   "open_date": "20220410"
+  },
+  {
+   "action_no": "PE12021",
+   "open_date": "20120719"
+  },
+  {
+   "action_no": "PE13030",
+   "open_date": "20130906"
+  },
+  {
+   "action_no": "PE07026",
+   "open_date": "20070522"
+  },
+  {
+   "action_no": "PE14025",
+   "open_date": "20140804"
+  },
+  {
+   "action_no": "PE16013",
+   "open_date": "20160928"
+  },
+  {
+   "action_no": "EA15004",
+   "open_date": "20150831"
+  },
+  {
+   "action_no": "PE19004",
+   "open_date": "20190329"
+  },
+  {
+   "action_no": "EA13004",
+   "open_date": "20130426"
+  },
+  {
+   "action_no": "PE12026",
+   "open_date": "20121002"
+  },
+  {
+   "action_no": "PE08012",
+   "open_date": "20080215"
+  },
+  {
+   "action_no": "PE16002",
+   "open_date": "20160225"
+  },
+  {
+   "action_no": "EA08023",
+   "open_date": "20081028"
+  },
+  {
+   "action_no": "PE10009",
+   "open_date": "20100305"
+  },
+  {
+   "action_no": "PE07054",
+   "open_date": "20071109"
+  },
+  {
+   "action_no": "PE07043",
+   "open_date": "20070814"
+  },
+  {
+   "action_no": "EA09019",
+   "open_date": "20091218"
+  },
+  {
+   "action_no": "PE10011",
+   "open_date": "20100421"
+  },
+  {
+   "action_no": "PE08008",
+   "open_date": "20080131"
+  },
+  {
+   "action_no": "EA17003",
+   "open_date": "20170901"
+  },
+  {
+   "action_no": "EA10007",
+   "open_date": "20101220"
+  },
+  {
+   "action_no": "PE09053",
+   "open_date": "20091109"
+  },
+  {
+   "action_no": "PE09052",
+   "open_date": "20091106"
+  },
+  {
+   "action_no": "PE11036",
+   "open_date": "20111011"
+  },
+  {
+   "action_no": "EA18002",
+   "open_date": "20180418"
+  },
+  {
+   "action_no": "PE15005",
+   "open_date": "20150227"
+  },
+  {
+   "action_no": "PE10012",
+   "open_date": "20100429"
+  },
+  {
+   "action_no": "PE13006",
+   "open_date": "20130318"
+  },
+  {
+   "action_no": "EA11004",
+   "open_date": "20110411"
+  },
+  {
+   "action_no": "PE13023",
+   "open_date": "20130620"
+  },
+  {
+   "action_no": "PE07002",
+   "open_date": "20070122"
+  },
+  {
+   "action_no": "PE09018",
+   "open_date": "20090401"
+  },
+  {
+   "action_no": "PE13022",
+   "open_date": "20130620"
+  }
+ ],
+ "reserve": [
+  {
+   "action_no": "EA09014",
+   "open_date": "20091019"
+  },
+  {
+   "action_no": "PE12027",
+   "open_date": "20121002"
+  },
+  {
+   "action_no": "PE10050",
+   "open_date": "20101221"
+  },
+  {
+   "action_no": "EA09016",
+   "open_date": "20091110"
+  },
+  {
+   "action_no": "EA12003",
+   "open_date": "20120423"
+  },
+  {
+   "action_no": "EA08001",
+   "open_date": "20080104"
+  },
+  {
+   "action_no": "EA07006",
+   "open_date": "20070418"
+  },
+  {
+   "action_no": "PE08023",
+   "open_date": "20080326"
+  },
+  {
+   "action_no": "PE12017",
+   "open_date": "20120619"
+  },
+  {
+   "action_no": "PE18009",
+   "open_date": "20180821"
+  },
+  {
+   "action_no": "PE13024",
+   "open_date": "20130625"
+  },
+  {
+   "action_no": "PE10046",
+   "open_date": "20101122"
+  },
+  {
+   "action_no": "PE14019",
+   "open_date": "20140624"
+  },
+  {
+   "action_no": "PE07017",
+   "open_date": "20070402"
+  },
+  {
+   "action_no": "PE07008",
+   "open_date": "20070212"
+  },
+  {
+   "action_no": "PE21022",
+   "open_date": "20211209"
+  },
+  {
+   "action_no": "PE08034",
+   "open_date": "20080509"
+  },
+  {
+   "action_no": "EA08022",
+   "open_date": "20080923"
+  },
+  {
+   "action_no": "EA18001",
+   "open_date": "20180418"
+  },
+  {
+   "action_no": "PE07004",
+   "open_date": "20070126"
+  },
+  {
+   "action_no": "PE12010",
+   "open_date": "20120328"
+  },
+  {
+   "action_no": "PE15023",
+   "open_date": "20150609"
+  },
+  {
+   "action_no": "PE14035",
+   "open_date": "20141121"
+  },
+  {
+   "action_no": "PE09046",
+   "open_date": "20090924"
+  },
+  {
+   "action_no": "EA08012",
+   "open_date": "20080710"
+  },
+  {
+   "action_no": "EA12008",
+   "open_date": "20120913"
+  },
+  {
+   "action_no": "EA08003",
+   "open_date": "20080123"
+  },
+  {
+   "action_no": "PE10016",
+   "open_date": "20100513"
+  },
+  {
+   "action_no": "PE13001",
+   "open_date": "20130115"
+  },
+  {
+   "action_no": "PE18003",
+   "open_date": "20180316"
+  }
+ ]
+}
