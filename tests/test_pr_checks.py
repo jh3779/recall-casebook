@@ -5,12 +5,14 @@ from scripts.ci.pr_checks import (
     check_agents_import,
     check_md_links,
     check_pr_body,
+    check_pr_title,
     check_principles,
     check_rag_evidence,
     check_secrets,
     check_type_lists,
     parse_patch,
     section,
+    type_lists,
     unquote_git_path,
 )
 
@@ -271,3 +273,13 @@ def test_secrets_reports_same_line_once():
     same = line("src/x.py", fake, 2)
     res = check_secrets([], history=[("abc1234", *same[1:])], final=[same])
     assert len(res.errors) == 1
+
+
+def test_pr_title_rule_matches_title_check_workflow():
+    types = type_lists()[".github/workflows/pr-title-check.yml"]
+    assert check_pr_title("chore: 본문 수정 때 검사 줄이기", types).ok
+    assert check_pr_title("fix(rag): 청크 중복 제거", types).ok
+    assert not check_pr_title("Feat: Add retriever", types).ok  # type 대문자
+    assert not check_pr_title("chore: PR 제목 고치기", types).ok  # 설명이 대문자로 시작
+    assert not check_pr_title("update: 무언가", types).ok  # 허용되지 않는 type
+    assert not check_pr_title("chore 콜론 없음", types).ok
