@@ -10,6 +10,9 @@
    글자를 뽑을 수 없는 문서(2010년 이전 개시 문서는 대부분 스캔한 이미지라 글자 정보가 없다, 개시 문서가 아닌 편지 등)도
    같은 이유로 건너뛴다 — OCR은 원문 그대로라고 보장할 수 없어 쓰지 않는다. 대체 목록을 다 쓰면 같은 해시 순위로 이어서 채운다.
 2. PDF를 받아 sha256을 잰다 (원본은 커밋하지 않는다: data/raw/time_eval_docs/).
+   기준일 당시 판본이라는 근거로 PDF 안에 적힌 수정일(ModDate)을 기록하고, 개시일보다 30일 넘게 늦거나 없으면 쓰지 않는다
+   ("판본 근거 부족", 다른 건너뜀과 같이 대체 목록으로 채움). 파일 서버의 수정 시각은 2022-02-28 일괄 이전 날짜라 근거가 못 된다.
+   한계: ModDate는 파일 안의 기록이라 공개 시점을 증명하지는 못한다 - 팀 확인이 필요한 가정이다.
 3. `pdftotext -raw`로 텍스트를 뽑아 `Summary:` 뒤의 요약을 질문으로 옮긴다. AI가 요약하거나 고치지 않는다.
    쪽을 넘는 문서에는 쪽 머리글(`Resume Page 2 of 2` 등)이 요약 사이에 끼므로 그 줄만 뺀다. 단어는 바꾸지 않는다.
 4. 줄바꿈·여러 칸 공백을 한 칸으로 바꾼 상태로, 옮긴 질문이 문서 텍스트 안에 그대로 들어 있는지 대조한다
@@ -24,6 +27,7 @@ import re
 import subprocess
 import sys
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 from scripts.defect_precedent.time_eval_draw import rank
@@ -39,13 +43,30 @@ QUERY_SOURCE = "ODI Resume"
 QUESTION_NOTE = "principle-ok: 정부 공개 문서(ODI Resume) 원문 그대로 인용한 영어 문장"
 
 # 요약 사이에 끼는 쪽 머리글 줄 (줄 전체가 이 모양일 때만 뺀다)
-SKIP = ("문서 없음", "추출 불가")  # 이 상태면 건너뛰고 대체 목록으로 채운다
+SKIP = ("문서 없음", "추출 불가", "판본 근거 부족")  # 이 상태면 건너뛰고 대체 목록으로 채운다
+# 파일 서버의 수정 시각은 2022-02-28 일괄 이전 날짜라 공개 시점의 증거가 못 된다. 대신 PDF 안에 적힌 수정일(ModDate)이 개시일에서
+# 이 일수 안이면 "개시 직후 만든 판본에서 나중에 고치지 않았다"는 근거로 본다. 수정일이 없거나 이보다 늦으면 쓰지 않는다 (팀 확인 필요)
+MOD_GAP_MAX_DAYS = 30
 HEADER_LINES = [
     re.compile(r"ODI RESUME"),
     re.compile(r"Resume Page \d+ of \d+"),
     re.compile(r"Investigation: [A-Z]{2} ?\d{2}-?\d{3}( Open)?( Resume Page \d+ of \d+)?"),
     re.compile(r"Investigation: [A-Z]{2}\d{5} (Open|Close) Resume Page \d+ of \d+"),
+    # 첨부 쪽 머리글: `EA18-004 opening resume Page 2`, `NHTSA Office of Defects Investigation, Opening Resume Attachment`,
+    # `Engineering Analysis Open Resume Attachment Page 1 of 2`
+    re.compile(
+        r"(?:[A-Z]{2} ?\d{2}-?\d{3} )?(?:NHTSA Office of Defects Investigation, )?"
+        r"(?:(?:Engineering Analysis|Preliminary Evaluation|Defect Petition|Recall Query|Audit Query) )?"
+        r"(?:Opening|Open) Resume(?: Attachment)?(?: Page \d+(?: of \d+)?)?",
+        re.IGNORECASE,
+    ),
+    re.compile(r"Page \d+ of \d+"),
 ]
+# 머리글을 뺀 뒤에도 이런 흔적이 질문에 남으면 고치지 않고 실패로 표시한다 (판별 규칙이 모르는 꼴이 있다는 신호)
+LEFTOVER_HEADER = re.compile(
+    r"Resume Page|Resume Attachment|[A-Z]{2} ?\d{2}-?\d{3} (?:Open|Opening) Resume|\bPage \d+ of \d+\b",
+    re.IGNORECASE,
+)
 
 
 def draw_digest() -> str:
@@ -114,6 +135,8 @@ def extract(text: str, open_date: str) -> dict:
             problems.append("요약이 비어 있음")
         elif question not in reference:
             problems.append("옮긴 질문이 문서 텍스트에 그대로 들어 있지 않음")
+        elif LEFTOVER_HEADER.search(question):
+            problems.append("쪽 머리글로 보이는 문구가 질문에 남음 — 머리글 판별 규칙 확인 필요")
     result["extractable"] = (
         doc_date is not None
     )  # 개시 문서에는 Date Opened가 있다 — 없으면 글자가 없거나 개시 문서 양식이 아니다(편지 등)
@@ -152,8 +175,35 @@ def pdf_text(path: Path) -> str:
     return out.stdout.decode("utf-8", errors="replace")
 
 
+def pdf_mod_date(path: Path) -> str | None:
+    """PDF 안에 적힌 수정일(`pdfinfo`의 ModDate)을 YYYYMMDD로. 없거나 읽을 수 없으면 None."""
+    out = subprocess.run(["pdfinfo", str(path)], capture_output=True, timeout=60).stdout
+    m = re.search(
+        r"ModDate:\s*\w{3} (\w{3})\s+(\d+) \d\d:\d\d:\d\d (\d{4})", out.decode("latin-1", "replace")
+    )
+    if not m:
+        return None
+    try:
+        return datetime.strptime(f"{m.group(1)} {m.group(2)} {m.group(3)}", "%b %d %Y").strftime(
+            "%Y%m%d"
+        )
+    except ValueError:
+        return None
+
+
+def mod_gap_days(mod_date: str | None, open_date: str) -> int | None:
+    if mod_date is None:
+        return None
+    return (datetime.strptime(mod_date, "%Y%m%d") - datetime.strptime(open_date, "%Y%m%d")).days
+
+
 def build_record(
-    action_no: str, open_date: str, finder=find_opening_resume, fetch=download, text_of=pdf_text
+    action_no: str,
+    open_date: str,
+    finder=find_opening_resume,
+    fetch=download,
+    text_of=pdf_text,
+    mod_of=pdf_mod_date,
 ) -> dict:
     """조사 1건의 문서를 받아 질문과 대조 결과를 만든다. 문서가 없으면 status만 `문서 없음`으로 돌려준다."""
     keys = finder(action_no)
@@ -180,15 +230,22 @@ def build_record(
             "source_url": f"{HOST}/{key}",
             "pdf_sha256": hashlib.sha256(data).hexdigest(),
         }
-    return {
+    mod = mod_of(path)
+    gap = mod_gap_days(mod, open_date)
+    evidence = {"pdf_mod_date": mod, "pdf_mod_gap_days": gap}
+    base = {
         "action_no": action_no,
         "open_date": open_date,
-        "query_source": QUERY_SOURCE,
         "source_url": f"{HOST}/{key}",
         "pdf_sha256": hashlib.sha256(data).hexdigest(),
-        "status": "확보",
-        **got,
+        **evidence,
     }
+    if gap is None or gap > MOD_GAP_MAX_DAYS:
+        return {
+            **base,
+            "status": "판본 근거 부족",
+        }  # 개시 이후에 고쳐졌을 수 있어 기준일 당시 판본이라고 말할 수 없다
+    return {**base, "query_source": QUERY_SOURCE, "status": "확보", **got}
 
 
 def fill(draw: dict, make=build_record) -> dict:

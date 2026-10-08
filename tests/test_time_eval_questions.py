@@ -159,3 +159,84 @@ def test_every_question_line_carries_the_principle_ok_note_and_the_text_is_untou
             "question_note"
         ]  # 표시는 글을 쓸 때 줄에 붙이는 것이라 읽은 데이터에서 빼고 다시 쓰면 같은 글이 나와야 한다
     assert tq.dumps(q) == text
+
+
+ATTACHMENT_HEADERS = """ODI RESUME
+Resume Page 1 of 1
+Date Opened: 07/02/2018
+Summary:
+See attached pages for additional information.
+EA18-004 opening resume Page 2
+The subject vehicles use a keyless entry system.
+EA18-004 opening resume Page 3
+Doors may open while driving.
+NHTSA Office of Defects Investigation, Opening Resume Attachment
+Engineering Analysis Open Resume Attachment Page 1 of 2
+The reports cited above can be reviewed at NHTSA.gov.
+"""
+
+
+def test_attachment_page_headers_in_all_known_forms_are_removed_from_the_question():
+    r = tq.extract(ATTACHMENT_HEADERS, "20180702")
+    assert r["check"] == "통과" and r["removed_header_lines"] == 4
+    assert "opening resume" not in r["question"].lower() and "Page 2" not in r["question"]
+    assert r["question"].startswith(
+        "See attached pages for additional information. The subject vehicles"
+    )
+
+
+def test_an_unknown_header_form_left_in_the_question_is_flagged_not_hidden():
+    text = ATTACHMENT_HEADERS.replace(
+        "EA18-004 opening resume Page 2", "EA 18-004 Supplement Resume Page 2"
+    )
+    r = tq.extract(text, "20180702")
+    assert r["check"].startswith("실패") and "머리글" in r["check"]
+
+
+def test_pdf_mod_gap_days_counts_days_after_the_opening():
+    assert tq.mod_gap_days("20180704", "20180702") == 2
+    assert tq.mod_gap_days("20180702", "20180702") == 0
+    assert tq.mod_gap_days(None, "20180702") is None
+
+
+def make_record(mod_date, finder=lambda a: ["odi/inv/2018/INOA-EA18004-5402.PDF"]):
+    return tq.build_record(
+        "EA18004",
+        "20180702",
+        finder=finder,
+        fetch=lambda key: b"%PDF-1.4 fake",
+        text_of=lambda path: ONE_PAGE.replace("01/08/2021", "07/02/2018").replace(
+            "20210108", "20180702"
+        ),
+        mod_of=lambda path: mod_date,
+    )
+
+
+def test_a_version_without_modification_evidence_is_not_used(tmp_path, monkeypatch):
+    monkeypatch.setattr(tq, "DOC_DIR", tmp_path)
+    assert make_record("20180704")["status"] == "확보"
+    assert make_record("20180702")["pdf_mod_gap_days"] == 0
+    late = make_record("20181001")  # 개시 91일 뒤에 고친 흔적
+    assert (
+        late["status"] == "판본 근거 부족"
+        and "question" not in late
+        and late["pdf_mod_gap_days"] == 91
+    )
+    assert make_record(None)["status"] == "판본 근거 부족"
+    assert "판본 근거 부족" in tq.SKIP
+
+
+def test_the_phrase_opening_resume_inside_the_text_is_not_mistaken_for_a_header():
+    text = "Date Opened: 05/05/2020\nSummary: The following VOQ numbers are associated with this opening resume: 1, 2.\n"
+    r = tq.extract(text, "20200505")
+    assert r["check"] == "통과" and "opening resume" in r["question"]
+
+
+def test_every_committed_question_has_version_evidence_and_no_page_header_left():
+    q = json.loads(tq.OUT.read_text(encoding="utf-8"))
+    for r in q["pilot"] + q["main"]:
+        assert (
+            re.fullmatch(r"\d{8}", r["pdf_mod_date"])
+            and 0 <= r["pdf_mod_gap_days"] <= tq.MOD_GAP_MAX_DAYS
+        )
+        assert not tq.LEFTOVER_HEADER.search(r["question"])
