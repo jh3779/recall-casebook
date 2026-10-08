@@ -10,7 +10,7 @@
   뜻 검색은 전체 카드 임베딩(캐시)에서 기준일 이전 카드만 남겨 고른다 — 임베딩은 카드마다 따로 계산되므로 결과가 같다.
 - 시트(`labels_<set>.csv`): 문항·후보를 **출처·순위를 숨기고** 문항별로 섞어(action_no·campno 해시 순) 보여 준다.
   같은 리콜의 다른 번호는 `dup_group`이 같다. 표시자는 `label`(yes = 그때 있던 같은 부품 선례 / no / unsure)과 `labeler_id`·`note`를 적는다. AI는 표시하지 않는다(AGENTS.md 5-2).
-- 숨긴 정보(`candidates_<set>.json`): 후보별 출처·순위, 기준일 이전 카드 수, 입력 해시, 코드 커밋. 시트 파일의 sha256은 표시자에게 넘길 때 따로 기록한다. 표시가 끝난 뒤 채점에만 쓰고 표시자에게 주지 않는다.
+- 숨긴 정보(`candidates_<set>.json`): 후보별 출처·순위, 기준일 이전 카드 수, 입력 해시, 코드 커밋·스크립트 sha256(커밋하지 않은 변경이 있으면 `--allow-dirty` 없이는 멈춤). 시트 파일의 sha256은 표시자에게 넘길 때 따로 기록한다. 표시가 끝난 뒤 채점에만 쓰고 표시자에게 주지 않는다.
 """
 
 import argparse
@@ -34,17 +34,39 @@ TOP = 20
 DEPTH = 100  # RRF에 넣는 각 순위의 길이 (retrieval_compare와 같음)
 
 
-def code_commit() -> str:
-    """후보를 만든 코드의 커밋 (DEC-037 ⑦ — 모든 회차가 같은 커밋이어야 한다). 고치지 않은 파일이 있으면 표시한다."""
+ROOT = Path(__file__).resolve().parents[2]
+CODE_FILES = [
+    "scripts/defect_precedent/time_eval_candidates.py",
+    "scripts/defect_precedent/retrieval_compare.py",
+    "scripts/defect_precedent/bm25_baseline.py",
+]
+
+
+def code_provenance(allow_dirty: bool) -> dict:
+    """후보를 만든 코드 (DEC-037 ⑦ — 모든 회차가 같은 코드여야 한다). 커밋과 함께 스크립트 sha256을 남긴다 —
+    squash 병합 뒤에는 브랜치 커밋이 main에 없으므로 내용 해시로 대조한다. git이 실패하면 시트를 쓰기 전에 멈춘다."""
     import subprocess
 
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], capture_output=True, text=True
-    ).stdout.strip()
-    dirty = subprocess.run(
-        ["git", "status", "--porcelain", "--", "scripts/"], capture_output=True, text=True
-    ).stdout.strip()
-    return head + ("-dirty" if dirty else "")
+    def git(*args: str) -> str:
+        try:
+            return subprocess.run(
+                ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True
+            ).stdout.strip()
+        except (OSError, subprocess.CalledProcessError) as e:
+            raise SystemExit(
+                f"git {' '.join(args)} 실패 — 코드 판본을 기록할 수 없어 멈춘다: {e}"
+            ) from e
+
+    dirty = git("status", "--porcelain", "--", "scripts/")
+    if dirty and not allow_dirty:
+        raise SystemExit("scripts/에 커밋하지 않은 변경이 있다 — 커밋한 뒤 돌리거나 --allow-dirty")
+    return {
+        "commit": git("rev-parse", "HEAD"),
+        "dirty": bool(dirty),
+        "script_sha256": {
+            f: hashlib.sha256((ROOT / f).read_bytes()).hexdigest() for f in CODE_FILES
+        },
+    }
 
 
 def shuffle_key(action_no: str, campno: str) -> str:
@@ -80,9 +102,15 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--questions", type=Path, required=True)
     p.add_argument("--set", choices=["pilot", "main"], required=True)
     p.add_argument("--out-dir", type=Path, required=True)
+    p.add_argument(
+        "--allow-dirty",
+        action="store_true",
+        help="커밋하지 않은 scripts/ 변경이 있어도 진행(기록에 dirty 표시)",
+    )
     a = p.parse_args(argv)
 
     data = provenance()
+    code = code_provenance(a.allow_dirty)  # 시트를 쓰기 전에 확인한다
     qfile = json.loads(a.questions.read_text(encoding="utf-8"))
     questions = qfile[a.set]
     bad = [q["action_no"] for q in questions if q.get("check") != "통과"]
@@ -151,7 +179,7 @@ def main(argv: list[str] | None = None) -> None:
         "data": data,
         "questions_file": str(a.questions),
         "questions_sha256": hashlib.sha256(a.questions.read_bytes()).hexdigest(),
-        "code_commit": code_commit(),
+        "code": code,
         "set": a.set,
         "model": MODEL,
         "embedding": emb_info,

@@ -10,7 +10,8 @@
 
 - A 대상: 시험 질문마다 BM25(v0) 1위 리콜 중 573 원인 칸이 **없는**(`filled`가 아닌) 카드를 앞에서부터 n건 — engine2_trial과 같은 흐름.
   결함 설명은 리콜 flat 파일의 제조사 서술이다. 조사 요약(ODI)은 시험 질문의 출처라 쓰지 않는다(누수, AGENTS.md 5-2).
-- B 대상: 원인 칸이 `filled`인 573 기록에서 시드 고정 무작위 n건. 규칙(`UNKNOWN_RE`)은 표본을 보기 전에 정했다.
+- B 대상: 원인 칸이 `filled`인 573 기록에서 시드 고정 무작위 n건. 규칙(`UNKNOWN_RE`)은 표본을 보기 전에 정했다
+  (뒤에 `n/?a`를 `n/a`로 좁힘 — 'NA' 오탐 방지, 전체 8,179건에서 결과 불변).
   LLM이 빈 목록을 돌려주면 "원인 미확인"으로 본다. 정답은 사람이 시트의 `label` 칸에 표시한다
   (stated = 원인을 말함 / unknown = 원인을 모른다·조사 중·해당 없음 / mixed = "근본 원인은 모른다"와 추정 원인을 함께 말함).
   채점은 unknown만 양성으로 보고 mixed는 따로 센다. 시트에는 규칙·모델 결과를 넣지 않는다(눈가림).
@@ -20,6 +21,7 @@
 
 import argparse
 import csv
+import hashlib
 import json
 import random
 import re
@@ -137,8 +139,8 @@ def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
     if sheet:
         with sheet.open("w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
-            w.writerow(["campaign", "cause_text", "label", "labeler_id", "note"])
-            w.writerows([r["campaign"], r["text"], "", "", ""] for r in rows)
+            w.writerow(["campaign", "cause_text", "text_sha256", "label", "labeler_id", "note"])
+            w.writerows([r["campaign"], r["text"], text_sha(r["text"]), "", "", ""] for r in rows)
     print(
         json.dumps(
             {
@@ -147,7 +149,8 @@ def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
                 "n": len(rows),
                 "exact_all_kept": sum(1 for r in rows if r["returned"] and not r["dropped"]),
                 "some_dropped": sum(1 for r in rows if r["dropped"]),
-                "empty": sum(1 for r in rows if not r["returned"]),
+                "empty": sum(1 for r in rows if not r["returned"] and not r["parse_failed"]),
+                "parse_failed": sum(1 for r in rows if r["parse_failed"]),
                 "short_fragments": sum(r["short_fragments"] for r in rows),
                 "rule_unknown": sum(1 for r in rows if r.get("rule_unknown")),
                 "avg_sec": round(sum(r["sec"] for r in rows) / len(rows), 2),
@@ -166,6 +169,7 @@ def confusion(pred: list[bool], gold: list[bool]) -> dict:
     fp = sum(p and not g for p, g in zip(pred, gold, strict=True))
     fn = sum(g and not p for p, g in zip(pred, gold, strict=True))
     return {
+        "n": len(gold),
         "accuracy": round(sum(p == g for p, g in zip(pred, gold, strict=True)) / len(gold), 3),
         "tp": tp,
         "fp": fp,
@@ -188,14 +192,26 @@ def score_rows(rows: list[dict], labels: dict[str, str]) -> dict:
         ),
         "parse_failed": sum(1 for k in ok if not k),
         "returned_but_all_dropped": sum(1 for r in rows if r["returned"] and not r["spans"]),
+        "llm_empty_vs_unknown_or_mixed": confusion(
+            [not r["returned"] for r, k in zip(rows, ok, strict=True) if k],
+            [g for g, k in zip(gold_any, ok, strict=True) if k],
+        ),
         "rule": confusion([r["rule_unknown"] for r in rows], gold),
         "rule_vs_unknown_or_mixed": confusion([r["rule_unknown"] for r in rows], gold_any),
     }
 
 
+def text_sha(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
 def score(sheet: Path, results: list[Path]) -> None:
+    """표시한 시트와 결과가 같은 원문·같은 판본인지 확인한 뒤 잰다(서비스 원칙 4)."""
     with sheet.open(encoding="utf-8") as f:
-        labels = {r["campaign"]: r["label"].strip() for r in csv.DictReader(f)}
+        sheet_rows = list(csv.DictReader(f))
+    labels = {r["campaign"]: r["label"].strip() for r in sheet_rows}
+    shown = {r["campaign"]: r["text_sha256"] for r in sheet_rows}
+    now = provenance()["causes_sha256"]
     bad = {k: v for k, v in labels.items() if v not in ("stated", "unknown", "mixed")}
     if bad:
         sys.exit(f"label이 stated/unknown/mixed가 아닌 행 {len(bad)}개: {list(bad)[:5]}")
@@ -206,6 +222,12 @@ def score(sheet: Path, results: list[Path]) -> None:
         rows = [json.loads(line) for line in path.read_text("utf-8").splitlines() if line.strip()]
         if {r["campaign"] for r in rows} != set(labels):
             sys.exit(f"{path.name}의 표본이 시트와 다르다")
+        changed = [r["campaign"] for r in rows if text_sha(r["text"]) != shown[r["campaign"]]]
+        if changed:
+            sys.exit(f"{path.name}의 원문이 표시한 시트와 다르다: {changed[:5]}")
+        meta = json.loads(path.with_suffix(".meta.json").read_text("utf-8"))
+        if meta["data"]["causes_sha256"] != now:
+            sys.exit(f"{path.name}은 다른 causes.jsonl 판본에서 나왔다 — 섞인 판본으로 재지 않는다")
         out[path.stem] = score_rows(rows, labels)
     print(json.dumps(out, ensure_ascii=False, indent=1))
 

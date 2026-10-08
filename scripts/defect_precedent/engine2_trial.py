@@ -82,6 +82,9 @@ def main(argv: list[str] | None = None) -> None:
         for r in rows:
             r.update(check(r["cause_text"], r["returned"]))
         out = a.recheck.with_suffix(".recheck.jsonl")  # 원래 결과는 그대로 둔다
+        meta = a.recheck.with_suffix(".meta.json")
+        if meta.exists():  # 어느 판본·모델에서 나온 결과인지 함께 남긴다
+            out.with_suffix(".meta.json").write_text(meta.read_text("utf-8"), "utf-8")
         out.write_text(
             "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8"
         )

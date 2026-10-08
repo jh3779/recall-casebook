@@ -59,7 +59,15 @@ def test_cause_trials_rule_and_confusion():
     assert ct.rule_unknown("Supplier continues to investigate.")
     assert not ct.rule_unknown("Manufacturing error.")
     out = ct.confusion([True, True, False, False], [True, False, True, False])
-    assert out == {"accuracy": 0.5, "tp": 1, "fp": 1, "fn": 1, "precision": 0.5, "recall": 0.5}
+    assert out == {
+        "n": 4,
+        "accuracy": 0.5,
+        "tp": 1,
+        "fp": 1,
+        "fn": 1,
+        "precision": 0.5,
+        "recall": 0.5,
+    }
 
 
 def test_time_eval_candidates_only_before_open_date():
