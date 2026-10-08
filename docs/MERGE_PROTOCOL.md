@@ -24,7 +24,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 
 | 출처 | 어디에 남나 |
 |---|---|
-| 리뷰봇 (Codex, `review-bot-notify.yml`이 PR push를 알림) | PR 코멘트 — 첫 줄 `### 🤖 자동 리뷰 (Codex) — 커밋 <SHA>` (PR #1에서 게시 확인, 2026-10-01). push 몇 분 뒤에 올라오므로 결과 코멘트를 쓰기 전에 기다린다 |
+| 리뷰봇 (Codex — push를 스스로 감지. 알림 워크플로 `review-bot-notify.yml`은 Actions 절약을 위해 지움, 2026-10-08) | PR 코멘트 — 첫 줄 `### 🤖 자동 리뷰 (Codex) — 커밋 <SHA>` (PR #1에서 게시 확인, 2026-10-01). push 몇 분 뒤에 올라오므로 결과 코멘트를 쓰기 전에 기다린다 |
 | Claude Code `/code-review` 또는 리뷰 에이전트 | PR 코멘트로 게시 |
 | 기타 AI 리뷰 도구 | PR 리뷰·코멘트 |
 
@@ -68,7 +68,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 ⏸️ `merge-gate`는 **2단계 도입 중**이라 지금은 필수 체크가 아니다 (DEC-009). 아래 "🔒 실행 위치"로 바꾸면서, 이 워크플로가 main에 들어가기 전에는 PR에서 돌 수 없게 됐기 때문이다.
 1단계: 필수 체크에서 빼고 PR #1(이 워크플로)을 main에 병합 → 2단계: 다음 PR에서 `merge-gate`가 실제로 상태를 게시하는 것을 확인한 뒤 필수 체크에 다시 넣는다. 그 전까지 이 게이트들은 4절 결과 코멘트로 사람이 확인한다.
 
-- **🔒 실행 위치 (DEC-009)** — `merge-gate`는 상태를 기록하는 쓰기 권한을 가지므로 **main의 코드만** 실행한다. 트리거는 `pull_request_target`·`issue_comment`(둘 다 main의 워크플로 파일로 돈다)이고, checkout도 main으로 고정하며 PR 정보는 API로만 읽는다. 그래서 PR이 `merge-gate.yml`이나 `merge_gate.py`를 고쳐도 자기 게이트에는 반영되지 않는다. PR 쪽 워크플로로 도는 `pull_request`·`pull_request_review` 트리거와, 실행할 브랜치를 고를 수 있는 `workflow_dispatch`(PR 브랜치로 수동 실행하면 PR이 고친 워크플로가 쓰기 권한으로 돈다)는 쓰지 않는다.
+- **🔒 실행 위치 (DEC-009)** — `merge-gate`는 상태를 기록하는 쓰기 권한을 가지므로 **main의 코드만** 실행한다. 트리거는 `issue_comment`(main의 워크플로 파일로 돈다)이고, 판정에 쓰이는 코멘트(결과 코멘트·자동 리뷰·`merge-gate 재판정`)일 때만 실행한다 — Actions 사용량 절약을 위해 `pull_request_target`(push마다)과 그 밖의 코멘트에는 돌지 않는다(2026-10-08). 그래서 새 커밋을 push한 직후 새 head에는 `merge-gate` 상태가 없고, 리뷰나 결과 코멘트가 올라오면 붙는다. checkout도 main으로 고정하며 PR 정보는 API로만 읽는다. 그래서 PR이 `merge-gate.yml`이나 `merge_gate.py`를 고쳐도 자기 게이트에는 반영되지 않는다. PR 쪽 워크플로로 도는 `pull_request`·`pull_request_review` 트리거와, 실행할 브랜치를 고를 수 있는 `workflow_dispatch`(PR 브랜치로 수동 실행하면 PR이 고친 워크플로가 쓰기 권한으로 돈다)는 쓰지 않는다.
 - **재판정** — 코멘트를 남기면 다시 판정한다(결과 코멘트 게시가 곧 재판정). GitHub 리뷰 제출·스레드 resolve는 main 코드로 도는 트리거가 없으므로(공식 문서 "Events that trigger workflows"에 `pull_request_review_thread` 없음, 2026-10-01 확인), 그 뒤에는 아래처럼 코멘트를 남긴다.
   ```bash
   gh pr comment <N> -b "merge-gate 재판정"

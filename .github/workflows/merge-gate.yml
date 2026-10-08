@@ -4,20 +4,20 @@ name: merge-gate
 # 판정 로직: scripts/ci/merge_gate.py (테스트: tests/test_merge_gate.py)
 #
 # 🔒 이 워크플로는 **기본 브랜치(main)의 코드만** 실행한다 (DEC-009).
-#    - pull_request_target · issue_comment는 둘 다 main의 워크플로 파일로 돈다.
+#    - issue_comment는 main의 워크플로 파일로 돈다. (예전의 pull_request_target 트리거는 Actions 사용량을 줄이려고 뺐다 —
+#      push만으로는 판정이 바뀌지 않고, 새 head의 상태는 리뷰·결과 코멘트가 올라올 때 게시된다.)
 #    - workflow_dispatch는 쓰지 않는다 — 실행할 브랜치를 고를 수 있어, PR 브랜치로 수동 실행하면 PR이 고친
 #      워크플로가 statuses: write 권한으로 돈다 (리뷰봇 지적, 공식 문서 "dispatch it against any branch").
 #    - checkout도 main으로 고정하고, PR의 파일·명령은 실행하지 않는다. PR 정보는 API로만 읽는다.
 #    - 그래서 PR이 이 파일이나 scripts/ci/merge_gate.py를 고쳐도 **자기 게이트에는 영향이 없다**.
 #    - pull_request · pull_request_review 트리거는 PR 쪽 워크플로를 실행하므로 쓰지 않는다.
 #
-# 재판정: 코멘트를 남기면 다시 돈다 (결과 코멘트 게시가 곧 재판정). 리뷰 제출·스레드 resolve는
+# 재판정: 판정에 쓰이는 코멘트(결과 코멘트·자동 리뷰·`merge-gate 재판정`)를 남기거나 고치거나 지우면 다시 돈다.
+#   그 밖의 코멘트에는 작업을 건너뛴다(건너뛴 작업은 과금되지 않음). 리뷰 제출·스레드 resolve는
 #   main 코드로 도는 트리거가 없으므로, 그 뒤에는 코멘트를 하나 남긴다 (`merge-gate 재판정`).
 #   (docs/MERGE_PROTOCOL.md 2-1절)
 
 on:
-  pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review]
   issue_comment:
     types: [created, edited, deleted]
 
@@ -27,13 +27,18 @@ permissions:
   statuses: write
 
 concurrency:
-  group: merge-gate-${{ github.event.pull_request.number || github.event.issue.number }}
+  group: merge-gate-${{ github.event.issue.number }}
   cancel-in-progress: true
 
 jobs:
   evaluate:
-    # 일반 이슈 코멘트는 제외 (PR 코멘트만)
-    if: github.event_name != 'issue_comment' || github.event.issue.pull_request
+    # PR 코멘트 중 판정에 쓰일 수 있는 것만 — merge_gate.py의 RESULT_MARKER·REVIEW_MARKER·RETRIGGER_MARKER 문구가 있을 때.
+    # 정규식은 공백을 유연하게 받으므로 첫 줄 고정 비교 대신 문구 포함으로 넓게 거른다(놓치는 쪽보다 한 번 더 도는 쪽이 안전).
+    if: >-
+      github.event.issue.pull_request && (
+        contains(github.event.comment.body, '병합 전 검증 결과') ||
+        contains(github.event.comment.body, '자동 리뷰') ||
+        contains(github.event.comment.body, 'merge-gate 재판정'))
     runs-on: ubuntu-latest
     steps:
       # PR 코드가 아니라 main의 판정 스크립트를 받는다 — PR head를 checkout하지 않는다
@@ -46,6 +51,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.issue.number }}
           POST_STATUS: "1"
         run: python3 scripts/ci/merge_gate.py
