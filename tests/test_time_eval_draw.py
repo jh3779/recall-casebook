@@ -65,3 +65,31 @@ def test_the_reserve_follows_the_main_set_in_rank_order_without_overlap():
     ranks = [row["action_no"] for row in r["pilot"] + r["main"] + r["reserve"]]
     assert len(ranks) == len(set(ranks)) == td.PILOT + td.MAIN + td.RESERVE
     assert ranks == sorted(ranks, key=td.rank)
+
+
+def committed():
+    return json.loads(td.OUT.read_text(encoding="utf-8"))
+
+
+def test_the_committed_draw_can_be_redrawn_from_its_own_pool_without_the_exam():
+    # 시험지(eval.jsonl)가 없는 깨끗한 환경에서도 고정한 결과가 같은 규칙에서 나오는지 본다
+    c = committed()
+    redrawn = td.draw([{"action_no": a, "open_date": d} for a, d in c["pool"]], seed=c["seed"])
+    assert {k: c[k] for k in redrawn} == redrawn
+
+
+def test_the_committed_draw_keeps_the_agreed_conditions():
+    c = committed()
+    assert (c["seed"], c["cutoff_open_date"]) == (20261008, "20070101") == (td.SEED, td.CUTOFF)
+    assert (len(c["pilot"]), len(c["main"]), len(c["reserve"])) == (5, 45, 30)
+    rows = c["pilot"] + c["main"] + c["reserve"]
+    assert len({r["action_no"] for r in rows}) == 80
+    assert all(set(r) == {"action_no", "open_date"} and r["open_date"] >= td.CUTOFF for r in rows)
+    assert [r["action_no"] for r in rows] == sorted((r["action_no"] for r in rows), key=td.rank)
+    assert c["pool_size"] == len(c["pool"]) == 333
+    pool = dict(map(tuple, c["pool"]))
+    assert all(pool[r["action_no"]] == r["open_date"] for r in rows)
+    # 후보 333개 중 순위가 가장 앞선 80개가 정확히 이 목록이다
+    assert [r["action_no"] for r in rows] == sorted(pool, key=td.rank)[:80]
+    base = json.loads(td.BASELINE.read_text(encoding="utf-8"))["build"]["eval_sha256"]
+    assert c["eval_sha256"] == base

@@ -1,7 +1,7 @@
 """시점 평가 문항을 무작위로 뽑는다 (이슈 #38, 기획 6절 시점 평가).
 
 사용법:
-    uv run python -m scripts.defect_precedent.time_eval_draw           # 뽑은 목록을 파일로 쓴다
+    uv run python -m scripts.defect_precedent.time_eval_draw --write   # 뽑은 목록을 파일로 쓴다
     uv run python -m scripts.defect_precedent.time_eval_draw --check   # 파일이 지금 규칙·입력과 같은지 확인한다
 
 749문항 중 조사 개시일이 2007년 이후인 문항(개시 문서 ODI Resume가 공개된 구간)에서 예비 5문항 + 본 45문항을 뽑는다.
@@ -44,6 +44,9 @@ def draw(questions: list[dict], seed: int = SEED) -> dict:
         "seed": seed,
         "cutoff_open_date": CUTOFF,
         "pool_size": len(pool),
+        "pool": [
+            [a, pool[a]] for a in sorted(pool)
+        ],  # 시험지 없이도 같은 규칙으로 다시 뽑아 볼 수 있게 후보를 남긴다
         "pilot": [as_row(a) for a in picked[:PILOT]],
         "main": [as_row(a) for a in picked[PILOT : PILOT + MAIN]],
         "reserve": [as_row(a) for a in picked[PILOT + MAIN :]],
@@ -64,6 +67,10 @@ def build() -> dict:
 
 
 def main() -> None:
+    if sys.argv[1:] not in (["--write"], ["--check"]):
+        sys.exit(
+            "사용법: uv run python -m scripts.defect_precedent.time_eval_draw {--write|--check}"
+        )
     result = build()
     text = json.dumps(result, ensure_ascii=False, indent=1) + "\n"
     if sys.argv[1:] == ["--check"]:
