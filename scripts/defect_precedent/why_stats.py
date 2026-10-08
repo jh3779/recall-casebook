@@ -28,8 +28,8 @@
   원인 칸이 확인된 채움(최신판 확정)과 기존 방식의 합집합이 하한이고, 확인 불가(읽지 못해 수용한 실패·최신판 미확정)의 리콜을
   모두 "있음"으로 더한 값이 상한이다. 573 보고서가 목록에 없는 리콜은 근거 없음이 확정이라 두 값 모두 0으로 센다.
 
-    uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json
-    uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06.json --full
+    uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06_maker-aliases.json
+    uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06_maker-aliases.json --full
     uv run python -m scripts.defect_precedent.why_stats    # 기준 파일 없이 현재 데이터로 계산 (재현이 아니다)
 """
 

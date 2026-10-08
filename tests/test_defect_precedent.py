@@ -1,5 +1,6 @@
 """scripts/defect_precedent 의 순수 함수 테스트 — 네트워크·원본 데이터 없이 작은 예시로 확인한다."""
 
+import csv
 import hashlib
 import json
 import math
@@ -38,6 +39,117 @@ def _rcl(campno, maker, defect, comp="BRAKES", rcdate="20200101"):
     return row
 
 
+def _identity_aliases(rows):
+    """회사명 대응표가 없는 것과 같은 효과의 표 — 이름을 그대로 maker·maker_group으로 쓴다."""
+    return {r["MFGNAME"]: {"maker": r["MFGNAME"], "maker_group": r["MFGNAME"]} for r in rows}
+
+
+ALIAS_FIELDS = [
+    "raw_maker",
+    "maker",
+    "maker_group",
+    "count",
+    "maker_basis",
+    "group_basis",
+    "review",
+    "review_required",
+    "review_note",
+]
+
+
+def _alias_row(raw, maker, group, review="", required="", note=""):
+    return {
+        "raw_maker": raw,
+        "maker": maker,
+        "maker_group": group,
+        "count": "1",
+        "maker_basis": "원문",
+        "group_basis": "없음",
+        "review": review,
+        "review_required": required,
+        "review_note": note,
+    }
+
+
+def _write_aliases(path, rows):
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=ALIAS_FIELDS)
+        w.writeheader()
+        w.writerows(rows)
+
+
+def test_build_cards_applies_the_confirmed_aliases_and_keeps_the_raw_name():
+    rows = [
+        _rcl("20V001000", "FORD MOTOR COMPANY", "Ford is recalling certain trucks."),
+        _rcl("20V002000", "Ford Motor Company", "Ford is recalling certain vans."),
+        _rcl("20V003000", "Lincoln", "Lincoln is recalling certain cars."),
+    ]
+    aliases = {
+        "FORD MOTOR COMPANY": {"maker": "Ford Motor Company", "maker_group": "Ford"},
+        "Ford Motor Company": {"maker": "Ford Motor Company", "maker_group": "Ford"},
+        "Lincoln": {
+            "maker": "Lincoln",
+            "maker_group": "Ford",
+        },  # 같은 모회사의 다른 브랜드를 묶은 경우
+    }
+    cards = nhtsa.build_cards(rows, "2026-10-06", aliases)
+    first, second, third = cards["20V001000"], cards["20V002000"], cards["20V003000"]
+    # 신고서 원문은 그대로 보존하고, 정리한 이름과 묶음은 확인한 표에서 온다
+    assert (first["raw_maker"], first["maker"], first["maker_group"]) == (
+        "FORD MOTOR COMPANY",
+        "Ford Motor Company",
+        "Ford",
+    )
+    assert second["raw_maker"] == "Ford Motor Company" and second["maker"] == first["maker"]
+    assert third["maker"] == "Lincoln" and third["maker_group"] == "Ford"
+    assert list(first)[:3] == ["campno", "maker", "maker_group"]  # 칸 순서가 고정이다
+
+
+def test_build_cards_stops_on_a_maker_missing_from_the_aliases():
+    rows = [
+        _rcl("20V001000", "KNOWN", "Known is recalling."),
+        _rcl("20V002000", "NEW MAKER", "New is recalling."),
+    ]
+    with pytest.raises(SystemExit) as e:
+        nhtsa.build_cards(rows, "2026-10-06", {"KNOWN": {"maker": "Known", "maker_group": "Known"}})
+    assert "대응표에 없는 이름 1개" in str(e.value) and "NEW MAKER" in str(e.value)
+
+
+def test_load_aliases_reads_only_a_fully_confirmed_table(tmp_path):
+    draft = tmp_path / "draft.csv"
+    confirmed = tmp_path / "confirmed.csv"
+    plain = _alias_row("A CO", "A Co", "A Co")
+    pending = _alias_row("B CO", "B Co", "B Group", "확인 필요", "필요", "묶음 확인")
+    _write_aliases(draft, [plain, pending])
+    # 확인본이 없으면 만들 수 없다
+    with pytest.raises(SystemExit) as e:
+        nhtsa.load_aliases(confirmed, draft)
+    assert "확인본이 필요하다" in str(e.value)
+    # 미확인 줄이 남았으면 반영하지 않는다
+    _write_aliases(confirmed, [plain, pending])
+    with pytest.raises(SystemExit) as e:
+        nhtsa.load_aliases(confirmed, draft)
+    assert "확인이 끝나지 않은 줄 1개" in str(e.value)
+    # 확인을 마치면 원문 이름 → (maker, maker_group)
+    _write_aliases(confirmed, [plain, {**pending, "review": "확인 완료"}])
+    assert nhtsa.load_aliases(confirmed, draft) == {
+        "A CO": {"maker": "A Co", "maker_group": "A Co"},
+        "B CO": {"maker": "B Co", "maker_group": "B Group"},
+    }
+    # 같은 maker가 두 묶음으로 갈리면 중단한다 (unreviewed 검사)
+    split = [
+        {**plain, "raw_maker": "A CO", "maker_group": "A Co"},
+        {**plain, "raw_maker": "A CO.", "maker_group": "Other"},
+    ]
+    _write_aliases(
+        draft, split
+    )  # 초안이 이미 갈라져 있으면 이유 없는 수정은 아니고, 같은 maker의 분리만 잡힌다
+    _write_aliases(confirmed, split)
+    with pytest.raises(SystemExit) as e:
+        nhtsa.load_aliases(confirmed, draft)
+    assert "같은 maker가 서로 다른 maker_group" in str(e.value)
+
+
 def test_build_cards_merges_rows_and_groups_copied_text():
     body = "The bolt that attaches the gear assembly may fracture allowing the gear to disengage."
     # 회사명에 마침표가 있어도("Inc.", "Co.") 첫 문장 끝을 잘못 잡지 않아야 같은 본문으로 묶인다
@@ -48,7 +160,7 @@ def test_build_cards_merges_rows_and_groups_copied_text():
         _rcl("20V002000", "Beta Co.", f"Beta Co. is recalling certain 2021 Pilot SUVs. {body}"),
         _rcl("20V003000", "C Ltd", "Short text."),
     ]
-    cards = nhtsa.build_cards(rows, "2026-10-06")
+    cards = nhtsa.build_cards(rows, "2026-10-06", _identity_aliases(rows))
     assert list(cards) == ["20V001000", "20V002000", "20V003000"]
     assert cards["20V001000"]["components"] == ["BRAKES", "STEERING"]
     assert cards["20V001000"]["dup_group"] == cards["20V002000"]["dup_group"]
@@ -91,13 +203,11 @@ def _inv(action, campno, summary, odate="20150101"):
 
 
 def test_build_eval_filters_and_keeps_gold_set():
-    cards = nhtsa.build_cards(
-        [
-            _rcl("15V001000", "A", "x", rcdate="20150301"),
-            _rcl("15V002000", "A", "y", rcdate="20150301"),
-        ],
-        "2026-10-06",
-    )
+    rows = [
+        _rcl("15V001000", "A", "x", rcdate="20150301"),
+        _rcl("15V002000", "A", "y", rcdate="20150301"),
+    ]
+    cards = nhtsa.build_cards(rows, "2026-10-06", _identity_aliases(rows))
     inv = [
         _inv("PE15001", "15V001000", "Six complaints of leaks. More text."),
         _inv(
@@ -397,6 +507,21 @@ def _fake_build(tmp_path):
 def test_verify_build_accepts_matching_files(tmp_path):
     raw, out, info = _fake_build(tmp_path)
     assert nhtsa.verify_build(raw, out) == info
+
+
+def test_verify_build_checks_the_alias_table_hash_when_build_json_records_it(tmp_path, monkeypatch):
+    raw, out, info = _fake_build(tmp_path)
+    aliases = tmp_path / "maker_aliases.csv"
+    aliases.write_text("raw_maker,maker\nA,A\n", encoding="utf-8")
+    monkeypatch.setattr(nhtsa, "MAKER_ALIASES", aliases)
+    info = {**info, "maker_aliases_sha256": nhtsa.sha256_aliases(aliases)}
+    (out / "build.json").write_text(json.dumps(info))
+    assert nhtsa.verify_build(raw, out) == info
+    # 카드를 만든 뒤 대응표를 고쳤으면 그 카드는 이 표로 만든 것이 아니다
+    aliases.write_text("raw_maker,maker\nA,B\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        nhtsa.verify_build(raw, out)
+    assert "회사명 대응표" in str(e.value)
 
 
 def test_verify_build_stops_when_eval_changed(tmp_path):

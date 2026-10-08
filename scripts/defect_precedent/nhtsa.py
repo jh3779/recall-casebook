@@ -21,7 +21,12 @@ import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 
+from scripts.defect_precedent import maker_aliases
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
+# 회사명 대응표: 사람이 확인한 표(maker_aliases.csv)와 스크립트가 만든 초안. 카드의 maker·maker_group은 확인본에서 온다 (DEC-036)
+MAKER_ALIASES = Path(__file__).resolve().parent / "maker_aliases.csv"
+MAKER_ALIASES_DRAFT = Path(__file__).resolve().parent / "maker_aliases_draft.csv"
 RAW_DIR = REPO_ROOT / "data" / "raw" / "nhtsa"
 OUT_DIR = REPO_ROOT / "data" / "processed" / "defect"
 
@@ -119,21 +124,59 @@ def _defect_body(defect: str) -> str:
     return rest or first
 
 
-def build_cards(rcl_rows: list[dict], snapshot_date: str) -> dict[str, dict]:
-    """리콜 × 차종 × 연식 × 부품 줄을 리콜(CAMPNO) 1건 = 카드 1장으로 합친다. 대표 값은 파일상 첫 줄."""
+def load_aliases(confirmed: Path | None = None, draft: Path | None = None) -> dict[str, dict]:
+    """사람이 확인한 회사명 대응표를 읽어 `원문 이름 → {maker, maker_group}`으로 돌려준다.
+
+    확인이 끝나지 않았으면(`unreviewed` 검사 — 줄 삭제·추가, 고정 칸 변조, 이유 없는 수정, 같은 maker가 여러 maker_group,
+    확인 필요·보류가 남은 줄) 중단한다. 미확인 초안을 카드에 반영하지 않는다.
+    """
+    confirmed, draft = confirmed or MAKER_ALIASES, draft or MAKER_ALIASES_DRAFT
+    if not confirmed.exists():
+        sys.exit(
+            f"{confirmed.name}이 없다 — 회사명 대응표 확인본이 필요하다 (초안 {draft.name}을 복사해 사람이 확인한다, DEC-033)"
+        )
+    rows = maker_aliases.read_table(confirmed)
+    try:
+        pending = maker_aliases.unreviewed(rows, maker_aliases.read_table(draft))
+    except ValueError as e:
+        sys.exit(f"{confirmed.name}: {e}")
+    if pending:
+        sys.exit(
+            f"{confirmed.name}에 확인이 끝나지 않은 줄 {len(pending)}개가 있다 {[r['raw_maker'] for r in pending[:3]]} — 카드에 반영하지 않는다"
+        )
+    return {r["raw_maker"]: {"maker": r["maker"], "maker_group": r["maker_group"]} for r in rows}
+
+
+def build_cards(
+    rcl_rows: list[dict], snapshot_date: str, aliases: dict[str, dict]
+) -> dict[str, dict]:
+    """리콜 × 차종 × 연식 × 부품 줄을 리콜(CAMPNO) 1건 = 카드 1장으로 합친다. 대표 값은 파일상 첫 줄.
+
+    회사 이름은 신고서 원문을 `raw_maker`에 그대로 두고, 확인한 대응표(`aliases`)로 `maker`(정리한 이름)와
+    `maker_group`(같은 회사로 묶어 볼 단위)을 채운다. 대응표에 없는 이름이 있으면 짐작하지 않고 중단한다.
+    """
     cards: dict[str, dict] = {}
+    missing: set[str] = set()
     for r in rcl_rows:
         campno = r["CAMPNO"].strip()
         if not campno:
             continue
         card = cards.get(campno)
         if card is None:
+            raw_maker = r["MFGNAME"].strip()
+            alias = aliases.get(raw_maker)
+            if alias is None:
+                missing.add(raw_maker)
+                alias = {
+                    "maker": raw_maker,
+                    "maker_group": raw_maker,
+                }  # 어차피 중단하므로 쓰이지 않는다
             body = _defect_body(r["DESC_DEFECT"])
             card = cards[campno] = {
                 "campno": campno,
-                # 회사명 대응표가 생기기 전에는 원문과 같다 (예: "FORD MOTOR COMPANY"와 "Ford Motor Company"가 따로 셈)
-                "maker": r["MFGNAME"].strip(),
-                "raw_maker": r["MFGNAME"].strip(),
+                "maker": alias["maker"],
+                "maker_group": alias["maker_group"],
+                "raw_maker": raw_maker,
                 "components": [],
                 "defect": r["DESC_DEFECT"].strip(),
                 "consequence": r["CONEQUENCE_DEFECT"].strip(),
@@ -149,6 +192,11 @@ def build_cards(rcl_rows: list[dict], snapshot_date: str) -> dict[str, dict]:
         comp = r["COMPNAME"].strip()
         if comp and comp not in card["components"]:
             card["components"].append(comp)
+    if missing:
+        sys.exit(
+            f"회사명 대응표에 없는 이름 {len(missing)}개 {sorted(missing)[:3]} — 대응표를 다시 만들어 사람이 확인해야 한다 "
+            "(maker_aliases.py → 확인 → maker_aliases.csv)"
+        )
     return cards
 
 
@@ -258,6 +306,11 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def sha256_aliases(path: Path) -> str:
+    """대응표(csv)의 해시. 저장소에는 LF로 들어 있고 Windows 체크아웃은 CRLF라서, 줄바꿈을 LF로 맞춘 뒤 잰다."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def verify_raw(raw_dir: Path) -> dict:
     """manifest의 sha256과 실제 파일을 비교한다. 하나라도 다르면 중단한다."""
     manifest_path = raw_dir / "manifest.json"
@@ -289,7 +342,7 @@ def build() -> None:
         RAW_DIR / "FLAT_RCL_POST_2010.zip", RCL_COLS
     )
     inv_rows = read_flat(RAW_DIR / "FLAT_INV.zip", INV_COLS)
-    cards = build_cards(rcl_rows, snapshot_date)
+    cards = build_cards(rcl_rows, snapshot_date, load_aliases())
     questions = build_eval(inv_rows, cards)
 
     # 카드·시험지·build.json을 한 폴더에 다 만든 뒤 폴더째 교체한다 — 서로 다른 실행 결과가 섞이지 않게.
@@ -304,6 +357,7 @@ def build() -> None:
         "raw_manifest_sha256": sha256_file(RAW_DIR / "manifest.json"),
         "recalls_sha256": sha256_file(tmp / "recalls.jsonl"),
         "eval_sha256": sha256_file(tmp / "eval.jsonl"),
+        "maker_aliases_sha256": sha256_aliases(MAKER_ALIASES),
         "snapshot_date": snapshot_date,
     }
     (tmp / "build.json").write_text(json.dumps(build_info, indent=1) + "\n", encoding="utf-8")
@@ -323,6 +377,10 @@ def build() -> None:
     print(f"결함 조사 {len({r['ACTION'] for r in inv_rows}):,} (2026-10-06: 5,349)")
     print(f"본문이 다른 리콜과 같은 리콜 {shared:,} (2026-10-06: 6,404)")
     print(f"시험 질문 {len(questions):,} (2026-10-06: 749)")
+    print(
+        f"회사명 대응표 적용: maker {len({c['maker'] for c in cards.values()}):,}종류, "
+        f"maker_group {len({c['maker_group'] for c in cards.values()}):,}종류 (원문 {len({c['raw_maker'] for c in cards.values()}):,}종류)"
+    )
     for tag in ("since2010", "rclrpt_range"):
         print(f"  {tag}: {sum(tag in q['set'] for q in questions):,}")
     print(f"출력: {OUT_DIR}")
@@ -340,8 +398,11 @@ def verify_build(raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR) -> dict:
         "recalls.jsonl": (out_dir / "recalls.jsonl", info["recalls_sha256"]),
         "eval.jsonl": (out_dir / "eval.jsonl", info["eval_sha256"]),
     }
+    if "maker_aliases_sha256" in info:  # 회사명 대응표를 반영하기 전의 build.json에는 없다
+        checks["회사명 대응표(maker_aliases.csv)"] = (MAKER_ALIASES, info["maker_aliases_sha256"])
     for label, (path, expected) in checks.items():
-        if sha256_file(path) != expected:
+        digest = sha256_aliases(path) if path == MAKER_ALIASES else sha256_file(path)
+        if digest != expected:
             sys.exit(f"{label}이 build.json과 다르다 — `... nhtsa build`를 다시 실행한다")
     return info
 

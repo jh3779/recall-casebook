@@ -53,6 +53,7 @@ TABLES = {
         "cols": [
             "campno",
             "maker",
+            "maker_group",
             "raw_maker",
             "components",
             "defect",
@@ -223,8 +224,14 @@ def load_files(data_dir: Path, causes_kind: str, baseline: Path | None = None) -
         build["raw_manifest_sha256"], build["recalls_sha256"], build["eval_sha256"], causes_sha
     )
 
+    recall_rows = read_jsonl(data_dir / "recalls.jsonl")
+    if recall_rows and "maker_group" not in recall_rows[0]:
+        sys.exit(
+            "recalls.jsonl에 maker_group 칸이 없다 — 회사명 대응표를 반영하기 전의 카드다. "
+            "`nhtsa build`로 다시 만든 카드가 필요하다 (DEC-036)"
+        )
     recalls = []
-    for i, r in enumerate(read_jsonl(data_dir / "recalls.jsonl"), 1):
+    for i, r in enumerate(recall_rows, 1):
         if parse_iso(r["snapshot_date"], f"recalls.jsonl {i}번째 줄 snapshot_date") != snapshot:
             sys.exit(f"recalls.jsonl {i}번째 줄의 snapshot_date가 build.json과 다르다")
         recalls.append(
