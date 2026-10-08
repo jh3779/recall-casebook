@@ -26,19 +26,24 @@ permissions:
   pull-requests: read
   statuses: write
 
+# 판정에 쓰이는 코멘트만 같은 그룹에 넣는다 — 무관한 코멘트가 진행 중인 판정을 취소하지 않게(무관한 코멘트는 run_id로 따로).
 concurrency:
-  group: merge-gate-${{ github.event.issue.number }}
+  group: merge-gate-${{ github.event.issue.number }}-${{ (contains(github.event.comment.body, '병합 전 검증 결과') || contains(github.event.comment.body, '자동 리뷰') || contains(github.event.comment.body, 'merge-gate 재판정') || contains(github.event.changes.body.from, '병합 전 검증 결과') || contains(github.event.changes.body.from, '자동 리뷰') || contains(github.event.changes.body.from, 'merge-gate 재판정')) && 'gate' || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   evaluate:
     # PR 코멘트 중 판정에 쓰일 수 있는 것만 — merge_gate.py의 RESULT_MARKER·REVIEW_MARKER·RETRIGGER_MARKER 문구가 있을 때.
     # 정규식은 공백을 유연하게 받으므로 첫 줄 고정 비교 대신 문구 포함으로 넓게 거른다(놓치는 쪽보다 한 번 더 도는 쪽이 안전).
+    # edited는 수정 전 본문(changes.body.from)도 본다 — 결과 코멘트를 고치며 문구를 지워도 무효화가 빠지지 않게.
     if: >-
       github.event.issue.pull_request && (
         contains(github.event.comment.body, '병합 전 검증 결과') ||
         contains(github.event.comment.body, '자동 리뷰') ||
-        contains(github.event.comment.body, 'merge-gate 재판정'))
+        contains(github.event.comment.body, 'merge-gate 재판정') ||
+        contains(github.event.changes.body.from, '병합 전 검증 결과') ||
+        contains(github.event.changes.body.from, '자동 리뷰') ||
+        contains(github.event.changes.body.from, 'merge-gate 재판정'))
     runs-on: ubuntu-latest
     steps:
       # PR 코드가 아니라 main의 판정 스크립트를 받는다 — PR head를 checkout하지 않는다
