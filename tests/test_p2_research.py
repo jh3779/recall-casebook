@@ -203,3 +203,27 @@ def test_cause_trials_score_checks_sheet_meta_and_result_version(tmp_path):
     ct.sheet_meta_path(sheet).write_text(json.dumps(meta), encoding="utf-8")
     with pytest.raises(SystemExit, match="표본이 바뀐"):
         ct.score(sheet, [res])
+
+
+def test_time_eval_unusable_questions_follow_dec037_rule6():
+    from scripts.defect_precedent import time_eval_candidates as te
+
+    ok = {"action_no": "A", "check": "통과", "status": "확보", "pdf_mod_gap_days": 3}
+    qs = [
+        ok,
+        ok | {"action_no": "B", "pdf_mod_gap_days": 4},  # 3일 초과
+        ok | {"action_no": "C", "pdf_mod_gap_days": None},  # 수정일 없음
+        ok | {"action_no": "D", "status": "문서 없음"},
+        ok | {"action_no": "E", "check": "실패"},
+    ]
+    assert te.unusable_questions(qs) == ["B", "C", "D", "E"]
+
+
+def test_time_eval_questions_file_passes_rule6():
+    import json
+    from pathlib import Path
+
+    from scripts.defect_precedent import time_eval_candidates as te
+
+    d = json.loads(Path("scripts/defect_precedent/time_eval_questions.json").read_text("utf-8"))
+    assert te.unusable_questions(d["pilot"]) == [] and te.unusable_questions(d["main"]) == []

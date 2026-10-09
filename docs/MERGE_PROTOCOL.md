@@ -176,3 +176,18 @@ G-07 grep에 걸렸다고 바로 실패는 아니다 — 문서·테스트에서
 
 - 병합 뒤에 문제가 발견되면, 어느 게이트가 놓쳤는지 따져서 **게이트를 추가하거나 고친다.** "다음엔 조심하자"로 끝내지 않는다.
 - 게이트가 너무 많아 실제로 안 지켜지면 그것도 실패다. 지켜지지 않는 게이트는 빼거나 CI로 옮긴다.
+
+## 7. Actions 한도가 바닥났을 때 — 로컬 검사로 전환
+
+이 저장소는 비공개라 GitHub Actions 시간이 계정 한도(월 3,000분)에서 빠진다. 한도가 바닥나면 워크플로가 돌지 않는데, **룰셋(`main 보호`)의 필수 체크 4개가 남아 있으면 어떤 PR도 병합할 수 없다**(체크가 영영 "기다리는 중"). 그래서 전환은 반드시 아래 순서로 하고, 저장소 소유자(우지훈)가 직접 하거나 명시적으로 지시한다.
+
+1. **로컬 검사 확인** — 같은 검사가 로컬에서 도는지 먼저 본다: `bash scripts/local_ci.sh`(lefthook pre-push `03-local-ci`로도 돈다). lint-and-test·브랜치 이름·PR 제목·PR Verify를 커밋된 HEAD로 돌린다.
+2. **필수 체크 해제** — GitHub → Settings → Rules → Rulesets → `main 보호` → "Require status checks to pass"를 끈다(나머지 규칙 — 삭제 금지·force push 금지·PR 필수 — 는 그대로). 명령으로 하려면 룰셋 JSON에서 `required_status_checks` 규칙만 빼서 다시 넣는다:
+   ```bash
+   gh api repos/jh3779/LG_CNS_RAG_main/rulesets/24290303 > ruleset_backup.json   # 되돌릴 때 쓴다
+   jq '{name, target, enforcement, conditions, bypass_actors, rules: [.rules[] | select(.type != "required_status_checks")]}' ruleset_backup.json \
+     | gh api -X PUT repos/jh3779/LG_CNS_RAG_main/rulesets/24290303 --input -
+   ```
+3. **Actions 끄기(되돌릴 수 있는 쪽을 먼저)** — Settings → Actions → General → "Disable actions", 또는 `gh api -X PUT repos/jh3779/LG_CNS_RAG_main/actions/permissions -F enabled=false`. 워크플로 파일은 남겨 둔다. **파일까지 지우는 것**(`git rm .github/workflows/*.yml`을 PR로)은 한도가 다음 달에도 모자랄 것이 확실할 때만 — 되살리려면 그 PR을 revert한다.
+4. **병합 전 검증(4절)은 그대로** — G-01 근거를 "`scripts/local_ci.sh` 통과, 커밋 `<SHA>`"로 적는다(출력 마지막 줄). `merge-gate` 상태는 붙지 않으므로 결과 코멘트가 유일한 확인 수단이다. 자동 리뷰(리뷰봇·리뷰 에이전트)는 Actions와 무관하게 돈다.
+5. **되돌리기(한도가 다시 생기면)** — Actions 켜기(`-F enabled=true`) → `ruleset_backup.json`을 다시 `PUT`해 필수 체크 복원 → 열린 PR에 빈 커밋을 올려 CI를 한 번 돌린다.
