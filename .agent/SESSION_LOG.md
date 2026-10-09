@@ -116,3 +116,4 @@
 - 2026-10-09: 안내서 4절 — 일치율은 합의 전 표시로 계산, yes 불일치 합의는 합격선과 별도 절차로 분리, 0절에 대체 문항 시트 줄, HANDOFF 할 일 40·Next Action 3·4 갱신 (PR #49 리뷰 1f1aaba)
 - 2026-10-09: #49 병합(`6980140`) 뒤 체크포인트 — HANDOFF 현재 상태·충돌·관련 이슈(#53·#54·#56)·Next Action 재작성, 할 일 41(Actions)·42(handbook) 추가
 - 2026-10-09: 시점 평가 시트 준비(#54 — agreed_label 열·질문 확보/수정일 검사·임의 묶음), 원인 표시 일정 정리(#53), CI 대체 준비(scripts/local_ci.sh·lefthook pre-push·MERGE_PROTOCOL 7절 전환 절차)
+- 2026-10-09: PR #59 리뷰 반영 — local_ci 열린 PR만·엄격 모드(LOCAL_CI_REQUIRE_PR)·DB 테스트 표시, 룰셋 백업·복원 명령 정정, DEC-040(Actions 소진 시 로컬 검사 전환)

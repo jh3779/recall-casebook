@@ -28,6 +28,9 @@ from scripts.defect_precedent.retrieval_compare import (
     read_jsonl,
     rrf,
 )
+from scripts.defect_precedent.time_eval_questions import (  # DEC-037 ⑥ — 질문 파일을 만든 쪽과 같은 상수
+    MOD_GAP_MAX_DAYS,
+)
 
 MODEL = "BAAI/bge-small-en-v1.5"
 TOP = 20
@@ -71,9 +74,6 @@ def code_provenance(allow_dirty: bool) -> dict:
 
 def shuffle_key(action_no: str, campno: str) -> str:
     return hashlib.sha256(f"{action_no}:{campno}".encode()).hexdigest()
-
-
-MOD_GAP_MAX_DAYS = 3  # DEC-037 ⑥ — 질문 파일을 만든 쪽(time_eval_questions.py)과 같은 기준을 시트 쪽에서도 다시 본다
 
 
 def unusable_questions(questions: list[dict]) -> list[str]:
