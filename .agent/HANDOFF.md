@@ -1,6 +1,6 @@
 # Agent Handoff
 
-_갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 평가 · #52 질문 50개 · #55·#57 Actions 절약 · 시점 평가 일정 팀 확인)_
+_갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 평가 · #52 질문 50개 · #55·#57 Actions 절약 · 시점 평가 일정 팀 확인 · frontend 첫 화면 DEC-041)_
 
 ## Current Objective
 
@@ -24,6 +24,9 @@ _갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 
 - 바탕화면: `결함선례_데이터_2026-10-06.zip`, `결함선례_기획_쉬운설명_3판.pdf` — **둘 다 정정 전 수치(BM25 0.605, 573 원인 72.3%)가 들어 있음**.
 
 ## Last Work
+
+**2026-10-09 (화면 세션, 브랜치 `feat/frontend-showroom` — PR 리뷰 중)**:
+- **`frontend/` 첫 화면** — claude.ai artifact "결함 선례 쇼룸"을 Vite + React + TypeScript + three.js로 옮겼다([[DEC-041]]). 폰트는 Pretendard. `npm run lint`·`npm run build`·`npm test`(12개) 통과. 로컬 Chrome(headless)으로 부품 선택·다른 회사 선례·외관/투시·도장색·360°·모바일 390px을 확인했다. 3D 모델은 gitignore(할 일 43), 데모 데이터 출처는 할 일 44.
 
 **2026-10-08~09 (우지훈 세션)**:
 - **P2 검색 방식 비교(PR #49)** — 749문항 대리 평가로 BM25 / 뜻 검색 / RRF / 573 원인 칸 색인 / 저장 위치(Postgres FTS·pgvector·메모리) / 원인 표시 LLM 3종을 비교했다. 사용자 결정으로 **DEC-039** 확정: BM25 + bge-small RRF(H@10 0.510 → 0.542, 회사 이름 뺀 질문 0.483 → 0.531), API 서버 메모리 검색, 573 원인 칸이 있는 카드는 LLM 없이 원문 그대로. 원인 표시 LLM은 30건×2회에서 실행마다 3~7건이 달라졌다(해석 실패 0건).
@@ -82,7 +85,7 @@ _갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 
   23. **기획서 정정 4곳 — 완료(2026-10-07)**: `docs/기획_결함선례.md`의 :219(주제 채택 → 채택됨), :225(평가 규칙 → 5-2 개정), :165(20V476 문장 위치 → 573 Noncompliance 칸), :146(탐색 다운로드 → 임시 폴더에만 남음)을 고쳤다. 이슈 #24의 "65%"는 실측 364/749(48.6%, 정답 리콜 회사 이름 기준)로 정정. 엔진 2가 원인 칸 외에 어느 칸까지 읽을지는 B 설계 항목으로 남김.
   24. ~~**시점 평가 질문 후보에 신고 문서 포함 여부**~~ — **결정(DEC-037)**: 넣지 않는다 — 질문 모집단이 749개 조사와 달라지고 개시 문서(①)로 333개 후보가 있어 충분하다. (PR #26 리뷰 `ad11ed6` 🟢2): 할 일 18번 확인 순서(①개시 당시 문서 ②현재판 요약 + 공개일)에 기획 `:275`의 세 번째 후보 "기준일 이전 접수일이 찍힌 신고 문서"를 ③으로 넣을지, 뺀다면 이유를 적는다.
   25. **브랜치 정리 — 완료(2026-10-07)**: 위 Current State. 출처 미확인 원격 브랜치 3개(`docs/finance-domain-notes`·`docs/onboarding-plan`·`docs/onboarding-plan-draft`)는 작성자 확인 뒤 정리.
-  26. **`frontend/.nvmrc` 고정과 프런트 초기 설정 — 담당 우지훈** ([[DEC-032]]): (화면↔RAG 전달 방식은 **결정됨 — Python API 서버, [[DEC-038]]**) Node 버전을 정해 `frontend/.nvmrc`로 올리고, 빌드 도구(Vite 등)·TypeScript 여부를 C 파트(박성호)와 정한다. API 호출 상한은 미결.
+  26. **`frontend/.nvmrc` 고정과 프런트 초기 설정 — 담당 우지훈** ([[DEC-032]]): (화면↔RAG 전달 방식은 **결정됨 — Python API 서버, [[DEC-038]]**) Node 버전을 정해 `frontend/.nvmrc`로 올리고, 빌드 도구(Vite 등)·TypeScript 여부를 C 파트(박성호)와 정한다. API 호출 상한은 미결. **2026-10-09 진행**: 빌드 도구·TS는 [[DEC-041]]으로 정함(Vite + React + TypeScript). `.nvmrc`는 `24`로 임시로 두었으니 우지훈 확인이 필요하다(`feat/frontend-showroom` 브랜치).
   27. **회사명 대응표 (A 파트, PR #29, [[DEC-033]])**: 초안 `scripts/defect_precedent/maker_aliases_draft.csv`(스크립트가 만든다, 다시 만들어도 됨)·`maker_aliases.py` 완료(원문 3,889 → `maker` 3,323 → `maker_group` 3,297, `review = 확인 필요` 31줄(고객사 현대·기아·제네시스의 자동 묶음 4줄 포함)). 순서: 이승노 님이 안내문(`docs/회사명_대응표_안내.md`)대로 초안을 `maker_aliases.csv`로 복사해 확인(`review`를 `확인 완료`·`보류`로 바꾸고 `review_note`에 메모) → 박예원이 `unreviewed(확인본, 초안)`이 비어 있는지 검사(초안과 줄 목록·`review_required`를 대조해 줄 삭제·추가·변경은 중단, `확인 필요`·`보류`가 남거나, 검토가 필요했던 줄(`review_required = 필요`)이 `확인 완료`가 아니거나, 알 수 없는 상태값이 있으면 중단) → `recalls.jsonl`의 `maker`·`maker_group`에 반영 → 새 기준 freeze로 재현 확인(적용하면 카드 sha256이 바뀌어 기존 `baseline_2026-10-06.json` 재현은 깨진다). 미확인 초안을 바로 적용하지 않는다. 기준 원본 사본(`data/raw/nhtsa/`, 2026-10-07 로컬에 확보)으로 0.510 / 0.503 재현 확인함. **확인은 이승노 님 임시 제외로 우지훈이 D 대행 — PR #39(할 일 33).** **카드 반영(#34, [[DEC-036]], 2026-10-07)**: `nhtsa build`가 확인본(`maker_aliases.csv`)을 읽어 카드의 `maker`·`maker_group`을 채우고(원문은 `raw_maker`), DB `recalls`에 `maker_group` 칸을 더했다(NULL 허용, 기존 테이블은 `alter`로). **완료(2026-10-08, PR #42)**: #39 병합 → `nhtsa build` 실행(옛 카드는 `data/raw/defect_cards_2026-10-06/`에 보관) → 새 기준 `baseline_2026-10-06_maker-aliases.json` 고정(BM25 Hit@10 0.510/0.503 그대로, `why_stats --full`·`load_db check` 통과). 대응표 해시(`maker_aliases_sha256`)는 줄바꿈을 LF로 맞춰 계산하므로 Windows·CI에서 같다. PR #42 병합(2026-10-08, `abc674a`). 새 build 파일 5개(`recalls.jsonl`·`eval.jsonl`·`build.json`·`causes.jsonl`·`causes.manifest.json`)는 드라이브 `defect_data_2026-10-08_maker-group`(https://drive.google.com/drive/folders/1JrvEGutf-Lijge_V3jUsprKp_CZ1NN54)에 올렸다 — `load_db check --causes full` 기준 build `f5cb2f944f36125d`(표본 `c584f6f239f7365e`), recalls 30,350·eval 749·causes 11,719. **새 build 적재 완료(2026-10-08, 우지훈, #31)**: build `f5cb2f944f36125d`, `recalls_latest.maker_group` 30,350줄 모두 채워짐(서로 다른 값 3,259 = 확인본과 같음), `latest_build`가 새 전체본으로 바뀜, 옛 build `3c15c6bcf7dc7c3a`는 그대로 남고 `maker_group`이 NULL. 같은 스냅샷 날짜라 `change_summary`는 "첫 build"로 남았고, 두 build 사이에 `maker`가 바뀐 카드는 10,038건이다(직접 조인으로 셈). 옛 build는 삭제 명령이 없다. 이 문단 앞의 "maker_group 3,297"은 초안 수치이고 확인본 반영 후는 3,259다. **#39 대응표가 바뀌면** `build.json`의 대응표 해시 대조가 실패하므로 `nhtsa build`와 새 기준 freeze를 다시 해야 한다.
   28. **Supabase 적재 ([[DEC-034]])**: `scripts/defect_precedent/schema.sql`·`load_db.py` 완료 — **build 단위 보관**(`build_id` = 입력 파일 4개 해시, 같은 날짜라도 내용이 다르면 별도 build), 원인 파일은 `--causes sample|full`로 명시하고 독립된 명세와 대조(표본: 기준 파일의 300개 캠페인, 전체: `rclrpt all`이 만드는 `causes.manifest.json`), 직전 날짜 build 대비 변경 요약, **build 삭제 명령은 없음**(아카이브가 생기면 추가). 로컬 Postgres 17·CI에서 검증하고 **실제 Supabase에도 적재 완료(2026-10-08, 우지훈, #31)** — 옛 build `3c15c6bcf7dc7c3a`(전체본)와 회사명 반영 새 build `f5cb2f944f36125d`(전체본, 할 일 27). 표본(`--causes sample`) build는 올리지 않았다. 남은 것: ~~① Supabase 준비·schema·표본 적재~~(완료, 표본은 생략), ~~② 전체 `causes` 적재~~(완료), ③ `maker_aliases` 테이블은 만들지 않기로 했다(칸 `maker_group`만 추가, [[DEC-036]]), ~~④ 회사명 확인본 반영~~(완료, PR #42), ⑤ 벡터 칸·부품 트리는 모델·연결 규칙 확정 뒤, ⑥ 검색을 DB로 옮기면 BM25 기준선과 같은 시험지로 before/after, ⑦ 두 번째 날짜의 NHTSA build를 올릴 때 변경 요약(생김·바뀜·사라짐)을 `docs/데이터_중복_처리_패턴.md`에 기록하고 칸별로 따로 남길 사례를 정한다. ⑧ **조회 정책(2026-10-07 사용자 결정, PR #30 Codex 리뷰)**: `latest_build`는 날짜보다 종류가 먼저다 — 전체본(full)이 있으면 가장 최근 전체본, 없을 때만 가장 최근 표본. 나중 날짜의 표본(300건)이 이전 날짜의 전체본(약 1.2만 건)을 평소 조회에서 가리지 않게 한 것이다. 표본만 보려면 `*_latest_sample` 뷰. 표본 기준 파일은 저장소의 `baseline_2026-10-06.json`만 쓰고 `--baseline` 옵션은 없앴다. ⑨ **후속(이슈로 올리지 않고 여기에 둔다, 2026-10-07 사용자 결정)**: 과거 날짜 build를 나중에 올리면 그 다음 날짜 build의 `data_builds.change_summary`가 다시 계산되지 않는다(예: 10/5 → 10/7을 올린 뒤 10/6을 올리면 10/7의 요약은 여전히 10/5 대비). 역순 적재를 거부하거나, 허용하려면 이후 build들의 변경 요약을 다시 계산하는 절차를 만든다. 지금은 build가 날짜순으로 쌓이므로 급하지 않다 — 두 번째 날짜의 build를 올리기 전에 정한다. ⑩ 선택: `build_id`를 SHA-256 앞 16자리 대신 전체 값으로 저장(충돌 가능성은 매우 낮음, 스키마 변경이라 아카이브 설계와 함께).
   29. **PR #27 리뷰 후속 문구 보완** (리뷰 에이전트 `7e68404` 🟢1~4, PR #27 결과 코멘트): `docs/git_명령어.md`의 `pr.md`를 저장소 밖에 만들도록 안내(템플릿 복사 명령 포함), `-D` 확인에서 두 커밋이 다르면 "병합 뒤 새 커밋 또는 로컬이 PR보다 뒤처짐", `git worktree add -b <새-브랜치> ../폴더 main`(시작점 main), `docs/환경셋팅.md`의 "PDF 약 580개·118MB"에 2026-10-06 표본 기준 표기. 공통 설치 절차가 `docs/시작하기.md`와 겹치므로 명령이 바뀌면 두 문서를 함께 고친다.
@@ -99,6 +102,8 @@ _갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 
   40. **시점 평가 표시 전 정리 (이슈 #54)**: ~~#52를 DEC-037 ⑥ 3일 기준으로 다시 뽑기~~ ✅(PR #52 병합 `ff27005`, 박예원 — 3일 초과 0건) → `time_eval_candidates.py`가 대체 문항 묶음(`reserve`)을 받게 하고 수정일 3일 초과를 거르게 고친 뒤, **최종 커밋에서 예비·본·대체 회차를 한 번에 다시 만든다**(지금 로컬 시트 152·1,333행은 임시본, 스크립트 해시가 이후 커밋과 다름). ~~재확인 3문항 선정 규칙, 예비 합격선의 `yes` 불일치 처리~~ ✅(안내서 4절, 2026-10-09), 발표 문구 방향 칸. 원인 미확인 150건 시트는 새 형식(`text_sha256`·`.meta.json`)으로 다시 써서 나눠 준다.
   41. **Actions 추가 절약 (선택)**: #55·#57 뒤에도 남은 큰 항목 — `pr-verify`는 본문 수정마다 돌고(제목 검사도 겸함), `ci.yml`은 main push에도 한 번 더 돈다. 필수 체크 4개를 작업 하나로 합치면 PR당 1분이지만 룰셋 필수 체크 이름을 바꿔야 한다. 공개 저장소 전환도 선택지 — 2026-10-08 세션 점검(기록은 이 줄뿐): 전체 이력에서 `git log --all -G`로 OpenAI·Supabase 키·JWT·AWS·GitHub 토큰·Supabase 접속 주소 패턴 0건, `.env`는 `.env.example`만 커밋. 공개 전에 할 일: HANDOFF의 구글 드라이브 폴더 링크(이 체크포인트 뒤 4개, 이력에는 그 이상) 공유 설정을 팀원만으로, 팀원 동의(실명·커밋 이메일 노출), merge-gate가 소유자·협업자 코멘트만 인정하도록(`scripts/ci/merge_gate.py`).
   42. **`docs/handbook/README.md` 삭제 정리**: 사용자가 로컬에서 지웠다(커밋 안 함). 지운 채로 올리려면 `scripts/fetch_handbook_dataset.py`(26·82행)와 `tests/test_pr_checks.py::test_repo_consistency_checks_pass`가 가리키는 참조를 함께 정리하는 PR이 필요하다.
+  43. **화면 3D 모델 파일 나누기** ([[DEC-041]]): `frontend/public/models/{silverado,ram}.glb`는 커밋하지 않는다. 팀 드라이브에 올리고 그 위치를 `frontend/README.md` "3D 모델 파일"에 적는다. sha256은 README에 있다.
+  44. **화면 데모 데이터의 출처 잇기** ([[DEC-041]], 서비스 원칙 4): `frontend/public/data/recalls.json`·`*_parts.json`은 artifact에서 받은 스냅샷이라 저장소 스크립트로 다시 만들 수 없다. API 서버(DEC-038)를 연결하면 리콜은 서버 응답으로 바꾸고, 부품 대응표(`*_parts.json`)를 만든 방법은 따로 남긴다.
 - 역할(이슈 #24): A 박예원 · B 우지훈 · C 박성호(발표) · D 이승노 → **2026-10-07부터 D는 임시 제외, D 일은 우지훈**.
 - **주의(재발 방지)**: `.gitignore`에 `docs/handbook/*`가 없는 브랜치에서 `uv run ruff format .` 금지. 결과 코멘트는 수정하지 말고 새로 올린다.
 
@@ -113,6 +118,7 @@ _갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 
 - [[DEC-034]] Supabase build 단위 적재, `DATABASE_URL` (박예원, PR #30 병합)
 - [[DEC-035]] force push 차단·이미 push한 커밋은 amend·rebase하지 않음 (PR #37, 병합 `fa3adef`)
 - [[DEC-036]] 회사명 확인본을 `nhtsa build`가 카드에 반영, `maker` 의미 변경과 `maker_group` 칸 추가 (박예원, PR #42 병합 `abc674a`)
+- [[DEC-041]] 화면은 Vite + React + TypeScript + three.js, 3D 모델은 커밋하지 않고 드라이브로, `.nvmrc` 24 임시 (2026-10-09, PR 리뷰 중)
 
 ## Failed Attempts
 
@@ -139,7 +145,8 @@ _갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 
 - `docs/MERGE_PROTOCOL.md`, `.claude/skills/pre-merge-check/` — 병합 전 검증
 - `docs/실험_P2_검색방식비교.md` — P2 비교 보고서(DEC-039 근거), `scripts/defect_precedent/{retrieval_compare,storage_bench,engine2_trial,cause_trials,time_eval_candidates}.py`
 - `docs/시점평가_정답표시_안내.md` — 표시 기준·합격선·일정, `scripts/defect_precedent/time_eval_questions.json`(#52)
-- `.agent/DECISIONS.md` — DEC-037(시점 평가)·DEC-038(API 서버)·DEC-039(검색 확정)
+- `.agent/DECISIONS.md` — DEC-037(시점 평가)·DEC-038(API 서버)·DEC-039(검색 확정)·DEC-041(화면 스택)
+- `frontend/README.md` — 화면 실행 방법, 3D 모델 파일·데모 데이터 출처(sha256), 구조
 
 ## Next Action
 

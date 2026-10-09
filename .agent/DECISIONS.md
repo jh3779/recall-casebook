@@ -259,3 +259,12 @@
 - **영향 / 알려진 한계**: 모든 점수는 **대리 평가**다. 과거 선례 찾기는 시점 평가(DEC-037)로 따로 보고하되, DEC-037 ⑦(e)대로 시점 평가 결과로 방식을 바꾸지 않는다 — 바꾸려면 대리 평가에서 같은 시험지로 before/after를 다시 낸다(AGENTS.md 5-1). 미결: 부품 트리로 범위 좁히기(v3, HANDOFF 할 일 22), 임베딩 보관 위치(파일/Supabase 벡터 칸, DEC-034 미결 ①), API 서버 위치·호출 상한, "원인 미확인" 표현 표시 방법(이슈 #53 사람 표시 뒤), 원인 칸이 없는 카드의 표시 문구(#53).
 - **Status**: Accepted (사용자 결정 2026-10-09)
 - **Date**: 2026-10-09
+
+## DEC-041: 화면은 Vite + React + TypeScript로 만들고, 3D 모델 파일은 커밋하지 않는다
+- **번호 메모**: DEC-040은 열린 PR #59(Actions 소진 시 로컬 검사)가 썼다. 이 PR이 먼저 병합되면 DECISIONS 끝 부분이 충돌하니 두 DEC를 모두 남기고 040 → 041 순서로 둔다.
+- **Decision**: ① `frontend/`는 Vite 공식 `react-ts` 템플릿(create-vite 9.2.1)으로 시작한다. React 19 + TypeScript를 쓰고, 린트는 템플릿 기본인 oxlint, 테스트는 vitest(`npm test` = `vitest run`)로 한다. DEC-032의 미결 중 빌드 도구·TypeScript 여부를 이것으로 정한다. ② 첫 화면은 claude.ai artifact "결함 선례 쇼룸"(판본 `1791386571-be6b`)을 옮긴 3D 쇼룸이다. three.js를 직접 쓴다(React Three Fiber는 쓰지 않음). 렌더링은 `src/showroom/Showroom.ts` 한 클래스가 하고, 상태와 HTML은 React가 맡는다. ③ 3D 모델(`frontend/public/models/*.glb`, 10.5MB·8.4MB)은 커밋하지 않는다(`.gitignore`). 팀 드라이브로 나누고 sha256은 `frontend/README.md`에 적는다. ④ 데모 데이터 `frontend/public/data/*.json`(각 1MB 미만)은 커밋한다. ⑤ `frontend/.nvmrc`는 `24`(로컬 Node 24.19.0)로 임시로 둔다. Node 고정 담당(우지훈, 할 일 26)이 확인할 때까지다. ⑥ 폰트는 Pretendard(npm `pretendard` 1.3.9, OFL-1.1)를 번들에 넣는다. 외부 CDN은 쓰지 않는다.
+- **Reason**: 사용자 결정(2026-10-09): "react로", TypeScript 선택, 모델은 gitignore + 드라이브 선택, "폰트는 pretendard로". TypeScript를 쓰면 API 서버(DEC-038) 응답 JSON 모양을 타입으로 고정하고 `npm run build`에서 타입 오류를 잡을 수 있다. 모델은 커밋 훅의 1MB 제한(`scripts/check-staged.sh`)에 걸린다. three.js를 직접 쓰는 것은 원본 동작(렌더 타깃으로 바깥 부품 판정, `setViewOffset`으로 패널만큼 차 옮기기)을 그대로 옮기기 위해서다.
+- **Alternatives**: JavaScript는 원본과 가깝지만 API 응답 모양이 바뀌어도 빌드가 잡지 못해 기각했다. Git LFS는 팀원 모두 설치하고 저장소 설정을 바꿔야 해 기각했다. 모델을 압축해 커밋하는 안은 1MB 아래로 준다는 보장이 없어 기각했다. ESLint는 템플릿이 oxlint로 바뀌어 템플릿 기본을 따랐다. React Three Fiber는 의존성이 2개 늘고 원본 동작이 달라질 위험이 있어 쓰지 않았다.
+- **영향 / 알려진 한계**: 데모 데이터는 저장소 스크립트로 만든 파일이 아니다(서비스 원칙 4 추적성 — HANDOFF 할 일 44). 화면은 아직 API 서버와 연결되지 않았다(P2). 빌드 결과 JS가 873kB(three.js 포함)라 Vite가 500kB 경고를 낸다(오류 아님). 모델의 팀 드라이브 위치는 아직 정하지 않았다(할 일 43).
+- **Status**: Accepted (사용자 결정 2026-10-09)
+- **Date**: 2026-10-09
