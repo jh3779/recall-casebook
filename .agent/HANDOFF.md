@@ -143,8 +143,8 @@ _갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 
 
 ## Next Action
 
-1. **10/10 정답 표시 시트 전달 (이슈 #54, 할 일 40)**: `time_eval_candidates.py`에 `agreed_label` 열·`status`/`pdf_mod_gap_days` 검사를 넣고(한 커밋), main 최신 커밋에서 `--set pilot`·`--set main`으로 시트를 다시 만들어(`scripts/defect_precedent/time_eval_questions.json`, 커밋되지 않은 scripts 변경 없이) 박예원·박성호 님께 드라이브로 전달. 안내서 `docs/시점평가_정답표시_안내.md` 함께. 후보 파일(`candidates_*.json`, 출처·순위 포함)은 표시자에게 주지 않는다.
-2. **원인 표시 미결 정하기 (이슈 #53, 할 일 39) — 10/12 전**: 원인 칸 없는 카드의 표시·라벨 문구, NR·Unknown·Pending 처리, "원인 미확인" 표시 방법(150건 시트 사람 표시 뒤 정확도).
+1. **10/10 정답 표시 시트 전달 (이슈 #54, 할 일 40)**: `time_eval_candidates.py`에 `agreed_label` 열·`status`/`pdf_mod_gap_days` 검사를 넣고(한 커밋), main 최신 커밋에서 `--set pilot`·`--set main`으로 시트를 다시 만들어(`scripts/defect_precedent/time_eval_questions.json`, 커밋되지 않은 scripts 변경 없이) 박예원·박성호 님께 드라이브로 전달. 안내서 `docs/시점평가_정답표시_안내.md` 함께. 후보 파일(`candidates_*.json`, 출처·순위 포함)은 표시자에게 주지 않는다. **대체 문항 시트**: 본 45문항 표시 중 정답 있는 문항이 34개에 못 미칠 것이 보이면(늦어도 10/14) `time_eval_draw.json`의 다음 해시 순위로 질문 파일을 갱신하고 같은 커밋의 스크립트로 대체 시트를 만들어 바로 전달(DEC-037 ⑦(b)·(c)). **원인 미확인 150건 시트**: `cause_trials unknown --sheet`로 새 형식(`text_sha256`·`x.csv.meta.json`)으로 다시 써서 10/10에 함께 전달 — 표시자·마감은 사용자가 정한다(D 파트 대행 우지훈 또는 팀원).
+2. **원인 표시 미결 정하기 (이슈 #53, 할 일 39) — 10/12 전**: 원인 칸 없는 카드의 표시·라벨 문구, NR·Unknown·Pending 처리는 10/12 전에 정한다. "원인 미확인" 표시 방법은 150건 사람 표시가 끝나야 정확도를 낼 수 있으므로, 10/12에는 **잠정안(원문 그대로 + 규칙에 걸리면 표시만 붙임)**으로 개발을 시작하고 정확도가 나오면 확정한다.
 3. **P2 개발(10/12~14)**: API 서버(DEC-038) — 시작 시 latest build 카드·임베딩 로드(`build_id` 응답 포함), BM25 + bge-small RRF 상위 10, 573 원인 원문 표시, 검사(원문 구간·검색 범위 안 리콜 번호). 임베딩 보관 위치(DEC-034 미결 ①)를 먼저 정한다.
 4. **운영 Supabase 새 build 적재**: #48 반영 카드 build `c6872ae8…`를 `load_db schema`·`load --causes full`로 올리고 #36에 결과 기록(옛 build는 지우지 않음, DEC-034 ⓪).
 5. 후속: 할 일 34(pre-push 훅)·35(@태그 규칙 결정)·36(문서 보완)·38(AGENTS.md 5-2 문구)·41(Actions 추가 절약)·42(handbook 정리) · 이슈 #45·#56·#36.
