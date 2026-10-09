@@ -30,7 +30,13 @@ trap cleanup EXIT
 
 if [[ "$REQUIRE_PR" == "1" ]]; then
   # 병합 근거로 쓸 때는 CI가 보던 "main에 합친 상태"와 맞춘다 — 최신 origin/main이 HEAD에 들어 있어야 한다
+  # 이 스크립트·검사 스크립트(scripts/·lefthook.yml)는 작업 트리에서 돌므로, 커밋하지 않은 변경이 있으면 근거로 쓰지 않는다
+  if ! git -C "$ROOT" diff --quiet HEAD -- scripts/ lefthook.yml; then
+    echo "❌ scripts/·lefthook.yml에 커밋하지 않은 변경이 있다 — 커밋·push한 뒤 다시 돌린다"
+    exit 1
+  fi
   git -C "$ROOT" fetch --quiet origin main
+  MAIN_AT_START=$(git -C "$ROOT" rev-parse origin/main)
   if ! git -C "$ROOT" merge-base --is-ancestor origin/main "$HEAD_SHA"; then
     echo "❌ 최신 origin/main이 검사할 커밋(${HEAD_SHA:0:7})에 들어 있지 않다 — git merge origin/main 후 push하고 다시 돌린다"
     exit 1
@@ -94,6 +100,12 @@ fi
 BASE_SHA="$BASE_SHA" HEAD_SHA="$HEAD_SHA" $PY scripts/ci/pr_checks.py
 
 if [[ "$REQUIRE_PR" == "1" ]]; then
+  # 검사하는 사이 main이 움직였으면 새 변경을 합쳐 다시 돌려야 한다
+  git -C "$ROOT" fetch --quiet origin main
+  if [[ "$(git -C "$ROOT" rev-parse origin/main)" != "$MAIN_AT_START" ]]; then
+    echo "❌ 검사하는 동안 origin/main이 바뀌었다(${MAIN_AT_START:0:7} → $(git -C "$ROOT" rev-parse --short origin/main)) — main을 다시 합치고 돌린다"
+    exit 1
+  fi
   echo "✅ local CI 통과(엄격 — 병합 근거로 쓸 수 있음) — 커밋 $HEAD_SHA · DB 테스트 $DB_TESTS · $PR_NOTE · origin/main 포함"
 else
   echo "✅ local CI 통과(기본 — 병합 근거 아님, 엄격 모드는 LOCAL_CI_REQUIRE_PR=1) — 커밋 $HEAD_SHA · DB 테스트 $DB_TESTS · $PR_NOTE"
