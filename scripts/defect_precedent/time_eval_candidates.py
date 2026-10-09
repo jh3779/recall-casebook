@@ -9,7 +9,7 @@
 - 후보: BM25 상위 20 + B 방식(BM25 + bge-small, RRF k=60) 상위 20의 합집합. BM25의 IDF도 기준일 이전 카드로 계산한다.
   뜻 검색은 전체 카드 임베딩(캐시)에서 기준일 이전 카드만 남겨 고른다 — 임베딩은 카드마다 따로 계산되므로 결과가 같다.
 - 시트(`labels_<set>.csv`): 문항·후보를 **출처·순위를 숨기고** 문항별로 섞어(action_no·campno 해시 순) 보여 준다.
-  같은 리콜의 다른 번호는 `dup_group`이 같다. 표시자는 `label`(yes = 그때 있던 같은 부품 선례 / no / unsure)과 `labeler_id`·`note`를 적는다. AI는 표시하지 않는다(AGENTS.md 5-2).
+  같은 리콜의 다른 번호는 `dup_group`이 같다. 표시자는 `label`(yes = 그때 있던 같은 부품 선례 / no / unsure)과 `labeler_id`·`note`를 적고, 두 사람이 함께 표시한 문항의 합의 결과는 `agreed_label`에 적는다(`label`은 합의 전 표시 그대로). AI는 표시하지 않는다(AGENTS.md 5-2).
 - 숨긴 정보(`candidates_<set>.json`): 후보별 출처·순위, 기준일 이전 카드 수, 입력 해시, 코드 커밋·스크립트 sha256(커밋하지 않은 변경이 있으면 `--allow-dirty` 없이는 멈춤). 시트 파일의 sha256은 표시자에게 넘길 때 따로 기록한다. 표시가 끝난 뒤 채점에만 쓰고 표시자에게 주지 않는다.
 """
 
@@ -27,6 +27,10 @@ from scripts.defect_precedent.retrieval_compare import (
     provenance,
     read_jsonl,
     rrf,
+)
+from scripts.defect_precedent.time_eval_questions import (  # DEC-037 ⑥ — 질문 파일을 만든 쪽과 같은 상수
+    MOD_GAP_MAX_DAYS,
+    later_dates,
 )
 
 MODEL = "BAAI/bge-small-en-v1.5"
@@ -73,6 +77,23 @@ def shuffle_key(action_no: str, campno: str) -> str:
     return hashlib.sha256(f"{action_no}:{campno}".encode()).hexdigest()
 
 
+def unusable_questions(questions: list[dict]) -> list[str]:
+    """원문 대조를 통과하지 못했거나, 확보되지 않았거나, PDF 수정일이 없거나 개시일보다 3일 넘게 늦거나,
+    질문 본문에 개시일보다 늦은 날짜가 있는 문항(DEC-037 ⑥ — 질문 파일을 만들 때와 같은 `later_dates`로 다시 본다)."""
+    bad = []
+    for q in questions:
+        gap = q.get("pdf_mod_gap_days")
+        if (
+            q.get("check") != "통과"
+            or q.get("status") != "확보"
+            or gap is None
+            or gap > MOD_GAP_MAX_DAYS
+            or later_dates(q.get("question", ""), q.get("open_date", ""))
+        ):
+            bad.append(q.get("action_no", "?"))
+    return bad
+
+
 def indexed_before(cards: list[dict], open_date: str) -> list[int]:
     """기준일 **이전에** 접수된 카드만 (당일 접수는 뺀다). 날짜는 둘 다 YYYYMMDD 문자열."""
     return [i for i, c in enumerate(cards) if c["received_date"] < open_date]
@@ -100,7 +121,9 @@ def main(argv: list[str] | None = None) -> None:
 
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--questions", type=Path, required=True)
-    p.add_argument("--set", choices=["pilot", "main"], required=True)
+    p.add_argument(
+        "--set", required=True, help="질문 파일의 묶음 이름(pilot, main, 대체 회차 묶음 등)"
+    )
     p.add_argument("--out-dir", type=Path, required=True)
     p.add_argument(
         "--allow-dirty",
@@ -112,10 +135,12 @@ def main(argv: list[str] | None = None) -> None:
     data = provenance()
     code = code_provenance(a.allow_dirty)  # 시트를 쓰기 전에 확인한다
     qfile = json.loads(a.questions.read_text(encoding="utf-8"))
+    if a.set not in qfile or not isinstance(qfile[a.set], list):
+        raise SystemExit(f"질문 파일에 '{a.set}' 묶음이 없다")
     questions = qfile[a.set]
-    bad = [q["action_no"] for q in questions if q.get("check") != "통과"]
+    bad = unusable_questions(questions)
     if bad:
-        raise SystemExit(f"원문 대조를 통과하지 못한 문항: {bad}")
+        raise SystemExit(f"시트에 쓸 수 없는 문항(원문 대조·확보·PDF 수정일 3일, DEC-037 ⑥): {bad}")
     cards = read_jsonl(OUT_DIR / "recalls.jsonl")
     texts = [card_text(c) for c in cards]
     toks = [tokenize(t) for t in texts]
@@ -150,6 +175,7 @@ def main(argv: list[str] | None = None) -> None:
                     "",
                     "",
                     "",
+                    "",
                 ]
             )
     sheet = a.out_dir / f"labels_{a.set}.csv"
@@ -170,6 +196,7 @@ def main(argv: list[str] | None = None) -> None:
                 "consequence",
                 "remedy",
                 "label",
+                "agreed_label",
                 "labeler_id",
                 "note",
             ]

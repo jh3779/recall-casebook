@@ -36,7 +36,7 @@ PR이 `OPEN`이 아니면 중단하고 보고한다.
 gh pr checks $N
 ```
 
-`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`가 모두 pass여야 한다. `merge-gate`는 9절 결과 코멘트를 게시해야 통과하므로 이 단계에서는 pending이 정상이다. `pr-verify`가 실패하면 Actions 요약 표에서 어느 검사가 ❌인지 보고 고친다. pending이면 `gh pr checks $N --watch`로 기다린다. fail이면 로그(`gh run view <id> --log-failed`)로 원인을 찾아 보고한다.
+`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`가 모두 pass여야 한다. **Actions를 끈 동안**(MERGE_PROTOCOL 7절)에는 체크가 없으므로 대신 `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh`를 돌려 마지막 줄을 G-01 근거로 쓴다. `merge-gate`는 9절 결과 코멘트를 게시해야 통과하므로 이 단계에서는 pending이 정상이다. `pr-verify`가 실패하면 Actions 요약 표에서 어느 검사가 ❌인지 보고 고친다. pending이면 `gh pr checks $N --watch`로 기다린다. fail이면 로그(`gh run view <id> --log-failed`)로 원인을 찾아 보고한다.
 
 ## 2. G-02 · G-03 자동 리뷰 존재 + 최신 커밋 기준
 

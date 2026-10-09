@@ -59,7 +59,7 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 - `.github/workflows/branch-name-check.yml` — 브랜치명 규칙 CI 검증
 - `.github/workflows/pr-title-check.yml` — PR 제목 Conventional Commits 검증
 - `.github/workflows/stale-branches.yml` — 30일 방치 브랜치 주간 정리 (닫힌 PR·PR 없는 브랜치)
-- `lefthook.yml` — 로컬 git 훅: 커밋 시 비밀 파일·개인키·1MB 초과 파일 차단 + ruff 자동 수정·포맷, 커밋 메시지 형식 검사, push 시 main 직접 push 차단·브랜치명 검사 (`scripts/check-*.sh`)
+- `lefthook.yml` — 로컬 git 훅: 커밋 시 비밀 파일·개인키·1MB 초과 파일 차단 + ruff 자동 수정·포맷, 커밋 메시지 형식 검사, push 시 main 직접 push 차단·브랜치명 검사·CI 필수 검사 로컬 실행(`scripts/local_ci.sh`) (`scripts/check-*.sh`)
 - PR 본문은 `.github/pull_request_template.md` 체크리스트를 채운다
 
 > 브랜치 타입 목록을 바꿀 때는 이 문서의 표, `AGENTS.md`, `scripts/check-branch.sh`·`check-commit-msg.sh`,
