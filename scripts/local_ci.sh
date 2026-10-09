@@ -68,7 +68,7 @@ if [[ -n "$PR" ]] && [[ "$(printf '%s' "$PR" | python3 -c 'import json,sys; prin
   PR_NOTE="PR #$PR_NUMBER 제목·본문 검사함"
   if [[ "$PR_HEAD" != "$HEAD_SHA" ]]; then
     if [[ "$REQUIRE_PR" == "1" ]]; then
-      echo "❌ PR #$PR_NUMBER의 최신 커밋(${PR_HEAD:0:7})이 검사한 커밋(${HEAD_SHA:0:7})과 다르다 — push한 뒤 다시 돌린다"
+      echo "❌ PR #${PR_NUMBER}의 최신 커밋(${PR_HEAD:0:7})이 검사한 커밋(${HEAD_SHA:0:7})과 다르다 — push한 뒤 다시 돌린다"
       exit 1
     fi
     PR_NOTE="$PR_NOTE (PR 최신 커밋 ${PR_HEAD:0:7} ≠ 검사 커밋 — push 전이라면 정상)"
