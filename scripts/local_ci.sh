@@ -28,6 +28,15 @@ TMP=$(mktemp -d "${TMPDIR:-/tmp}/local-ci.XXXXXX")
 cleanup() { git -C "$ROOT" worktree remove --force "$TMP" >/dev/null 2>&1 || rm -rf "$TMP"; }
 trap cleanup EXIT
 
+if [[ "$REQUIRE_PR" == "1" ]]; then
+  # 병합 근거로 쓸 때는 CI가 보던 "main에 합친 상태"와 맞춘다 — 최신 origin/main이 HEAD에 들어 있어야 한다
+  git -C "$ROOT" fetch --quiet origin main
+  if ! git -C "$ROOT" merge-base --is-ancestor origin/main "$HEAD_SHA"; then
+    echo "❌ 최신 origin/main이 검사할 커밋(${HEAD_SHA:0:7})에 들어 있지 않다 — git merge origin/main 후 push하고 다시 돌린다"
+    exit 1
+  fi
+fi
+
 git -C "$ROOT" worktree add --detach --quiet "$TMP" "$HEAD_SHA"
 cd "$TMP"
 
@@ -58,12 +67,14 @@ echo "== [3/4] validate-pr-title · [4/4] pr-verify"
 git -C "$ROOT" fetch --quiet origin main || echo "   (origin/main을 받지 못함 — 마지막으로 받은 origin/main 기준)"
 BASE_SHA=$(git -C "$ROOT" merge-base origin/main "$HEAD_SHA")
 PR_NOTE="열린 PR 없음 — PR 제목·본문 검사 안 함"
+PY="uv run --locked python"   # 시스템 python3에 기대지 않는다
+pr_field() { printf '%s' "$PR" | $PY -c "import json,sys; print(json.load(sys.stdin)['$1'])"; }
 PR=$(cd "$ROOT" && gh pr view --json title,body,state,headRefOid,number 2>/dev/null || true)
-if [[ -n "$PR" ]] && [[ "$(printf '%s' "$PR" | python3 -c 'import json,sys; print(json.load(sys.stdin)["state"])')" == "OPEN" ]]; then
-  PR_NUMBER=$(printf '%s' "$PR" | python3 -c 'import json,sys; print(json.load(sys.stdin)["number"])')
-  PR_HEAD=$(printf '%s' "$PR" | python3 -c 'import json,sys; print(json.load(sys.stdin)["headRefOid"])')
-  PR_TITLE=$(printf '%s' "$PR" | python3 -c 'import json,sys; print(json.load(sys.stdin)["title"])')
-  PR_BODY=$(printf '%s' "$PR" | python3 -c 'import json,sys; print(json.load(sys.stdin)["body"])')
+if [[ -n "$PR" ]] && [[ "$(pr_field state 2>/dev/null)" == "OPEN" ]]; then
+  PR_NUMBER=$(pr_field number)
+  PR_HEAD=$(pr_field headRefOid)
+  PR_TITLE=$(pr_field title)
+  PR_BODY=$(pr_field body)
   export PR_TITLE PR_BODY
   PR_NOTE="PR #$PR_NUMBER 제목·본문 검사함"
   if [[ "$PR_HEAD" != "$HEAD_SHA" ]]; then
@@ -79,6 +90,11 @@ elif [[ "$REQUIRE_PR" == "1" ]]; then
 else
   echo "   ($PR_NOTE — PR을 연 뒤 다시 돌린다)"
 fi
-BASE_SHA="$BASE_SHA" HEAD_SHA="$HEAD_SHA" python3 scripts/ci/pr_checks.py
+# PR_TITLE이 있으면 pr_checks.py의 check_pr_title이 validate-pr-title과 같은 규칙으로 제목을 검사한다(#55)
+BASE_SHA="$BASE_SHA" HEAD_SHA="$HEAD_SHA" $PY scripts/ci/pr_checks.py
 
-echo "✅ local CI 통과 — 커밋 $HEAD_SHA · DB 테스트 $DB_TESTS · $PR_NOTE"
+if [[ "$REQUIRE_PR" == "1" ]]; then
+  echo "✅ local CI 통과(엄격 — 병합 근거로 쓸 수 있음) — 커밋 $HEAD_SHA · DB 테스트 $DB_TESTS · $PR_NOTE · origin/main 포함"
+else
+  echo "✅ local CI 통과(기본 — 병합 근거 아님, 엄격 모드는 LOCAL_CI_REQUIRE_PR=1) — 커밋 $HEAD_SHA · DB 테스트 $DB_TESTS · $PR_NOTE"
+fi

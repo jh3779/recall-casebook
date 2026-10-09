@@ -30,6 +30,7 @@ from scripts.defect_precedent.retrieval_compare import (
 )
 from scripts.defect_precedent.time_eval_questions import (  # DEC-037 ⑥ — 질문 파일을 만든 쪽과 같은 상수
     MOD_GAP_MAX_DAYS,
+    later_dates,
 )
 
 MODEL = "BAAI/bge-small-en-v1.5"
@@ -77,7 +78,8 @@ def shuffle_key(action_no: str, campno: str) -> str:
 
 
 def unusable_questions(questions: list[dict]) -> list[str]:
-    """원문 대조를 통과하지 못했거나, 확보되지 않았거나, PDF 수정일이 없거나 개시일보다 3일 넘게 늦은 문항."""
+    """원문 대조를 통과하지 못했거나, 확보되지 않았거나, PDF 수정일이 없거나 개시일보다 3일 넘게 늦거나,
+    질문 본문에 개시일보다 늦은 날짜가 있는 문항(DEC-037 ⑥ — 질문 파일을 만들 때와 같은 `later_dates`로 다시 본다)."""
     bad = []
     for q in questions:
         gap = q.get("pdf_mod_gap_days")
@@ -86,6 +88,7 @@ def unusable_questions(questions: list[dict]) -> list[str]:
             or q.get("status") != "확보"
             or gap is None
             or gap > MOD_GAP_MAX_DAYS
+            or later_dates(q.get("question", ""), q.get("open_date", ""))
         ):
             bad.append(q.get("action_no", "?"))
     return bad
