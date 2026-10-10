@@ -23,7 +23,7 @@ TARGET_CONTENT_DIR = REPO_ROOT / "docs" / "handbook" / "content"
 
 EXPECTED_MD_COUNT = 4612
 
-# 텍스트 RAG 코퍼스에 불필요한 비문서 파일 — docs/handbook/README.md "이미 정리한 것" 참고
+# 텍스트 RAG 코퍼스에 불필요한 비문서 파일 — 옛 안내서 docs/handbook/README.md "이미 정리한 것"(git 이력 `6d12818`, 지금은 삭제) 참고
 NON_DOC_FILES = [
     "handbook.zip",
     "_index.html",
@@ -79,7 +79,7 @@ def verify(content_dir: Path) -> None:
     if len(md_files) != EXPECTED_MD_COUNT:
         sys.exit(
             f"md 파일 수가 예상과 다르다: {len(md_files)}개 (기대값 {EXPECTED_MD_COUNT}개). "
-            "소스 저장소가 갱신됐을 수 있다 — docs/기획v1.md 3절·docs/handbook/README.md를 다시 실측해 갱신한다."
+            "소스 저장소가 갱신됐을 수 있다 — docs/기획v1.md 3절을 다시 실측해 갱신한다."
         )
 
     print(f"검증 통과: {len(md_files)}개 md 파일 (기대값과 일치)")

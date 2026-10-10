@@ -33,9 +33,8 @@ chroma_db/
 *.faiss
 *.index
 
-# GitLab 핸드북 데이터셋 스냅샷 (56MB, 커밋 안 함 — scripts/fetch_handbook_dataset.py로 재현). README.md는 예외로 커밋한다.
-docs/handbook/*
-!docs/handbook/README.md
+# GitLab 핸드북 데이터셋 스냅샷 (56MB, 커밋 안 함 — scripts/fetch_handbook_dataset.py로 재현). 이전 주제 데이터라 안내서도 지웠다(git 이력 `6d12818`).
+docs/handbook/
 
 # 개인 메모
 RETROSPECTIVE.md
