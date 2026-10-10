@@ -26,10 +26,14 @@
    create policy rag_reader_select on recall_embeddings for select to rag_reader using (true);
    ```
    일회용 `pgvector/pgvector:pg17`에서 확인: 이 계정으로 서버 시작 성공, 삭제·추가·다른 테이블 조회는 권한 오류(2026-10-10). Supabase 풀러 주소를 쓰면
-   사용자 이름이 `rag_reader.<프로젝트 ref>` 형식이 된다. `SERVER_DATABASE_URL`이 없으면 서버는 `DATABASE_URL`로 읽고 경고한다(로컬 개발용).
+   사용자 이름이 `rag_reader.<프로젝트 ref>` 형식이 된다. 이 SQL은 `tests/test_rag_server.py`의 pg 테스트가 그대로 실행해 조회 성공·쓰기 거부를 확인한다.
+   **서버에는 관리자 연결을 두지 않는다** — `SERVER_DATABASE_URL`만 든 서버 전용 파일 `.env.server`(gitignore됨)로 띄운다.
+   `SERVER_DATABASE_URL`이 없으면 서버는 시작하지 않는다. 계정을 만들기 전 로컬 개발에서만 `ALLOW_ADMIN_DB_FOR_SERVER=1`을 붙여 `.env`의 관리자 연결로 읽을 수 있다(경고를 남긴다).
 4. 서버:
    ```bash
-   uv run --env-file .env uvicorn server.api:app --port 8000
+   uv run --env-file .env.server uvicorn server.api:app --port 8000
+   # 조회 전용 계정을 만들기 전, 로컬 개발에서만:
+   ALLOW_ADMIN_DB_FOR_SERVER=1 uv run --env-file .env uvicorn server.api:app --port 8000
    curl localhost:8000/health
    curl -X POST localhost:8000/search -H 'content-type: application/json' -d '{"question":"airbag inflator rupture"}'
    ```

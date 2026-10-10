@@ -347,3 +347,66 @@ def test_pg_embeddings_round_trip_exactly_and_refuse_overwrite(pgconn, tmp_path,
     assert (
         json.loads(json.dumps(pgconn.execute("select rows from embedding_sets").fetchone()[0])) == 3
     )
+
+
+def test_server_connection_needs_reader_url_or_explicit_admin_opt_in(monkeypatch):
+    from server.api import server_connection
+
+    monkeypatch.delenv("SERVER_DATABASE_URL", raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://admin@localhost:1/x")
+    monkeypatch.delenv("ALLOW_ADMIN_DB_FOR_SERVER", raising=False)
+    with pytest.raises(RuntimeError, match="SERVER_DATABASE_URL"):
+        server_connection()  # 관리자 연결이 있어도 직접 허용하지 않으면 쓰지 않는다
+
+
+def _readme_reader_sql(role: str, password: str) -> str:
+    """server/README.md 3단계의 조회 전용 계정 SQL을 그대로 꺼낸다 (문서와 테스트가 같은 SQL을 쓰게)."""
+    import re
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[1] / "server" / "README.md").read_text(
+        encoding="utf-8"
+    )
+    block = re.search(r"```sql\n(.*?create role rag_reader.*?)```", text, re.S).group(1)
+    block = "\n".join(line.strip() for line in block.splitlines())
+    return block.replace("<직접 정한 비밀번호>", password).replace("rag_reader", role)
+
+
+@pg
+def test_pg_spec_check_and_readme_reader_role(pgconn, tmp_path, monkeypatch):  # noqa: F811
+    import psycopg
+
+    from tests.test_load_db import PG_URL
+
+    d = _with_failure(tmp_path, {"24V001": "no_confirmable_date"})
+    from scripts.defect_precedent import load_db
+
+    load_db.main(["load", "--causes", "full", "--data-dir", str(d)])
+    embeddings.main(["schema"])
+    b = load_build(d)
+    check_against_db(pgconn, b)  # jsonb로 저장·조회한 명세가 로컬 명세와 같게 읽힌다
+
+    role = "rag_reader_test"
+    if pgconn.execute("select 1 from pg_roles where rolname = %s", (role,)).fetchone():
+        pgconn.execute(f"drop owned by {role}")
+        pgconn.execute(f"drop role {role}")
+    pgconn.execute(_readme_reader_sql(role, "localtest-reader"))
+    try:
+        url = PG_URL.replace("postgres:localtest@", f"{role}:localtest-reader@", 1)
+        monkeypatch.setenv("SERVER_DATABASE_URL", url)
+        from server.api import server_connection
+
+        with server_connection() as conn:
+            check_against_db(conn, b)
+            assert conn.execute("select count(*) from embedding_sets").fetchone()[0] == 0
+            for sql in (
+                "delete from data_builds",
+                "select count(*) from recalls",
+                "insert into embedding_sets (build_id) values ('x')",
+            ):
+                with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                    conn.execute(sql)
+                conn.rollback()
+    finally:
+        pgconn.execute(f"drop owned by {role}")
+        pgconn.execute(f"drop role {role}")

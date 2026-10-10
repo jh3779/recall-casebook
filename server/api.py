@@ -3,8 +3,8 @@
 실행 (연결 문자열은 .env에만 둔다 — 카드 벡터와 원인 명세를 Supabase에서 읽는다):
     uv run --env-file .env uvicorn server.api:app --port 8000
 
-- DB 연결은 조회 전용 계정의 `SERVER_DATABASE_URL`을 쓴다(권한은 `server/README.md`). 없으면 적재용 관리자 연결 `DATABASE_URL`로
-  읽되 경고를 남긴다 — 로컬 개발용이고, 배포 전에는 조회 전용 계정을 만든다(DEC-042).
+- DB 연결은 조회 전용 계정의 `SERVER_DATABASE_URL`만 쓴다(권한은 `server/README.md`). 없으면 시작하지 않는다 — 로컬 개발에서만
+  `ALLOW_ADMIN_DB_FOR_SERVER=1`을 직접 붙여 적재용 관리자 연결 `DATABASE_URL`로 읽을 수 있다(경고를 남긴다, DEC-042).
 
 - `POST /search {"question": "..."}` → 고객사 선례, 같은 부품·다른 회사 선례. 카드마다 결함·결과·시정 원문과 Part 573 원인 원문(말한 주체·출처)을 싣는다.
 - `GET /health` → 데이터 판본(build_id·스냅샷 날짜)과 카드 수.
@@ -50,18 +50,19 @@ class RagState:
 
 
 def server_connection():
-    """조회 전용 연결(SERVER_DATABASE_URL). 없으면 관리자 연결로 읽고 경고한다 — 값은 출력하지 않는다."""
+    """조회 전용 연결(SERVER_DATABASE_URL). 관리자 연결은 ALLOW_ADMIN_DB_FOR_SERVER=1을 직접 붙였을 때만 — 값은 출력하지 않는다."""
     import psycopg
 
     url = os.environ.get("SERVER_DATABASE_URL")
     if not url:
         url = os.environ.get("DATABASE_URL")
-        if not url:
+        if os.environ.get("ALLOW_ADMIN_DB_FOR_SERVER") != "1" or not url:
             raise RuntimeError(
-                "SERVER_DATABASE_URL(조회 전용)이나 DATABASE_URL이 없다 — .env.example 참고"
+                "SERVER_DATABASE_URL(조회 전용 계정)이 없다 — server/README.md 3단계. "
+                "로컬 개발에서만 ALLOW_ADMIN_DB_FOR_SERVER=1로 관리자 연결(DATABASE_URL)을 쓸 수 있다"
             )
         print(
-            "경고: SERVER_DATABASE_URL이 없어 관리자 연결(DATABASE_URL)로 읽는다 — 로컬 개발용, 배포 전 조회 전용 계정 필요",
+            "경고: ALLOW_ADMIN_DB_FOR_SERVER=1 — 관리자 연결(DATABASE_URL)로 읽는다. 로컬 개발용이고 배포에서는 쓰지 않는다",
             file=sys.stderr,
         )
     return psycopg.connect(url)
