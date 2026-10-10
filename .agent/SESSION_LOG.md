@@ -118,3 +118,4 @@
 - 2026-10-09: 시점 평가 시트 준비(#54 — agreed_label 열·질문 확보/수정일 검사·임의 묶음), 원인 표시 일정 정리(#53), CI 대체 준비(scripts/local_ci.sh·lefthook pre-push·MERGE_PROTOCOL 7절 전환 절차)
 - 2026-10-09: PR #59 리뷰 반영 — local_ci 열린 PR만·엄격 모드(LOCAL_CI_REQUIRE_PR)·DB 테스트 표시, 룰셋 백업·복원 명령 정정, DEC-040(Actions 소진 시 로컬 검사 전환)
 - 2026-10-10: P2 PR 1 — API 서버 뼈대·검색(server/), 카드 벡터 Supabase 보관·고객사 선례(DEC-042), 서버 검색 749문항 H@10 0.542 재현(캐시·pgvector DB)
+- 2026-10-10: P2 PR 3 — 부품 범위 좁히기(v3) 749문항 before/after, 모든 k 하락으로 기각(DEC-045, 보고서 3-3)
