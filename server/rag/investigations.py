@@ -5,6 +5,8 @@
   `FLAT_INV.zip`의 sha256이 manifest 기록과 같은지 확인한다 — build_id에서 조사 원본까지 되짚기 위해서다(AGENTS.md 2-4).
 - **색인에는 넣지 않는다.** 조사 요약은 대리 평가 시험 질문의 출처라 넣으면 누수다(AGENTS.md 5-2). 검색이 고른 카드에 표시만 한다.
 - 요약 칸이 비었거나 자리표시 문구("There is no summary currently available")면 싣지 않는다(`why_stats.linked_campnos`와 같은 규칙).
+- 조사 기록의 리콜 번호가 9자리로 카드와 정확히 같을 때만 잇는다. 6자리(캠페인 번호)로 적힌 기록은 어느 카드인지 짐작해야
+  하므로 잇지 않는다(현재 원본 72,977줄, 앞 6자리로는 284장에 걸림 — 응답에서는 "조사 요약 없음"과 구별되지 않는다).
 - 같은 조사 번호에 요약 판본이 여러 개면 어느 것이 맞는지 짐작하지 않고 서버를 띄우지 않는다(AGENTS.md 2-3, 현재 원본 0건).
 """
 
@@ -12,7 +14,10 @@ import hashlib
 import json
 from pathlib import Path
 
-from scripts.defect_precedent.nhtsa import INV_COLS, PLACEHOLDER, RAW_DIR, read_flat
+from scripts.defect_precedent.nhtsa import INV_COLS, RAW_DIR, read_flat
+from scripts.defect_precedent.why_stats import (  # 연결 수(1,870)를 낸 규칙과 같은 정규식 — nhtsa 쪽은 더 좁다
+    PLACEHOLDER,
+)
 from server.rag.build import BuildMismatch
 
 SPEAKER_INV = "NHTSA 결함 조사 (조사관 요약)"
@@ -27,6 +32,10 @@ def load_investigations(
 ) -> dict[str, list[dict]]:
     """리콜 번호 → 그 리콜에 연결된 조사 요약 목록(조사 번호 순). 요약 글은 원본 칸 그대로다."""
     manifest_path = raw_dir / "manifest.json"
+    if not manifest_path.exists() or not (raw_dir / "FLAT_INV.zip").exists():
+        raise BuildMismatch(
+            f"{raw_dir}에 manifest.json·FLAT_INV.zip이 없다 — build와 같은 날 받은 원본을 둔다(팀 드라이브 사본)"
+        )
     if _sha256(manifest_path) != raw_manifest_sha256:
         raise BuildMismatch(
             "data/raw/nhtsa/manifest.json이 build의 raw_manifest_sha256과 다르다 — 다른 날 받은 원본이다"

@@ -29,7 +29,6 @@ from server.rag import customers
 from server.rag.build import Build
 from server.rag.causes import cause_573
 from server.rag.checks import checklist
-from server.rag.flags import flags
 from server.rag.investigations import SPEAKER_INV
 from server.rag.search import Searcher
 from server.rag.verify import verify
@@ -115,7 +114,9 @@ class Flag(Strict):
 
 
 class Investigation(Strict):
-    """NHTSA 결함 조사 요약 원문 — 말한 주체는 조사관, 출처는 조사 번호."""
+    """NHTSA 결함 조사 요약 원문 — 말한 주체는 조사관, 출처는 조사 번호.
+
+    표시 꼬리표는 붙이지 않는다 — 규칙이 573 원인 칸으로만 검증됐다(DEC-044)."""
 
     action: str = Field(min_length=1)
     speaker: str = Field(min_length=1)
@@ -123,7 +124,6 @@ class Investigation(Strict):
     summary: str = Field(min_length=1)
     open_date: str
     close_date: str
-    flags: list[Flag]
 
 
 class Evidence(Strict):
@@ -241,11 +241,17 @@ def card_view(state: RagState, campno: str, rank: int) -> dict:
         **{k: card[k] for k in CARD_FIELDS},
         "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": state.build.snapshot_date},
         "cause": cause,
-        "investigations": [
-            {**i, "speaker": SPEAKER_INV, "flags": flags(i["summary"])} for i in invs
-        ],
-        "checklist": checklist(card, state.build.causes.get(campno[:6]), invs, cause),
+        "investigations": [{**i, "speaker": SPEAKER_INV} for i in invs],
     }
+
+
+def add_checklist(state: RagState, card: dict) -> dict:
+    """검사(verify) 뒤에 만든다 — 원인 글이 검사에서 빠지면 '원인을 말한 주체' 근거도 같이 빠지게."""
+    campno = card["campno"]
+    row = state.build.causes.get(campno[:6])
+    invs = state.investigations.get(campno, [])
+    card["checklist"] = checklist(state.by_id[campno], row, invs, card["cause"])
+    return card
 
 
 def answer(state: RagState, question: str) -> dict:
@@ -256,6 +262,8 @@ def answer(state: RagState, question: str) -> dict:
     verify(
         customer_cards + other_cards, result.candidates, state.build.causes, state.investigations
     )
+    for card in customer_cards + other_cards:
+        add_checklist(state, card)
     return {
         "build_id": state.build.build_id,
         "snapshot_date": state.build.snapshot_date,

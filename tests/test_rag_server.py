@@ -372,9 +372,18 @@ def test_pg_embeddings_round_trip_exactly_and_refuse_overwrite(pgconn, tmp_path,
     campnos = [c["campno"] for c in b.cards]
     assert np.array_equal(embeddings.load_vectors(pgconn, b.build_id, campnos, texts, cache), vecs)
     (path,) = cache.glob("*.npy")
-    np.save(path, np.zeros_like(vecs))
-    assert np.array_equal(embeddings.load_vectors(pgconn, b.build_id, campnos, texts, cache), vecs)
-    assert np.array_equal(np.load(path), vecs)  # 사본도 DB 값으로 다시 썼다
+    digest = path.with_suffix(".sha256")
+    # ① 내용이 바뀐 사본(sha256 불일치) ② 잘린 사본 ③ sha256까지 맞춰 바꾼 사본(DB 표본 대조로 잡음) — 모두 다시 받는다
+    for damage in ("changed", "truncated", "changed_with_digest"):
+        if damage == "truncated":
+            path.write_bytes(path.read_bytes()[:500])
+        else:
+            np.save(path, np.zeros_like(vecs))
+            if damage == "changed_with_digest":
+                digest.write_text(hashlib.sha256(path.read_bytes()).hexdigest())
+        got = embeddings.load_vectors(pgconn, b.build_id, campnos, texts, cache)
+        assert np.array_equal(got, vecs), damage
+        assert np.array_equal(np.load(path), vecs)  # 사본도 DB 값으로 다시 썼다
     with pytest.raises(embeddings.EmbeddingMismatch, match="없다"):
         embeddings.fetch(pgconn, b.build_id, [c["campno"] for c in b.cards], texts, model="other")
     pgconn.execute("update embedding_sets set fastembed_version = '0.0.1'")
@@ -579,27 +588,32 @@ def test_checklist_links_evidence_and_skips_items_without_it():
     }
 
 
-def test_verify_refuses_altered_investigation_summary_or_wrong_flag_span():
+def test_verify_refuses_altered_investigation_summary_or_wrong_cause_flag_span():
     from server.rag.flags import flags
     from server.rag.verify import NotVerbatim
 
     original = "The cause is likely corrosion."
     invs = {"24V001000": [{"action": "PE20001", "summary": original}]}
     card = {"campno": "24V001000", "cause": {"status": "no_573_report"},
-            "investigations": [{"action": "PE20001", "summary": original, "flags": flags(original)}]}  # fmt: skip
+            "investigations": [{"action": "PE20001", "summary": original}]}  # fmt: skip
     verify([card], frozenset({"24V001000"}), {}, invs)
-    bad = {**card, "investigations": [{**card["investigations"][0], "summary": original + " "}]}
+    bad = {**card, "investigations": [{"action": "PE20001", "summary": original + " "}]}
     with pytest.raises(NotVerbatim):
         verify([bad], frozenset({"24V001000"}), {}, invs)
+
+    row = cause("24V001", cause_text=original)
+    good = {"campno": "24V001000", "investigations": [],
+            "cause": {"status": "filled", "text": original, "flags": flags(original),
+                      "source": {"campaign": "24V001"}}}  # fmt: skip
+    verify([good], frozenset({"24V001000"}), {"24V001": row})
     wrong = [
         {"kind": "hedge_expression", "label": "x", "spans": [{"start": 0, "end": 3, "text": "Thx"}]}
     ]
-    with pytest.raises(NotVerbatim):
+    with pytest.raises(NotVerbatim):  # 573 원인 글의 꼬리표 구간이 원문과 다르다
         verify(
-            [{**card, "investigations": [{**card["investigations"][0], "flags": wrong}]}],
+            [{**good, "cause": {**good["cause"], "flags": wrong}}],
             frozenset({"24V001000"}),
-            {},
-            invs,
+            {"24V001": row},
         )
 
 
@@ -621,6 +635,6 @@ def test_api_returns_investigations_and_checklist(tmp_path):
         body = client.post("/search", json={"question": "airbag inflator rupture"}).json()
     card = body["customer_precedents"][0]
     assert card["investigations"][0]["speaker"].startswith("NHTSA")
-    assert card["investigations"][0]["flags"][0]["kind"] == "hedge_expression"
+    assert "flags" not in card["investigations"][0]  # 꼬리표는 573 원인 칸에만 (DEC-044)
     assert {c["item"] for c in card["checklist"]} >= {"same_part", "cause_speaker"}
     assert FORBIDDEN_KEYS.isdisjoint(set(_keys(body)))
