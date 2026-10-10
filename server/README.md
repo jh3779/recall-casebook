@@ -32,14 +32,17 @@
 | 카드: `rank` | 합친 순위(1부터) — 두 구역이 같은 순위를 나눠 쓴다 |
 | 카드: `campno`·`maker`·`maker_group`·`received_date`·`components`·`dup_group` | NHTSA 리콜 카드 칸 그대로 |
 | 카드: `defect`·`consequence`·`remedy` | 결함·결과·시정 원문 (`source` = NHTSA FLAT_RCL, 스냅샷 날짜) |
-| 카드: `cause` | Part 573 원인 칸. `status = filled`면 `text`(원문 그대로)·`speaker`(리콜 제조사)·`source`(캠페인·PDF 파일·sha256·제출일). 그 밖의 `status`: `no_573_report`(보고서 원문 없음, 대부분 2014-08-20 이전) · `cause_empty`·`cause_no_field`(칸이 비었거나 없음) · `version_unresolved`(최신 판본을 정하지 못함 — 글을 싣지 않는다) · `verify_failed`(원문 대조 실패 — 글을 뺀다) |
+| 카드: `cause` | Part 573 원인 칸. `status = filled`면 `text`(원문 그대로)·`speaker`(리콜 제조사)·`source`(캠페인·PDF 파일·sha256·제출일). 그 밖의 `status`: `no_573_report`(보고서 원문을 받지 않음, 대부분 2014-08-20 이전) · `report_unreadable`(보고서는 있지만 읽지 못함 — `reason`에 사유, 18개 캠페인) · `cause_empty`·`cause_no_field`(칸이 비었거나 없음) · `version_unresolved`(최신 판본을 정하지 못함 — 글을 싣지 않는다) · `verify_failed`(원문 대조 실패 — 글을 뺀다) |
 
-응답의 모든 리콜 번호는 검색 후보 안에 있어야 하고, 원인 글은 원문과 글자 그대로 같아야 한다(`server/rag/verify.py`).
+응답의 모든 리콜 번호는 검색 후보 안에 있어야 하고, 원인 글은 원문과 글자 그대로 같아야 한다(`server/rag/verify.py`). 지금은 카드와 원인 글을 검색 결과·원문에서 그대로 꺼내므로 구조상 항상 통과하는 방어선이다 — 조사 요약 원인처럼 고른 문장이 들어오는 다음 PR부터 실제로 걸러낸다.
+
+질문은 영어 단어가 하나 이상 있어야 한다(색인·모델이 영어 — 기획 1절). 공백뿐이거나 영어 단어가 없으면 422로 돌려보낸다.
 
 ## 검증
 
 - `uv run pytest tests/test_rag_server.py` — DB·모델 없이 도는 테스트 + `TEST_DATABASE_URL`이 있으면 pgvector 왕복 테스트.
-- 대리 평가 재현: `uv run --env-file .env python -m server.rag.parity --vectors db` → 749문항 Hit@1·3·5·10 = 0.311·0.411·0.462·0.542 (보고서 v2와 같음).
+- 대리 평가 재현: `uv run --env-file .env python -m server.rag.parity --vectors db` → 749문항 Hit@1·3·5·10 = 0.311·0.411·0.462·0.542 (보고서 v2와 3자리 점수가 같음 — 입력 sha256이 보고서와 다르거나 점수가 다르면 종료 코드 1). 화면 구성(고객사 최대 5건 + 그 밖 10건)에 정답 리콜이 하나라도 보이는 비율은 0.543(`shown_any`, 보고서에 없는 새 값 — 최대 15건을 보여 주므로 상위 10과 같은 조건이 아니다).
+- 서버는 질문마다, 연구 코드는 749문항을 한 번에 곱해서 유사도 값이 같은(동점) 카드의 순서가 다를 수 있다. 그래서 "같은 계산"의 보장은 동점 없는 벡터 단위 테스트 + 실제 데이터 3자리 점수 재현이다.
 
 ## 아직 없는 것
 

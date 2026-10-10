@@ -23,6 +23,9 @@ class Build:
     snapshot_date: str
     cards: list[dict]
     causes: dict[str, dict]  # 캠페인 6자리(`campno[:6]`) → Part 573 원인 행
+    unreadable: dict[
+        str, str
+    ]  # 보고서는 있는데 읽지 못한 캠페인 → 사유 (`causes.manifest.json`의 `failed_kinds`)
 
 
 def _sha256(path: Path) -> str:
@@ -50,4 +53,10 @@ def load_build(data_dir: Path = PROCESSED) -> Build:
         actual["causes.jsonl"],
     )
     causes = {r["campaign"]: r for r in read_jsonl(data_dir / "causes.jsonl")}
-    return Build(build_id, meta["snapshot_date"], read_jsonl(data_dir / "recalls.jsonl"), causes)
+    return Build(
+        build_id,
+        meta["snapshot_date"],
+        read_jsonl(data_dir / "recalls.jsonl"),
+        causes,
+        dict(manifest.get("failed_kinds") or {}),
+    )

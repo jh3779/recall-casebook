@@ -15,8 +15,9 @@ from dataclasses import dataclass
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from scripts.defect_precedent.bm25_baseline import tokenize
 from server.rag import customers
 from server.rag.build import Build
 from server.rag.causes import cause_573
@@ -62,6 +63,14 @@ def load_state() -> RagState:
 class SearchRequest(BaseModel):
     question: str = Field(min_length=1, max_length=4000)
 
+    @field_validator("question")
+    @classmethod
+    def needs_english_words(cls, v: str) -> str:
+        # 색인·모델이 영어라(기획 1절) 영어 단어가 없으면 뜻 검색만으로 근거 없는 순위가 나온다 — 받지 않는다
+        if not tokenize(v):
+            raise ValueError("영어 단어가 들어간 질문이 필요합니다")
+        return v.strip()
+
 
 def card_view(state: RagState, campno: str, rank: int) -> dict:
     card = state.by_id[campno]
@@ -69,7 +78,7 @@ def card_view(state: RagState, campno: str, rank: int) -> dict:
         "rank": rank,
         **{k: card[k] for k in CARD_FIELDS},
         "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": state.build.snapshot_date},
-        "cause": cause_573(card, state.build.causes),
+        "cause": cause_573(card, state.build.causes, state.build.unreadable),
     }
 
 

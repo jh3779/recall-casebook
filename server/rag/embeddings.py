@@ -111,22 +111,30 @@ def cmd_load(_args) -> None:
     texts = [card_text(c) for c in build.cards]
     campnos = [c["campno"] for c in build.cards]
     digest = texts_sha256(texts)
-    with connect() as conn:  # 정상 종료하면 commit, 예외면 rollback
-        existing = conn.execute(
-            "select texts_sha256, rows from embedding_sets where build_id = %s and model = %s",
-            (build.build_id, MODEL),
-        ).fetchone()
-        if existing:
-            if existing != (digest, len(texts)):
-                raise SystemExit(
-                    f"build {build.build_id}·{MODEL}의 벡터가 이미 있는데 카드 글·줄 수가 다르다 — 덮어쓰지 않는다"
-                )
-            print(
-                f"build {build.build_id}·{MODEL}의 벡터가 이미 있고 같다 — 아무것도 바꾸지 않았다"
+    expected = (FASTEMBED_VERSION, digest, len(texts))
+    exists_sql = "select fastembed_version, texts_sha256, rows from embedding_sets where build_id = %s and model = %s"
+
+    def same_or_stop(existing) -> bool:
+        if existing is None:
+            return False
+        if tuple(existing) != expected:
+            raise SystemExit(
+                f"build {build.build_id}·{MODEL}의 벡터가 이미 있는데 판본·카드 글·줄 수가 다르다(DB fastembed {existing[0]}, "
+                f"{existing[2]:,}줄) — 덮어쓰지 않는다. 판본을 바꿨으면 새 build로 올린다 (DEC-042)"
             )
+        print(f"build {build.build_id}·{MODEL}의 벡터가 이미 있고 같다 — 아무것도 바꾸지 않았다")
+        return True
+
+    with (
+        connect() as conn
+    ):  # 짧게 먼저 확인한다 — 임베딩(최대 약 9분) 동안 트랜잭션을 열어 두지 않는다
+        if same_or_stop(conn.execute(exists_sql, (build.build_id, MODEL)).fetchone()):
             return
-        check_fastembed()
-        _, vecs, secs, info = embed_cards(MODEL, texts)
+    check_fastembed()
+    _, vecs, secs, info = embed_cards(MODEL, texts)
+    with connect() as conn:  # 정상 종료하면 commit, 예외면 rollback
+        if same_or_stop(conn.execute(exists_sql, (build.build_id, MODEL)).fetchone()):
+            return
         conn.execute(
             "insert into embedding_sets (build_id, model, fastembed_version, texts_sha256, model_fingerprint, rows) "
             "values (%s, %s, %s, %s, %s, %s)",

@@ -1,5 +1,8 @@
 """서버 검색 함수로 749문항 대리 평가를 다시 잰다 — 보고서 v2(0.311/0.411/0.462/0.542)와 같아야 한다.
 
+같은 입력(카드·시험지 sha256이 보고서와 같음)일 때만 비교하고, 3자리 반올림 점수가 하나라도 다르면 종료 코드 1로 끝난다.
+화면에 보이는 구성(고객사 최대 5건 + 그 밖 10건, DEC-042)의 정답 포함률도 따로 낸다 — 이 값은 보고서에 없어 비교하지 않는다.
+
 사용법:
     uv run --env-file .env python -m server.rag.parity --vectors db      # 서버와 같이 Supabase 벡터로
     RETRIEVAL_CACHE=<캐시 폴더> uv run python -m server.rag.parity --vectors local   # 연구 캐시 벡터로 (DB 적재 전)
@@ -7,11 +10,16 @@
 
 import argparse
 import json
+import sys
 
-from scripts.defect_precedent.retrieval_compare import card_text, load, score
-from server.rag import embeddings
+from scripts.defect_precedent.retrieval_compare import card_text, load, provenance, score
+from server.rag import customers, embeddings
 from server.rag.build import load_build
 from server.rag.search import Searcher
+
+# docs/실험_P2_검색방식비교.md — 데이터 판본(1절)과 v2 점수(3-0)
+REPORT_INPUT = {"recalls_sha256": "3f996182fe2efb37", "eval_sha256": "fe5433db5c7864a0"}
+REPORT_V2 = {"any@1": 0.311, "any@3": 0.411, "any@5": 0.462, "any@10": 0.542}
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -20,6 +28,9 @@ def main(argv: list[str] | None = None) -> None:
     a = p.parse_args(argv)
     from fastembed import TextEmbedding
 
+    data = provenance()
+    if {k: data[k] for k in REPORT_INPUT} != REPORT_INPUT:
+        sys.exit(f"입력이 보고서와 다르다({data}) — 재현이 아니라 재평가다 (AGENTS.md 5-1)")
     build = load_build()
     embeddings.check_fastembed()
     model = TextEmbedding(embeddings.MODEL)
@@ -40,12 +51,28 @@ def main(argv: list[str] | None = None) -> None:
     rankings = [
         searcher.search(q["question"], v).ranking for q, v in zip(questions, qv, strict=True)
     ]
+    by_id = {c["campno"]: c for c in build.cards}
+    shown_hits = 0
+    for q, ranking in zip(questions, rankings, strict=True):
+        cust, others = customers.split(ranking, by_id)
+        shown = {ranking[i] for i in cust + others}
+        shown_hits += any(g in shown for g in q["gold_campnos"])
+    scores = score(rankings, questions)
+    got = {k: scores["all"][k] for k in REPORT_V2}
     print(
         json.dumps(
-            {"build_id": build.build_id, "vectors": a.vectors, **score(rankings, questions)},
+            {
+                "build_id": build.build_id,
+                "vectors": a.vectors,
+                **scores,
+                "shown_any": round(shown_hits / len(questions), 3),
+                "matches_report_v2": got == REPORT_V2,
+            },
             ensure_ascii=False,
         )
     )
+    if got != REPORT_V2:
+        sys.exit(f"보고서 v2 {REPORT_V2}와 다르다: {got}")
 
 
 if __name__ == "__main__":

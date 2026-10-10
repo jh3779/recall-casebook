@@ -7,8 +7,14 @@
 SPEAKER_573 = "리콜 제조사 (Part 573 결함·불합치 보고서)"
 
 
-def cause_573(card: dict, causes: dict[str, dict]) -> dict:
-    row = causes.get(card["campno"][:6])
+def cause_573(
+    card: dict, causes: dict[str, dict], unreadable: dict[str, str] | None = None
+) -> dict:
+    campaign = card["campno"][:6]
+    row = causes.get(campaign)
+    if row is None and campaign in (unreadable or {}):
+        # 보고서는 있는데 우리 쪽에서 읽지 못했다 — "보고서 없음"으로 보이지 않게 따로 알린다
+        return {"status": "report_unreadable", "campaign": campaign, "reason": unreadable[campaign]}
     if row is None:
         return {"status": "no_573_report"}  # 2014-08-20 이전 리콜 등 보고서 원문을 받지 않은 캠페인
     if row["resolution"] == "unresolved":
