@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 from server.rag import customers, embeddings
-from server.rag.build import BuildMismatch, load_build
+from server.rag.build import BuildMismatch, check_against_db, load_build
 from server.rag.causes import cause_573
 from server.rag.search import Searcher
 from server.rag.verify import OutOfCandidates, verify
@@ -127,10 +127,16 @@ def test_customers_use_allowlist_not_name_matching():
     assert [ranking[i] for i in others] == ["22V003000", "23V002000"]
 
 
+def test_cause_573_says_no_report_only_outside_the_573_collection_range():
+    old = recall("13V001000", received_date="20130101")
+    assert cause_573(old, {}) == {"status": "no_573_report"}
+    # 범위 안인데 원문 목록에도 실패 목록에도 없으면 "없다"고 하지 않는다
+    assert cause_573(CARDS[0], {}) == {"status": "report_status_unknown", "campaign": "24V001"}
+
+
 @pytest.mark.parametrize(
     ("row", "status"),
     [
-        (None, "no_573_report"),
         (cause("24V001", resolution="unresolved"), "version_unresolved"),
         (cause("24V001", cause_text="", cause_status="empty"), "cause_empty"),
         (cause("24V001", cause_text=None, cause_status="no_field"), "cause_no_field"),
@@ -150,10 +156,49 @@ def test_cause_573_marks_reports_we_could_not_read_instead_of_missing():
     }
 
 
-def test_load_build_keeps_unreadable_campaigns_from_manifest(tmp_path):
+def _with_failure(tmp_path, kinds):
     d = make_data_dir(tmp_path, recalls=CARDS)
-    write_full(d, [cause("23V002")], failed_kinds={"24V001": "no_confirmable_date"})
-    assert load_build(d).unreadable == {"24V001": "no_confirmable_date"}
+    write_full(
+        d,
+        [cause("23V002")],
+        failures=1,
+        failed_campaigns=["24V001"],
+        failed_kinds=kinds,
+        expect_campaigns=2,
+    )
+    return d
+
+
+def test_load_build_keeps_unreadable_campaigns_from_manifest(tmp_path):
+    assert load_build(_with_failure(tmp_path, {"24V001": "no_confirmable_date"})).unreadable == {
+        "24V001": "no_confirmable_date"
+    }
+
+
+def test_load_build_rejects_failure_reasons_that_do_not_match_failed_campaigns(tmp_path):
+    with pytest.raises(BuildMismatch, match="failed_kinds"):
+        load_build(_with_failure(tmp_path, {"22V003": "non_pdf_response"}))
+
+
+class FakeConn:
+    def __init__(self, row):
+        self.row = row
+
+    def execute(self, *_):
+        return self
+
+    def fetchone(self):
+        return self.row
+
+
+def test_check_against_db_rejects_a_spec_that_differs_from_the_loaded_build(tmp_path):
+    b = load_build(_with_failure(tmp_path, {"24V001": "no_confirmable_date"}))
+    check_against_db(FakeConn((b.causes_spec,)), b)
+    changed = {**b.causes_spec, "failed_kinds": {"24V001": "non_pdf_response"}}
+    with pytest.raises(BuildMismatch, match="DB에 적재된 것과 다르다"):
+        check_against_db(FakeConn((changed,)), b)  # 같은 build_id인데 실패 사유만 바꾼 명세
+    with pytest.raises(BuildMismatch, match="DB에 없다"):
+        check_against_db(FakeConn(None), b)
 
 
 def test_cause_573_copies_text_verbatim_with_speaker_and_source():
@@ -184,7 +229,7 @@ def _keys(obj):
             yield from _keys(v)
 
 
-def test_api_returns_build_id_and_no_judgement_fields(tmp_path):
+def test_api_returns_build_id_and_no_judgement_fields(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
     from server.api import RagState, create_app
@@ -203,6 +248,21 @@ def test_api_returns_build_id_and_no_judgement_fields(tmp_path):
         for bad in ("", "   ", "에어백 인플레이터 파열", "123"):
             assert client.post("/search", json={"question": bad}).status_code == 422
     body = res.json()
+
+    from fastapi.exceptions import ResponseValidationError
+
+    import server.api as api_mod
+
+    real = api_mod.cause_573
+
+    def without_speaker(*a):
+        c = real(*a)
+        c.pop("speaker", None)  # 원문은 그대로 두고 말한 주체만 뺀다 (원문 대조는 통과)
+        return c
+
+    monkeypatch.setattr(api_mod, "cause_573", without_speaker)
+    with TestClient(create_app(lambda: state)) as client, pytest.raises(ResponseValidationError):
+        client.post("/search", json={"question": "airbag inflator rupture"})
     assert body["build_id"] == b.build_id
     assert [c["campno"] for c in body["customer_precedents"]] == ["24V001000"]
     assert body["customer_precedents"][0]["cause"]["status"] == "filled"

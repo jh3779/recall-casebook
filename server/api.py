@@ -1,21 +1,28 @@
 """결함 선례 찾기 API 서버 (DEC-038·039).
 
-실행 (DATABASE_URL은 .env에만 둔다 — 카드 벡터를 Supabase에서 읽는다):
+실행 (연결 문자열은 .env에만 둔다 — 카드 벡터와 원인 명세를 Supabase에서 읽는다):
     uv run --env-file .env uvicorn server.api:app --port 8000
+
+- DB 연결은 조회 전용 계정의 `SERVER_DATABASE_URL`을 쓴다(권한은 `server/README.md`). 없으면 적재용 관리자 연결 `DATABASE_URL`로
+  읽되 경고를 남긴다 — 로컬 개발용이고, 배포 전에는 조회 전용 계정을 만든다(DEC-042).
 
 - `POST /search {"question": "..."}` → 고객사 선례, 같은 부품·다른 회사 선례. 카드마다 결함·결과·시정 원문과 Part 573 원인 원문(말한 주체·출처)을 싣는다.
 - `GET /health` → 데이터 판본(build_id·스냅샷 날짜)과 카드 수.
 - 판정하지 않는다: 응답에 적용 여부·리콜 필요 여부 같은 칸을 두지 않는다(AGENTS.md 2-1). 모든 응답에 build_id를 싣는다(2-4).
-- 시작할 때 로컬 build 파일 해시와 DB 벡터 기록을 대조하고, 하나라도 어긋나면 서버를 띄우지 않는다.
+- 시작할 때 로컬 build 파일(적재와 같은 검사)·DB 원인 명세·DB 벡터 기록을 대조하고, 하나라도 어긋나면 서버를 띄우지 않는다.
+- 응답은 아래 Pydantic 모델로 검사한다 — 원인 글(`filled`)에는 말한 주체·출처가 반드시 있고, 모델에 없는 칸은 내보내지 않는다.
 """
 
+import os
+import sys
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from typing import Annotated, Literal
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from scripts.defect_precedent.bm25_baseline import tokenize
 from server.rag import customers
@@ -42,22 +49,107 @@ class RagState:
         self.by_id = {c["campno"]: c for c in self.build.cards}
 
 
+def server_connection():
+    """조회 전용 연결(SERVER_DATABASE_URL). 없으면 관리자 연결로 읽고 경고한다 — 값은 출력하지 않는다."""
+    import psycopg
+
+    url = os.environ.get("SERVER_DATABASE_URL")
+    if not url:
+        url = os.environ.get("DATABASE_URL")
+        if not url:
+            raise RuntimeError(
+                "SERVER_DATABASE_URL(조회 전용)이나 DATABASE_URL이 없다 — .env.example 참고"
+            )
+        print(
+            "경고: SERVER_DATABASE_URL이 없어 관리자 연결(DATABASE_URL)로 읽는다 — 로컬 개발용, 배포 전 조회 전용 계정 필요",
+            file=sys.stderr,
+        )
+    return psycopg.connect(url)
+
+
 def load_state() -> RagState:
     from fastembed import TextEmbedding
 
-    from scripts.defect_precedent.load_db import connect
     from scripts.defect_precedent.retrieval_compare import card_text
     from server.rag import embeddings
-    from server.rag.build import load_build
+    from server.rag.build import check_against_db, load_build
 
     build = load_build()
     embeddings.check_fastembed()
     model = TextEmbedding(embeddings.MODEL)
     texts = [card_text(c) for c in build.cards]
-    with connect() as conn:
+    with server_connection() as conn:
+        check_against_db(conn, build)
         vecs = embeddings.fetch(conn, build.build_id, [c["campno"] for c in build.cards], texts)
     embeddings.verify_probe(model, texts, vecs)
     return RagState(build, Searcher(build.cards, vecs, model), embeddings.MODEL)
+
+
+class Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class CauseSource(Strict):
+    campaign: str
+    file: str
+    pdf_sha256: str
+    submission_date: str
+
+
+class CauseText(Strict):
+    """573 원인 칸 원문 그대로 — 말한 주체와 출처 없이는 내보내지 않는다."""
+
+    status: Literal["filled"]
+    text: str = Field(min_length=1)
+    speaker: str = Field(min_length=1)
+    source: CauseSource
+
+
+class CauseAbsent(Strict):
+    """원인 글을 싣지 않는 경우 — 왜 없는지 상태만 알린다."""
+
+    status: Literal[
+        "no_573_report", "report_status_unknown", "report_unreadable", "version_unresolved",
+        "cause_empty", "cause_no_field", "verify_failed",
+    ]  # fmt: skip
+    campaign: str | None = None
+    reason: str | None = None
+
+
+class CardSource(Strict):
+    dataset: Literal["NHTSA FLAT_RCL"]
+    snapshot_date: str
+
+
+class Card(Strict):
+    rank: int
+    campno: str
+    maker: str
+    maker_group: str | None
+    received_date: str
+    components: list[str]
+    defect: str
+    consequence: str
+    remedy: str
+    dup_group: str
+    source: CardSource
+    cause: Annotated[CauseText | CauseAbsent, Field(discriminator="status")]
+
+
+class SearchResponse(Strict):
+    build_id: str
+    snapshot_date: str
+    model: str
+    question: str
+    customer_precedents: list[Card]
+    precedents: list[Card]
+
+
+class HealthResponse(Strict):
+    build_id: str
+    snapshot_date: str
+    cards: int
+    model: str
 
 
 class SearchRequest(BaseModel):
@@ -114,7 +206,7 @@ def create_app(loader: Callable[[], RagState] = load_state) -> FastAPI:
         allow_headers=["content-type"],
     )
 
-    @app.get("/health")
+    @app.get("/health", response_model=HealthResponse)
     def health() -> dict:
         s: RagState = app.state.rag
         return {
@@ -124,7 +216,7 @@ def create_app(loader: Callable[[], RagState] = load_state) -> FastAPI:
             "model": s.model_name,
         }
 
-    @app.post("/search")
+    @app.post("/search", response_model=SearchResponse)
     def search(req: SearchRequest) -> dict:
         return answer(app.state.rag, req.question)
 
