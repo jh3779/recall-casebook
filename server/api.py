@@ -106,15 +106,27 @@ class CauseText(Strict):
     source: CauseSource
 
 
-class CauseAbsent(Strict):
-    """원인 글을 싣지 않는 경우 — 왜 없는지 상태만 알린다."""
+class CauseNoReport(Strict):
+    """573 원문 수집 범위 밖(접수일 2014-08-20 이전) — 되짚을 보고서가 없다."""
+
+    status: Literal["no_573_report"]
+
+
+class CauseUnreadable(Strict):
+    """보고서는 있지만 읽지 못했다 — 어느 캠페인을 왜 못 읽었는지 반드시 싣는다."""
+
+    status: Literal["report_unreadable"]
+    campaign: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+
+class CauseMissingText(Strict):
+    """원인 글을 싣지 않는 그 밖의 경우 — 되짚을 캠페인 번호를 반드시 싣는다."""
 
     status: Literal[
-        "no_573_report", "report_status_unknown", "report_unreadable", "version_unresolved",
-        "cause_empty", "cause_no_field", "verify_failed",
+        "report_status_unknown", "version_unresolved", "cause_empty", "cause_no_field", "verify_failed",
     ]  # fmt: skip
-    campaign: str | None = None
-    reason: str | None = None
+    campaign: str = Field(min_length=1)
 
 
 class CardSource(Strict):
@@ -134,7 +146,10 @@ class Card(Strict):
     remedy: str
     dup_group: str
     source: CardSource
-    cause: Annotated[CauseText | CauseAbsent, Field(discriminator="status")]
+    cause: Annotated[
+        CauseText | CauseNoReport | CauseUnreadable | CauseMissingText,
+        Field(discriminator="status"),
+    ]
 
 
 class SearchResponse(Strict):

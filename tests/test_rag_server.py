@@ -175,6 +175,34 @@ def test_load_build_keeps_unreadable_campaigns_from_manifest(tmp_path):
     }
 
 
+def test_load_build_rejects_empty_failure_reasons(tmp_path):
+    with pytest.raises(BuildMismatch, match="빈 값"):
+        load_build(_with_failure(tmp_path, {"24V001": None}))
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        {"status": "report_unreadable", "campaign": "24V001"},  # 사유 없음
+        {"status": "report_unreadable", "campaign": "24V001", "reason": ""},
+        {"status": "report_status_unknown"},  # 캠페인 번호 없음
+        {"status": "no_573_report", "campaign": "x", "reason": "y"},  # 모델 밖 칸
+    ],
+)
+def test_card_model_requires_fields_for_each_cause_status(cause):
+    from pydantic import ValidationError
+
+    from server.api import Card
+
+    card = {
+        "rank": 1, "campno": "24V001000", "maker": "m", "maker_group": "Kia", "received_date": "20240101",
+        "components": [], "defect": "", "consequence": "", "remedy": "", "dup_group": "24V001000",
+        "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06"},
+    }  # fmt: skip
+    with pytest.raises(ValidationError):
+        Card.model_validate({**card, "cause": cause})
+
+
 def test_load_build_rejects_failure_reasons_that_do_not_match_failed_campaigns(tmp_path):
     with pytest.raises(BuildMismatch, match="failed_kinds"):
         load_build(_with_failure(tmp_path, {"22V003": "non_pdf_response"}))

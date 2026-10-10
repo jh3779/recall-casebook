@@ -118,7 +118,7 @@ _갱신: 2026-10-10 (P2 PR 1 — API 서버 뼈대·검색, DEC-042 벡터 Supab
 - [[DEC-035]] force push 차단·이미 push한 커밋은 amend·rebase하지 않음 (PR #37, 병합 `fa3adef`)
 - [[DEC-036]] 회사명 확인본을 `nhtsa build`가 카드에 반영, `maker` 의미 변경과 `maker_group` 칸 추가 (박예원, PR #42 병합 `abc674a`)
 - [[DEC-039]] P2 검색 BM25 + bge-small RRF·메모리 검색·573 원인 원문 (PR #49) / [[DEC-040]] Actions 소진 시 로컬 검사 전환 (PR #59)
-- [[DEC-042]] 카드 벡터 Supabase 보관·서버 시작 시 대조·고객사 `maker_group` 허용 목록 (PR 1, ②·③ Proposed)
+- [[DEC-042]] 카드 벡터 Supabase 보관·서버 시작 시 대조·고객사 `maker_group` 허용 목록 (PR #62, Accepted — 고객사 현대·기아만 사용자 결정 2026-10-10, ⑤ 조회 전용 계정 생성은 배포 전 #63)
 
 ## Failed Attempts
 

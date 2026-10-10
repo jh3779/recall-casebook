@@ -38,6 +38,10 @@ def load_build(data_dir: Path = PROCESSED) -> Build:
         raise BuildMismatch(f"{e} — 섞인 판본으로 서버를 띄우지 않는다") from e
     spec = meta["causes_spec"]
     unreadable = dict(spec.get("failed_kinds") or {})
+    if any(not isinstance(v, str) or not v.strip() for v in unreadable.values()):
+        raise BuildMismatch(
+            "causes.manifest.json의 실패 사유(failed_kinds)에 빈 값이 있다 — 못 읽은 이유를 되짚을 수 없다"
+        )
     if set(unreadable) != set(spec["failed_campaigns"]):
         raise BuildMismatch(
             "causes.manifest.json의 실패 사유(failed_kinds)와 실패 캠페인 목록(failed_campaigns)이 다르다"
