@@ -12,7 +12,7 @@ jobs:
     # DB 테스트(tests/test_load_db.py의 pg 테스트)를 건너뛰지 않으려고 일회용 Postgres를 띄운다 (Supabase와 같은 17)
     services:
       postgres:
-        image: postgres:17
+        image: pgvector/pgvector:pg17  # Postgres 17 + pgvector (server/rag/embeddings.sql 테스트)
         env:
           POSTGRES_PASSWORD: localtest
         ports:
