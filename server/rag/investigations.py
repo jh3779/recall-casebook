@@ -7,7 +7,8 @@
 - 요약 칸이 비었거나 자리표시 문구("There is no summary currently available")면 싣지 않는다(`why_stats.linked_campnos`와 같은 규칙).
 - 조사 기록의 리콜 번호가 9자리로 카드와 정확히 같을 때만 잇는다. 6자리(캠페인 번호)로 적힌 기록은 어느 카드인지 짐작해야
   하므로 잇지 않는다(현재 원본 72,977줄, 앞 6자리로는 284장에 걸림 — 응답에서는 "조사 요약 없음"과 구별되지 않는다).
-- 같은 조사 번호에 요약 판본이 여러 개면 어느 것이 맞는지 짐작하지 않고 서버를 띄우지 않는다(AGENTS.md 2-3, 현재 원본 0건).
+- 같은 조사 번호의 줄(차종별로 여러 줄, 다른 리콜 번호 줄 포함)마다 요약·제목·개시일·종료일이 하나라도 다르면 어느 것이 맞는지
+  짐작하지 않고 서버를 띄우지 않는다(AGENTS.md 2-3, 현재 원본: 연결된 917개 조사 모두 일관).
 """
 
 import hashlib
@@ -50,24 +51,32 @@ def load_investigations(
     except SystemExit as e:  # read_flat은 명령줄 도구라 칸이 밀리면 sys.exit로 멈춘다
         raise BuildMismatch(str(e)) from e
 
+    def usable(r: dict) -> bool:
+        summary = r["SUMMARY"].strip()
+        return bool(summary) and not PLACEHOLDER.search(summary)
+
+    # 1) 카드에 이어지는 조사 번호
+    linked = {r["ACTION"].strip() for r in rows if r["CAMPNO"].strip() in campnos and usable(r)}
+    # 2) 그 조사 번호의 **모든 줄**(다른 리콜 번호 줄 포함)이 요약·제목·날짜가 같아야 한다 — 다르면 짐작하지 않는다
     by_action: dict[str, dict] = {}
-    links: dict[str, set[str]] = {}
     for r in rows:
-        campno, summary = r["CAMPNO"].strip(), r["SUMMARY"]
-        if campno not in campnos or not summary.strip() or PLACEHOLDER.search(summary.strip()):
-            continue
         action = r["ACTION"].strip()
+        if action not in linked:
+            continue
         inv = {
             "action": action,
             "subject": r["SUBJECT"],
-            "summary": summary,
+            "summary": r["SUMMARY"],
             "open_date": r["ODATE"].strip(),
             "close_date": r["CDATE"].strip(),
         }
-        if action in by_action and by_action[action]["summary"] != summary:
+        if by_action.setdefault(action, inv) != inv:
             raise BuildMismatch(
-                f"조사 {action}의 요약 판본이 여러 개다 — 어느 것인지 짐작하지 않는다"
+                f"조사 {action}의 줄마다 요약·제목·날짜가 다르다 — 어느 것인지 짐작하지 않는다"
             )
-        by_action.setdefault(action, inv)
-        links.setdefault(campno, set()).add(action)
+    links: dict[str, set[str]] = {}
+    for r in rows:
+        campno = r["CAMPNO"].strip()
+        if campno in campnos and usable(r):
+            links.setdefault(campno, set()).add(r["ACTION"].strip())
     return {c: [by_action[a] for a in sorted(acts)] for c, acts in links.items()}

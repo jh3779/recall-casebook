@@ -554,12 +554,22 @@ def test_load_investigations_refuses_other_snapshots_and_conflicting_summaries(t
         raw,
         [inv_row("PE20001", "24V001000"), inv_row("PE20001", "24V001000", summary="Other text.")],
     )
-    with pytest.raises(BuildMismatch, match="판본"):
+    with pytest.raises(BuildMismatch, match="다르다"):
         load_investigations(digest, {"24V001000"}, raw)
+    # 같은 조사 번호의 다른 리콜 번호 줄(카드에 없음)이 다른 요약이거나, 제목만 달라도 짐작하지 않는다
+    for other in (
+        inv_row("PE20001", "99V999000", summary="Revised text."),
+        inv_row("PE20001", "24V001000", SUBJECT="Another subject"),
+    ):
+        digest = _write_inv(raw, [inv_row("PE20001", "24V001000"), other])
+        with pytest.raises(BuildMismatch, match="다르다"):
+            load_investigations(digest, {"24V001000"}, raw)
 
 
 def test_checklist_links_evidence_and_skips_items_without_it():
+    from server.rag.causes import SPEAKER_573
     from server.rag.checks import checklist
+    from server.rag.investigations import SPEAKER_INV
 
     card = recall(
         "24V001000",
@@ -571,16 +581,20 @@ def test_checklist_links_evidence_and_skips_items_without_it():
     row = cause("24V001", supplier_names=["ARC Automotive"])
     inv = [{"action": "PE20001"}]
     items = {c["item"]: c["evidence"] for c in checklist(card, row, inv, filled)}
-    assert list(items) == [
-        "same_part",
-        "remedy",
-        "supplier",
-        "cause_speaker",
-    ]  # 결과 원문이 비어 고장 양상은 없음
+    assert list(items) == ["same_part", "failure_mode", "remedy", "supplier", "cause_speaker"]
+    assert [e["field"] for e in items["same_part"]] == ["components"]
+    assert items["failure_mode"] == [
+        {"field": "defect", "text": "Airbag inflator may rupture."}
+    ]  # 결과 원문은 비어 빠짐
     assert items["supplier"] == [{"field": "573.supplier_names", "text": "ARC Automotive"}]
-    assert [e["field"] for e in items["cause_speaker"]] == [
-        "cause.speaker",
-        "investigations.action",
+    assert items["cause_speaker"] == [
+        {"field": "cause.speaker", "text": SPEAKER_573},
+        {"field": "investigations.speaker", "text": SPEAKER_INV},
+        {"field": "investigations.action", "text": "PE20001"},  # 원본 조사 번호 그대로
+    ]
+    bare = {**card, "defect": "", "remedy": ""}
+    assert [c["item"] for c in checklist(bare, None, [], {"status": "no_573_report"})] == [
+        "same_part"
     ]
     unresolved = {**row, "resolution": "unresolved"}
     assert "supplier" not in {

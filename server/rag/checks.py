@@ -21,11 +21,11 @@ def checklist(
     card: dict, cause_row: dict | None, investigations: list[dict], cause: dict
 ) -> list[dict]:
     evidence: dict[str, list[dict]] = {
-        "same_part": [{"field": "components", "text": c} for c in card["components"] if c]
-        + ([{"field": "defect", "text": card["defect"]}] if card["defect"] else []),
-        "failure_mode": [{"field": "consequence", "text": card["consequence"]}]
-        if card["consequence"]
-        else [],
+        "same_part": [{"field": "components", "text": c} for c in card["components"] if c],
+        # 고장 양상 = 결함 원문(무엇이 어떻게 고장 나는가) + 결과 원문(그래서 무슨 일이 생기는가) — 칸 이름으로 구분한다
+        "failure_mode": [
+            {"field": f, "text": card[f]} for f in ("defect", "consequence") if card[f]
+        ],
         "remedy": [{"field": "remedy", "text": card["remedy"]}] if card["remedy"] else [],
         # 판본을 정하지 못한 573 보고서의 칸은 쓰지 않는다 (원인 글과 같은 규칙)
         "supplier": [
@@ -36,10 +36,12 @@ def checklist(
         "cause_speaker": (
             [{"field": "cause.speaker", "text": SPEAKER_573}] if cause["status"] == "filled" else []
         )
-        + [
-            {"field": "investigations.action", "text": f"{SPEAKER_INV} {i['action']}"}
-            for i in investigations
-        ],
+        + (
+            [{"field": "investigations.speaker", "text": SPEAKER_INV}]
+            + [{"field": "investigations.action", "text": i["action"]} for i in investigations]
+            if investigations
+            else []
+        ),
     }
     return [
         {"item": key, "label": label, "evidence": evidence[key]}
