@@ -5,7 +5,8 @@
 
 규칙(2026-10-10, 결과를 보기 전에 고정 — 정답을 보고 단어·가중치를 고치지 않는다, AGENTS.md 5-2):
 1. 카드의 부품 분류 = `components` 각 항목의 맨 앞 칸(`:` 앞, 예: "SERVICE BRAKES, HYDRAULIC"). 원본에 42가지.
-2. 분류 이름을 `,`·`/`·`;`·` AND `로 나눈 구절마다 단어(소문자, 끝의 s 제거)를 얻고, 일반어(`STOP` + 회사명 일반어
+2. 분류 이름을 `,`·`/`·`;`·` AND `로 나눈 구절마다 단어(소문자, 복수형 끝 제거 — `ches`·`shes`·`xes`로 끝나는 5자 이상은 `es`,
+   그 밖의 4자 이상은 `s`)를 얻고, 일반어(`STOP` + 회사명 일반어
    `why_stats.GENERIC_WORDS`)를 뺀다. 남은 단어가 없는 구절은 쓰지 않는다(예: "EQUIPMENT", "UNKNOWN OR OTHER").
 3. 구절이 질문에 맞다 = 구절 단어가 모두 질문 단어(같은 정규화)에 있거나, 구절 단어를 이어 붙인 말(예: "airbag")이 질문에 있다.
    분류가 맞다 = 구절 하나라도 맞다.
@@ -98,10 +99,20 @@ def main() -> None:
             part_rank = [c for c in fused if cats_of[c] & cats]
             before.append(fused)
             after.append(rrf(b, d, part_rank) if part_rank else fused)
+        h10 = [
+            (
+                any(g in bf[:10] for g in q["gold_campnos"]),
+                any(g in af[:10] for g in q["gold_campnos"]),
+            )
+            for q, bf, af in zip(questions, before, after, strict=True)
+        ]
         out[variant] = {
             "questions_with_category": n_matched,
             "before": score(before, questions),
             "after": score(after, questions),
+            # 문항별 Hit@10(any) 변화 — 차이가 기준 폭 안의 작은 이동인지 보려고 함께 낸다
+            "hit10_improved": sum(1 for b0, a0 in h10 if a0 and not b0),
+            "hit10_worsened": sum(1 for b0, a0 in h10 if b0 and not a0),
         }
     print(json.dumps(out, ensure_ascii=False, indent=1))
 
