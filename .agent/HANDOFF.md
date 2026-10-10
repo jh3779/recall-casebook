@@ -97,7 +97,7 @@ _갱신: 2026-10-10 (#62 병합 — P2 PR 1 API 서버 뼈대·검색, DEC-042 �
   32. **이슈 #24 남은 결정**: ~~파일 모양 확정(박예원, 10/8)~~(✅ 2026-10-07, #38), ~~화면과 RAG 사이 데이터 전달 방식~~(✅ 2026-10-08 Python API 서버, [[DEC-038]]) — DEC-032의 미결(서버 API / 결과 파일 / Supabase 직접 읽기)은 DEC-038로 정리됨(할 일 26과 같은 결정).
   33. ~~**PR #39 회사명 대응표 확인본 마무리**~~ — **완료(2026-10-08, `ed97a82`)**. 기준은 PR #39 "결정 기록 2"(같은 그룹·같은 브랜드, 문서 확인분만). 최종 확인 완료 124줄, `maker_group` 3,259(40개 합침, 1,885건). 후속: 이슈 #36(New Flyer 2015년 이전 관계, 출처 보강 — International Motors 24V462 URL·Daimler Vans·Nova/Prevost/Hino 지분 문서, 상위 150 밖 표기 차이 11쌍, 설명형 묶음 이름 규칙), Daimler Vans는 Mercedes-Benz·Freightliner 혼합이라 적용 단계에서 리콜별 브랜드로 나눌지 결정, `docs/회사명_대응표_안내.md`의 `maker_group` 정의를 결정 기록 2로 고침. **#36 1차 처리(2026-10-08, PR #48 병합 `031df4f`)**: 설명형 묶음 이름 `Chrysler (DaimlerChrysler·FCA·Stellantis 이어짐)` → `Chrysler`(8줄, 표시 이름 규칙은 안내문 4번 규칙 4), 약어만 다른 11세트(Lance Camper·Silver Eagle·Curt·Lufkin·Kentucky·Haulmark·Wells·Knapheide·Vehicle Safety·John Evans·Bendix) 묶음 통일(법인 형태 차이가 함께 있는 6세트는 메모에 적음, Lance Camper는 마침표 오기도 바로잡음, 13줄) → `maker_group` 3,259 → **3,248**. 새 카드 `recalls_sha256 3f996182…`, 대응표 해시 `ee528c18…`, 새 build 전체 `c6872ae8e9743c56`·표본 `90455e4170cea3f1`, BM25 0.510/0.503 그대로(재평가), 직전 카드는 `data/raw/defect_cards_2026-10-08_pr42/`에 보관. **#36 남은 후속(근거 문서가 필요해 보류)**: New Flyer 2015년 이전 관계, Daimler Vans USA 소유 근거 보강, Nova Bus·Prevost·Hino 지분 문서, International Motors 24V462 URL 메모, 지역·법인 관계 판단이 필요한 후보 5세트(Prevost Car·Lotus·Renault·Irbit·KYB).
   34. **force push 사후 차단 훅 (PR #37 후속, [[DEC-035]])**: `.claude/settings.json` deny 패턴은 에이전트 명령만 막는다. lefthook pre-push에서 강제 push를 막는 훅은 사용자 결정으로 후속("패턴 추가 + 훅은 후속").
-  35. **리뷰어 `@태그` 규칙 불일치 — 사용자 결정 필요**: 사용자 지시는 "이 저장소 PR 본문에 `@태그`를 넣지 않음"인데 AGENTS.md 6절·CONTRIBUTING.md·`docs/시작하기.md`는 `@태그`를 요구해, Codex가 PR마다 같은 지적을 반복한다(#33·#37·#39). 문서를 지시에 맞출지 정한다.
+  35. ✅ **결정(DEC-043, 2026-10-10)** — PR 본문 태그 규칙 삭제, 요청은 결과 코멘트에서. **리뷰어 `@태그` 규칙 불일치 — 사용자 결정 필요**(당시): 사용자 지시는 "이 저장소 PR 본문에 `@태그`를 넣지 않음"인데 AGENTS.md 6절·CONTRIBUTING.md·`docs/시작하기.md`는 `@태그`를 요구해, Codex가 PR마다 같은 지적을 반복한다(#33·#37·#39). 문서를 지시에 맞출지 정한다.
   36. **인계 문서 보완(PR #33 리뷰 `98dee4b`·`8e67152` 🟢)**: `docs/환경셋팅.md` 4절 확인 기록에 실행한 main 커밋·판본 582개 sha256 일치를 덧붙이고, `scripts/defect_precedent/README.md` "재현 범위"에 그 기록으로 가는 링크 한 줄. `docs/시작하기.md`의 force push 차단 설명에 `git -c`·`HEAD:+x`를 넣거나 "자세한 한계는 DEC-035"로 돌린다(PR #37 리뷰 `d62e5f9`).
   37. **PR #42 리뷰 후속 — 대부분 완료(2026-10-08, 박예원 PR #46 `62203f2`)**: 리뷰 에이전트 `344a6f8`의 🟡2(옛 카드에서 회사명 테스트 실패 → 카드 버전별 테스트)·🟡3(기준 파일 둘 사이 안내)·🟢4~8(DEC-035 `Date`, DEC-036 Status·운영 메모, `schema.sql` 헤더 등)을 #46이 처리. **남은 것: 🟡1 초안(`maker_aliases_draft.csv`) 해시를 `build.json`에 기록 → 이슈 #45**(박예원).
   38. **AGENTS.md 5-2 시점 평가 판본 문구 (DEC-037 ⑥)**: 5-2는 "질문도 기준일 당시 공개된 판본"을 요구하지만 공개일을 증명할 기록이 없어 DEC-037 ⑥이 PDF 수정일 3일 이내로 근사한다(요건 완화). 5-2 문구에 이 근사를 넣을지, DEC 예외로만 둘지 팀이 정한다.
@@ -121,6 +121,7 @@ _갱신: 2026-10-10 (#62 병합 — P2 PR 1 API 서버 뼈대·검색, DEC-042 �
 - [[DEC-035]] force push 차단·이미 push한 커밋은 amend·rebase하지 않음 (PR #37, 병합 `fa3adef`)
 - [[DEC-036]] 회사명 확인본을 `nhtsa build`가 카드에 반영, `maker` 의미 변경과 `maker_group` 칸 추가 (박예원, PR #42 병합 `abc674a`)
 - [[DEC-039]] P2 검색 BM25 + bge-small RRF·메모리 검색·573 원인 원문 (PR #49) / [[DEC-040]] Actions 소진 시 로컬 검사 전환 (PR #59)
+- [[DEC-043]] PR 본문에 리뷰어 태그 안 함 — 요청은 병합 전 검증 결과 코멘트에서 (사용자 결정 2026-10-10)
 - [[DEC-042]] 카드 벡터 Supabase 보관·서버 시작 시 대조·고객사 `maker_group` 허용 목록 (PR #62, Accepted — 고객사 현대·기아만 사용자 결정 2026-10-10, ⑤ 조회 전용 계정 생성은 배포 전 #63)
 
 ## Failed Attempts
@@ -153,12 +154,12 @@ _갱신: 2026-10-10 (#62 병합 — P2 PR 1 API 서버 뼈대·검색, DEC-042 �
 
 ## Next Action
 
-1. **P2 PR 2 (10/11~13)** — 조사 요약 원인(raw `FLAT_INV.zip`을 CAMPNO로 연결, 말한 주체 NHTSA 조사관, 출처 `ACTION`, 색인에는 넣지 않음 — 시험 질문 출처라 누수), 추정 표현 표시("추정 표현 포함" — 단어 목록은 **구현 전 사용자 확인으로 고정**, 정답을 보고 고치지 않음)·원인 미확인 표시(`cause_trials.rule_unknown`, #53 잠정안), 확인 항목 고정 틀(같은 부품·고장 양상·시정·공급사·말한 주체, 근거 원문 연결, LLM 없음). 응답 모델(`server/api.py`)에 상태·칸 추가. 승인된 계획: `/Users/jihun/.claude/plans/pasted-content-id-aba9-sunny-cocoa.md`.
+1. **P2 PR 2 (10/11~13)** — 조사 요약 원인(raw `FLAT_INV.zip`을 CAMPNO로 연결, 말한 주체 NHTSA 조사관, 출처 `ACTION`, 색인에는 넣지 않음 — 시험 질문 출처라 누수), 추정 표현 표시("추정 표현 포함" — 단어 목록은 **구현 전 사용자 확인으로 고정**, 정답을 보고 고치지 않음)·원인 미확인 표시(`cause_trials.rule_unknown`, #53 잠정안), 확인 항목 고정 틀(같은 부품·고장 양상·시정·공급사·말한 주체, 근거 원문 연결, LLM 없음). 응답 모델(`server/api.py`)에 상태·칸 추가. 승인된 계획과 고정한 규칙(추정 표현 단어·확인 항목 순서): `docs/계획_P2_API서버.md`.
 2. **원인 표시 미결 (#53, 할 일 39)** — 원인 칸 없는 카드·`cause_*` 상태별 화면 문구는 박성호 님과(PR #60 코멘트), "원인 미확인" 정확도는 150건 사람 표시(담당 우지훈) 뒤.
 3. **P2 PR 3 (10/13~14)** — 부품 범위 좁히기(v3): 걸러내지 않고 같은 부품 분류 카드를 RRF 뒤 앞으로, 749문항 before/after가 0.03 이상일 때만 켜고 아니면 기각 기록(AGENTS 5-4). 할 일 22.
 4. **PR #60 회신 처리** — 박성호 님이 칸 이름(`received_date` 등)·`potaff`/`years`/`mfr_part` 필요 여부를 답하면 서버 응답 또는 카드 데이터(A 파트 `nhtsa build`)를 정한다.
 5. 사용자 몫: 10/10 시트 압축본 드라이브 업로드, 원인 미확인 150건 표시. 대기: #61(박예원, 10/14).
-6. 후속: 할 일 34·35(@태그 규칙 — AGENTS.md 6절과 사용자 지시 불일치, #62 Codex가 반복 지적)·36·38·42·43 · 이슈 #45·#56.
+6. 후속: 할 일 34·36·38·42·43 · 이슈 #45·#56. (할 일 35 @태그 규칙은 DEC-043으로 결정.)
 
 ## Definition of Done
 

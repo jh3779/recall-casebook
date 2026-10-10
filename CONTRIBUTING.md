@@ -48,10 +48,13 @@ Feat: Add retriever                     ❌ (대문자 시작)
 PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 필수.
 
 ## 리뷰 요청
-- PR 본문의 **첫 줄 또는 마지막 줄**에 리뷰어를 `@태그`하고 "리뷰 요청드립니다"를 적는다 — 본문 중간에 묻지 않는다.
+- PR 본문에는 리뷰어를 `@태그`하지 않는다. 리뷰·병합 확인 요청은 병합 전 검증 결과 코멘트의 마지막 줄에 병합할 사람을 `@태그`해서 한다 (DEC-043).
 - 리뷰 코멘트는 결론만 쓰지 않고 근거(`파일:줄` 인용, 판단 이유)를 함께 남긴다.
 
 ## 자동 검증
+
+> ⏸️ **2026-10-10부터 GitHub Actions를 임시로 껐다**(계정 한도, DEC-040). 그동안 PR의 CI 체크는 돌지 않고 GitHub가 병합을 막지 않는다 — push 때 lefthook이 `scripts/local_ci.sh`를 돌리고(훅 우회 금지), 병합 전 검증 G-01은 저장소 소유자(우지훈)가 `LOCAL_CI_REQUIRE_PR=1` 엄격 모드 출력으로 확인한다(`docs/MERGE_PROTOCOL.md` 7절). 프런트(`frontend/`)를 바꾸면 `npm ci`·`npm run lint`·`npm run build`·`npm test` 결과를 PR에 적는다. 한도가 생기면 7절 5단계로 되돌리고 이 안내를 지운다.
+
 - `.github/workflows/ci.yml` — uv로 설치 후 ruff lint·format 검사 + pytest (`uv sync --locked`라 `uv.lock` 누락도 잡음)
 - `.github/workflows/pr-verify.yml` — PR 내용 상세 검증: 판정 필드·비밀값·RAG 수치 근거·PR 본문 필수 항목 + 저장소 정합성(type 목록 일치·문서 링크·AGENTS import). `scripts/ci/pr_checks.py`
 - `.github/workflows/frontend-ci.yml` — React 화면(`frontend/`) 검사(`npm ci`·lint·build·test). **필수 체크가 아님**, `frontend/**`가 바뀐 PR에서만 돌고 `frontend/package.json`이 있을 때만 검사한다(`frontend/`가 없거나 `.nvmrc`·`.gitkeep`·`README.md`만 있으면 건너뜀, 그 밖의 파일이 있는데 `package.json`이 없으면 실패). `package.json`이 있는데 `.nvmrc`·`package-lock.json`이 없어도 실패 (DEC-032)
