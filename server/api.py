@@ -1,7 +1,7 @@
 """결함 선례 찾기 API 서버 (DEC-038·039).
 
-실행 (연결 문자열은 .env에만 둔다 — 카드 벡터와 원인 명세를 Supabase에서 읽는다):
-    uv run --env-file .env uvicorn server.api:app --port 8000
+실행 (서버 전용 `.env.server`에는 조회 전용 `SERVER_DATABASE_URL`만 둔다 — 카드 벡터와 원인 명세를 Supabase에서 읽는다):
+    uv run --env-file .env.server uvicorn server.api:app --port 8000
 
 - DB 연결은 조회 전용 계정의 `SERVER_DATABASE_URL`만 쓴다(권한은 `server/README.md`). 없으면 시작하지 않는다 — 로컬 개발에서만
   `ALLOW_ADMIN_DB_FOR_SERVER=1`을 직접 붙여 적재용 관리자 연결 `DATABASE_URL`로 읽을 수 있다(경고를 남긴다, DEC-042).
