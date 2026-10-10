@@ -198,7 +198,11 @@ def test_card_model_requires_fields_for_each_cause_status(cause):
         "rank": 1, "campno": "24V001000", "maker": "m", "maker_group": "Kia", "received_date": "20240101",
         "components": [], "defect": "", "consequence": "", "remedy": "", "dup_group": "24V001000",
         "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06"},
+        "investigations": [], "checklist": [],
     }  # fmt: skip
+    Card.model_validate(
+        {**card, "cause": {"status": "no_573_report"}}
+    )  # 나머지 칸은 맞다 — 실패는 cause 때문이어야 한다
     with pytest.raises(ValidationError):
         Card.model_validate({**card, "cause": cause})
 
@@ -363,6 +367,14 @@ def test_pg_embeddings_round_trip_exactly_and_refuse_overwrite(pgconn, tmp_path,
     embeddings.main(["load"])
     embeddings.main(["load"])  # 같은 build는 그대로 두고 끝난다
     got = embeddings.fetch(pgconn, b.build_id, [c["campno"] for c in b.cards], texts)
+    # 로컬 사본: 처음엔 DB에서 받아 쓰고, 사본이 DB와 다르면 버리고 다시 받는다
+    cache = tmp_path / "vector_cache"
+    campnos = [c["campno"] for c in b.cards]
+    assert np.array_equal(embeddings.load_vectors(pgconn, b.build_id, campnos, texts, cache), vecs)
+    (path,) = cache.glob("*.npy")
+    np.save(path, np.zeros_like(vecs))
+    assert np.array_equal(embeddings.load_vectors(pgconn, b.build_id, campnos, texts, cache), vecs)
+    assert np.array_equal(np.load(path), vecs)  # 사본도 DB 값으로 다시 썼다
     with pytest.raises(embeddings.EmbeddingMismatch, match="없다"):
         embeddings.fetch(pgconn, b.build_id, [c["campno"] for c in b.cards], texts, model="other")
     pgconn.execute("update embedding_sets set fastembed_version = '0.0.1'")
@@ -438,3 +450,177 @@ def test_pg_spec_check_and_readme_reader_role(pgconn, tmp_path, monkeypatch):  #
     finally:
         pgconn.execute(f"drop owned by {role}")
         pgconn.execute(f"drop role {role}")
+
+
+# ---------------------------------------------------------------------------
+# PR 2 — 조사 요약 원인·표시 꼬리표·확인 항목
+
+
+def test_flags_mark_unknown_and_hedge_expressions_with_verbatim_spans():
+    from server.rag.flags import flags
+
+    text = "The root cause has not been determined. It appears to be a supplier weld issue, likely moisture."
+    got = {f["kind"]: [s["text"] for s in f["spans"]] for f in flags(text)}
+    assert got == {
+        "unknown_expression": [
+            "root cause has not"
+        ],  # 기존 규칙(UNKNOWN_RE)이 앞쪽 표현을 먼저 잡는다
+        "hedge_expression": ["appears to", "likely"],
+    }
+    for f in flags(text):
+        for s in f["spans"]:
+            assert text[s["start"] : s["end"]] == s["text"]
+
+
+def test_flags_do_not_treat_may_or_could_as_hedges():
+    from server.rag.flags import flags
+
+    assert flags("A cracked hose may result in a fuel leak, which could cause a fire.") == []
+
+
+def _write_inv(raw_dir, rows):
+    """FLAT_INV.zip(탭 구분) + manifest.json — sha256은 실제 파일에서 계산한다."""
+    import zipfile
+
+    from scripts.defect_precedent.nhtsa import INV_COLS
+
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    body = "".join("\t".join(r.get(c, "") for c in INV_COLS) + "\n" for r in rows)
+    with zipfile.ZipFile(raw_dir / "FLAT_INV.zip", "w") as zf:
+        zf.writestr("FLAT_INV.txt", body)
+    manifest = {"files": {"FLAT_INV.zip": {"sha256": sha256_file(raw_dir / "FLAT_INV.zip")}}}
+    (raw_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return sha256_file(raw_dir / "manifest.json")
+
+
+def sha256_file(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def inv_row(action, campno, summary="Owners report the airbag inflator ruptured.", **kw):
+    return {
+        "ACTION": action,
+        "CAMPNO": campno,
+        "SUMMARY": summary,
+        "SUBJECT": "Airbag",
+        "ODATE": "20200101",
+        "CDATE": "20210101",
+        **kw,
+    }
+
+
+def test_load_investigations_links_summaries_verbatim_and_skips_placeholders(tmp_path):
+    from server.rag.investigations import load_investigations
+
+    raw = tmp_path / "raw"
+    digest = _write_inv(
+        raw,
+        [
+            inv_row("PE20001", "24V001000", summary="  Spaces kept as in the source.  "),
+            inv_row(
+                "PE20001", "24V001000", summary="  Spaces kept as in the source.  ", MAKE="KIA"
+            ),  # 같은 조사의 다른 차종 줄
+            inv_row("EA19002", "24V001000"),
+            inv_row("PE21003", "23V002000", summary="There is no summary currently available"),
+            inv_row("PE21004", "99V999000"),  # 카드에 없는 리콜
+        ],
+    )
+    got = load_investigations(digest, {"24V001000", "23V002000"}, raw)
+    assert list(got) == ["24V001000"]
+    assert [i["action"] for i in got["24V001000"]] == ["EA19002", "PE20001"]
+    assert got["24V001000"][1]["summary"] == "  Spaces kept as in the source.  "
+
+
+def test_load_investigations_refuses_other_snapshots_and_conflicting_summaries(tmp_path):
+    from server.rag.investigations import load_investigations
+
+    raw = tmp_path / "raw"
+    digest = _write_inv(raw, [inv_row("PE20001", "24V001000")])
+    with pytest.raises(BuildMismatch, match="raw_manifest_sha256"):
+        load_investigations("0" * 64, {"24V001000"}, raw)
+    (raw / "FLAT_INV.zip").write_bytes(b"changed")
+    with pytest.raises(BuildMismatch, match="FLAT_INV.zip"):
+        load_investigations(digest, {"24V001000"}, raw)
+    digest = _write_inv(
+        raw,
+        [inv_row("PE20001", "24V001000"), inv_row("PE20001", "24V001000", summary="Other text.")],
+    )
+    with pytest.raises(BuildMismatch, match="판본"):
+        load_investigations(digest, {"24V001000"}, raw)
+
+
+def test_checklist_links_evidence_and_skips_items_without_it():
+    from server.rag.checks import checklist
+
+    card = recall(
+        "24V001000",
+        defect="Airbag inflator may rupture.",
+        consequence="",
+        remedy="Replace the inflator.",
+    )
+    filled = {"status": "filled"}
+    row = cause("24V001", supplier_names=["ARC Automotive"])
+    inv = [{"action": "PE20001"}]
+    items = {c["item"]: c["evidence"] for c in checklist(card, row, inv, filled)}
+    assert list(items) == [
+        "same_part",
+        "remedy",
+        "supplier",
+        "cause_speaker",
+    ]  # 결과 원문이 비어 고장 양상은 없음
+    assert items["supplier"] == [{"field": "573.supplier_names", "text": "ARC Automotive"}]
+    assert [e["field"] for e in items["cause_speaker"]] == [
+        "cause.speaker",
+        "investigations.action",
+    ]
+    unresolved = {**row, "resolution": "unresolved"}
+    assert "supplier" not in {
+        c["item"] for c in checklist(card, unresolved, [], {"status": "version_unresolved"})
+    }
+
+
+def test_verify_refuses_altered_investigation_summary_or_wrong_flag_span():
+    from server.rag.flags import flags
+    from server.rag.verify import NotVerbatim
+
+    original = "The cause is likely corrosion."
+    invs = {"24V001000": [{"action": "PE20001", "summary": original}]}
+    card = {"campno": "24V001000", "cause": {"status": "no_573_report"},
+            "investigations": [{"action": "PE20001", "summary": original, "flags": flags(original)}]}  # fmt: skip
+    verify([card], frozenset({"24V001000"}), {}, invs)
+    bad = {**card, "investigations": [{**card["investigations"][0], "summary": original + " "}]}
+    with pytest.raises(NotVerbatim):
+        verify([bad], frozenset({"24V001000"}), {}, invs)
+    wrong = [
+        {"kind": "hedge_expression", "label": "x", "spans": [{"start": 0, "end": 3, "text": "Thx"}]}
+    ]
+    with pytest.raises(NotVerbatim):
+        verify(
+            [{**card, "investigations": [{**card["investigations"][0], "flags": wrong}]}],
+            frozenset({"24V001000"}),
+            {},
+            invs,
+        )
+
+
+def test_api_returns_investigations_and_checklist(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from server.api import RagState, create_app
+
+    d = full_data_dir(
+        tmp_path, CARDS, [cause("24V001", pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32})]
+    )
+    b = load_build(d)
+    model = FakeModel()
+    vecs = np.array(model.passage_embed([c["defect"] for c in b.cards]))
+    invs = {"24V001000": [{"action": "PE20001", "subject": "Airbag", "summary": "Inflator likely ruptured.",
+                           "open_date": "20200101", "close_date": "20210101"}]}  # fmt: skip
+    state = RagState(b, Searcher(b.cards, vecs, model), "fake", invs)
+    with TestClient(create_app(lambda: state)) as client:
+        body = client.post("/search", json={"question": "airbag inflator rupture"}).json()
+    card = body["customer_precedents"][0]
+    assert card["investigations"][0]["speaker"].startswith("NHTSA")
+    assert card["investigations"][0]["flags"][0]["kind"] == "hedge_expression"
+    assert {c["item"] for c in card["checklist"]} >= {"same_part", "cause_speaker"}
+    assert FORBIDDEN_KEYS.isdisjoint(set(_keys(body)))

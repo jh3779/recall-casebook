@@ -17,7 +17,7 @@ import os
 import sys
 from collections.abc import Callable
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Annotated, Literal
 
 from fastapi import FastAPI
@@ -28,6 +28,9 @@ from scripts.defect_precedent.bm25_baseline import tokenize
 from server.rag import customers
 from server.rag.build import Build
 from server.rag.causes import cause_573
+from server.rag.checks import checklist
+from server.rag.flags import flags
+from server.rag.investigations import SPEAKER_INV
 from server.rag.search import Searcher
 from server.rag.verify import verify
 
@@ -44,6 +47,9 @@ class RagState:
     build: Build
     searcher: Searcher
     model_name: str
+    investigations: dict[str, list[dict]] = field(
+        default_factory=dict
+    )  # 리콜 번호 → 조사 요약 (색인에는 없음)
 
     def __post_init__(self):
         self.by_id = {c["campno"]: c for c in self.build.cards}
@@ -74,6 +80,7 @@ def load_state() -> RagState:
     from scripts.defect_precedent.retrieval_compare import card_text
     from server.rag import embeddings
     from server.rag.build import check_against_db, load_build
+    from server.rag.investigations import load_investigations
 
     build = load_build()
     embeddings.check_fastembed()
@@ -81,13 +88,53 @@ def load_state() -> RagState:
     texts = [card_text(c) for c in build.cards]
     with server_connection() as conn:
         check_against_db(conn, build)
-        vecs = embeddings.fetch(conn, build.build_id, [c["campno"] for c in build.cards], texts)
+        vecs = embeddings.load_vectors(
+            conn, build.build_id, [c["campno"] for c in build.cards], texts
+        )
     embeddings.verify_probe(model, texts, vecs)
-    return RagState(build, Searcher(build.cards, vecs, model), embeddings.MODEL)
+    invs = load_investigations(build.raw_manifest_sha256, {c["campno"] for c in build.cards})
+    return RagState(build, Searcher(build.cards, vecs, model), embeddings.MODEL, invs)
 
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+class Span(Strict):
+    start: int = Field(ge=0)
+    end: int
+    text: str = Field(min_length=1)
+
+
+class Flag(Strict):
+    """글에 이 표현이 있다는 사실 — 판정이 아니다."""
+
+    kind: Literal["unknown_expression", "hedge_expression"]
+    label: str
+    spans: list[Span] = Field(min_length=1)
+
+
+class Investigation(Strict):
+    """NHTSA 결함 조사 요약 원문 — 말한 주체는 조사관, 출처는 조사 번호."""
+
+    action: str = Field(min_length=1)
+    speaker: str = Field(min_length=1)
+    subject: str
+    summary: str = Field(min_length=1)
+    open_date: str
+    close_date: str
+    flags: list[Flag]
+
+
+class Evidence(Strict):
+    field: str
+    text: str = Field(min_length=1)
+
+
+class CheckItem(Strict):
+    item: Literal["same_part", "failure_mode", "remedy", "supplier", "cause_speaker"]
+    label: str
+    evidence: list[Evidence] = Field(min_length=1)
 
 
 class CauseSource(Strict):
@@ -104,6 +151,7 @@ class CauseText(Strict):
     text: str = Field(min_length=1)
     speaker: str = Field(min_length=1)
     source: CauseSource
+    flags: list[Flag]
 
 
 class CauseNoReport(Strict):
@@ -150,6 +198,8 @@ class Card(Strict):
         CauseText | CauseNoReport | CauseUnreadable | CauseMissingText,
         Field(discriminator="status"),
     ]
+    investigations: list[Investigation]
+    checklist: list[CheckItem]
 
 
 class SearchResponse(Strict):
@@ -184,11 +234,17 @@ class SearchRequest(BaseModel):
 
 def card_view(state: RagState, campno: str, rank: int) -> dict:
     card = state.by_id[campno]
+    cause = cause_573(card, state.build.causes, state.build.unreadable)
+    invs = state.investigations.get(campno, [])
     return {
         "rank": rank,
         **{k: card[k] for k in CARD_FIELDS},
         "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": state.build.snapshot_date},
-        "cause": cause_573(card, state.build.causes, state.build.unreadable),
+        "cause": cause,
+        "investigations": [
+            {**i, "speaker": SPEAKER_INV, "flags": flags(i["summary"])} for i in invs
+        ],
+        "checklist": checklist(card, state.build.causes.get(campno[:6]), invs, cause),
     }
 
 
@@ -197,7 +253,9 @@ def answer(state: RagState, question: str) -> dict:
     cust, others = customers.split(result.ranking, state.by_id)
     customer_cards = [card_view(state, result.ranking[r], r + 1) for r in cust]
     other_cards = [card_view(state, result.ranking[r], r + 1) for r in others]
-    verify(customer_cards + other_cards, result.candidates, state.build.causes)
+    verify(
+        customer_cards + other_cards, result.candidates, state.build.causes, state.investigations
+    )
     return {
         "build_id": state.build.build_id,
         "snapshot_date": state.build.snapshot_date,

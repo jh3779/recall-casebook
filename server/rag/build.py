@@ -25,6 +25,9 @@ class Build:
     causes: dict[str, dict]  # 캠페인 6자리(`campno[:6]`) → Part 573 원인 행
     unreadable: dict[str, str]  # 보고서는 있는데 읽지 못한 캠페인 → 사유 (명세의 `failed_kinds`)
     causes_spec: dict  # 적재 때 data_builds.causes_spec에 들어간 것과 같은 명세
+    raw_manifest_sha256: (
+        str  # 원본 flat 파일 명세(data/raw/nhtsa/manifest.json)의 sha256 — 조사 원본 대조에 쓴다
+    )
 
 
 def _canon(obj) -> str:
@@ -54,6 +57,7 @@ def load_build(data_dir: Path = PROCESSED) -> Build:
         causes,
         unreadable,
         spec,
+        meta["raw_manifest_sha256"],
     )
 
 
