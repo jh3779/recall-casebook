@@ -120,7 +120,7 @@ def cmd_load(_args) -> None:
         if tuple(existing) != expected:
             raise SystemExit(
                 f"build {build.build_id}·{MODEL}의 벡터가 이미 있는데 판본·카드 글·줄 수가 다르다(DB fastembed {existing[0]}, "
-                f"{existing[2]:,}줄) — 덮어쓰지 않는다. 판본을 바꿨으면 새 build로 올린다 (DEC-042)"
+                f"{existing[2]:,}줄) — 덮어쓰지 않는다. fastembed 판본만 바꾼 것이면 build_id가 그대로라 새 build로 풀리지 않는다 — 벡터 세트 키에 판본을 넣는 스키마 변경을 먼저 결정한다(DEC-042). 세트를 손으로 지우지 않는다"
             )
         print(f"build {build.build_id}·{MODEL}의 벡터가 이미 있고 같다 — 아무것도 바꾸지 않았다")
         return True

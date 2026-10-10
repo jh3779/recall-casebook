@@ -25,12 +25,20 @@ REPORT_V2 = {"any@1": 0.311, "any@3": 0.411, "any@5": 0.462, "any@10": 0.542}
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--vectors", choices=["db", "local"], required=True)
+    p.add_argument(
+        "--allow-drift",
+        action="store_true",
+        help="입력이 보고서와 달라도 점수를 낸다 — 재현이 아니라 재평가로 표시하고 보고서와 비교하지 않는다",
+    )
     a = p.parse_args(argv)
     from fastembed import TextEmbedding
 
     data = provenance()
-    if {k: data[k] for k in REPORT_INPUT} != REPORT_INPUT:
-        sys.exit(f"입력이 보고서와 다르다({data}) — 재현이 아니라 재평가다 (AGENTS.md 5-1)")
+    drift = {k: data[k] for k in REPORT_INPUT} != REPORT_INPUT
+    if drift and not a.allow_drift:
+        sys.exit(
+            f"입력이 보고서와 다르다({data}) — 재현이 아니라 재평가다. 점수를 보려면 --allow-drift (AGENTS.md 5-1)"
+        )
     build = load_build()
     embeddings.check_fastembed()
     model = TextEmbedding(embeddings.MODEL)
@@ -66,12 +74,13 @@ def main(argv: list[str] | None = None) -> None:
                 "vectors": a.vectors,
                 **scores,
                 "shown_any": round(shown_hits / len(questions), 3),
-                "matches_report_v2": got == REPORT_V2,
+                "kind": "재평가(입력이 보고서와 다름)" if drift else "재현",
+                "matches_report_v2": None if drift else got == REPORT_V2,
             },
             ensure_ascii=False,
         )
     )
-    if got != REPORT_V2:
+    if not drift and got != REPORT_V2:
         sys.exit(f"보고서 v2 {REPORT_V2}와 다르다: {got}")
 
 
