@@ -67,7 +67,9 @@ class SearchRequest(BaseModel):
     @classmethod
     def needs_english_words(cls, v: str) -> str:
         # 색인·모델이 영어라(기획 1절) 영어 단어가 없으면 뜻 검색만으로 근거 없는 순위가 나온다 — 받지 않는다
-        if not any(t.isalpha() for t in tokenize(v)):
+        if not any(
+            ch.isalpha() for ch in "".join(tokenize(v))
+        ):  # "4wd"·"12v"처럼 섞인 단어는 받고, 숫자만은 받지 않는다
             raise ValueError("영어 단어가 들어간 질문이 필요합니다")
         return v.strip()
 

@@ -17,7 +17,7 @@ from server.rag import customers, embeddings
 from server.rag.build import load_build
 from server.rag.search import Searcher
 
-# docs/실험_P2_검색방식비교.md — 데이터 판본(1절)과 v2 점수(3-0)
+# docs/실험_P2_검색방식비교.md — 데이터 판본(2절)과 v2 점수(3-A 표)
 REPORT_INPUT = {"recalls_sha256": "3f996182fe2efb37", "eval_sha256": "fe5433db5c7864a0"}
 REPORT_V2 = {"any@1": 0.311, "any@3": 0.411, "any@5": 0.462, "any@10": 0.542}
 

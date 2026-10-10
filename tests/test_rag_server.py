@@ -199,6 +199,7 @@ def test_api_returns_build_id_and_no_judgement_fields(tmp_path):
     with TestClient(create_app(lambda: state)) as client:
         assert client.get("/health").json()["build_id"] == b.build_id
         res = client.post("/search", json={"question": "airbag inflator rupture"})
+        assert client.post("/search", json={"question": "4wd"}).status_code == 200
         for bad in ("", "   ", "에어백 인플레이터 파열", "123"):
             assert client.post("/search", json={"question": bad}).status_code == 422
     body = res.json()
