@@ -12,7 +12,7 @@ brew install lefthook     # Windows: scoop install lefthook
 lefthook install
 ```
 
-⚠️ 클라이언트 측 방어선이다. `--no-verify`로 우회하면 통과되며, 서버 쪽은 CI가 한 번 더 검사한다.
+⚠️ 클라이언트 측 방어선이다. `--no-verify`로 우회하면 통과되며, 평소에는 서버 쪽 CI가 한 번 더 검사한다 — **Actions를 끈 동안(아래 '자동 검증' 안내)은 다시 검사하는 곳이 없으므로 병합 전 검증 G-01의 엄격 모드 출력으로 확인한다.**
 훅을 일시적으로 끄려면 `LEFTHOOK=0 git push`, 특정 검사만 건너뛰려면 `LEFTHOOK_EXCLUDE=<이름> git push`를 쓴다
 (`SKIP=`은 lefthook에서 동작하지 않는다 — SACHO 실측).
 
@@ -83,7 +83,7 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 |---|---|---|
 | squash merge만 허용 (커밋 메시지 = PR 제목) | 저장소 설정 + 룰셋 `allowed_merge_methods` | ✅ 적용됨 |
 | 머지 후 원격 브랜치 삭제 | 저장소 설정: `delete_branch_on_merge` | ✅ 적용됨 |
-| 브랜치명·PR 제목 규칙 + lint·테스트 + PR 상세 검증 | CI 필수 상태 체크 4개 (`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`) | ✅ 적용됨 — 실패 시 병합 불가 |
+| 브랜치명·PR 제목 규칙 + lint·테스트 + PR 상세 검증 | CI 필수 상태 체크 4개 (`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`) | ✅ 적용됨 — 실패 시 병합 불가 (⏸️ 2026-10-10부터 필수 체크 해제·Actions 중단, DEC-040 — 복원은 `docs/MERGE_PROTOCOL.md` 7절 5단계) |
 | 병합 게이트 (`merge-gate`) | CI 필수 상태 체크 | ⏸️ 2단계 도입 중 (DEC-009) — main 병합 후 다음 PR에서 동작 확인 뒤 필수로 |
 | main 직접 push·force push·삭제 차단, PR 필수 | 룰셋 `main 보호` (Pro 플랜이라 private에서 동작) | ✅ 적용됨 — 필수 승인 0명, 대신 병합 전 검증 프로토콜(문서 규칙) |
 | CODEOWNERS 승인 게이트 | 룰셋 "Require review from Code Owners" | ⬜ 팀원 확정 후 결정 |
