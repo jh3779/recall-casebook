@@ -1,7 +1,7 @@
 """scripts/defect_precedent/load_db.py 테스트.
 
 DB 없이 도는 테스트가 기본이다. `@pg` 테스트는 Postgres가 있을 때 돈다:
-    docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -p 54329:5432 postgres:17
+    docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -p 54329:5432 pgvector/pgvector:pg17
     TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54329/postgres uv run pytest tests/test_load_db.py
 주소가 localhost가 아니면 실행하지 않는다 (테스트가 public 스키마를 통째로 지우므로 Supabase에 향하면 안 된다).
 CI는 REQUIRE_DB_TESTS=1로 돌려서 DB 테스트가 조용히 건너뛰어지지 않게 한다 (DB가 없으면 실패).

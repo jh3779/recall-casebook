@@ -267,3 +267,12 @@
 - **영향**: 전환 시점은 저장소 소유자가 정한다(참고 기준: billing 잔여 100분 미만이거나 워크플로가 한도로 시작되지 않을 때). 로컬 검사는 개인 컴퓨터 상태(uv·gh 인증·Docker)에 기대므로, 전환 중 병합 근거는 소유자 또는 소유자가 지시한 세션이 돌린 출력만 쓴다.
 - **Status**: Accepted (사용자 요청 2026-10-09 — 전환 자체는 아직 하지 않음)
 - **Date**: 2026-10-09
+
+## DEC-042: 카드 벡터는 Supabase(pgvector)에 build 단위로 보관하고, API 서버는 시작할 때 읽어 대조한 뒤 메모리에서 검색한다 — 고객사 선례는 `maker_group` 허용 목록으로 먼저 보여 준다
+- **Decision**: ① **벡터 보관**(DEC-034 미결 ①·DEC-039 미결 정리): 카드 임베딩을 Supabase `recall_embeddings`(build·모델·리콜 번호당 1줄, `vector(384)`)와 `embedding_sets`(build·모델당 1줄 — fastembed 판본·카드 글 sha256·지문·줄 수)에 둔다(`server/rag/embeddings.sql`). 이미 있는 (build, 모델)은 지우거나 덮어쓰지 않는다. 값은 float32를 그대로 되살리는 자릿수로 적재해 적재 전후가 같다. 검색은 그대로 서버 메모리에서 한다(DEC-039 ②) — 서버는 시작할 때 로컬 build 파일 해시(`build.json`·`causes.manifest.json`)와 DB 벡터 기록(카드 글 해시·줄 수·판본)을 대조하고, 카드 16장을 지금 모델로 다시 임베딩해 저장값과 비교한다. 하나라도 어긋나면 시작을 거부한다. ② **고객사 선례**: 고객사는 회사명 대응표 확인본의 `maker_group` 허용 목록 `{"Hyundai Motor America", "Kia"}`로만 정한다(이름에 Hyundai·Kia가 들어간다는 문자열 검사 금지 — Hyundai Translead 17·HYUNDAI CARIBBEAN-PUERTO RICO 19·Genesis Supreme RV 2·NOKIAN TYRES 3·HYUNDAI TRUCK AMERICA 1장 제외). 합친 순위 상위 100 안의 고객사 카드 최대 5건을 먼저, 나머지 회사 카드 상위 10건을 따로 보여 준다. 순서만 나눌 뿐 점수·후보는 바꾸지 않는다. ③ **573 판본 미확정**: 어느 판본이 최신인지 정하지 못한 보고서(`resolution = unresolved`, 23건)는 원인 글을 싣지 않고 상태만 알린다(AGENTS.md 2-3). ④ DB 테스트 이미지는 `pgvector/pgvector:pg17`(Postgres 17 + pgvector)로 바꾼다(CI·`local_ci.sh`·테스트 안내).
+- **Reason**: ① 2026-10-10 사용자 결정(인터뷰 — "Supabase 벡터 칸"). 데이터 판본과 벡터를 같은 곳에서 build로 묶어 "답변 → build → 벡터"까지 되짚을 수 있다. 같은 build를 서버에서 다시 임베딩하지 않아도 되고(CPU 약 9분), 연구 캐시와 DB 벡터로 잰 749문항 점수가 같다(아래). ② 사용자 결정(1차 범위에 "고객사 선례 먼저" 포함). 문자열 검사는 다른 회사를 섞는다 — 회사명 대응표 확인본(DEC-033·036)이 정한 묶음을 쓴다.
+- **검증**: 서버 검색 함수로 749문항 대리 평가 Hit@1·3·5·10 = 0.311·0.411·0.462·0.542 — 연구 캐시 벡터와 일회용 pgvector DB에서 읽은 벡터 모두 보고서 v2와 같다(`server/rag/parity.py`). 로컬 서버 시작 약 6초(build 로드·벡터 30,350줄 조회·대조 포함).
+- **Alternatives**: 벡터 파일(.npy)을 서버와 함께 배포 — 판본 추적을 파일 해시로 따로 관리해야 하고 사용자 결정과 달라 기각. 서버 시작마다 다시 임베딩 — 약 9분이라 기각. pgvector로 DB에서 검색 — 품질·지연(DEC-039)으로 기각, 보관만 한다. 고객사 문자열 포함 검사 — 다른 회사 42장이 섞여 기각.
+- **영향 / 알려진 한계**: 운영 Supabase에 `embeddings.sql` 적용과 `embeddings load`(새 build 적재 뒤)가 필요하다. 고객사 경계(특히 Hyundai Translead 트레일러를 넣을지)는 사용자 확인 대기 — 바꾸면 목록 한 줄과 이 DEC를 고친다. CORS는 프런트 개발 주소만 허용(배포 주소는 배포를 정할 때). 조사 요약 원인·추정 표현 표시·확인 항목·부품 범위 좁히기는 다음 PR(계획 PR 2·3).
+- **Status**: ①·④ Accepted (사용자 결정 2026-10-10) · ②·③ Proposed (고객사 경계 사용자 확인 대기)
+- **Date**: 2026-10-10

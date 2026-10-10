@@ -11,9 +11,9 @@
 #
 # 검사 대상은 **커밋된 HEAD**다. 작업 트리의 커밋하지 않은 변경이 결과에 섞이지 않게 HEAD를 임시 worktree에 꺼내서 돈다.
 # 이 브랜치의 **열린** PR이 있으면 gh로 제목·본문을 읽어 제목 규칙과 PR 본문 검사(변경 요약·검증 방법 수치 등)도 돈다.
-# DB 테스트(tests/test_load_db.py의 pg 테스트)는 TEST_DATABASE_URL이 있을 때만 돈다 — CI는 Postgres 17을 띄워 REQUIRE_DB_TESTS=1로 돈다.
+# DB 테스트(tests/test_load_db.py·test_rag_server.py의 pg 테스트)는 TEST_DATABASE_URL이 있을 때만 돈다 — CI는 Postgres 17(pgvector 포함)을 띄워 REQUIRE_DB_TESTS=1로 돈다.
 #   ⚠️ 이 테스트는 대상 DB의 public 스키마를 지운다. 반드시 일회용 컨테이너에만 쓴다:
-#      docker run -d --rm --name lgcns-test-pg -e POSTGRES_PASSWORD=localtest -p 54331:5432 postgres:17
+#      docker run -d --rm --name lgcns-test-pg -e POSTGRES_PASSWORD=localtest -p 54331:5432 pgvector/pgvector:pg17
 #      TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54331/postgres bash scripts/local_ci.sh
 # 프런트(frontend/) 검사는 CI 필수가 아니라(frontend-ci.yml) 여기 넣지 않았다 — frontend/package.json이 생기는 PR에서 함께 넣는다.
 # AGENTS.md 6절의 훅 우회 금지(--no-verify, LEFTHOOK=0)는 CI를 끈 동안에도 그대로다.

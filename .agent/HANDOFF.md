@@ -1,6 +1,6 @@
 # Agent Handoff
 
-_갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 평가 · #52 질문 50개 · #55·#57 Actions 절약 · 시점 평가 일정 팀 확인)_
+_갱신: 2026-10-10 (P2 PR 1 — API 서버 뼈대·검색, DEC-042 벡터 Supabase 보관·고객사 선례 · 10/10 시트 생성)_
 
 ## Current Objective
 
@@ -24,6 +24,10 @@ _갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 
 - 바탕화면: `결함선례_데이터_2026-10-06.zip`, `결함선례_기획_쉬운설명_3판.pdf` — **둘 다 정정 전 수치(BM25 0.605, 573 원인 72.3%)가 들어 있음**.
 
 ## Last Work
+
+**2026-10-10 (우지훈 세션)**:
+- **10/10 시점 평가 시트 생성**(main `75551bf`, `data/processed/defect/time_eval_2026-10-10/` — 예비 151행·본 1,329행, 압축본 `시점평가_정답표시_시트_2026-10-10.zip`). 드라이브 올리기는 사용자 몫.
+- **P2 PR 1 (브랜치 `feat/rag-api-server`)** — `server/`(build 로더·Supabase 벡터 적재/조회·BM25+bge-small RRF 검색·고객사 구역·573 원인 원문·응답 검사·FastAPI `/search`·`/health`), DEC-042. 서버 검색 함수로 749문항 H@1·3·5·10 = 0.311·0.411·0.462·0.542(연구 캐시·일회용 pgvector DB 벡터 모두 보고서 v2와 같음). 의존성 fastapi·uvicorn·fastembed 0.9.0·numpy(+개발 httpx2). DB 테스트 이미지 `pgvector/pgvector:pg17`.
 
 **2026-10-08~09 (우지훈 세션)**:
 - **P2 검색 방식 비교(PR #49)** — 749문항 대리 평가로 BM25 / 뜻 검색 / RRF / 573 원인 칸 색인 / 저장 위치(Postgres FTS·pgvector·메모리) / 원인 표시 LLM 3종을 비교했다. 사용자 결정으로 **DEC-039** 확정: BM25 + bge-small RRF(H@10 0.510 → 0.542, 회사 이름 뺀 질문 0.483 → 0.531), API 서버 메모리 검색, 573 원인 칸이 있는 카드는 LLM 없이 원문 그대로. 원인 표시 LLM은 30건×2회에서 실행마다 3~7건이 달라졌다(해석 실패 0건).
@@ -113,6 +117,8 @@ _갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 
 - [[DEC-034]] Supabase build 단위 적재, `DATABASE_URL` (박예원, PR #30 병합)
 - [[DEC-035]] force push 차단·이미 push한 커밋은 amend·rebase하지 않음 (PR #37, 병합 `fa3adef`)
 - [[DEC-036]] 회사명 확인본을 `nhtsa build`가 카드에 반영, `maker` 의미 변경과 `maker_group` 칸 추가 (박예원, PR #42 병합 `abc674a`)
+- [[DEC-039]] P2 검색 BM25 + bge-small RRF·메모리 검색·573 원인 원문 (PR #49) / [[DEC-040]] Actions 소진 시 로컬 검사 전환 (PR #59)
+- [[DEC-042]] 카드 벡터 Supabase 보관·서버 시작 시 대조·고객사 `maker_group` 허용 목록 (PR 1, ②·③ Proposed)
 
 ## Failed Attempts
 
@@ -145,8 +151,8 @@ _갱신: 2026-10-09 (#49 병합 — DEC-039 검색 확정 · #50 DEC-037 시점 
 
 1. **10/10 정답 표시 시트 전달 (이슈 #54, 할 일 40)**: 이 PR(`agreed_label` 열·질문 상태 검사) 병합 뒤 main 최신 커밋에서(커밋하지 않은 scripts 변경 없이) `--set pilot`·`--set main`으로 시트를 다시 만들어 박예원·박성호 님께 드라이브로 전달하고, 시트를 만든 커밋 해시를 이슈 #54에 남긴다. 안내서 `docs/시점평가_정답표시_안내.md`도 함께. 후보 파일(`candidates_*.json`, 출처·순위 포함)은 표시자에게 주지 않는다. 대체 회차는 할 일 40대로 필요할 때. **원인 미확인 150건 시트**는 표시 담당자·기한이 정해지면(사용자 결정 대기) 새 형식으로 다시 써서 전달 — 유료 LLM 150회 재호출(약 0.01달러)이라 실행 전 확인.
 2. **원인 표시 미결 (이슈 #53, 할 일 39)**: **10/12 전에 확정** — 원인 칸 없는 카드의 표시·라벨 문구, NR·Unknown·Pending 처리, "원인 미확인" 표시의 **잠정안**(원문 그대로 + 규칙에 걸리면 표시만). **150건 사람 표시 뒤 확정** — "원인 미확인" 표시 방법(정확도). P2 기간 안에 표시가 끝나지 않으면 잠정안을 유지하고 정확도는 "미측정"으로 적는다.
-3. **P2 개발(10/12~14)**: API 서버(DEC-038) — 시작 시 latest build 카드·임베딩 로드(`build_id` 응답 포함), BM25 + bge-small RRF 상위 10, 573 원인 원문 표시, 검사(원문 구간·검색 범위 안 리콜 번호). 임베딩 보관 위치(DEC-034 미결 ①)를 먼저 정한다.
-4. **운영 Supabase 새 build 적재**: #48 반영 카드 build `c6872ae8…`를 `load_db schema`·`load --causes full`로 올리고 #36에 결과 기록(옛 build는 지우지 않음, DEC-034 ⓪).
+3. **P2 개발(10/11~14, 계획 PR 1~3)**: PR 1(서버 뼈대·검색, DEC-042)은 `feat/rag-api-server`에 커밋 — Actions 전환(DEC-040, MERGE_PROTOCOL 7절) 뒤 push·PR. 다음 PR 2: 조사 요약 원인(FLAT_INV, 말한 주체 NHTSA 조사관, 색인에는 넣지 않음)·추정/원인 미확인 표현 표시(단어 목록은 구현 전 고정)·확인 항목 고정 틀. PR 3: 부품 범위 좁히기(v3) 749문항 before/after. 사용자 확인 대기: 고객사 경계(Hyundai Translead 포함 여부), 추정 표현 단어 목록, 확인 항목 이름(박성호 님과 — PR #60 `Recall` 필드 이름과 응답 계약도).
+4. **운영 Supabase 새 build 적재**: #48 반영 카드 build `c6872ae8…`를 `load_db schema`·`load --causes full`로 올리고, PR 1 병합 뒤 `server.rag.embeddings schema`·`load`로 카드 벡터를 올린다(`server/README.md`). #36에 결과 기록(옛 build는 지우지 않음, DEC-034 ⓪).
 5. 후속: 할 일 34(pre-push 훅)·35(@태그 규칙 결정)·36(문서 보완)·38(AGENTS.md 5-2 문구)·41(Actions 추가 절약)·42(handbook 정리) · 이슈 #45·#56·#36.
 
 ## Definition of Done
