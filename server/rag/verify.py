@@ -33,7 +33,7 @@ def verify(
         if card["campno"] not in candidates:
             raise OutOfCandidates(card["campno"])
         cause = card["cause"]
-        if cause["status"] == "filled":
+        if cause["status"] in ("filled", "stated_unknown"):
             original = causes[cause["source"]["campaign"]]["cause_text"]
             spans = check(original, [cause["text"]])["spans"]
             if not spans or spans[0]["text"] != cause["text"]:

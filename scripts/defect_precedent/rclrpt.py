@@ -69,7 +69,9 @@ _CAUSE = re.compile(
     r"|Supplier Identification|Component Manufacturer|Description of the Safety|Chronology|Population)|\Z)",
     re.S | re.I,
 )
-# 원인 칸이 있어도 실제로는 비어 있는 값
+# 원인 칸에 원인 대신 "미보고·조사 중"을 적은 값 — 경계는 2026-10-07 수집 때의 "빈칸" 규칙 그대로다.
+# 2026-10-11부터(DEC-047) 이런 글은 버리지 않고 `stated_unknown`으로 원문을 보존한다(제조사가 쓴 서술이므로).
+# 글자가 하나도 없는 칸만 `empty`다.
 _EMPTY_CAUSE = re.compile(
     r"^(NR|.*NR - Not Reported|.*has not reported the cause|still being investigated|N/?A|none"
     r"|unknown|tbd|to be determined|under investigation|investigation (is )?ongoing|not known|unclear)\b",
@@ -82,11 +84,26 @@ _SUPPLIER_BLOCK = re.compile(
 )
 # "JUN 05, 2024", "NOV 18,2014", "Sep 14, 2015" 모두 있다
 _SUBMISSION = re.compile(r"Submission Date\s*:\s*([A-Za-z]{3})\s+(\d{1,2})\s*,\s*(\d{4})")
-# 원인 칸이 쪽을 넘으면 pdftotext가 쪽 꼬리말·머리말을 본문 사이에 끼운다
+# 원인 칸이 쪽을 넘으면 pdftotext가 쪽 꼬리말·머리말을 본문 사이에 끼운다. 새 쪽의 머리말은 쪽 경계 문자(\f) 바로 뒤에 오므로
+# (2026-10-12 전수 확인 — 줄 전체 규칙이 1,267개 캠페인을 놓친 이유가 이 \f였다) 그 자리의 머리말만 지운다(DEC-047, PR #82 Codex).
+# 지우는 것: ⓐ 49 CFR 꼬리말 문장 ⓑ \f 바로 뒤의 "Part 573 Safety Recall Report <번호>"(앞뒤 쪽 번호 포함) ⓒ 줄 전체가 머리말뿐인 줄
+# (첨부된 다른 보고서 머리말, 26V404) ⓓ 줄 전체 "Page N"·"Page N of M". 본문에 인용된 보고서 제목(자기 번호라도)과
+# "See Page 2 of 3"은 남긴다.
 _PAGE_NOISE = re.compile(
     r"The information contained in this report was submitted pursuant to 49 CFR\s*§\s*573"
-    r"|Part 573 Safety Recall Report\s+\d\d[A-Z]-?\d{3}"
-    r"|\bPage \d+(?: of \d+)?\b"
+)
+_PAGE = r"Page[ \t]+\d+(?:[ \t]+of[ \t]+\d+)?"
+_HEADER = (
+    rf"(?:{_PAGE}[ \t]+)?Part 573 Safety Recall Report[ \t]+\d\d[A-Z]-?\d{{3}}(?:[ \t]+{_PAGE})?"
+)
+_PAGE_TOP_HEADER = re.compile(rf"\f[ \t]*{_HEADER}")
+_HEADER_ONLY_LINE = re.compile(rf"^[ \t]*{_HEADER}[ \t]*$", re.M)
+_PAGE_ONLY_LINE = re.compile(rf"^[\f \t]*{_PAGE}[ \t]*$", re.M)
+# 원인 글 정리 방식(DEC-047) — 판독 규칙을 바꿔 **출력이 달라지면** 판본을 올린다. 머리말을 쪽 경계 \f 기준으로 바꾼 규칙은
+# 12b와 11,719건 출력이 바이트까지 같아(2026-10-12 확인) 12b 그대로 — 운영 build f1fe1843ed0f2c66과 같은 글. 원인 파일 명세
+# (causes.manifest.json)에 기록되고, 서버는 상수가 아니라 그 build의 명세에서 읽는다(옛 규칙 build에 새 설명이 붙지 않게).
+CAUSE_TEXT_BASIS = (
+    "rclrpt-2026-10-12b; pdftotext-layout; page-header-footer-removed; whitespace-collapsed"
 )
 
 
@@ -103,11 +120,26 @@ def parse_report(text: str) -> dict:
     )
 
     m = _CAUSE.search(flat)
-    cause = re.sub(r"\s+", " ", _PAGE_NOISE.sub(" ", m.group(1))).strip() if m else None
+    cause = (
+        re.sub(
+            r"\s+",
+            " ",
+            _PAGE_NOISE.sub(
+                " ",
+                _PAGE_ONLY_LINE.sub(
+                    "", _HEADER_ONLY_LINE.sub("", _PAGE_TOP_HEADER.sub(" ", m.group(1)))
+                ),
+            ),
+        ).strip()
+        if m
+        else None
+    )
     if m is None:
         cause_status = "no_field"
-    elif not cause or _EMPTY_CAUSE.match(cause):
+    elif not cause:
         cause_status = "empty"
+    elif _EMPTY_CAUSE.match(cause):
+        cause_status = "stated_unknown"
     else:
         cause_status = "filled"
 
@@ -122,7 +154,7 @@ def parse_report(text: str) -> dict:
         countries = [c for c in countries if c and not re.match(r"^(NR|N/A)\b", c, re.I)]
     return {
         "submission_date": submission,
-        "cause_text": cause if cause_status == "filled" else "",
+        "cause_text": cause if cause_status in ("filled", "stated_unknown") else "",
         "cause_status": cause_status,
         "supplier_names": names,
         "supplier_countries": countries,
@@ -428,7 +460,7 @@ def run(
     )  # --out 폴더가 없으면 긴 작업 도중 첫 중간 저장에서 죽는다
     partial_path = out_path.with_name(out_path.stem + ".partial.jsonl")
     failures_path = out_path.with_name(out_path.stem + "_failures.jsonl")
-    counts = {"filled": 0, "empty": 0, "no_field": 0}
+    counts = {"filled": 0, "stated_unknown": 0, "empty": 0, "no_field": 0}
     rows, failures, unresolved = [], [], 0
     started = time.monotonic()
     interrupted = False
@@ -562,6 +594,7 @@ def run(
             "expect_campaigns": expect_campaigns,
             "listing_campaigns": len(reports),
             "pdftotext": poppler_version,
+            "text_basis": CAUSE_TEXT_BASIS,
             "generated_at": datetime.now(UTC).isoformat(),
         }
         manifest_path.write_text(
@@ -574,12 +607,15 @@ def run(
         )
     manual_used = sum(1 for r in rows if r["resolution"] == "manual")
     print(
-        f"원인 칸: 채워짐 {counts['filled']} / 비어 있음 {counts['empty']} / 칸 없음 {counts['no_field']}"
+        f"원인 칸: 채워짐 {counts['filled']} / 미보고·조사 중 서술 {counts['stated_unknown']} / 비어 있음 {counts['empty']} / 칸 없음 {counts['no_field']}"
         f" / 최신판 미확정 {unresolved} / 읽지 못함 {len(failures)} (총 {len(picked)},"
         f" 그중 사람 확인 제출일 사용 {manual_used})"
     )
     if mode == "sample":
-        print("  2026-10-06 표본 300건 (--baseline): 채워짐 205 (68.3%) · 비어 있음 95 · 미확정 0")
+        print(
+            "  기준 표본 300건 (--baseline, 2026-10-12 규칙): 채워짐 205 (68.3%) · 미보고·조사 중 서술 83 · 비어 있음 12 · 미확정 0"
+            " — 2026-10-06 첫 판독(빈칸에 서술 포함)은 채워짐 205 · 비어 있음 95"
+        )
     print(f"출력: {out_path}")
 
 

@@ -184,12 +184,16 @@ def sample_matches(base: dict, causes_sample: list[dict]) -> bool:
     got = {
         "rclrpt_sample_filled": sum(r["cause_status"] == "filled" for r in causes_sample),
         "rclrpt_sample_empty": sum(r["cause_status"] == "empty" for r in causes_sample),
+        "rclrpt_sample_stated_unknown": sum(
+            r["cause_status"] == "stated_unknown" for r in causes_sample
+        ),
         "rclrpt_sample_unresolved": sum(r["resolution"] == "unresolved" for r in causes_sample),
     }
     same_pdfs = {r["campaign"]: r["pdfs"] for r in causes_sample} == {
         s["campaign"]: s["pdfs"] for s in base["rclrpt_sample"]
     }
-    return same_pdfs and all(got[k] == expected[k] for k in got)
+    # stated_unknown이 없던 옛 기준 파일은 그 상태가 없던 규칙이라 0이다(DEC-047)
+    return same_pdfs and all(got[k] == expected.get(k, 0) for k in got)
 
 
 def full_coverage(
