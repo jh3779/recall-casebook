@@ -394,22 +394,18 @@ def agreement(
     cand_rate = round(sum(a[k] == b[k] for k in focus) / len(focus), 3) if focus else None
     one_sided_yes = sorted(k for k in a if (a[k] == "yes") != (b[k] == "yes"))
     passed = all(q_same) and (cand_rate is None or cand_rate >= 0.8)
-    # 합격해도 한 사람만 yes인 후보는 합의로 해소한 뒤 본 평가를 나눈다(안내서 4절 2항) — 두 시트의 agreed_label이 같은
-    # yes/no/unsure이고 합의 이유(note)가 있어야 해소. 일치율 계산에는 쓰지 않는다(위 label만).
-    rows = {}
-    for r in [*sheet_a, *sheet_b]:
-        k = (r["action_no"], r["campno"])
-        agreed = r.get("agreed_label", "").strip()
-        rows.setdefault(k, {"agreed": set(), "note": False})
-        if agreed:
-            rows[k]["agreed"].add(agreed)
-        rows[k]["note"] |= bool(r.get("note", "").strip())
+    # 합격해도 한 사람만 yes인 후보는 합의로 해소한 뒤 본 평가를 나눈다(안내서 4절 2항) — 두 시트 모두에 같은 agreed_label
+    # (yes/no/unsure)이 있고 합의 이유(note)가 어느 시트에든 있어야 해소. 한 시트에만 적은 합의값은 두 사람이 함께 본
+    # 근거가 아니라서 받지 않는다(PR #72 리뷰 f755b62). 일치율 계산에는 쓰지 않는다(위 label만).
+    agreed_a = {(r["action_no"], r["campno"]): r.get("agreed_label", "").strip() for r in sheet_a}
+    agreed_b = {(r["action_no"], r["campno"]): r.get("agreed_label", "").strip() for r in sheet_b}
+    noted = {
+        (r["action_no"], r["campno"]) for r in [*sheet_a, *sheet_b] if r.get("note", "").strip()
+    }
     unresolved = [
         list(k)
         for k in one_sided_yes
-        if len(rows[k]["agreed"]) != 1
-        or not rows[k]["agreed"] <= set(LABELS)
-        or not rows[k]["note"]
+        if agreed_a[k] not in LABELS or agreed_a[k] != agreed_b[k] or k not in noted
     ]
     return {
         "questions": len(actions),

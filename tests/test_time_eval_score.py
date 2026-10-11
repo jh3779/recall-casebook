@@ -970,6 +970,10 @@ def test_agreement_reports_whether_one_sided_yes_was_resolved():
     typo = [dict(r, agreed_label="yse") if r["campno"] == "C0" else r for r in rows_a]
     typo_c = [dict(r, agreed_label="yse") if r["campno"] == "C0" else r for r in rows_c]
     assert ts.agreement(typo, typo_c, expected={"PE1"})["resolution_complete"] is False  # 오타
+    one_sheet = [dict(r, agreed_label="") if r["campno"] == "C0" else r for r in rows_c]
+    assert (
+        ts.agreement(rows_a, one_sheet, expected={"PE1"})["resolution_complete"] is False
+    )  # 한 시트에만 합의값
     rows_c[1]["agreed_label"] = "no"  # 두 시트의 합의값이 다르면 해소 아님
     assert ts.agreement(rows_a, rows_c, expected={"PE1"})["resolution_complete"] is False
 
