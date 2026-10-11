@@ -2,10 +2,10 @@
 
 사용법:
     # 예비 5문항 두 사람 일치(합격선, docs/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
-    uv run python -m scripts.defect_precedent.time_eval_score agreement --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
+    uv run python -m scripts.defect_precedent.time_eval_score agreement --expect 5 --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
     # 본 평가 채점 — 나눠 표시한 시트 여러 개를 합친다(같은 후보를 둘이 표시했으면 agreed_label 필요)
     uv run python -m scripts.defect_precedent.time_eval_score score \
-        --candidates <candidates_main.json> --sheets <시트1.csv> [<시트2.csv> ...] [--partial]
+        --candidates <candidates_main.json> [<candidates_<대체 회차>.json> ...] --sheets <시트1.csv> [<시트2.csv> ...] [--partial]
 
 규칙(이 도구 작성자가 정답 표시 결과를 보기 전인 2026-10-11에 DEC-037 ⑦·안내서 4·5절을 그대로 옮겨 고정 — 결과를 보고 고치지 않는다):
 - 점수에 쓰는 표시 = `agreed_label`이 있으면 그것, 없으면 `label`. 한 후보에 서로 다른 `label`이 둘 이상인데 `agreed_label`이
@@ -85,6 +85,10 @@ def merge_labels(sheets: list[list[dict]]) -> dict[tuple[str, str], dict]:
                     "notes": [],
                 },
             )
+            if m["dup_group"] != r["dup_group"]:
+                sys.exit(
+                    f"{key}: 시트마다 dup_group이 다르다 {m['dup_group']!r} ≠ {r['dup_group']!r}"
+                )
             label, agreed = r.get("label", "").strip(), r.get("agreed_label", "").strip()
             for v in (label, agreed):
                 if v and v not in LABELS:
@@ -101,6 +105,10 @@ def merge_labels(sheets: list[list[dict]]) -> dict[tuple[str, str], dict]:
     for key, m in merged.items():
         if len(m["agreed"]) > 1:
             sys.exit(f"{key}: agreed_label이 시트마다 다르다 {sorted(m['agreed'])}")
+        if m["agreed"] and len(m["labelers"]) < 2:
+            sys.exit(
+                f"{key}: agreed_label은 두 사람 이상이 label을 남긴 후보에만 쓴다(표시자 {len(m['labelers'])}명) — 안내서 1절"
+            )
         if m["agreed"]:
             m["final"] = next(iter(m["agreed"]))
         elif len(set(m["labels"])) > 1:
@@ -145,7 +153,8 @@ def per_question(merged: dict, items: list[dict], partial: bool) -> tuple[list[d
         labelers = set().union(*(m["labelers"] for m in rows)) if rows else set()
         q = {"action_no": it["action_no"], "answered": bool(yes), "labelers": len(labelers)}
         if not yes:
-            q["reason"] = NO_PART if NO_PART in notes else "후보에 선례 없음"
+            all_unsure = all(m["final"] == "unsure" for m in rows)
+            q["reason"] = NO_PART if all_unsure and NO_PART in notes else "후보에 선례 없음"
         for method in METHODS:
             ranks = [it["pool"][c][method] for c in yes if method in it["pool"][c]]
             q[method] = min(ranks) if ranks else None
@@ -157,7 +166,7 @@ def hit(q: dict, method: str, k: int) -> bool:
     return q[method] is not None and q[method] <= k
 
 
-def summarize(questions: list[dict]) -> dict:
+def summarize(questions: list[dict], partial: bool = False) -> dict:
     answered = [q for q in questions if q["answered"]]
     n_all, n_ans = len(questions), len(answered)
     out: dict = {
@@ -185,7 +194,9 @@ def summarize(questions: list[dict]) -> dict:
     bm_only = sum(1 for q in answered if hit(q, "bm25", 10) and not hit(q, "b_rrf", 10))
     p = mcnemar_exact(b_only, bm_only)
     diff = (b_only - bm_only) / n_ans if n_ans else 0.0
-    if n_ans < MIN_ANSWERED:
+    if partial:
+        outcome = "미측정(중간 결과)"  # 표시가 안 끝난 문항을 뺀 값 — 발췌해도 방향이 보이지 않게
+    elif n_ans < MIN_ANSWERED:
         outcome = "미측정"  # 발췌해도 방향이 보이지 않게 — 숫자는 남기되 판정 문구는 내지 않는다
     elif p < 0.05 and abs(diff) >= 0.03:
         outcome = "차이 있음 — " + ("B가 높음" if diff > 0 else "BM25가 높음")
@@ -218,21 +229,30 @@ def bootstrap(answered: list[dict]) -> tuple[float, float] | None:
     return round(float(lo), 3), round(float(hi), 3)
 
 
-def agreement(sheet_a: list[dict], sheet_b: list[dict]) -> dict:
-    """예비 합격선(안내서 4절) — 합의 전 표시(label)로 계산. agreed_label은 쓰지 않는다."""
+def agreement(sheet_a: list[dict], sheet_b: list[dict], expect: int) -> dict:
+    """예비 합격선(안내서 4절) — 합의 전 표시(label)로 계산. agreed_label은 쓰지 않는다.
+    expect = 두 사람이 함께 표시하기로 한 문항 수(예비 5, 재확인 3) — 덜 표시한 시트로 합격이 나오지 않게."""
     a = {(r["action_no"], r["campno"]): r.get("label", "").strip() for r in sheet_a}
     b = {(r["action_no"], r["campno"]): r.get("label", "").strip() for r in sheet_b}
-    ids_a = {r.get("labeler_id", "").strip() for r in sheet_a} - {""}
-    ids_b = {r.get("labeler_id", "").strip() for r in sheet_b} - {""}
-    if ids_a & ids_b:
-        sys.exit(
-            f"두 시트에 같은 labeler_id {sorted(ids_a & ids_b)}가 있다 — 서로 다른 두 사람의 시트여야 한다"
-        )
+    ids = []
+    for name, sheet in (("첫째", sheet_a), ("둘째", sheet_b)):
+        found = {r.get("labeler_id", "").strip() for r in sheet}
+        if "" in found or len(found) != 1:
+            sys.exit(
+                f"{name} 시트의 labeler_id가 모든 줄에 한 사람으로 적혀 있지 않다 {sorted(found)} — 한 사람이 한 시트를 모두 표시한다"
+            )
+        ids.append(found.pop())
+    if ids[0] == ids[1]:
+        sys.exit(f"두 시트의 labeler_id가 같다({ids[0]}) — 서로 다른 두 사람의 시트여야 한다")
     if set(a) != set(b):
         sys.exit("두 시트의 문항·후보가 다르다 — 같은 예비 시트를 따로 표시한 것이어야 한다")
     if any(v not in LABELS for v in [*a.values(), *b.values()]):
         sys.exit("표시가 비었거나 yes/no/unsure가 아닌 후보가 있다 — 둘 다 모두 표시한 뒤 계산한다")
     actions = sorted({k[0] for k in a})
+    if len(actions) != expect:
+        sys.exit(
+            f"시트의 문항이 {len(actions)}개다 — 함께 표시하기로 한 {expect}개와 다르다(--expect)"
+        )
     q_same = [
         any(a[k] == "yes" for k in a if k[0] == act) == any(b[k] == "yes" for k in b if k[0] == act)
         for act in actions
@@ -256,36 +276,49 @@ def main(argv: list[str] | None = None) -> None:
     sub = p.add_subparsers(dest="cmd", required=True)
     ag = sub.add_parser("agreement", help="예비 5문항 두 사람 일치(합격선)")
     ag.add_argument("--sheets", type=Path, nargs=2, required=True)
+    ag.add_argument(
+        "--expect", type=int, required=True, help="함께 표시한 문항 수(예비 5, 재확인 3)"
+    )
     sc = sub.add_parser("score", help="본 평가 채점")
-    sc.add_argument("--candidates", type=Path, required=True)
+    sc.add_argument(
+        "--candidates",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="숨긴 후보 파일 — 대체 회차를 더 표시했으면 그 파일도 함께(문항이 겹치면 멈춘다)",
+    )
     sc.add_argument("--sheets", type=Path, nargs="+", required=True)
     sc.add_argument("--partial", action="store_true", help="표시가 빈 문항을 빼고 중간 결과로 낸다")
     a = p.parse_args(argv)
 
     if a.cmd == "agreement":
-        out = agreement(read_sheet(a.sheets[0]), read_sheet(a.sheets[1]))
+        out = agreement(read_sheet(a.sheets[0]), read_sheet(a.sheets[1]), a.expect)
         out["inputs"] = {str(s): sha256_of(s) for s in a.sheets}
         print(json.dumps(out, ensure_ascii=False, indent=1))
         return
 
-    cand = json.loads(a.candidates.read_text(encoding="utf-8"))
+    cands = [json.loads(c.read_text(encoding="utf-8")) for c in a.candidates]
+    items = [it for cand in cands for it in cand["items"]]
+    seen: dict[str, int] = {}
+    for it in items:
+        seen[it["action_no"]] = seen.get(it["action_no"], 0) + 1
+    if dup := sorted(k for k, v in seen.items() if v > 1):
+        sys.exit(f"후보 파일들에 같은 문항이 두 번 있다 {dup[:3]} — 회차마다 다른 문항이어야 한다")
     merged = merge_labels([read_sheet(s) for s in a.sheets])
-    check_against_candidates(merged, cand["items"])
-    questions, skipped = per_question(merged, cand["items"], a.partial)
-    out = summarize(questions)
+    check_against_candidates(merged, items)
+    questions, skipped = per_question(merged, items, a.partial)
+    out = summarize(questions, partial=bool(skipped))
     if skipped:
         out["status"] = (
             f"중간 결과(표시 안 끝난 문항 {len(skipped)}개 제외 — 최종 보고에 쓰지 않음)"
         )
         out["skipped"] = skipped
     out["inputs"] = {
-        "candidates": {
-            "file": str(a.candidates),
-            "sha256": sha256_of(a.candidates),
-            "set": cand["set"],
-        },
+        "candidates": [
+            {"file": str(c), "sha256": sha256_of(c), "set": cand["set"], "code": cand.get("code")}
+            for c, cand in zip(a.candidates, cands, strict=True)
+        ],
         "sheets": {str(s): sha256_of(s) for s in a.sheets},
-        "candidates_code": cand.get("code"),
         "numpy": version("numpy"),  # 부트스트랩 난수열은 numpy 판본에 따라 달라질 수 있다
     }
     out["note"] = (

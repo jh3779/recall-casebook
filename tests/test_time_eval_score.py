@@ -70,7 +70,11 @@ def test_score_uses_agreed_label_first_and_counts_both_scores(tmp_path):
             row("PE3", "E", "unsure", note=ts.NO_PART),
         ],
     )
-    merged = ts.merge_labels([ts.read_sheet(sheet)])
+    # 합의값은 두 사람이 표시한 후보에만 쓴다 — B를 함께 표시한 두 번째 사람(다르게 표시, 같은 합의값)
+    second = write_sheet(
+        tmp_path / "c.csv", [row("PE1", "B", "yes", labeler_id="L-C1", agreed_label="yes")]
+    )
+    merged = ts.merge_labels([ts.read_sheet(sheet), ts.read_sheet(second)])
     ts.check_against_candidates(merged, cand)
     qs, skipped = ts.per_question(merged, cand, partial=False)
     out = ts.summarize(qs)
@@ -193,8 +197,8 @@ def test_bootstrap_is_pinned_to_dec037_seed_draws_and_percentiles():
 
 def test_agreement_refuses_two_sheets_from_the_same_labeler():
     rows = [row("PE1", "A", "yes", labeler_id="L-A1")]
-    with pytest.raises(SystemExit, match="같은 labeler_id"):
-        ts.agreement(rows, rows)
+    with pytest.raises(SystemExit, match="labeler_id가 같다"):
+        ts.agreement(rows, rows, expect=1)
 
 
 def test_score_lists_questions_labeled_by_two_people(tmp_path):
@@ -207,7 +211,11 @@ def test_score_lists_questions_labeled_by_two_people(tmp_path):
 
 
 def test_agreement_uses_raw_labels_and_lists_one_sided_yes(tmp_path):
-    rows_a = [row("PE1", "A", "yes"), row("PE1", "B", "no"), row("PE2", "C", "no")]
+    rows_a = [
+        row("PE1", "A", "yes", labeler_id="L-A1"),
+        row("PE1", "B", "no", labeler_id="L-A1"),
+        row("PE2", "C", "no", labeler_id="L-A1"),
+    ]
     rows_b = [
         row("PE1", "A", "yes", labeler_id="L-C1"),
         row(
@@ -215,7 +223,7 @@ def test_agreement_uses_raw_labels_and_lists_one_sided_yes(tmp_path):
         ),  # 합의 결과는 일치율에 쓰지 않는다
         row("PE2", "C", "no", labeler_id="L-C1"),
     ]
-    out = ts.agreement(rows_a, rows_b)
+    out = ts.agreement(rows_a, rows_b, expect=2)
     assert out["question_level_same"] == 2
     assert out["candidate_focus_n"] == 2 and out["candidate_agreement"] == 0.5
     assert out["pass"] is False
@@ -237,8 +245,84 @@ def test_cli_score_prints_inputs_and_note(tmp_path, capsys):
     sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes")])
     ts.main(["score", "--candidates", str(cand_path), "--sheets", str(sheet)])
     out = json.loads(capsys.readouterr().out)
-    assert out["inputs"]["candidates"]["set"] == "main" and out["inputs"]["candidates_code"] == {
-        "commit": "abc"
-    }
+    (cand,) = out["inputs"]["candidates"]
+    assert cand["set"] == "main" and cand["code"] == {"commit": "abc"} and len(cand["sha256"]) == 64
     assert "근사 시점 평가" in out["note"]
     assert out["inputs"]["numpy"]
+
+
+def test_agreement_requires_one_labeler_per_sheet_and_expected_question_count():
+    a = [row("PE1", "A", "yes", labeler_id="L-A1")]
+    c = [row("PE1", "A", "yes", labeler_id="L-C1")]
+    blank = [row("PE1", "A", "yes", labeler_id="")]
+    mixed = [row("PE1", "A", "yes", labeler_id="L-A1"), row("PE1", "B", "no", labeler_id="L-B1")]
+    with pytest.raises(SystemExit, match="한 사람으로"):
+        ts.agreement(blank, c, expect=1)  # ID를 비운 시트
+    with pytest.raises(SystemExit, match="한 사람으로"):
+        ts.agreement(mixed, c, expect=1)  # 한 시트에 두 사람
+    with pytest.raises(SystemExit, match="--expect"):
+        ts.agreement(a, c, expect=5)  # 1문항짜리 시트로 예비 5문항 합격을 낼 수 없다
+    assert ts.agreement(a, c, expect=1)["pass"] is True
+
+
+def test_agreed_label_needs_two_labelers(tmp_path):
+    """합의값은 두 사람 이상이 label을 남긴 후보에만 — 합의값만 있는 줄·한 사람 표시에 붙은 합의값은 멈춘다."""
+    only_agreed = write_sheet(
+        tmp_path / "a.csv", [row("PE1", "A", "", labeler_id="", agreed_label="yes")]
+    )
+    with pytest.raises(SystemExit, match="두 사람 이상"):
+        ts.merge_labels([ts.read_sheet(only_agreed)])
+    one = write_sheet(tmp_path / "b.csv", [row("PE1", "A", "no", agreed_label="yes")])
+    with pytest.raises(SystemExit, match="두 사람 이상"):
+        ts.merge_labels([ts.read_sheet(one)])
+
+
+def test_dup_group_must_match_across_sheets(tmp_path):
+    a = write_sheet(tmp_path / "a.csv", [row("PE1", "A", "yes", dup_group="G1")])
+    c = write_sheet(tmp_path / "c.csv", [row("PE1", "A", "yes", labeler_id="L-C1", dup_group="G2")])
+    with pytest.raises(SystemExit, match="dup_group이 다르다"):
+        ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c)])
+
+
+def test_partial_result_never_shows_a_direction():
+    """표시가 안 끝난 문항을 뺀 중간 결과는 34개 이상·6:0이어도 방향을 내지 않는다."""
+    qs = [_q(True, True)] * 34 + [_q(False, True)] * 6
+    assert ts.summarize(qs)["hit@10_comparison"]["outcome"] == "차이 있음 — B가 높음"
+    assert ts.summarize(qs, partial=True)["hit@10_comparison"]["outcome"] == "미측정(중간 결과)"
+
+
+def test_no_part_reason_only_when_all_final_labels_are_unsure(tmp_path):
+    """합의로 최종이 no가 되면, 합의 전 메모에 "질문 부품 불명"이 있어도 사유는 "후보에 선례 없음"."""
+    cand = items(("PE1", {"A": {"bm25": 1}}))
+    a = write_sheet(tmp_path / "a.csv", [row("PE1", "A", "unsure", note=ts.NO_PART)])
+    c = write_sheet(
+        tmp_path / "c.csv", [row("PE1", "A", "no", labeler_id="L-C1", agreed_label="no")]
+    )
+    merged = ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c)])
+    qs, _ = ts.per_question(merged, cand, partial=False)
+    assert qs[0]["reason"] == "후보에 선례 없음"
+
+
+def test_cli_score_combines_replacement_candidates_and_refuses_overlap(tmp_path, capsys):
+    """대체 회차를 더 표시하면 후보 파일 여러 개를 합쳐 한 번에 채점한다 — 문항이 겹치면 멈춘다."""
+
+    def cand_file(name, set_name, action):
+        p = tmp_path / name
+        p.write_text(
+            json.dumps({"set": set_name, "items": items((action, {"A": {"bm25": 1}}))}),
+            encoding="utf-8",
+        )
+        return p
+
+    main = cand_file("candidates_main.json", "main", "PE1")
+    repl = cand_file("candidates_r1.json", "r1", "PE2")
+    sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes"), row("PE2", "A", "no")])
+    ts.main(["score", "--candidates", str(main), str(repl), "--sheets", str(sheet)])
+    out = json.loads(capsys.readouterr().out)
+    assert out["labeled_questions"] == 2 and [c["set"] for c in out["inputs"]["candidates"]] == [
+        "main",
+        "r1",
+    ]
+    overlap = cand_file("candidates_r2.json", "r2", "PE1")
+    with pytest.raises(SystemExit, match="같은 문항이 두 번"):
+        ts.main(["score", "--candidates", str(main), str(overlap), "--sheets", str(sheet)])
