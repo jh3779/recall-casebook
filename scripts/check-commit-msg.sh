@@ -24,6 +24,7 @@ case "$FIRST_LINE" in
 esac
 
 # 한글 subject 허용, 첫 글자 대문자(A-Z) 금지 (pr-title-check.yml과 같은 규칙)
+# 같은 규칙: .github/workflows/pr-title-check.yml(subjectPattern), scripts/ci/pr_checks.py(check_pr_title), scripts/check-commit-msg.sh(PATTERN) — 바꿀 때 세 곳을 함께 고친다(#56)
 PATTERN="^(feat|fix|refactor|docs|research|data|chore|remove)(\(.+\))?!?: [^A-Z].*"
 if ! echo "$FIRST_LINE" | grep -Eq "$PATTERN"; then
   echo "❌ 커밋 메시지가 Conventional Commits 형식이 아닙니다."

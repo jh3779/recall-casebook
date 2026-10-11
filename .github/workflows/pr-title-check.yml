@@ -33,6 +33,7 @@ jobs:
             remove
           requireScope: false
           # subject: 대문자 시작만 금지 (한글/소문자/숫자/기호는 모두 허용).
+          # 같은 규칙: .github/workflows/pr-title-check.yml(subjectPattern), scripts/ci/pr_checks.py(check_pr_title), scripts/check-commit-msg.sh(PATTERN) — 바꿀 때 세 곳을 함께 고친다(#56)
           subjectPattern: ^[^A-Z].+$
           subjectPatternError: |
             PR 제목의 subject 부분은 대문자(A-Z)로 시작할 수 없습니다. 한국어는 허용됩니다.

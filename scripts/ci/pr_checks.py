@@ -285,6 +285,7 @@ def check_pr_title(title: str, types: set[str]) -> Result:
         r.errors.append(
             f"PR 제목이 `<type>: <설명>` 꼴이 아니거나 type이 허용 목록({' '.join(sorted(types))})에 없다: {title!r}"
         )
+    # 설명 첫 글자 규칙 — 같은 규칙: .github/workflows/pr-title-check.yml(subjectPattern), scripts/ci/pr_checks.py(check_pr_title), scripts/check-commit-msg.sh(PATTERN) — 바꿀 때 세 곳을 함께 고친다(#56)
     elif not re.match(r"^[^A-Z].+$", m.group(3)):
         r.errors.append(f"PR 제목의 설명은 대문자(A-Z)로 시작할 수 없다: {title!r}")
     return r
