@@ -158,6 +158,8 @@ _갱신: 2026-10-11 (P2 계획 PR 1~3 병합 완료 — #64·#65·#66·#67, DEC-
 
 ## Next Action
 
+**감사 후속(2026-10-11, DEC-046, 계획 `~/.claude/plans/pasted-content-id-aba9-sunny-cocoa.md`)** — 순서: ① 병합 절차 보강 PR(이 PR) → ② 새 규칙으로 #70 → #71 → #72·#73(재리뷰 🟡·🟢 반영) → ③ 문서 정정(기획 4·5절, 274건 "이유 미확인", 고객사 516건, 8,160장, DEC-037 Date·DEC-040 Status, README) → ④ 코드 보강(서버 규칙 공용 모듈, `load_state` 순서 테스트, 원인 명세에 카드 sha256) → ⑤ 원문 표기·빈칸 분류(DEC-047 예정: 573 글 허용 변경 명시, NR·조사 중 서술을 원문+말한 주체+꼬리표로, 카드 글 말한 주체는 출처 그대로 — 로컬 PDF 581개 before/after 보고 뒤 승인 시 전체 재수집).
+
 0. **#45(P1 잔여 — P3 평가보다 먼저)** — 회사명 초안 해시를 `build.json`에 기록·`verify_build` 대조(A 파트). **담당·완료일은 사용자 결정 대기**(2026-10-11 문의). 카드 내용은 같아 build_id는 그대로일 것으로 예상(확인 필요). 먼저 끝내지 못하면 P3 진입 예외와 이유를 DEC로 남긴다(PROJECT_CONTEXT Phases — Exit Criteria를 채워야 다음 Phase).
 1. **화면 연결(PR #60)** — 박성호 님 회신을 받으면 응답 칸 이름 확정(`received`↔`received_date`, `potaff`·`years`·`mfr_part` 필요 여부 — 필요하면 A 파트 `nhtsa build`로 카드에 추가, build_id가 바뀜). #60은 main과 충돌을 풀어야 한다. 회신이 없으면 디스코드로 다시 요청.
 2. **원인 표시 미결(#53 코멘트)** — 원인 칸 없는 카드·`cause` 상태별(`no_573_report`·`report_status_unknown`·`report_unreadable`·`cause_empty` 등) 화면 문구를 박성호 님과 정한다. `root cause is not`에서 꼬리표 구간이 끊기는 문제(573 26건)도 함께(규칙 변경은 DEC). "원인 미확인" 정확도는 150건 사람 표시(우지훈) 뒤 `cause_trials score`로.

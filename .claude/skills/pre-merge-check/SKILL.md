@@ -36,7 +36,7 @@ PR이 `OPEN`이 아니면 중단하고 보고한다.
 gh pr checks $N
 ```
 
-`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`가 모두 pass여야 한다. **Actions를 끈 동안**(MERGE_PROTOCOL 7절)에는 체크가 없으므로 대신 `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh`를 돌려 마지막 줄을 G-01 근거로 쓴다. `merge-gate`는 9절 결과 코멘트를 게시해야 통과하므로 이 단계에서는 pending이 정상이다. `pr-verify`가 실패하면 Actions 요약 표에서 어느 검사가 ❌인지 보고 고친다. pending이면 `gh pr checks $N --watch`로 기다린다. fail이면 로그(`gh run view <id> --log-failed`)로 원인을 찾아 보고한다.
+`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`가 모두 pass여야 한다. **Actions를 끈 동안**(MERGE_PROTOCOL 7절)에는 체크가 없으므로 대신 `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh`를 돌린다. 통과하면 스크립트가 `### 🧪 local CI (엄격) — 커밋 <SHA>` 코멘트를 PR에 직접 남기므로 G-01 근거는 그 코멘트를 가리킨다(손으로 옮겨 적은 줄은 근거가 아니다). 테스트 결과는 출력을 파일로 받아 **종료 코드로** 확인한다 — `| tail`로 넘기면 실패 종료 코드가 사라진다. `merge-gate`는 9절 결과 코멘트를 게시해야 통과하므로 이 단계에서는 pending이 정상이다. `pr-verify`가 실패하면 Actions 요약 표에서 어느 검사가 ❌인지 보고 고친다. pending이면 `gh pr checks $N --watch`로 기다린다. fail이면 로그(`gh run view <id> --log-failed`)로 원인을 찾아 보고한다.
 
 ## 2. G-02 · G-03 자동 리뷰 존재 + 최신 커밋 기준
 
@@ -54,7 +54,8 @@ gh pr view $N --comments
 - **`gh pr view $N --comments` 전체를 읽는다.** 내가 올린 코멘트만 보지 않는다 — 같은 계정(`jh3779`)으로 리뷰봇이 올린 코멘트가 섞여 있다.
 - `## ✅/❌ 병합 전 검증 결과` 코멘트는 자동 리뷰로 세지 않는다.
 - **없거나 오래됐으면 직접 리뷰를 돌린다.** 이 세션에서 PR 코드를 직접 작성했다면 같은 컨텍스트로 "문제없음"을 판단하지 말고, `/code-review` 또는 `review-agent` 같은 별도 컨텍스트 리뷰어를 쓴다.
-- 직접 돌린 리뷰 결과는 PR 코멘트로 게시한다 (`gh pr comment $N --body-file <파일>`). 첫 줄은 `## 🤖 자동 리뷰 (head <짧은 SHA>)`.
+- 직접 돌린 리뷰 결과는 **원문 그대로** PR 코멘트로 게시한다 (`gh pr comment $N --body-file <파일>`). 첫 줄은 `## 🤖 자동 리뷰 (head <짧은 SHA>)`. 요약·재작성하지 않고, 차수마다(커밋이 바뀔 때마다) 게시한다. 게시하지 않은 차수는 근거로 인용하지 않는다.
+- **리뷰 요청문은 중립으로** — PR 번호·head·기준 문서·"이전 리뷰는 PR 코멘트에서 직접 읽고 작성자 설명을 믿지 말고 코드로 확인"만 넣는다. 작성자의 처리 설명·"반영했다"는 주장·이전 지적 목록을 넣지 않는다.
 
 ## 3. G-04 지적 전부 처리
 
@@ -64,9 +65,10 @@ gh pr view $N --comments
 |---|---|
 | 반영 | 고친 커밋 SHA. 고쳤으면 커밋이 추가된 것이므로 **G-01·G-03부터 다시** |
 | 반박 | 근거 `파일:줄` + 왜 문제가 아닌지 |
-| 후속 이슈 | `gh issue create`로 만든 이슈 링크 |
+| 후속 이슈 | `gh issue create`로 만든 이슈 링크 (링크 없는 "후속"·"다음 체크포인트"는 불가) |
 
-🔴 심각(버그 · 보안 · 데이터 손실 · 서비스 원칙 위반) 지적은 **반영만** 허용한다. **심각도는 리뷰어가 매긴 대로** 쓰고 낮추지 않는다. 반박은 근거를 남겨 병합하는 사람이 확인할 수 있게 한다. 처리 방향이 애매하면 사용자에게 묻는다.
+분류는 이 셋뿐이다 — "확인"·"반박(선택)"을 쓰지 않는다(선택 개선을 하지 않으면 반박으로 근거를 적는다). Codex 위험도는 **상 = 🔴, 중 = 🟡, 하 = 🟢**로 읽는다.
+🔴 심각(버그 · 보안 · 데이터 손실 · 서비스 원칙 위반, Codex 상) 지적은 **반영만** 허용한다(반박하려면 사용자 확인을 받고 그 사실을 적는다). **심각도는 리뷰어가 매긴 대로** 쓰고 낮추지 않는다. 반박은 근거를 남겨 병합하는 사람이 확인할 수 있게 한다. 처리 방향이 애매하면 사용자에게 묻는다.
 
 ## 4. G-05 리뷰 스레드 해결
 
@@ -99,7 +101,7 @@ gh pr diff $N --name-only | grep -E '(^|/)\.env($|\.)' | grep -v '\.env\.example
 
 ## 7. G-08 RAG 품질 근거
 
-변경 파일에 검색·답변·프롬프트·청킹·색인 코드가 있으면 PR 본문 "검증 방법"에 같은 평가셋 before → after 수치가 있어야 한다. 없으면 ❌. 해당 파일이 없으면 "해당 없음".
+변경 파일에 검색·답변·프롬프트·청킹·색인 코드가 있으면 PR 본문 "검증 방법"에 같은 평가셋 before → after 수치가 있어야 한다. 없으면 ❌. 해당 파일이 없으면 "해당 없음". 결과 코멘트에는 그 수치가 **재측정**(잰 커밋 SHA·명령 — head와 같아야 이 이름을 쓴다)인지 **불변 추정**(`git diff --stat <잰 커밋> <head> -- server/rag/ scripts/defect_precedent/retrieval_compare.py …`가 비었다는 근거)인지 구분해 적는다.
 
 ## 8. G-09 의존성 · 인계 문서
 
@@ -124,16 +126,23 @@ gh pr checks $N --watch   # merge-gate가 필수 체크로 도입된 뒤(2단계
 gh pr comment $N -b "merge-gate 재판정"
 ```
 
-`merge-gate`가 필수 체크가 아닌 동안(2단계 도입 중, MERGE_PROTOCOL 2-1절)에는 이 결과 코멘트가 유일한 확인 수단이다.
+`merge-gate`가 필수 체크가 아닌 동안(2단계 도입 중, MERGE_PROTOCOL 2-1절)·Actions를 끈 동안에는 로컬에서 읽기 전용으로 돌린다 — 결과 코멘트를 쓰기 전에 한 번(출력을 G-02·G-03 근거에 붙임), 게시한 뒤 한 번(`success` 확인):
+
+```bash
+REPO=jh3779/LG_CNS_RAG_main PR_NUMBER=$N uv run python scripts/ci/merge_gate.py   # POST_STATUS 없음 = 상태 게시 안 함
+```
 
 - 전부 ✅ → 코멘트 마지막 줄에 병합할 사람을 `@태그`하고 "병합 전 검증 확인 요청드립니다".
 - 하나라도 ❌ → 제목을 `## ❌ 병합 전 검증 결과`로, 실패 게이트·원인·제안 수정을 적는다. 병합하지 않는다.
 
 ## 10. 병합 (사용자가 명시적으로 지시한 경우만)
 
-전부 ✅인 코멘트를 게시한 뒤, 사용자가 이 PR의 병합을 지시했을 때만:
+전부 ✅인 코멘트를 게시한 뒤, 사용자가 **이 PR 번호를 들어** 병합을 지시했을 때만 한다. 번호 없는 "병합해 줘"는 어느 PR인지 번호로 되묻는다.
+
+병합 명령 **바로 앞에서** main이 바뀌지 않았는지 확인한다(PR #69는 #68 병합 32초 뒤 main이 바뀐 채 병합됐다). 실패하면 main을 합쳐 push하고 1절부터 다시 한다. 여러 PR을 연달아 병합하면 앞 PR을 병합할 때마다 다음 PR에서 이 확인부터 한다.
 
 ```bash
+git fetch origin main && git merge-base --is-ancestor origin/main <head 전체 SHA> || { echo "❌ main이 바뀜 — 합치고 다시 검증"; exit 1; }
 gh pr merge $N --squash --match-head-commit <결과 코멘트에 적은 head SHA(전체)>
 ```
 
