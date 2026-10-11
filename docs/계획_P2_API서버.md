@@ -13,7 +13,7 @@
 | 파일 | 하는 일 |
 |---|---|
 | `server/rag/investigations.py`(새 파일) | **조사 요약 원인**: raw `data/raw/nhtsa/FLAT_INV.zip`을 서버 시작 때 읽어 카드의 `CAMPNO`로 잇는다(`nhtsa.read_flat`·`INV_COLS`, `why_stats.linked_campnos`와 같은 규칙 — 요약이 비었거나 자리표시 문구면 제외). 같은 조사 번호의 여러 줄(차종별)은 하나로 모은다. 말한 주체 = NHTSA 결함 조사(조사관), 출처 = 조사 번호 `ACTION`·개시일·종료일(원본 칸 그대로 — 종료일이 빈 조사가 있다). 원본은 `manifest.json` sha256 = build `raw_manifest_sha256`이고 `FLAT_INV.zip` sha256 = manifest 기록일 때만 쓴다 — `raw_manifest_sha256`은 build_id의 입력이라 같은 build_id면 같은 조사 원본이고, 응답의 조사 번호(`ACTION`)로 원본 기록을 되짚는다. 원본은 커밋하지 않으므로 서버를 띄우는 곳에 build와 같은 날 받은 `data/raw/nhtsa/`를 두고(팀 드라이브 사본), 없거나 해시가 다르면 서버가 시작하지 않는다(배포 절차는 #63). **색인에는 넣지 않는다** — 시험 질문의 출처라 넣으면 누수(AGENTS.md 5-2). 한 카드에 조사가 여러 건이면 조사 번호별로 따로 싣는다. 같은 조사의 요약 판본이 여러 개면 짐작하지 않고 서버를 띄우지 않는다. |
-| `server/rag/flags.py` | 원인 글(573·조사 요약)에 붙는 **표시 꼬리표 — 판정이 아니라 글에 그 표현이 있다는 사실만** 알린다. ① "원인 미확인 표현 있음" — `cause_trials.UNKNOWN_RE`(#53 잠정안, `finditer`로 구간을 얻는다) ② "추정 표현 있음" — 아래 단어 목록. 꼬리표마다 걸린 원문 구간(시작·끝·글자)을 함께 싣는다. |
+| `server/rag/flags.py` | 원인 글(573·조사 요약)에 붙는 **표시 꼬리표 — 판정이 아니라 글에 그 표현이 있다는 사실만** 알린다. ① "원인 미확인 표현 있음" — `rules.UNKNOWN_RE`(cause_trials가 정한 규칙, #53 잠정안, `finditer`로 구간을 얻는다) ② "추정 표현 있음" — 아래 단어 목록. 꼬리표마다 걸린 원문 구간(시작·끝·글자)을 함께 싣는다. |
 | `server/rag/checks.py` | **확인 항목 고정 틀**(규칙, LLM 없음). 항목마다 근거 원문(칸 이름 + 글)을 잇고, 근거가 없으면 그 항목을 싣지 않는다. 생산 기간은 카드에 연식·생산일 칸이 없어 1차에서 제외(한계로 기록). |
 | `server/api.py` | 응답 모델에 `investigations[]`·`cause.flags`·`checklist[]`를 더한다(상태별 필수 칸·`extra="forbid"` 유지). |
 
@@ -22,7 +22,7 @@
 - 추정 표현 단어(대소문자 무시, 단어 경계): `appear to`·`appears to`·`appeared to`·`might`·`possibly`·`likely`·`probably`·`suspect`·`suspected`·`believe`·`believed`. `may`·`could`는 넣지 않는다 — 원인 서술에서 "may result in", "could cause"처럼 결과를 설명할 때 흔히 써서 추정이 아닌 글에도 걸리기 쉽다.
 - 확인 항목 순서와 근거 칸: ① 같은 부품 — 카드 `components`·결함 원문 ② 고장 양상 — 결과 원문 ③ 시정 — 시정 원문 ④ 공급사 — 573 `supplier_names`(있을 때만) ⑤ 원인을 말한 주체 — 573(리콜 제조사)·조사 요약(NHTSA). 화면에 보일 이름은 박성호 님과 정한다(PR #60).
 
-**검증**: 조사 요약은 원본 기록과 같은 글인지, 꼬리표 구간은 그 글의 `text[start:end]`가 구간 글과 같은지 서버 안에서 대조한다(LLM이 없으므로 `engine2_trial.check` 같은 찾기 대조는 필요 없다). 검색 순위를 바꾸지 않으므로 749문항 점수(H@10 0.542)가 그대로인지 `server.rag.parity`로 확인한다. 조사 요약이 붙는 카드 수(현재 build, `why_stats.linked_campnos` 규칙): 요약 있는 조사에 연결된 카드 1,870장, 서로 다른 조사 917개, 조사 2개 이상이 연결된 카드 35장, 조사 하나에 요약 판본 여러 개 0건.
+**검증**: 조사 요약은 원본 기록과 같은 글인지, 꼬리표 구간은 그 글의 `text[start:end]`가 구간 글과 같은지 서버 안에서 대조한다(LLM이 없으므로 `rules.check` 같은 찾기 대조는 필요 없다). 검색 순위를 바꾸지 않으므로 749문항 점수(H@10 0.542)가 그대로인지 `server.rag.parity`로 확인한다. 조사 요약이 붙는 카드 수(현재 build, `why_stats.linked_campnos` 규칙): 요약 있는 조사에 연결된 카드 1,870장, 서로 다른 조사 917개, 조사 2개 이상이 연결된 카드 35장, 조사 하나에 요약 판본 여러 개 0건.
 
 ## 2. PR 3 — 부품 범위 좁히기 실험 (10/13~14)
 

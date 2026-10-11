@@ -117,6 +117,7 @@ def sample_row(campaign, status="filled", resolution="auto", pdf_sha="aa"):
         "resolution": resolution,
         "submission_date": "20240101",
         "pdfs": {f"odi/rcl/2024/RCLRPT-{campaign}-0001.PDF": pdf_sha},
+        "cause_text": "The weld was improperly made." if status == "filled" else "",
     }
 
 
@@ -343,6 +344,10 @@ def test_sample_digest_ignores_row_order_and_dict_order():
     assert why_stats.sample_digest([a, b]) == why_stats.sample_digest([b, a])
     assert why_stats.sample_digest([a, b]) != why_stats.sample_digest(
         [a, {**b, "cause_status": "filled"}]
+    )
+    # 상태는 같고 원인 글만 달라져도 지문이 바뀐다(#84)
+    assert why_stats.sample_digest([a, b]) != why_stats.sample_digest(
+        [{**a, "cause_text": "The weld was improperly made"}, b]
     )
 
 
