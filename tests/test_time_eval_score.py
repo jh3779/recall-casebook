@@ -168,6 +168,16 @@ def test_outcome_is_unmeasured_below_34_answered_even_if_lopsided():
     assert out["hit@10_comparison"]["outcome"] == "미측정"
 
 
+def test_measured_boundary_is_exactly_34_answered():
+    """33개면 미측정(status·outcome 모두), 34개면 측정 — DEC-037 ⑤의 경계를 고정한다."""
+    out33 = ts.summarize([_q(True, True)] * 33)
+    assert (
+        out33["status"].startswith("미측정") and out33["hit@10_comparison"]["outcome"] == "미측정"
+    )
+    out34 = ts.summarize([_q(True, True)] * 34)
+    assert out34["status"] == "측정" and out34["hit@10_comparison"]["outcome"] == "우열 불확실"
+
+
 def test_hit_at_k_boundary_is_inclusive():
     """정답이 정확히 k위면 Hit@k, k+1위면 아니다."""
     assert ts.hit({"bm25": 10}, "bm25", 10) and not ts.hit({"bm25": 11}, "bm25", 10)

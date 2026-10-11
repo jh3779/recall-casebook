@@ -29,6 +29,7 @@ import hashlib
 import json
 import math
 import sys
+from importlib.metadata import version
 from pathlib import Path
 
 LABELS = ("yes", "no", "unsure")
@@ -285,9 +286,7 @@ def main(argv: list[str] | None = None) -> None:
         },
         "sheets": {str(s): sha256_of(s) for s in a.sheets},
         "candidates_code": cand.get("code"),
-        "numpy": __import__(
-            "numpy"
-        ).__version__,  # 부트스트랩 난수열은 numpy 판본에 따라 달라질 수 있다
+        "numpy": version("numpy"),  # 부트스트랩 난수열은 numpy 판본에 따라 달라질 수 있다
     }
     out["note"] = (
         "후보 묶음(BM25 상위 20 + B 상위 20) 안에서만 잰 근사 시점 평가 — 일반적인 과거 선례 찾기 성능이 아니다(DEC-037)"
