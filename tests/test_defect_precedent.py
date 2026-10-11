@@ -10,7 +10,7 @@ import zipfile
 import pytest
 
 from scripts.defect_precedent import bm25_baseline as bm
-from scripts.defect_precedent import nhtsa, rclrpt
+from scripts.defect_precedent import maker_aliases, nhtsa, rclrpt
 from scripts.defect_precedent.rclrpt import parse_report
 
 
@@ -961,3 +961,10 @@ def test_build_carry_over_keeps_subfolders_and_files_but_not_build_outputs(tmp_p
     assert (new / "time_eval_2026-10-10" / "labels_main.csv").read_text(encoding="utf-8") == "x"
     assert (new / "causes.jsonl").exists()
     assert not any((new / name).exists() for name in nhtsa.BUILD_OUTPUTS)
+
+
+def test_committed_alias_draft_keeps_its_31_review_required_rows():
+    """초안의 "확인 필요" 줄을 확인본과 함께 지우면 `unreviewed` 대조를 통과한다 — 커밋된 초안의 줄 수를 고정해 막는다(#45).
+    초안을 다시 만들어 줄 수가 달라지면 이 숫자와 기준 파일의 `maker_aliases_draft_sha256`을 함께 고치고 `nhtsa build`를 다시 한다."""
+    rows = maker_aliases.read_table(nhtsa.MAKER_ALIASES_DRAFT)
+    assert sum(r.get("review_required") == "필요" for r in rows) == 31
