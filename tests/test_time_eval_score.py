@@ -142,15 +142,15 @@ def test_score_stops_on_unlabeled_rows_unless_partial(tmp_path):
     assert skipped == ["PE2"] and len(qs) == 1
 
 
-def test_verdict_needs_both_p_value_and_003_difference():
+def test_outcome_needs_both_p_value_and_003_difference():
     def q(bm, b):
         return {"answered": True, "bm25": 1 if bm else None, "b_rrf": 1 if b else None}
 
     many = [q(True, True)] * 34
     out = ts.summarize(many + [q(False, True)] * 6)  # 6:0, n=40
-    assert out["hit@10_comparison"]["verdict"] == "차이 있음 — B가 높음"
+    assert out["hit@10_comparison"]["outcome"] == "차이 있음 — B가 높음"
     out = ts.summarize(many + [q(False, True)] * 5)  # 5:0 — p ≥ 0.05
-    assert out["hit@10_comparison"]["verdict"] == "우열 불확실"
+    assert out["hit@10_comparison"]["outcome"] == "우열 불확실"
     assert out["status"] == "측정"
 
 

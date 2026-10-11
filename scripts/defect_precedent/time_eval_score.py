@@ -182,15 +182,15 @@ def summarize(questions: list[dict]) -> dict:
     p = mcnemar_exact(b_only, bm_only)
     diff = (b_only - bm_only) / n_ans if n_ans else 0.0
     if p < 0.05 and abs(diff) >= 0.03:
-        verdict = "차이 있음 — " + ("B가 높음" if diff > 0 else "BM25가 높음")
+        outcome = "차이 있음 — " + ("B가 높음" if diff > 0 else "BM25가 높음")
     else:
-        verdict = "우열 불확실"
+        outcome = "우열 불확실"
     out["hit@10_comparison"] = {
         "b_only": b_only,
         "bm25_only": bm_only,
         "mcnemar_exact_p": round(p, 4),
         "diff_b_minus_bm25": round(diff, 3),
-        "verdict": verdict,
+        "outcome": outcome,
         "bootstrap95_for_description_only": bootstrap(answered),
     }
     return out
