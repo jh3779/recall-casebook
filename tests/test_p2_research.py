@@ -272,7 +272,13 @@ def test_time_eval_code_provenance_records_clean_and_dirty_scripts(monkeypatch):
     monkeypatch.setattr(subprocess, "run", _fake_git({"status": "", "rev-parse": "abc123"}))
     clean = tec.code_provenance(allow_dirty=False)  # 깨끗하면 허용 없이 통과
     assert clean["commit"] == "abc123" and clean["dirty"] is False
-    assert set(clean["script_sha256"]) == set(tec.CODE_FILES)
+    import hashlib
+
+    assert clean[
+        "script_sha256"
+    ] == {  # 스크립트 해시는 파일 내용의 sha256이어야 한다(빈 값·다른 파일이면 실패)
+        f: hashlib.sha256((tec.ROOT / f).read_bytes()).hexdigest() for f in tec.CODE_FILES
+    }
 
     monkeypatch.setattr(
         subprocess, "run", _fake_git({"status": " M scripts/x.py", "rev-parse": "abc123"})
