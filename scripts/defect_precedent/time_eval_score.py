@@ -3,6 +3,7 @@
 사용법:
     # 예비 5문항 두 사람 일치(합격선, docs/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
     uv run python -m scripts.defect_precedent.time_eval_score agreement --expect 5 --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
+    # 재확인 3문항(안내서 4절)은 그 3문항만 추린 두 사람의 시트로: agreement --expect 3 --sheets <A 3문항.csv> <C 3문항.csv>
     # 본 평가 채점 — 나눠 표시한 시트 여러 개를 합친다(같은 후보를 둘이 표시했으면 agreed_label 필요)
     uv run python -m scripts.defect_precedent.time_eval_score score \
         --candidates <candidates_main.json> [<candidates_<대체 회차>.json> ...] --sheets <시트1.csv> [<시트2.csv> ...] [--partial]

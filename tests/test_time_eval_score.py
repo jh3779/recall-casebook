@@ -326,3 +326,54 @@ def test_cli_score_combines_replacement_candidates_and_refuses_overlap(tmp_path,
     overlap = cand_file("candidates_r2.json", "r2", "PE1")
     with pytest.raises(SystemExit, match="같은 문항이 두 번"):
         ts.main(["score", "--candidates", str(main), str(overlap), "--sheets", str(sheet)])
+
+
+def _agree_rows(labeler, labels):
+    """labels: {(문항, 후보): 표시}"""
+    return [row(a, c, lab, labeler_id=labeler) for (a, c), lab in labels.items()]
+
+
+def test_agreement_pass_needs_question_level_agreement_even_with_high_candidate_rate():
+    """후보 일치율이 0.975여도 한 문항에서 정답 있음 여부가 갈리면 불합격(안내서 4절 두 조건 모두)."""
+    keys = [(f"PE{q}", f"C{q}{i}") for q in range(5) for i in range(8)]
+    a = dict.fromkeys(keys, "unsure")
+    c = dict(a)
+    a[("PE0", "C00")], c[("PE0", "C00")] = "yes", "no"
+    out = ts.agreement(_agree_rows("L-A1", a), _agree_rows("L-C1", c), expect=5)
+    assert out["candidate_agreement"] == 0.975 and out["question_level_same"] == 4
+    assert out["pass"] is False
+
+
+@pytest.mark.parametrize(("same", "expected"), [(4, True), (3, False)])
+def test_agreement_candidate_rate_boundary_is_080(same, expected):
+    """yes/unsure 후보 5개 중 4개 일치(0.8)면 합격, 4개 중 3개(0.75)면 불합격 — 문항 단위는 모두 같게 둔다."""
+    n = same + 1
+    a = {("PE1", f"C{i}"): "unsure" for i in range(n)}
+    c = dict(a)
+    c[("PE1", f"C{n - 1}")] = "no"  # 하나만 다르게(정답 있음 여부는 둘 다 '없음'으로 같다)
+    out = ts.agreement(_agree_rows("L-A1", a), _agree_rows("L-C1", c), expect=1)
+    assert out["candidate_agreement"] == round(same / n, 3) and out["pass"] is expected
+
+
+def test_agreement_refuses_sheets_with_different_candidates():
+    a = {("PE1", "A"): "no", ("PE1", "B"): "no"}
+    c = {("PE1", "A"): "no"}
+    with pytest.raises(SystemExit, match="문항·후보가 다르다"):
+        ts.agreement(_agree_rows("L-A1", a), _agree_rows("L-C1", c), expect=1)
+
+
+def test_agreed_label_conflict_between_sheets_stops(tmp_path):
+    a = write_sheet(tmp_path / "a.csv", [row("PE1", "A", "yes", agreed_label="yes")])
+    c = write_sheet(
+        tmp_path / "c.csv", [row("PE1", "A", "no", labeler_id="L-C1", agreed_label="no")]
+    )
+    with pytest.raises(SystemExit, match="agreed_label이 시트마다 다르다"):
+        ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c)])
+
+
+def test_all_unsure_without_note_is_no_precedent(tmp_path):
+    """모두 unsure여도 메모에 "질문 부품 불명"이 없으면 사유는 "후보에 선례 없음"."""
+    cand = items(("PE1", {"A": {"bm25": 1}}))
+    s = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "unsure")])
+    qs, _ = ts.per_question(ts.merge_labels([ts.read_sheet(s)]), cand, partial=False)
+    assert qs[0]["reason"] == "후보에 선례 없음"
