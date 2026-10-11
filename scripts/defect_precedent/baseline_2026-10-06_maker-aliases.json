@@ -3179,8 +3179,8 @@
  ],
  "causes_sample": {
   "rows": 300,
-  "content_sha256": "580c90c2c5eea5f35ac82c9326dfeb659cf6c22c6652a661768d7043273d985a",
-  "note": "2026-10-12 규칙으로 다시 판독한 표본(채워짐 205·미보고·조사 중 서술 83·비어 있음 12, 10/6 첫 판독은 채워짐 205·비어 있음 95 — 서술이 빈칸에 섞여 있었다, 10/6 content_sha256 2e945be45d92…). causes_sample.jsonl의 줄마다 [캠페인, cause_status, resolution, submission_date, 정렬한 (판본 주소, sha256)]을 정렬해 JSON으로 만든 문자열의 sha256 — 줄바꿈·칸 순서와 무관하다. why_stats --baseline이 대조한다."
+  "content_sha256": "b05aa106203c5f794202b2bc57db9c39903723fe0af84873d599428f67db37e8",
+  "note": "2026-10-12 규칙으로 다시 판독한 표본(채워짐 205·미보고·조사 중 서술 83·비어 있음 12, 10/6 첫 판독은 채워짐 205·비어 있음 95 — 서술이 빈칸에 섞여 있었다, 10/6 content_sha256 2e945be45d92…, 원인 글을 넣기 전 정의의 10/12 지문 580c90c2c5ee…). causes_sample.jsonl의 줄마다 [캠페인, cause_status, resolution, submission_date, 정렬한 (판본 주소, sha256), cause_text]를 정렬해 JSON으로 만든 문자열의 sha256 — 줄바꿈·칸 순서와 무관하다. why_stats --baseline이 대조한다."
  },
  "causes_full": {
   "rows": 11719,

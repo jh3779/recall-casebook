@@ -22,6 +22,7 @@ from pathlib import Path
 from scripts.defect_precedent.bm25_baseline import BM25, tokenize
 from scripts.defect_precedent.nhtsa import OUT_DIR
 from scripts.defect_precedent.retrieval_compare import card_text, provenance, read_jsonl
+from scripts.defect_precedent.rules import check
 
 INSTRUCTIONS = (
     "You copy text. From the manufacturer's 'Description of the Cause' text, return the sentence(s) that state the cause "
@@ -29,22 +30,6 @@ INSTRUCTIONS = (
     "Return an empty list if the text does not state a cause (e.g. 'Unknown', 'Not applicable', still under investigation). "
     "Do not judge whether a recall is required and do not add anything that is not in the text."
 )
-
-
-def check(cause_text: str, got: list[str]) -> dict:
-    """정규화 없이 원문에서 그대로 찾는다. 통과하면 원문 구간을 돌려준다."""
-    spans, dropped = [], []
-    for g in got:
-        i = cause_text.find(g) if g else -1
-        if i < 0:
-            dropped.append(g)
-        else:
-            spans.append({"start": i, "end": i + len(g), "text": cause_text[i : i + len(g)]})
-    return {
-        "spans": spans,
-        "dropped": dropped,
-        "short_fragments": sum(1 for sp in spans if len(sp["text"].split()) < 5),
-    }
 
 
 def summarize(model: str, rows: list[dict]) -> dict:

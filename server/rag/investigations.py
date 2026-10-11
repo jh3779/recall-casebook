@@ -16,8 +16,8 @@ import json
 from pathlib import Path
 
 from scripts.defect_precedent.nhtsa import INV_COLS, RAW_DIR, read_flat
-from scripts.defect_precedent.why_stats import (  # 연결 수(1,870)를 낸 규칙과 같은 정규식 — nhtsa 쪽은 더 좁다
-    PLACEHOLDER,
+from scripts.defect_precedent.rules import (  # 연결 수(1,870)를 낸 규칙과 같은 정규식 — nhtsa 쪽은 더 좁다
+    INV_SUMMARY_PLACEHOLDER,
 )
 from server.rag.build import BuildMismatch
 
@@ -53,7 +53,7 @@ def load_investigations(
 
     def usable(r: dict) -> bool:
         summary = r["SUMMARY"].strip()
-        return bool(summary) and not PLACEHOLDER.search(summary)
+        return bool(summary) and not INV_SUMMARY_PLACEHOLDER.search(summary)
 
     # 1) 카드에 이어지는 조사 번호
     linked = {r["ACTION"].strip() for r in rows if r["CAMPNO"].strip() in campnos and usable(r)}

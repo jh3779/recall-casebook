@@ -132,3 +132,4 @@
 - 2026-10-12: PR #82 리뷰 반영 — 본문 인용 머리말 보존(4개 캠페인 원문 복구)·text_basis를 원인 명세에 기록(서버는 build 기록 사용)·표본 205/83/12, 다시 판독·운영 DB 새 build ef5ca2ad4b79d755, parity 0.542
 - 2026-10-12: PR #82 리뷰 2차 반영 — 머리말은 자기 번호(문장 중간 포함)·줄 전체만 지움(26V404 첨부 머리말 제거, 본문 인용 4곳 보존), 판본 rclrpt-2026-10-12b, 서버 테스트 3개, 경계 조정은 #83, 운영 DB build f1fe1843ed0f2c66
 - 2026-10-12: PR #82 Codex 4차 반영 — 머리말 판별을 쪽 경계(\f) 기준으로(자기 번호 인용도 보존), 출력은 배포본과 바이트 동일(판본 12b 유지·재적재 없음), 옛 data.zip 안내·카드 speaker 문서·HANDOFF ⑤
+- 2026-10-12: 코드 보강(PR C) — 서버·연구 공용 규칙 rules.py, 원인 명세에 recalls_sha256(카드 스냅샷 묶기)·적재 단계 text_basis 필수, SearchRequest 엄격, load_state 순서·POOL 경계·stated_unknown 정상 경로 시험, 표본 지문에 cause_text, parity --stats(30,350 통과·1,870/917·226·541, stated_unknown 꼬리표 75·1 새로 확인)

@@ -12,16 +12,18 @@ import test_rclrpt_run as T
 from scripts.defect_precedent import load_db, rclrpt
 
 
-def _run_all_with_one_accepted_failure(monkeypatch, tmp_path):
+def _load_dir(tmp_path):
+    """load_db가 읽는 폴더(카드·시험지·build.json). rclrpt도 이 카드 파일로 수집 대상을 정한다 — 같은 카드 스냅샷."""
+    recalls = [L.recall(f"{c}000", snapshot_date="2026-10-06") for c in T.CAMPAIGNS]
+    recalls.append(L.recall("23V002000", snapshot_date="2026-10-06"))  # 시험지의 정답 리콜
+    return L.make_data_dir(tmp_path / "ld", recalls=recalls)
+
+
+def _run_all_with_one_accepted_failure(monkeypatch, tmp_path, d):
     env = tmp_path / "processed"
     env.mkdir()
     campaigns = T.CAMPAIGNS
-    (env / "recalls.jsonl").write_text(
-        "".join(
-            json.dumps({"campno": f"{c}000", "received_date": "20240101"}) + "\n" for c in campaigns
-        ),
-        encoding="utf-8",
-    )
+    (env / "recalls.jsonl").write_bytes((d / "recalls.jsonl").read_bytes())
     monkeypatch.setattr(rclrpt, "OUT_DIR", env)
     monkeypatch.setattr(rclrpt, "PDF_DIR", tmp_path / "pdf")
     monkeypatch.setattr(rclrpt, "require_poppler", lambda: "pdftotext version 25.07.0")
@@ -55,11 +57,9 @@ def _run_all_with_one_accepted_failure(monkeypatch, tmp_path):
 
 
 def test_the_manifest_rclrpt_writes_is_accepted_by_load_db_full(monkeypatch, tmp_path):
-    env = _run_all_with_one_accepted_failure(monkeypatch, tmp_path)
+    d = _load_dir(tmp_path)
+    env = _run_all_with_one_accepted_failure(monkeypatch, tmp_path, d)
     # load_db가 읽는 폴더: rclrpt가 만든 완성본·명세 + 카드·시험지·build.json
-    recalls = [L.recall(f"{c}000", snapshot_date="2026-10-06") for c in T.CAMPAIGNS]
-    recalls.append(L.recall("23V002000", snapshot_date="2026-10-06"))  # 시험지의 정답 리콜
-    d = L.make_data_dir(tmp_path / "ld", recalls=recalls)
     (d / "causes.jsonl").write_bytes((env / "causes.jsonl").read_bytes())
     (d / "causes.manifest.json").write_bytes((env / "causes.manifest.json").read_bytes())
     build = load_db.load_files(d, "full", L.make_baseline(tmp_path))["build"]
@@ -68,15 +68,28 @@ def test_the_manifest_rclrpt_writes_is_accepted_by_load_db_full(monkeypatch, tmp
     # 명세는 줄 수 + 실패 = 기대 캠페인 수, 성공 ∪ 실패 = 기대 목록을 모두 만족한다
     spec = build["causes_spec"]
     assert spec["rows"] + spec["failures"] == spec["expect_campaigns"] == 5
+    # 명세에는 수집 대상을 정한 카드 파일의 지문이 남고, 적재할 build의 카드와 같아야 통과한다
+    assert spec["recalls_sha256"] == L.sha(d / "recalls.jsonl")
+
+
+def test_load_db_stops_when_causes_were_collected_from_another_card_snapshot(monkeypatch, tmp_path):
+    d = _load_dir(tmp_path)
+    env = _run_all_with_one_accepted_failure(monkeypatch, tmp_path, d)
+    other = L.make_data_dir(
+        tmp_path / "other", recalls=[L.recall("24V001000", snapshot_date="2026-10-06")]
+    )
+    (other / "causes.jsonl").write_bytes((env / "causes.jsonl").read_bytes())
+    (other / "causes.manifest.json").write_bytes((env / "causes.manifest.json").read_bytes())
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(other, "full", L.make_baseline(tmp_path))
+    assert "recalls_sha256이 build.json과 다르다" in str(e.value)
 
 
 def test_load_db_stops_when_the_rclrpt_manifest_is_missing_the_expected_list(monkeypatch, tmp_path):
-    env = _run_all_with_one_accepted_failure(monkeypatch, tmp_path)
+    d = _load_dir(tmp_path)
+    env = _run_all_with_one_accepted_failure(monkeypatch, tmp_path, d)
     manifest = json.loads((env / "causes.manifest.json").read_text(encoding="utf-8"))
     del manifest["expected_campaigns_sha256"]
-    recalls = [L.recall(f"{c}000", snapshot_date="2026-10-06") for c in T.CAMPAIGNS]
-    recalls.append(L.recall("23V002000", snapshot_date="2026-10-06"))
-    d = L.make_data_dir(tmp_path / "ld", recalls=recalls)
     (d / "causes.jsonl").write_bytes((env / "causes.jsonl").read_bytes())
     (d / "causes.manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(SystemExit) as e:

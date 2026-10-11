@@ -234,7 +234,7 @@ class HealthResponse(Strict):
     model: str
 
 
-class SearchRequest(BaseModel):
+class SearchRequest(Strict):
     question: str = Field(min_length=1, max_length=4000)
 
     @field_validator("question")
