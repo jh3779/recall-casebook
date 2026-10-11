@@ -9,16 +9,24 @@
 
 표본 규칙(2026-10-11, 표본·표시를 보기 전에 고정 — 결과를 보고 고치지 않는다, AGENTS.md 5-2):
 1. 749문항 대리 평가 질문을 시드 `SEED`로 섞는다.
-2. 질문마다 서버 검색(`server.rag.search.Searcher`, DEC-039 — BM25 + bge-small RRF)의 **합친 순위 상위 10건**에서
-   **원인 글이 있는 카드**를 모은다(화면의 고객사·그 밖 구역 배치와는 다르다 — 순위만 본다). 원인 글 = 573 원인 칸 원문
+2. 질문마다 서버 검색(`server.rag.search.Searcher`, DEC-039 — BM25 + bge-small RRF)의 결과 중 **서버 화면에 실제로 나오는
+   카드**(`server.rag.customers.split` — 고객사 최대 5건 + 그 밖 10건)이면서 **합친 순위 10위 안**인 카드에서 **원인 글이 있는
+   카드**를 모은다. 원인 글 = 573 원인 칸 원문
    (`server.rag.causes.cause_573`이 `filled`로 돌려주는 것 — 서버 응답과 같은 함수)
    또는 그 카드에 연결된 NHTSA 조사 요약(`server.rag.investigations`, 서버와 같은 연결 규칙). 단 **질문의 출처인 조사 자신의
    요약은 뺀다** — 질문 문장과 같은 글이라 원인 판단을 부풀린다.
-3. 모은 (카드, 원인 글) 중 하나를 같은 시드의 난수로 고르고, 이미 고른 리콜 번호는 건너뛴다. 30건이 차면 멈춘다.
+3. 모은 (카드, 원인 글) 중 하나를 같은 시드의 난수로 고르고, 이미 고른 리콜 번호·이미 고른 원인 글(같은 573 보고서를 앞 6자리가
+   같은 여러 리콜이 공유하고, 한 조사가 여러 리콜에 이어진다)은 건너뛴다. 30건이 차면 멈춘다.
 4. 시트에는 질문·카드 원문·원인 글·말한 주체만 넣고 순위·검색 방식은 넣지 않는다. 표시(`label`)는 사람이 한다 — AI는 표시하지 않는다.
 
+규칙 변경 기록: 처음 고정한 규칙(같은 날, 표본 지문 `9428e8162d635d85`)은 합친 순위 상위 10을 그대로 써서 서버가 고객사 카드를
+5건만 보여 주는 질문에서 화면에 안 나오는 카드 2건(14·18번)이 섞였다(PR #73 리뷰). **누구도 표시하기 전에** 2번을 위처럼 고치고
+같은 원인 글 중복 제외(3번)를 더해 다시 뽑았다 — 옛 시트는 쓰지 않는다. 바꾼 이유는 표본 결과가 아니라 "화면에 나오는 원인 글"이라는
+정의와의 불일치다.
+
 표시 기준(시트의 `label`): `yes` = 이 글이 이 리콜의 결함 원인(왜 생겼나)을 말한다 / `no` = 원인을 말하지 않는다(현상·조사 경과·
-"원인 미확인"만 등) / `unsure` = 판단하기 어렵다. 보고는 yes 비율(분모 = yes+no, unsure는 따로)과 Wilson 95% 구간만 낸다.
+"원인 미확인"만 등) / `unsure` = 판단하기 어렵다. 보고는 yes 비율(분모 = yes+no, unsure는 따로)과 Wilson 95% 구간을
+전체와 출처별(573 원인 칸 / 조사 요약)로 따로 낸다 — 기획 6절 "엔진 2 원인 문장"에 해당하는 것은 573 숫자다.
 """
 
 import argparse
@@ -37,9 +45,29 @@ N = 30
 TOP = 10
 COLS = [
     "sample_no", "question_action", "question", "campno", "maker", "components", "defect",
-    "cause_source", "speaker", "cause_ref", "cause_text", "text_sha256", "label", "labeler_id", "note",
+    "cause_source", "speaker", "cause_ref", "cause_text", "text_sha256", "row_sha256", "label", "labeler_id", "note",
 ]  # fmt: skip
 LABELS = ("yes", "no", "unsure")
+# 표시자가 보는 칸 — 하나라도 바뀌면 채점을 멈춘다(원인 글은 text_sha256으로 따로 본다)
+ROW_FIELDS = (
+    "question_action",
+    "question",
+    "campno",
+    "defect",
+    "cause_source",
+    "speaker",
+    "cause_ref",
+    "cause_text",
+)
+
+
+def row_sha(r: dict) -> str:
+    return text_sha("\n".join(r[k] for k in ROW_FIELDS))
+
+
+def sample_fingerprint(rows: list[dict]) -> str:
+    """표본 지문 — 줄 순서와 무관하다(표시자가 시트를 정렬해도 같은 표본이면 같다)."""
+    return sample_sha(sorted((r["campno"] + ":" + r["cause_ref"], r["text_sha256"]) for r in rows))
 
 
 def wilson(hits: int, n: int, z: float = 1.959963984540054) -> tuple[float, float] | None:
@@ -91,38 +119,48 @@ def draw(
     investigations: dict,
 ) -> list[dict]:
     """표본 규칙 1~3. rankings = 질문 번호 → 합친 순위."""
+    from server.rag import customers
+
     rng = random.Random(SEED)
     order = list(questions)
     rng.shuffle(order)
-    picked, seen = [], set()
+    picked, seen, seen_text = [], set(), set()
     for q in order:
+        ranking = rankings[q["action_no"]]
+        cust, others = customers.split(ranking, by_id)
+        shown = sorted(
+            r for r in set(cust) | set(others) if r < TOP
+        )  # 화면에 나오고 합친 순위 10위 안
         pool = [
             (cid, ct)
-            for cid in rankings[q["action_no"]][:TOP]
+            for cid in (ranking[r] for r in shown)
             if cid not in seen
             for ct in cause_texts(by_id[cid], causes, unreadable, investigations, q["action_no"])
+            if text_sha(ct["cause_text"]) not in seen_text
         ]
         if not pool:
             continue
         cid, ct = pool[rng.randrange(len(pool))]
         seen.add(cid)
+        seen_text.add(text_sha(ct["cause_text"]))
         card = by_id[cid]
-        picked.append(
-            {
-                "sample_no": len(picked) + 1,
-                "question_action": q["action_no"],
-                "question": q["question"],
-                "campno": cid,
-                "maker": card["maker"],
-                "components": "; ".join(card["components"]),
-                "defect": card["defect"],
-                **ct,
-                "text_sha256": text_sha(ct["cause_text"]),
-                "label": "",
-                "labeler_id": "",
-                "note": "",
-            }
-        )
+        row = {
+            "sample_no": len(picked) + 1,
+            "question_action": q["action_no"],
+            "question": q["question"],
+            "campno": cid,
+            "maker": card["maker"],
+            "components": "; ".join(card["components"]),
+            "defect": card["defect"],
+            **ct,
+            "text_sha256": text_sha(ct["cause_text"]),
+            "label": "",
+            "labeler_id": "",
+            "note": "",
+        }
+        row["sample_no"] = str(row["sample_no"])
+        row["row_sha256"] = row_sha(row)
+        picked.append(row)
         if len(picked) == N:
             break
     return picked
@@ -148,8 +186,10 @@ def cached_vectors(build_id: str, n: int):
 
 
 def cmd_sheet(a) -> None:
+    import fastembed
     from fastembed import TextEmbedding
 
+    from scripts.defect_precedent.nhtsa import OUT_DIR
     from scripts.defect_precedent.retrieval_compare import card_text, load
     from server.rag import embeddings
     from server.rag.build import load_build
@@ -183,9 +223,12 @@ def cmd_sheet(a) -> None:
         "seed": SEED,
         "n": len(rows),
         "top": TOP,
-        "sample_sha256": sample_sha(
-            [(r["campno"] + ":" + r["cause_ref"], r["text_sha256"]) for r in rows]
-        ),
+        "sample_sha256": sample_fingerprint(rows),
+        # 다시 뽑아 표본이 달라졌을 때 무엇이 달라졌는지 되짚는 입력(AGENTS.md 5-1)
+        "eval_sha256": hashlib.sha256((OUT_DIR / "eval.jsonl").read_bytes()).hexdigest(),
+        "raw_manifest_sha256": build.raw_manifest_sha256,
+        "fastembed": fastembed.__version__,
+        "model": embeddings.MODEL,
         "sheet_sha256": hashlib.sha256(sheet.read_bytes()).hexdigest(),
     }
     sheet.with_name(sheet.name + ".meta.json").write_text(
@@ -194,30 +237,38 @@ def cmd_sheet(a) -> None:
     print(json.dumps({**meta, "sheet": str(sheet)}, ensure_ascii=False))
 
 
+def norm(label: str) -> str:
+    return label.strip().lower()  # 스프레드시트가 첫 글자를 대문자로 바꾸는 경우(Yes)
+
+
 def score(rows: list[dict]) -> dict:
     edited = [r["sample_no"] for r in rows if text_sha(r["cause_text"]) != r["text_sha256"]]
     if edited:
         sys.exit(f"시트의 cause_text가 text_sha256과 다르다(원문을 고치지 않는다): {edited[:5]}")
-    bad = [r["sample_no"] for r in rows if r["label"].strip() not in LABELS]
+    changed = [r["sample_no"] for r in rows if row_sha(r) != r["row_sha256"]]
+    if changed:
+        sys.exit(f"질문·카드·말한 주체 칸이 만들 때와 다르다(표시 칸만 고친다): {changed[:5]}")
+    bad = [r["sample_no"] for r in rows if norm(r["label"]) not in LABELS]
     if bad:
         sys.exit(f"표시가 비었거나 yes/no/unsure가 아닌 줄: {bad[:5]}")
     no_id = [r["sample_no"] for r in rows if not r["labeler_id"].strip()]
     if no_id:
         sys.exit(f"labeler_id가 빈 줄: {no_id[:5]}")
-    count = {lab: sum(r["label"].strip() == lab for r in rows) for lab in LABELS}
-    decided = count["yes"] + count["no"]
-    by_source = {}
-    for src in sorted({r["cause_source"] for r in rows}):
-        sub = [r for r in rows if r["cause_source"] == src]
-        y = sum(r["label"].strip() == "yes" for r in sub)
-        d = sum(r["label"].strip() in ("yes", "no") for r in sub)
-        by_source[src] = {"n": len(sub), "yes": y, "decided": d}
+
+    def rate(sub: list[dict]) -> dict:
+        count = {lab: sum(norm(r["label"]) == lab for r in sub) for lab in LABELS}
+        decided = count["yes"] + count["no"]
+        return {
+            "n": len(sub),
+            "counts": count,
+            "yes_rate": round(count["yes"] / decided, 3) if decided else None,
+            "yes_rate_wilson95": wilson(count["yes"], decided),
+        }
+
+    sources = sorted({r["cause_source"] for r in rows})
     return {
-        "n": len(rows),
-        "counts": count,
-        "yes_rate": round(count["yes"] / decided, 3) if decided else None,
-        "yes_rate_wilson95": wilson(count["yes"], decided),
-        "by_source": by_source,
+        **rate(rows),
+        "by_source": {src: rate([r for r in rows if r["cause_source"] == src]) for src in sources},
         "note": "분모 = yes+no(unsure는 따로). 서버가 보여 주는 원인 글이 원인을 말하는 비율 — 원인이 옳은지는 판정하지 않는다",
     }
 
@@ -229,9 +280,10 @@ def cmd_score(a) -> None:
     meta = json.loads(meta_path.read_text("utf-8")) if meta_path.exists() else None
     if meta is None:
         sys.exit(f"{meta_path.name}이 없다 — 시트를 만든 기록 없이 채점하지 않는다")
-    got = sample_sha([(r["campno"] + ":" + r["cause_ref"], r["text_sha256"]) for r in rows])
-    if got != meta["sample_sha256"]:
-        sys.exit("시트의 표본이 만들 때와 다르다(줄을 빼거나 더했다)")
+    if sample_fingerprint(rows) != meta["sample_sha256"]:
+        sys.exit(
+            "시트의 표본이 만들 때와 다르다(줄을 빼거나 더했거나 리콜·원인 글이 바뀌었다 — 줄 순서는 상관없다)"
+        )
     print(
         json.dumps(
             {**score(rows), "build_id": meta["build_id"], "seed": meta["seed"]},

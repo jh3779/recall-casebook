@@ -78,7 +78,9 @@ def test_draw_stops_at_n():
     cards = {f"C{i:08d}": _card(f"C{i:08d}") for i in range(100)}
     ids = list(cards)
     rankings = {q["action_no"]: ids[i * 2 : i * 2 + 10] for i, q in enumerate(questions)}
-    invs = {c: [_inv("PE00000", "s")] for c in ids}
+    invs = {
+        c: [_inv("PE00000", f"s {c}")] for c in ids
+    }  # 원인 글이 카드마다 다르다(같은 글은 한 번만 뽑힌다)
     assert len(cq.draw(questions, rankings, cards, {}, {}, invs)) == cq.N
 
 
@@ -113,3 +115,41 @@ def test_score_refuses_bad_sheet(change):
     rows[0] = {**rows[0], **change}
     with pytest.raises(SystemExit):
         cq.score(rows)
+
+
+def test_customer_cards_beyond_the_five_shown_are_not_sampled():
+    """서버는 고객사 카드를 5건만 보여 준다 — 합친 순위 10위 안이어도 6번째 고객사 카드는 화면에 없어 표본에 넣지 않는다."""
+    cards = {f"K{i:08d}": {**_card(f"K{i:08d}"), "maker_group": "Kia"} for i in range(10)}
+    invs = {c: [_inv(f"PE{i:05d}", f"s{i}")] for i, c in enumerate(cards)}
+    ranking = list(cards)
+    questions = [{"action_no": f"EA{i:05d}", "question": "q"} for i in range(40)]
+    rows = cq.draw(questions, {q["action_no"]: ranking for q in questions}, cards, {}, {}, invs)
+    assert {r["campno"] for r in rows} == set(ranking[:5])
+
+
+def test_same_cause_text_is_sampled_only_once():
+    """앞 6자리가 같은 리콜은 같은 573 보고서를 공유한다 — 같은 원인 글은 한 번만 뽑는다."""
+    cards = {c: _card(c) for c in ("20V001000", "20V001001")}
+    causes = {"20V001": _cause("20V001", "same cause")}
+    questions = [{"action_no": f"EA{i:05d}", "question": "q"} for i in range(5)]
+    rows = cq.draw(
+        questions, {q["action_no"]: list(cards) for q in questions}, cards, causes, {}, {}
+    )
+    assert len(rows) == 1
+
+
+def test_score_refuses_changed_context_but_accepts_sorted_rows_and_capitalized_labels():
+    rows = _labeled()
+    rows[0] = {**rows[0], "question": "edited question"}
+    with pytest.raises(SystemExit, match="질문·카드"):
+        cq.score(rows)
+    rows = _labeled("Yes")[::-1]  # 정렬·대문자
+    assert cq.sample_fingerprint(rows) == cq.sample_fingerprint(_labeled())
+    assert cq.score(rows)["counts"]["yes"] == len(rows)
+
+
+def test_score_reports_rates_by_source():
+    rows = _labeled()
+    got = cq.score(rows)["by_source"]
+    assert set(got) == {"573", "조사 요약"}
+    assert all(v["yes_rate"] == 1.0 and v["yes_rate_wilson95"] for v in got.values())
