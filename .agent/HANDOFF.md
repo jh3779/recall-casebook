@@ -43,7 +43,7 @@ _갱신: 2026-10-11 (P2 계획 PR 1~3 병합 완료 — #64·#65·#66·#67, DEC-
 - **열린 이슈**: #63(API 서버 배포 전 보완 + raw 원본 배포 방법 코멘트) · #61(박예원, 대체 회차 질문 도구, 10/14) · #53(P2 실험 스크립트 후속 — 제목과 달리 코멘트에 **원인 표시 미결**·150건 표시 일정이 함께 있음) · #54 · #56 · #45 · #36 · #38 · #24.
 - **Actions: 꺼져 있음**(DEC-040). 룰셋 필수 체크 해제 — 되돌리기는 MERGE_PROTOCOL 7절 5단계(백업 `~/lgcns_ruleset_backup.json`). Codex 리뷰봇은 PR을 하나씩 처리해 리뷰가 늦게 올라온다(2026-10-10 관측 5~30분, push 시각 미기록).
 - **운영 Supabase**: latest build `c6872ae8e9743c56` + 카드 벡터. 서버용 조회 전용 계정 `rag_reader`는 아직 없음(#63) — 로컬은 `ALLOW_ADMIN_DB_FOR_SERVER=1 uv run --env-file .env uvicorn server.api:app`. 서버는 `data/raw/nhtsa/`(manifest·FLAT_INV)도 있어야 뜬다.
-- **로컬**: 벡터 사본 `data/processed/defect/vector_cache/`(gitignore, sha256 옆 파일). 연구 임베딩 캐시는 세션 스크래치 폴더(`RETRIEVAL_CACHE`, 없으면 CPU 약 9분). 테스트 컨테이너 없음 — DB 테스트는 `docker run -d --rm --name lgcns-test-pg -e POSTGRES_PASSWORD=localtest -p 54331:5432 pgvector/pgvector:pg17`로 새로 띄우고 `TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54331/postgres`를 준다(`scripts/local_ci.sh:16-17`). 비밀번호가 `localtest`가 아니면 읽기 전용 계정 테스트가 다르게 동작한다.
+- **로컬**: 벡터 사본 `data/processed/defect/vector_cache/`(gitignore, sha256 옆 파일). 연구 임베딩 캐시는 세션 스크래치 폴더(`RETRIEVAL_CACHE`, 없으면 CPU 약 9분). 테스트 컨테이너 없음 — DB 테스트는 `docker run -d --rm --name lgcns-test-pg -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=lgcns_test -p 54331:5432 pgvector/pgvector:pg17`로 새로 띄우고 `TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54331/lgcns_test`를 준다(`scripts/local_ci.sh:16-17`). 비밀번호가 `localtest`가 아니면 읽기 전용 계정 테스트가 다르게 동작한다.
 - 출처 미확인 원격 브랜치 3개(`docs/finance-domain-notes`·`docs/onboarding-plan`·`docs/onboarding-plan-draft`)는 그대로(할 일 25).
 - 로컬 원본 데이터(gitignore): `data/raw/nhtsa/`, `data/processed/defect/`(카드·전체 원인·10/10 시트·원인 미확인 150건 시트). 팀 드라이브에 사본.
 
@@ -157,6 +157,8 @@ _갱신: 2026-10-11 (P2 계획 PR 1~3 병합 완료 — #64·#65·#66·#67, DEC-
 - `.agent/DECISIONS.md` — DEC-037(시점 평가)·DEC-038(API 서버)·DEC-039(검색 확정)
 
 ## Next Action
+
+**감사 후속(2026-10-11, DEC-046)** — 순서: ① 병합 절차 보강 PR(이 PR) → ② 새 규칙으로 #70 → #71 → #72·#73(재리뷰 🟡·🟢 반영) → ③ 문서 정정(기획 4·5절, 274건 "이유 미확인", 고객사 516건, 8,160장, DEC-037 Date·DEC-040 Status, README) → ④ 코드 보강(서버 규칙 공용 모듈, `load_state` 순서 테스트, 원인 명세에 카드 sha256) → ⑤ 원문 표기·빈칸 분류(DEC-047 예정: 573 글 허용 변경 명시, NR·조사 중 서술을 원문+말한 주체+꼬리표로, 카드 글 말한 주체는 출처 그대로 — 로컬 PDF 581개 before/after 보고 뒤 승인 시 전체 재수집).
 
 0. **#45(P1 잔여 — P3 평가보다 먼저)** — 회사명 초안 해시를 `build.json`에 기록·`verify_build` 대조(A 파트). **담당·완료일은 사용자 결정 대기**(2026-10-11 문의). 카드 내용은 같아 build_id는 그대로일 것으로 예상(확인 필요). 먼저 끝내지 못하면 P3 진입 예외와 이유를 DEC로 남긴다(PROJECT_CONTEXT Phases — Exit Criteria를 채워야 다음 Phase).
 1. **화면 연결(PR #60)** — 박성호 님 회신을 받으면 응답 칸 이름 확정(`received`↔`received_date`, `potaff`·`years`·`mfr_part` 필요 여부 — 필요하면 A 파트 `nhtsa build`로 카드에 추가, build_id가 바뀜). #60은 main과 충돌을 풀어야 한다. 회신이 없으면 디스코드로 다시 요청.
