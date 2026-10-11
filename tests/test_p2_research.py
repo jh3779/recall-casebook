@@ -250,8 +250,11 @@ def _fake_git(outputs: dict, returncode: int = 0, missing: bool = False):
         "rev-parse": ["git", "rev-parse", "HEAD"],
     }
 
+    from scripts.defect_precedent.time_eval_candidates import ROOT
+
     def run(cmd, **kw):
         assert cmd == expected[cmd[1]], cmd
+        assert kw.get("cwd") == ROOT  # 다른 폴더(다른 저장소)의 상태를 기록하지 않게
         if missing:
             raise FileNotFoundError("git")
         done = subprocess.CompletedProcess(
@@ -274,11 +277,15 @@ def test_time_eval_code_provenance_records_clean_and_dirty_scripts(monkeypatch):
     assert clean["commit"] == "abc123" and clean["dirty"] is False
     import hashlib
 
-    assert clean[
-        "script_sha256"
-    ] == {  # 스크립트 해시는 파일 내용의 sha256이어야 한다(빈 값·다른 파일이면 실패)
-        f: hashlib.sha256((tec.ROOT / f).read_bytes()).hexdigest() for f in tec.CODE_FILES
-    }
+    # 시트를 만든 코드 — 운영 목록(CODE_FILES)에서 빠지면 실패하도록 따로 적는다
+    expected_files = [
+        "scripts/defect_precedent/time_eval_candidates.py",
+        "scripts/defect_precedent/retrieval_compare.py",
+        "scripts/defect_precedent/bm25_baseline.py",
+    ]
+    # 스크립트 해시는 파일 내용의 sha256이어야 한다(빈 값·다른 파일이면 실패)
+    want = {f: hashlib.sha256((tec.ROOT / f).read_bytes()).hexdigest() for f in expected_files}
+    assert clean["script_sha256"] == want
 
     monkeypatch.setattr(
         subprocess, "run", _fake_git({"status": " M scripts/x.py", "rev-parse": "abc123"})
