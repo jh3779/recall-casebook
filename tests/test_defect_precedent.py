@@ -306,6 +306,21 @@ def test_parse_report_only_whole_page_lines_are_removed():
     assert r["cause_text"] == "The bracket shown on Page 2 of the attachment cracked under load."
 
 
+def test_parse_report_keeps_quoted_report_titles_and_inline_page_refs():
+    """본문에 인용된 리콜 보고서 제목과 "Page 2 of 3"은 원문이다 — 쪽 번호가 붙은 머리말과 줄 전체 쪽 표시만 지운다(PR #82 리뷰·Codex)."""
+    text = (
+        "Description of the Cause : Per ECCO Holdings Corp. [Part 573 Safety Recall Report 20E-041].\n"
+        "See Page 2 of 3 for the analysis. Part 573 Safety Recall Report 24V-412 Page 2 The lamps fail.\n"
+        "Page 2 of 3\n"
+        "Chronology :"
+    )
+    r = parse_report(text)
+    assert r["cause_text"] == (
+        "Per ECCO Holdings Corp. [Part 573 Safety Recall Report 20E-041]. "
+        "See Page 2 of 3 for the analysis. The lamps fail."
+    )
+
+
 def test_parse_report_blank_cause_is_empty():
     r = parse_report("Description of the Cause :\n\nChronology :")
     assert r["cause_status"] == "empty" and r["cause_text"] == ""

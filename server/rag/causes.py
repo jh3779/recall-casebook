@@ -7,7 +7,6 @@
 """
 
 from scripts.defect_precedent.nhtsa import RCLRPT_FROM
-from scripts.defect_precedent.rclrpt import CAUSE_TEXT_BASIS
 from server.rag.flags import flags
 
 SPEAKER_573 = "리콜 제조사 (Part 573 결함·불합치 보고서)"
@@ -40,6 +39,8 @@ def cause_573(
             "file": row["source_file"],
             "pdf_sha256": row["pdfs"][row["source_file"]],
             "submission_date": row["submission_date"],
-            "text_basis": CAUSE_TEXT_BASIS,  # PDF 텍스트 추출본에서 쪽 머리말·꼬리말 제거와 공백 정리만 한 글(DEC-047)
+            "text_basis": row[
+                "text_basis"
+            ],  # 이 build의 판독 규칙이 기록한 정리 방식(DEC-047, 원인 파일 명세)
         },
     }

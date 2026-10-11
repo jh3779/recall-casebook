@@ -3179,18 +3179,18 @@
  ],
  "causes_sample": {
   "rows": 300,
-  "content_sha256": "2e945be45d922e7d6cb63d3c265dbdcf28be7c6db0d346d7858bae73343aa7d0",
-  "note": "causes_sample.jsonl의 줄마다 [캠페인, cause_status, resolution, submission_date, 정렬한 (판본 주소, sha256)]을 정렬해 JSON으로 만든 문자열의 sha256 — 줄바꿈·칸 순서와 무관하다. why_stats --baseline이 대조한다."
+  "content_sha256": "580c90c2c5eea5f35ac82c9326dfeb659cf6c22c6652a661768d7043273d985a",
+  "note": "2026-10-12 규칙으로 다시 판독한 표본(채워짐 205·미보고·조사 중 서술 83·비어 있음 12, 10/6 첫 판독은 채워짐 205·비어 있음 95 — 서술이 빈칸에 섞여 있었다). causes_sample.jsonl의 줄마다 [캠페인, cause_status, resolution, submission_date, 정렬한 (판본 주소, sha256)]을 정렬해 JSON으로 만든 문자열의 sha256 — 줄바꿈·칸 순서와 무관하다. why_stats --baseline이 대조한다."
  },
  "causes_full": {
   "rows": 11719,
   "failures": 18,
   "expect_campaigns": 11737,
-  "causes_sha256": "6089505793dd61a403adf021b44cce6b3e1d85d27ed59fb062d93d1266ea44dd",
+  "causes_sha256": "3b24e3c603dfddc8c5bf84f292d6cd0d4583bf986a7ee6784ec2c61d04b746c1",
   "expected_campaigns_sha256": "671d6465f273bdef4efc4a42748e26cff8d34c0f53a39c15bfa18090cc582175",
   "failed_campaigns_sha256": "8f8f7a311774e01ebaeaf936b4dab82d289861b5ab8a303f32afc1bf92d4be57",
-  "manifest_sha256": "677d6c4b2393071f67a3dc46a2b370feb25cfe6f1160008ed94aef4d0cf97ea0",
-  "note": "2026-10-11 재수집(PR D·DEC-047 — 미보고·조사 중 서술을 stated_unknown으로 원문 보존)으로 원인 파일·명세 지문을 갱신했다(10/7 값: causes d215ff583281…, manifest ec55807ee2ab…). 대상 목록·실패 목록(18건)·줄 수와 filled 8,179건(글 변경 0)은 같아 아래 집계 수치는 그대로다. 2026-10-07 `rclrpt all`(11,737개 캠페인 전체 수집, 사람이 확인해 수용한 실패 18건)이 남긴 전수 결과의 고정값. expected_campaigns_sha256은 수집을 시작할 때 기록한 대상 목록의 지문(rclrpt.campaigns_digest 규칙), failed_campaigns_sha256은 수용한 실패 캠페인 목록의 지문, manifest_sha256은 causes.manifest.json 파일 전체의 sha256이다. why_stats --baseline --full이 대조한다 — 일부 캠페인만 모은 파일과 그에 맞춘 명세는 여기서 걸린다."
+  "manifest_sha256": "df901f3fd49a0cf12896f3df963df627517a8153d1c9b92c847bc392d2056e1b",
+  "note": "2026-10-12 판독 규칙(PR #82·DEC-047 — 미보고·조사 중 서술을 stated_unknown으로 원문 보존, 쪽 번호가 붙은 머리말만 지우고 본문에 인용된 \"Part 573 Safety Recall Report <번호>\"는 남김, 명세에 text_basis 기록)으로 원인 파일·명세 지문을 갱신했다(10/7 값: causes d215ff583281…, manifest ec55807ee2ab…). 글이 바뀐 것은 본문 인용이 되살아난 4개 캠페인(21V503·22V400·26E009·26V404)뿐이다. 대상 목록·실패 목록(18건)·줄 수와 filled 8,179건(글 변경 0)은 같아 아래 집계 수치는 그대로다. 2026-10-07 `rclrpt all`(11,737개 캠페인 전체 수집, 사람이 확인해 수용한 실패 18건)이 남긴 전수 결과의 고정값. expected_campaigns_sha256은 수집을 시작할 때 기록한 대상 목록의 지문(rclrpt.campaigns_digest 규칙), failed_campaigns_sha256은 수용한 실패 캠페인 목록의 지문, manifest_sha256은 causes.manifest.json 파일 전체의 sha256이다. why_stats --baseline --full이 대조한다 — 일부 캠페인만 모은 파일과 그에 맞춘 명세는 여기서 걸린다."
  },
  "note": "회사명 대응표(maker_aliases.csv, DEC-036)를 반영한 카드 기준이다 — 같은 2026-10-06 원본·시험지·573 표본에서 카드의 maker·maker_group만 달라졌고(BM25는 회사 이름을 색인하지 않아 점수는 같다), 회사명 반영 전 기준은 baseline_2026-10-06.json이다. 원본(NHTSA flat 파일)은 커밋하지 않는다. raw의 sha256과 같은 원본 사본(data/raw/nhtsa 또는 fetch가 보관한 data/raw/nhtsa.<받은 시각>)이 있어야 bm25_baseline --baseline이 '재현'으로 실행된다. 사본이 없으면 --allow-drift로 같은 질문 번호만 재평가한다. rclrpt_sample은 2026-10-06 당시 판본 목록(582개)과 각 PDF의 sha256이다 — --baseline은 이 목록만 받아 sha256을 확인한다.",
  "expected": {
@@ -3202,7 +3202,8 @@
   "bm25_hit10_any": 0.51,
   "bm25_hit10_first": 0.503,
   "rclrpt_sample_filled": 205,
-  "rclrpt_sample_empty": 95,
+  "rclrpt_sample_empty": 12,
+  "rclrpt_sample_stated_unknown": 83,
   "rclrpt_sample_unresolved": 0,
   "rclrpt_sample_manual_dates": 1
  }

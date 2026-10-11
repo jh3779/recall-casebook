@@ -49,7 +49,16 @@ def load_build(data_dir: Path = PROCESSED) -> Build:
         raise BuildMismatch(
             "causes.manifest.json의 실패 사유(failed_kinds)와 실패 캠페인 목록(failed_campaigns)이 다르다"
         )
-    causes = {r["campaign"]: r for r in read_jsonl(data_dir / "causes.jsonl")}
+    # 원인 글 정리 방식은 이 build를 만든 판독 규칙의 기록을 쓴다(DEC-047) — 기록이 없으면 옛 규칙의 원인 파일이라 띄우지 않는다
+    basis = spec.get("text_basis")
+    if not isinstance(basis, str) or not basis.strip():
+        raise BuildMismatch(
+            "causes.manifest.json에 text_basis(원인 글 정리 방식)가 없다 — DEC-047 이전 규칙으로 만든 원인 파일이다. "
+            "rclrpt all로 다시 만든다"
+        )
+    causes = {
+        r["campaign"]: {**r, "text_basis": basis} for r in read_jsonl(data_dir / "causes.jsonl")
+    }
     return Build(
         meta["build_id"],
         meta["snapshot_date"].isoformat(),

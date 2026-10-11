@@ -85,16 +85,21 @@ _SUPPLIER_BLOCK = re.compile(
 # "JUN 05, 2024", "NOV 18,2014", "Sep 14, 2015" 모두 있다
 _SUBMISSION = re.compile(r"Submission Date\s*:\s*([A-Za-z]{3})\s+(\d{1,2})\s*,\s*(\d{4})")
 # 원인 칸이 쪽을 넘으면 pdftotext가 쪽 꼬리말·머리말을 본문 사이에(같은 줄에 붙기도 한다) 끼운다.
-# 머리말·꼬리말 고유 문구는 어디서든 지우고, 흔한 단어인 맨 "Page N"만은 줄 전체일 때만 지운다
-# (2026-10-11, DEC-047: 예전에는 본문 안의 "shown on Page 2"까지 지웠다. 원인 글 허용 변경 = 이 표시 제거 + 공백 정리뿐)
+# 지우는 것은 머리말·꼬리말에만 나오는 모양뿐이다(DEC-047): 49 CFR 꼬리말 문장, 그리고 "Part 573 Safety Recall Report <번호>"에
+# 쪽 번호("Page N")가 **붙어 있는** 머리말. 쪽 번호 없이 본문에 인용된 "[Part 573 Safety Recall Report 20E-041]"은 남긴다
+# (실제 머리말 1,270여 건은 모두 쪽 번호가 붙어 있었다 — PR #82 리뷰). "Page N"·"Page N of M" 단독은 줄 전체일 때만 지운다
+# (본문의 "shown on Page 2", "See Page 2 of 3"은 남긴다).
 _PAGE_NOISE = re.compile(
     r"The information contained in this report was submitted pursuant to 49 CFR\s*§\s*573"
-    r"|(?:Page\s+\d+(?:\s+of\s+\d+)?\s+)?Part 573 Safety Recall Report\s+\d\d[A-Z]-?\d{3}(?:\s+Page\s+\d+(?:\s+of\s+\d+)?)?"
-    r"|\bPage\s+\d+\s+of\s+\d+\b"
+    r"|(?:Page\s+\d+(?:\s+of\s+\d+)?\s+)?Part 573 Safety Recall Report\s+\d\d[A-Z]-?\d{3}\s+Page\s+\d+(?:\s+of\s+\d+)?"
+    r"|Page\s+\d+(?:\s+of\s+\d+)?\s+Part 573 Safety Recall Report\s+\d\d[A-Z]-?\d{3}"
 )
-_PAGE_ONLY_LINE = re.compile(r"^[ \t]*Page\s+\d+[ \t]*$", re.M)
-# 응답·문서에 적는 원인 글 정리 방식(DEC-047) — 판독 규칙을 바꾸면 이 이름도 바꾼다
-CAUSE_TEXT_BASIS = "pdftotext-layout; page-header-footer-lines-removed; whitespace-collapsed"
+_PAGE_ONLY_LINE = re.compile(r"^[ \t]*Page\s+\d+(?:\s+of\s+\d+)?[ \t]*$", re.M)
+# 원인 글 정리 방식(DEC-047) — 판독 규칙을 바꾸면 앞의 판본 날짜를 바꾼다. 원인 파일 명세(causes.manifest.json)에 기록되고,
+# 서버는 상수가 아니라 그 build의 명세에서 읽는다(옛 규칙으로 만든 build에 새 설명이 붙지 않게)
+CAUSE_TEXT_BASIS = (
+    "rclrpt-2026-10-12; pdftotext-layout; page-header-footer-removed; whitespace-collapsed"
+)
 
 
 def parse_report(text: str) -> dict:
@@ -575,6 +580,7 @@ def run(
             "expect_campaigns": expect_campaigns,
             "listing_campaigns": len(reports),
             "pdftotext": poppler_version,
+            "text_basis": CAUSE_TEXT_BASIS,
             "generated_at": datetime.now(UTC).isoformat(),
         }
         manifest_path.write_text(
@@ -592,7 +598,10 @@ def run(
         f" 그중 사람 확인 제출일 사용 {manual_used})"
     )
     if mode == "sample":
-        print("  2026-10-06 표본 300건 (--baseline): 채워짐 205 (68.3%) · 비어 있음 95 · 미확정 0")
+        print(
+            "  기준 표본 300건 (--baseline, 2026-10-12 규칙): 채워짐 205 (68.3%) · 미보고·조사 중 서술 83 · 비어 있음 12 · 미확정 0"
+            " — 2026-10-06 첫 판독(빈칸에 서술 포함)은 채워짐 205 · 비어 있음 95"
+        )
     print(f"출력: {out_path}")
 
 

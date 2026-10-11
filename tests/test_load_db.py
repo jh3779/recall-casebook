@@ -17,6 +17,7 @@ import pytest
 
 from scripts.ci.db_guard import is_local_test_db
 from scripts.defect_precedent import load_db
+from scripts.defect_precedent.rclrpt import CAUSE_TEXT_BASIS
 
 # ---------------------------------------------------------------------------
 # 작은 가짜 데이터 폴더
@@ -131,6 +132,7 @@ def write_full(d, cause_rows, **override):
         "expect_campaigns": len(cause_rows),
         "listing_campaigns": len(cause_rows),
         "pdftotext": "pdftotext version 25.07.0",
+        "text_basis": CAUSE_TEXT_BASIS,  # rclrpt all이 명세에 남기는 원인 글 정리 방식(DEC-047)
         "generated_at": "2026-10-07T00:00:00+00:00",
         **override,
     }

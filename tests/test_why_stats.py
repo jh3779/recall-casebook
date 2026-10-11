@@ -416,8 +416,9 @@ def test_reproduces_the_full_573_numbers():
     causes_path = nhtsa.OUT_DIR / "causes.jsonl"
     causes = why_stats.read_jsonl(causes_path)
     manifest = why_stats.verify_causes(causes_path, nhtsa.OUT_DIR / "causes.manifest.json", causes)
-    # 2026-10-11 재수집 완성본(DEC-047 — stated_unknown 원문 보존). 10/7 완성본 d215ff583281…과 filled·실패·줄 수가 같아 수치는 그대로다
-    assert manifest["file_sha256"].startswith("6089505793dd")
+    # 2026-10-12 판독 규칙의 완성본(DEC-047 — stated_unknown 원문 보존·본문 인용 머리말 보존). 10/7 완성본 d215ff583281…과
+    # filled·실패·줄 수가 같아 수치는 그대로다
+    assert manifest["file_sha256"].startswith("3b24e3c603df")
     # 기준 파일에 고정한 전수 결과의 값(대상 목록·실패 목록·원인 파일·명세 파일 지문)과 같다
     base_path = nhtsa.REPO_ROOT / "scripts/defect_precedent/baseline_2026-10-06.json"
     base = json.loads(base_path.read_text(encoding="utf-8"))

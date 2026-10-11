@@ -233,8 +233,13 @@ def test_check_against_db_rejects_a_spec_that_differs_from_the_loaded_build(tmp_
         check_against_db(FakeConn(None), b)
 
 
+def loaded(row, basis="rclrpt-test; pdftotext-layout"):
+    """load_build가 원인 행에 붙이는 것처럼 — 이 build의 원인 글 정리 방식(명세의 text_basis)을 얹는다(DEC-047)."""
+    return {**row, "text_basis": basis}
+
+
 def test_cause_573_copies_text_verbatim_with_speaker_and_source():
-    row = cause("24V001", pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32})
+    row = loaded(cause("24V001", pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32}))
     got = cause_573(CARDS[0], {"24V001": row})
     assert got["text"] == row["cause_text"]
     assert got["speaker"].startswith("리콜 제조사")
@@ -242,7 +247,9 @@ def test_cause_573_copies_text_verbatim_with_speaker_and_source():
 
 
 def test_verify_rejects_campno_outside_candidates_and_drops_altered_cause():
-    causes = {"24V001": cause("24V001", pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32})}
+    causes = {
+        "24V001": loaded(cause("24V001", pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32}))
+    }
     card = {"campno": "24V001000", "cause": cause_573(CARDS[0], causes) | {"text": "changed"}}
     card["cause"]["source"] = {"campaign": "24V001"}
     with pytest.raises(OutOfCandidates):
@@ -660,7 +667,10 @@ def test_cause_573_keeps_manufacturer_stated_unknown_text_with_speaker_and_basis
     from server.rag.causes import SPEAKER_573
 
     pdf = {"pdfs": {"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "ab" * 32}}
-    row = cause("24V001", text="Still being investigated.", cause_status="stated_unknown", **pdf)
+    row = loaded(
+        cause("24V001", text="Still being investigated.", cause_status="stated_unknown", **pdf),
+        CAUSE_TEXT_BASIS,
+    )
     got = cause_573(CARDS[0], {"24V001": row})
     assert (got["status"], got["text"], got["speaker"]) == (
         "stated_unknown",
@@ -668,8 +678,22 @@ def test_cause_573_keeps_manufacturer_stated_unknown_text_with_speaker_and_basis
         SPEAKER_573,
     )
     assert got["source"]["text_basis"] == CAUSE_TEXT_BASIS
-    filled = cause_573(CARDS[0], {"24V001": cause("24V001", **pdf)})
-    assert filled["source"]["text_basis"] == CAUSE_TEXT_BASIS
+    filled = cause_573(CARDS[0], {"24V001": loaded(cause("24V001", **pdf), "rclrpt-old; other")})
+    assert (
+        filled["source"]["text_basis"] == "rclrpt-old; other"
+    )  # 서버 상수가 아니라 그 build의 기록을 쓴다
+
+
+def test_load_build_takes_text_basis_from_manifest_and_refuses_files_without_it(tmp_path):
+    """원인 글 정리 방식은 build의 원인 명세에서 읽는다 — 기록이 없는 옛 원인 파일로는 서버를 띄우지 않는다(DEC-047, PR #82 Codex)."""
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001")], text_basis="rclrpt-2099-01-01; test")
+    b = load_build(d)
+    assert b.causes["24V001"]["text_basis"] == "rclrpt-2099-01-01; test"
+    d2 = make_data_dir(tmp_path / "old")
+    write_full(d2, [cause("24V001")], text_basis=None)
+    with pytest.raises(BuildMismatch, match="text_basis"):
+        load_build(d2)
 
 
 def test_card_source_says_who_wrote_card_text_only_as_far_as_the_source_says():
