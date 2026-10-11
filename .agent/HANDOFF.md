@@ -1,6 +1,6 @@
 # Agent Handoff
 
-_갱신: 2026-10-11 (P2 계획 PR 1~3 병합 완료 — #62·#66·#67, 문서 정리 #64·#65·#68·#69, DEC-043·044·045 · 리뷰봇 저장소 사본 갱신 · #45는 PR #71 · 남은 것은 화면 연결·원인 표시·시점 평가 채점)_
+_갱신: 2026-10-12 (운영 build·감사 후속 ③ 갱신, PR #85) · 2026-10-11 (P2 계획 PR 1~3 병합 완료 — #62·#66·#67, 문서 정리 #64·#65·#68·#69, DEC-043·044·045 · 리뷰봇 저장소 사본 갱신 · #45는 PR #71 · 남은 것은 화면 연결·원인 표시·시점 평가 채점)_
 
 ## Current Objective
 
@@ -42,7 +42,7 @@ _갱신: 2026-10-11 (P2 계획 PR 1~3 병합 완료 — #62·#66·#67, 문서 �
 - main = `e987445` (#67까지). **열린 PR**(2026-10-11 이 체크포인트를 쓸 때): #60(박성호, 프런트 쇼룸 — 10/10 응답 칸 맞추기 코멘트와 10/9 리뷰에 회신 없음, main과 충돌 상태), 이 체크포인트 PR(#68), #69(#56 — 제목 규칙 세 곳 주석, 병합되면 #56 닫힘), #70(#53 a — `code_provenance` 실패 분기 테스트). 이후 상태는 `gh pr list`로 확인한다.
 - **열린 이슈**: #63(API 서버 배포 전 보완 + raw 원본 배포 방법 코멘트) · #61(박예원, 대체 회차 질문 도구, 10/14) · #53(P2 실험 스크립트 후속 — 제목과 달리 코멘트에 **원인 표시 미결**·150건 표시 일정이 함께 있음) · #54 · #56 · #45(PR #71 병합 시 닫힘) · #36 · #38 · #24.
 - **Actions: 꺼져 있음**(DEC-040). 룰셋 필수 체크 해제 — 되돌리기는 MERGE_PROTOCOL 7절 5단계(백업 `~/lgcns_ruleset_backup.json`). Codex 리뷰봇은 PR을 하나씩 처리해 리뷰가 늦게 올라온다(2026-10-10 관측 5~30분, push 시각 미기록).
-- **운영 Supabase**: latest build `c6872ae8e9743c56` + 카드 벡터. 서버용 조회 전용 계정 `rag_reader`는 아직 없음(#63) — 로컬은 `ALLOW_ADMIN_DB_FOR_SERVER=1 uv run --env-file .env uvicorn server.api:app`. 서버는 `data/raw/nhtsa/`(manifest·FLAT_INV)도 있어야 뜬다.
+- **운영 Supabase**: latest build `f1fe1843ed0f2c66`(2026-10-12 DEC-047 판독 규칙 원인 파일, PR #82 — 옛 build `c6872ae8e9743c56` 등은 보관) + 카드 벡터. 서버용 조회 전용 계정 `rag_reader`는 아직 없음(#63) — 로컬은 `ALLOW_ADMIN_DB_FOR_SERVER=1 uv run --env-file .env uvicorn server.api:app`. 서버는 `data/raw/nhtsa/`(manifest·FLAT_INV)도 있어야 뜬다.
 - **로컬**: 벡터 사본 `data/processed/defect/vector_cache/`(gitignore, sha256 옆 파일). 연구 임베딩 캐시는 세션 스크래치 폴더(`RETRIEVAL_CACHE`, 없으면 CPU 약 9분). 테스트 컨테이너 없음 — DB 테스트는 `docker run -d --rm --name lgcns-test-pg -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=lgcns_test -p 54331:5432 pgvector/pgvector:pg17`로 새로 띄우고 `TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54331/lgcns_test`를 준다(`scripts/local_ci.sh:16-17`). 비밀번호가 `localtest`가 아니면 읽기 전용 계정 테스트가 다르게 동작한다.
 - 출처 미확인 원격 브랜치 3개(`docs/finance-domain-notes`·`docs/onboarding-plan`·`docs/onboarding-plan-draft`)는 그대로(할 일 25).
 - 로컬 원본 데이터(gitignore): `data/raw/nhtsa/`, `data/processed/defect/`(카드·전체 원인·10/10 시트·원인 미확인 150건 시트). 팀 드라이브에 사본.

@@ -27,6 +27,6 @@ create table if not exists recall_embeddings (
     foreign key (build_id, campno) references recalls (build_id, campno)
 );
 
--- schema.sql과 같이 정책 없이 RLS를 켜서 anon·authenticated 키로는 읽지 못하게 막는다 (서버는 postgres 계정으로 읽는다)
+-- schema.sql과 같이 정책 없이 RLS를 켜서 anon·authenticated 키로는 읽지 못하게 막는다 (적재는 관리자 연결, 서버는 조회 전용 rag_reader 계정에 따로 준 조회 정책으로 읽는다 — server/README.md, DEC-042 ⑤)
 alter table embedding_sets    enable row level security;
 alter table recall_embeddings enable row level security;
