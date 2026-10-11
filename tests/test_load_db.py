@@ -1,9 +1,9 @@
 """scripts/defect_precedent/load_db.py 테스트.
 
 DB 없이 도는 테스트가 기본이다. `@pg` 테스트는 Postgres가 있을 때 돈다:
-    docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -p 54329:5432 pgvector/pgvector:pg17
-    TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54329/postgres uv run pytest tests/test_load_db.py
-주소가 localhost가 아니면 실행하지 않는다 (테스트가 public 스키마를 통째로 지우므로 Supabase에 향하면 안 된다).
+    docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=lgcns_test -p 54329:5432 pgvector/pgvector:pg17
+    TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54329/lgcns_test uv run pytest tests/test_load_db.py
+전용 시험 DB(로컬 + DB 이름 lgcns_test, scripts/ci/db_guard.py)가 아니면 실행하지 않는다 (테스트가 public 스키마를 통째로 지우므로 Supabase에 향하면 안 된다).
 CI는 REQUIRE_DB_TESTS=1로 돌려서 DB 테스트가 조용히 건너뛰어지지 않게 한다 (DB가 없으면 실패).
 """
 
@@ -12,10 +12,10 @@ import json
 import os
 import re
 from datetime import date
-from urllib.parse import urlparse
 
 import pytest
 
+from scripts.ci.db_guard import is_local_test_db
 from scripts.defect_precedent import load_db
 
 # ---------------------------------------------------------------------------
@@ -608,10 +608,13 @@ def test_schema_has_build_keys_join_column_views_and_row_level_security():
 # Postgres (TEST_DATABASE_URL이 있을 때만, CI는 항상)
 
 PG_URL = os.environ.get("TEST_DATABASE_URL", "")
-PG_USABLE = bool(PG_URL) and urlparse(PG_URL).hostname in ("localhost", "127.0.0.1")
+PG_USABLE = bool(PG_URL) and is_local_test_db(
+    PG_URL
+)  # host·hostaddr까지 본다(scripts/ci/db_guard.py)
 REQUIRE_DB = os.environ.get("REQUIRE_DB_TESTS") == "1"
 pg = pytest.mark.skipif(
-    not PG_USABLE and not REQUIRE_DB, reason="TEST_DATABASE_URL이 없거나 localhost가 아니다"
+    not PG_USABLE and not REQUIRE_DB,
+    reason="TEST_DATABASE_URL이 없거나 전용 시험 DB(로컬·lgcns_test)가 아니다",
 )
 
 
@@ -621,7 +624,7 @@ def pgconn(monkeypatch):
 
     if not PG_USABLE:
         pytest.fail(
-            "REQUIRE_DB_TESTS=1인데 TEST_DATABASE_URL이 없거나 localhost가 아니다 — DB 테스트를 건너뛸 수 없다"
+            "REQUIRE_DB_TESTS=1인데 TEST_DATABASE_URL이 없거나 전용 시험 DB(로컬·lgcns_test)가 아니다 — DB 테스트를 건너뛸 수 없다"
         )
     monkeypatch.setenv("DATABASE_URL", PG_URL)
     with psycopg.connect(PG_URL, autocommit=True) as conn:
