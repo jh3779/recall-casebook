@@ -101,7 +101,7 @@ gh pr diff $N --name-only | grep -E '(^|/)\.env($|\.)' | grep -v '\.env\.example
 
 ## 7. G-08 RAG 품질 근거
 
-변경 파일에 검색·답변·프롬프트·청킹·색인 코드가 있으면 PR 본문 "검증 방법"에 같은 평가셋 before → after 수치가 있어야 한다. 없으면 ❌. 해당 파일이 없으면 "해당 없음". 결과 코멘트에는 그 수치가 **재측정**인지 **불변 추정**인지 MERGE_PROTOCOL 2절 G-08의 정의와 고정 명령(`git diff --stat <잰 커밋> <head> -- server/rag scripts/defect_precedent`)대로 구분해 적는다.
+변경 파일에 검색·답변·프롬프트·청킹·색인 코드가 있으면 PR 본문 "검증 방법"에 같은 평가셋 before → after 수치가 있어야 한다. 없으면 ❌. 해당 파일이 없으면 "해당 없음". 결과 코멘트에는 그 수치가 **재측정**인지 **불변 추정**인지 MERGE_PROTOCOL 2절 G-08의 정의와 고정 명령(`git diff --stat <잰 커밋> <head> -- server scripts/defect_precedent`)대로 구분해 적는다.
 
 ## 8. G-09 의존성 · 인계 문서
 
@@ -142,7 +142,9 @@ REPO=jh3779/LG_CNS_RAG_main PR_NUMBER=$N uv run python scripts/ci/merge_gate.py 
 병합 명령 **바로 앞에서** main이 바뀌지 않았는지 확인한다(PR #69는 #68 병합 31초 뒤 main이 바뀐 채 병합됐다). 실패하면 main을 합쳐 push하고 1절부터 다시 한다. 여러 PR을 연달아 병합하면 앞 PR을 병합할 때마다 다음 PR에서 이 확인부터 한다.
 
 ```bash
-git fetch origin main && git merge-base --is-ancestor origin/main <head 전체 SHA> || { echo "❌ main이 바뀜 — 합치고 다시 검증"; exit 1; }
+if ! git fetch origin main || ! git merge-base --is-ancestor origin/main <head 전체 SHA>; then
+  echo "❌ main이 바뀜 — 합치고 다시 검증"; exit 1
+fi
 gh pr merge $N --squash --match-head-commit <결과 코멘트에 적은 head SHA(전체)>
 ```
 

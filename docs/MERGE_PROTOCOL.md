@@ -56,7 +56,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 | G-05 | **리뷰 스레드 해결** | 미해결 인라인 리뷰 스레드 0개 | 아래 [3절](#3-명령-모음) GraphQL |
 | G-06 | **diff 정독 · PR 설명 일치** | `gh pr diff <N>` 전량을 읽었고, PR 제목·본문이 실제 변경과 맞는다 (요약만 보고 넘기지 않는다) | `gh pr diff <N>` |
 | G-07 | **서비스 원칙 스윕** | 판정 필드(`applies` · `verdict` · `is_applicable`)·"적용됩니다/적용되지 않습니다"류 출력이 새로 생기지 않았다. 비밀값·`.env`가 없다 | 아래 grep |
-| G-08 | **RAG 품질 근거** | 검색·답변·프롬프트·청킹·색인을 바꿨다면 PR 본문 "검증 방법"에 **같은 평가셋 before → after 수치**가 있다. 해당 없으면 "해당 없음". 결과 코멘트에는 그 수치가 **재측정**(head와 같은 커밋에서 잰 값 — 잰 커밋 SHA·명령)인지 **불변 추정**(잰 커밋과 head 사이에 검색·색인 경로가 바뀌지 않았다는 근거 — 고정 명령 `git diff --stat <잰 커밋> <head> -- server/rag scripts/defect_precedent`가 비어 있음)인지 구분해 적는다. 경로는 이 고정 명령만 쓴다(골라 좁히지 않는다). 마지막 head보다 앞선 커밋에서 잰 값을 그냥 "측정값"으로 적지 않는다(DEC-046) | PR 본문 확인 |
+| G-08 | **RAG 품질 근거** | 검색·답변·프롬프트·청킹·색인을 바꿨다면 PR 본문 "검증 방법"에 **같은 평가셋 before → after 수치**가 있다. 해당 없으면 "해당 없음". 결과 코멘트에는 그 수치가 **재측정**(head와 같은 커밋에서 잰 값 — 잰 커밋 SHA·명령)인지 **불변 추정**(잰 커밋과 head 사이에 검색·색인 경로가 바뀌지 않았다는 근거 — 고정 명령 `git diff --stat <잰 커밋> <head> -- server scripts/defect_precedent`가 비어 있음 — `server/api.py`의 답변 조립 포함)인지 구분해 적는다. 경로는 이 고정 명령만 쓴다(골라 좁히지 않는다). 마지막 head보다 앞선 커밋에서 잰 값을 그냥 "측정값"으로 적지 않는다(DEC-046) | PR 본문 확인 |
 | G-09 | **의존성 · 인계 문서** | `pyproject.toml`을 바꿨으면 `uv.lock`도 바뀌었다. 의미 있는 진전·결정이면 `.agent/`가 갱신됐다 | `gh pr diff <N> --name-only` |
 
 ### 2-1. CI가 자동으로 확인하는 것
@@ -149,7 +149,7 @@ G-07 grep에 걸렸다고 바로 실패는 아니다 — 문서·테스트에서
 | G-05 스레드 해결 | ✅ | 미해결 0 |
 | G-06 diff·설명 | ✅ | 파일 4개 전량 확인 |
 | G-07 원칙 스윕 | ✅ | 판정 표현 없음, .env 없음 |
-| G-08 RAG 근거 | ✅ | 재측정: `abc1234`에서 `server.rag.parity` Hit@10 0.542 → 0.542 (또는 "불변 추정: `git diff --stat def5678 abc1234 -- server/rag scripts/defect_precedent` 비어 있음", 또는 "해당 없음") |
+| G-08 RAG 근거 | ✅ | 재측정: `abc1234`에서 `server.rag.parity` Hit@10 0.542 → 0.542 (또는 "불변 추정: `git diff --stat def5678 abc1234 -- server scripts/defect_precedent` 비어 있음", 또는 "해당 없음") |
 | G-09 의존성·인계 | ✅ | uv.lock 동반, HANDOFF 갱신 |
 
 ### 자동 리뷰 지적 처리 내역
@@ -170,7 +170,10 @@ G-07 grep에 걸렸다고 바로 실패는 아니다 — 문서·테스트에서
 - 에이전트는 사용자가 **그 PR의 병합을 명시적으로 지시한 경우에만** 병합할 수 있고, 그때도 4절 코멘트가 ✅로 게시된 뒤여야 한다. (Claude Code는 `.claude/settings.json`에서 이 명령이 매번 확인을 묻도록 돼 있다.) **지시에 PR 번호가 없으면**("병합해 줘") 어느 PR인지 번호로 되물어 확인한다(DEC-046).
 - **병합 직전 main 재확인** — 결과 코멘트 뒤에 다른 PR이 병합돼 main이 바뀌었을 수 있다(PR #69는 #68 병합 31초 뒤 이 상태로 병합됐다). 병합 명령 바로 앞에서 확인하고, 실패하면 main을 합쳐 push한 뒤 G-01·G-03부터 다시 한다. 여러 PR을 연달아 병합할 때는 앞 PR을 병합할 때마다 다음 PR에서 이 확인부터 한다.
   ```bash
-  git fetch origin main && git merge-base --is-ancestor origin/main <head 전체 SHA> && echo "main 포함" || echo "❌ main 다시 합치기"
+  if ! git fetch origin main || ! git merge-base --is-ancestor origin/main <head 전체 SHA>; then
+    echo "❌ main이 바뀜 — 합치고 다시 검증"; exit 1
+  fi
+  # 위가 통과했을 때만 아래 병합 명령으로 간다
   ```
 - 병합 명령에는 **결과 코멘트에 적힌 head SHA를 반드시 붙인다.** 코멘트 게시 뒤에 push가 들어왔으면 GitHub이 병합을 거부한다.
   ```bash
@@ -199,5 +202,5 @@ G-07 grep에 걸렸다고 바로 실패는 아니다 — 문서·테스트에서
      | gh api -X PUT repos/jh3779/LG_CNS_RAG_main/rulesets/24290303 --input -
    ```
 3. **Actions 끄기(되돌릴 수 있는 쪽을 먼저)** — Settings → Actions → General → "Disable actions", 또는 `gh api -X PUT repos/jh3779/LG_CNS_RAG_main/actions/permissions -F enabled=false`. 워크플로 파일은 남겨 둔다. **파일까지 지우는 것**(`git rm .github/workflows/*.yml`을 PR로)은 한도가 다음 달에도 모자랄 것이 확실할 때만 — 되살리려면 그 PR을 revert한다.
-4. **병합 전 검증(4절)은 그대로** — PR 브랜치에 `origin/main`을 먼저 합치고(CI가 보던 "main에 합친 상태"와 맞춤) push한 뒤, `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh`로 돌린다. 통과하면 스크립트가 결과 줄(커밋 SHA·DB 테스트 실행됨·PR 번호)·pytest 요약·로그 sha256(마지막 두 줄 앞까지)을 PR 코멘트 `### 🧪 local CI (엄격) — 커밋 <SHA>`로 **직접** 남기고, 코멘트를 남기지 못하면 실패로 끝난다. G-01 근거는 **그 PR 코멘트뿐**이다 — 출력을 손으로 옮긴 줄은 근거로 쓰지 않는다(같은 계정이라 위조를 완전히 막지는 못한다, DEC-046). 이 모드는 열린 PR이 없거나 PR 최신 커밋과 검사 커밋이 다르거나 최신 `origin/main`이 검사 커밋에 들어 있지 않거나 검사 도중 main이 바뀌거나 `scripts/`·`lefthook.yml`에 커밋하지 않은 변경이 있거나 `scripts/`·`server/`·`tests/`에 추적하지 않는 새 파일이 있거나 `TEST_DATABASE_URL`이 실제로 접속할 곳(`host`·`hostaddr` — `scripts/ci/test_db_guard.py`)이 localhost(127.0.0.1)가 아니거나 DB 테스트를 건너뛰거나 PR 코멘트를 남기지 못하면 실패하고, 통과하면 "엄격 — 병합 근거로 쓸 수 있음" 줄로 끝난다(기본 모드 출력은 근거로 쓰지 않는다). main을 합치면 head가 바뀌므로 자동 리뷰도 그 head로 다시 받는다(G-03). `frontend/`는 이 스크립트가 보지 않으므로(프런트 CI는 필수가 아님) 전환 중 프런트를 바꾸면 `cd frontend && npm ci && npm run lint && npm run build && npm test`를 따로 돌려 근거에 적는다. `merge-gate` 상태는 붙지 않으므로 결과 코멘트를 쓰기 전에 **로컬에서 `merge_gate.py`를 읽기 전용으로 돌려**(`REPO=jh3779/LG_CNS_RAG_main PR_NUMBER=<N> uv run python scripts/ci/merge_gate.py` — `POST_STATUS`를 주지 않으면 상태를 게시하지 않는다) 출력(`success`/`pending`/`failure`와 사유)을 G-02·G-03 근거에 붙이고, 결과 코멘트를 게시한 뒤 한 번 더 돌려 `success`인지 확인한다(DEC-046). 자동 리뷰(리뷰봇·리뷰 에이전트)는 Actions와 무관하게 돈다.
+4. **병합 전 검증(4절)은 그대로** — PR 브랜치에 `origin/main`을 먼저 합치고(CI가 보던 "main에 합친 상태"와 맞춤) push한 뒤, `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh`로 돌린다. 통과하면 스크립트가 결과 줄(커밋 SHA·DB 테스트 실행됨·PR 번호)·pytest 요약·로그 전체 sha256(tee가 로그를 다 쓴 뒤 계산)을 PR 코멘트 `### 🧪 local CI (엄격) — 커밋 <SHA>`로 **직접** 남기고, 코멘트를 남기지 못하면 실패로 끝난다. G-01 근거는 **그 PR 코멘트뿐**이다 — 출력을 손으로 옮긴 줄은 근거로 쓰지 않는다(같은 계정이라 위조를 완전히 막지는 못한다, DEC-046). 이 모드는 열린 PR이 없거나 PR 최신 커밋과 검사 커밋이 다르거나 최신 `origin/main`이 검사 커밋에 들어 있지 않거나 검사 도중 main이 바뀌거나 `scripts/`·`lefthook.yml`에 커밋하지 않은 변경이 있거나 `scripts/`·`server/`·`tests/`에 추적하지 않는 새 파일이 있거나 `TEST_DATABASE_URL`이 실제로 접속할 곳(`host`·`hostaddr`·`PGHOSTADDR` — `scripts/ci/db_guard.py`)이 localhost(127.0.0.1)가 아니거나 DB 테스트를 건너뛰거나 PR 코멘트를 남기지 못하면 실패하고, 통과하면 "엄격 — 병합 근거로 쓸 수 있음" 줄로 끝난다(기본 모드 출력은 근거로 쓰지 않는다). main을 합치면 head가 바뀌므로 자동 리뷰도 그 head로 다시 받는다(G-03). `frontend/`는 이 스크립트가 보지 않으므로(프런트 CI는 필수가 아님) 전환 중 프런트를 바꾸면 `cd frontend && npm ci && npm run lint && npm run build && npm test`를 따로 돌려 근거에 적는다. `merge-gate` 상태는 붙지 않으므로 결과 코멘트를 쓰기 전에 **로컬에서 `merge_gate.py`를 읽기 전용으로 돌려**(`REPO=jh3779/LG_CNS_RAG_main PR_NUMBER=<N> uv run python scripts/ci/merge_gate.py` — `POST_STATUS`를 주지 않으면 상태를 게시하지 않는다) 출력(`success`/`pending`/`failure`와 사유)을 G-02·G-03 근거에 붙이고, 결과 코멘트를 게시한 뒤 한 번 더 돌려 `success`인지 확인한다(DEC-046). 자동 리뷰(리뷰봇·리뷰 에이전트)는 Actions와 무관하게 돈다.
 5. **되돌리기(한도가 다시 생기면)** — Actions 켜기(`-F enabled=true`) → 백업에서 읽기 전용 필드를 뺀 본문으로 필수 체크 복원: `jq '{name, target, enforcement, conditions, bypass_actors, rules}' ~/lgcns_ruleset_backup.json | gh api -X PUT repos/jh3779/LG_CNS_RAG_main/rulesets/24290303 --input -` → 열린 PR에 빈 커밋을 올려 CI를 한 번 돌린다.

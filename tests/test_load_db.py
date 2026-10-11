@@ -15,7 +15,7 @@ from datetime import date
 
 import pytest
 
-from scripts.ci.test_db_guard import is_local_test_db
+from scripts.ci.db_guard import is_local_test_db
 from scripts.defect_precedent import load_db
 
 # ---------------------------------------------------------------------------
@@ -610,7 +610,7 @@ def test_schema_has_build_keys_join_column_views_and_row_level_security():
 PG_URL = os.environ.get("TEST_DATABASE_URL", "")
 PG_USABLE = bool(PG_URL) and is_local_test_db(
     PG_URL
-)  # host·hostaddr까지 본다(scripts/ci/test_db_guard.py)
+)  # host·hostaddr까지 본다(scripts/ci/db_guard.py)
 REQUIRE_DB = os.environ.get("REQUIRE_DB_TESTS") == "1"
 pg = pytest.mark.skipif(
     not PG_USABLE and not REQUIRE_DB, reason="TEST_DATABASE_URL이 없거나 localhost가 아니다"
