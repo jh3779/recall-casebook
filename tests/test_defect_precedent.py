@@ -307,28 +307,30 @@ def test_parse_report_only_whole_page_lines_are_removed():
 
 
 def test_parse_report_keeps_quoted_report_titles_and_inline_page_refs():
-    """머리말로 지우는 것은 그 보고서 자신의 번호에 쪽 번호가 붙은 것뿐 — 다른 보고서 인용(쪽 번호가 있어도)과
-    "See Page 2 of 3"은 원문이다(PR #82 리뷰·Codex). 자기 머리말은 본문 문장 중간에 붙어 있어도 지운다(실제 1,267개 캠페인)."""
+    """머리말로 지우는 것은 쪽 경계(\\f) 바로 뒤의 머리말과 줄 전체 머리말뿐 — 본문에 인용된 보고서 제목은 다른 번호든 자기 번호든
+    쪽 번호가 붙어 있든 남기고, "See Page 2 of 3"도 남긴다(PR #82 리뷰·Codex)."""
     text = (
         "Part 573 Safety Recall Report 24V-412\n"
         " NHTSA Recall No. : 24V-412\n"
         "Description of the Cause : Per ECCO Holdings Corp. [Part 573 Safety Recall Report 20E-041].\n"
-        "The analysis cites Part 573 Safety Recall Report 23V-100 Page 2 as evidence.\n"
-        "See Page 2 of 3 for the analysis. The base Part 573 Safety Recall Report 24V-412 Page 2 may crack.\n"
+        "The analysis cites Part 573 Safety Recall Report 24V-412 Page 3 as evidence.\n"
+        "See Page 2 of 3 for the analysis. The base\n"
+        "\fPart 573 Safety Recall Report   24V-412   Page 2\n"
+        " may crack.\n"
         "Page 2 of 3\n"
         "Chronology :"
     )
     r = parse_report(text)
     assert r["cause_text"] == (
         "Per ECCO Holdings Corp. [Part 573 Safety Recall Report 20E-041]. "
-        "The analysis cites Part 573 Safety Recall Report 23V-100 Page 2 as evidence. "
+        "The analysis cites Part 573 Safety Recall Report 24V-412 Page 3 as evidence. "
         "See Page 2 of 3 for the analysis. The base may crack."
     )
 
 
 def test_parse_report_removes_new_form_headers_without_page_numbers():
-    """새 양식은 머리말 줄에 쪽 번호가 없고, 다른 번호 머리말과 쪽 번호 사이에 49 CFR 꼬리말이 끼기도 한다(PR #82 리뷰 26V404).
-    자기 번호 머리말은 문장 중간이라도, 다른 번호 머리말은 줄 전체일 때 지운다 — 본문 인용("Reference no.: …")은 남긴다."""
+    """새 양식은 쪽 맨 위 머리말에 쪽 번호가 없고(\\f 바로 뒤), 첨부된 다른 보고서 머리말이 줄 전체로 끼기도 한다(PR #82 리뷰 26V404).
+    본문 인용("Reference no.: …")은 남긴다."""
     text = (
         "Part 573 Safety Recall Report   26V404\n"
         " NHTSA Recall No. : 26V-404\n"
@@ -337,7 +339,8 @@ def test_parse_report_removes_new_form_headers_without_page_numbers():
         "Part 573 Safety Recall Report 26E009\n"
         "The information contained in this report was submitted pursuant to 49 CFR § 573\n"
         "Page 2 of 6\n"
-        "configuration. Debris in the Part 573 Safety Recall Report   26V404 housing.\n"
+        "\fPart 573 Safety Recall Report   26V404\n"
+        "configuration. Debris in the housing.\n"
         "Chronology :"
     )
     assert parse_report(text)["cause_text"] == (
