@@ -169,3 +169,57 @@ def test_score_refuses_changed_maker_or_components():
         rows[0] = {**rows[0], field: "edited"}
         with pytest.raises(SystemExit, match="질문·카드"):
             cq.score(rows)
+
+
+def test_573_rows_keep_source_pdf_and_investigation_rows_leave_it_blank():
+    """573 원인 글은 어느 판본 PDF에서 왔는지(파일·sha256·제출일)를 시트에 남긴다(AGENTS.md 2-2·2-4)."""
+    card = _card("20V001000")
+    got = cq.cause_texts(
+        card,
+        {"20V001": _cause("20V001", "The cause was X.")},
+        {},
+        {"20V001000": [_inv("PE1", "s")]},
+        "",
+    )
+    by_src = {g["cause_source"]: g for g in got}
+    assert (
+        by_src["573"]["source_file"],
+        by_src["573"]["pdf_sha256"],
+        by_src["573"]["submission_date"],
+    ) == (
+        "a.pdf",
+        "0" * 64,
+        "20200102",
+    )
+    assert by_src["조사 요약"]["source_file"] == by_src["조사 요약"]["pdf_sha256"] == ""
+
+
+def test_score_refuses_changed_sample_no_or_source_file():
+    for field in ("sample_no", "source_file"):
+        rows = _labeled()
+        rows[0] = {**rows[0], field: "edited"}
+        with pytest.raises(SystemExit, match="질문·카드"):
+            cq.score(rows)
+
+
+def test_cmd_score_names_the_row_and_field_a_spreadsheet_changed(tmp_path):
+    """스프레드시트가 21E027 같은 값을 숫자로 바꾸면 "줄을 뺐다"가 아니라 어느 줄의 어느 칸인지 알려 준다."""
+    import csv
+    import json
+
+    rows = _labeled()
+    meta = {
+        "build_id": "b",
+        "seed": cq.SEED,
+        "sample_sha256": cq.sample_fingerprint(rows),
+        "rows": [{k: r[k] for k in ("sample_no", *cq.ROW_FIELDS[1:], "text_sha256")} for r in rows],
+    }
+    rows[2] = {**rows[2], "cause_ref": "2.1E+28"}
+    sheet = tmp_path / "cause_quality_sheet.csv"
+    with sheet.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cq.COLS)
+        w.writeheader()
+        w.writerows(rows)
+    (tmp_path / "cause_quality_sheet.csv.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+    with pytest.raises(SystemExit, match=r"3번 cause_ref"):
+        cq.main(["score", "--sheet", str(sheet)])

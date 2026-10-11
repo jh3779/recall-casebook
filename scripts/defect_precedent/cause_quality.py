@@ -47,11 +47,13 @@ N = 30
 TOP = 10
 COLS = [
     "sample_no", "question_action", "question", "campno", "maker", "components", "defect",
-    "cause_source", "speaker", "cause_ref", "cause_text", "text_sha256", "row_sha256", "label", "labeler_id", "note",
+    "cause_source", "speaker", "cause_ref", "source_file", "pdf_sha256", "submission_date", "cause_text",
+    "text_sha256", "row_sha256", "label", "labeler_id", "note",
 ]  # fmt: skip
 LABELS = ("yes", "no", "unsure")
 # 표시자가 보는 칸 — 하나라도 바뀌면 채점을 멈춘다(원인 글은 text_sha256으로 따로 본다)
 ROW_FIELDS = (
+    "sample_no",
     "question_action",
     "question",
     "campno",
@@ -61,6 +63,9 @@ ROW_FIELDS = (
     "cause_source",
     "speaker",
     "cause_ref",
+    "source_file",
+    "pdf_sha256",
+    "submission_date",
     "cause_text",
 )
 
@@ -98,6 +103,10 @@ def cause_texts(
                 "cause_source": "573",
                 "speaker": SPEAKER_573,
                 "cause_ref": cause["source"]["campaign"],
+                # 어느 판본 PDF의 글인지(AGENTS.md 2-2·2-4) — 서버 응답의 cause.source와 같은 값
+                "source_file": cause["source"]["file"],
+                "pdf_sha256": cause["source"]["pdf_sha256"],
+                "submission_date": cause["source"]["submission_date"],
                 "cause_text": cause["text"],
             }  # fmt: skip
         )
@@ -108,6 +117,9 @@ def cause_texts(
                     "cause_source": "조사 요약",
                     "speaker": SPEAKER_INV,
                     "cause_ref": inv["action"],
+                    "source_file": "",  # 조사 요약은 cause_ref(조사 번호)로 되짚는다
+                    "pdf_sha256": "",
+                    "submission_date": "",
                     "cause_text": inv["summary"],
                 }  # fmt: skip
             )
@@ -221,6 +233,8 @@ def cmd_sheet(a) -> None:
     }
     by_id = {c["campno"]: c for c in build.cards}
     rows = draw(questions, rankings, by_id, build.causes, build.unreadable, invs)
+    if len(rows) != N:
+        sys.exit(f"표본이 {len(rows)}건뿐이다 — 규칙대로 {N}건을 채우지 못해 시트를 만들지 않는다")
     a.out.mkdir(parents=True, exist_ok=True)
     with sheet.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=COLS)
@@ -232,6 +246,8 @@ def cmd_sheet(a) -> None:
         "n": len(rows),
         "top": TOP,
         "sample_sha256": sample_fingerprint(rows),
+        # 줄마다 읽기 전용 칸 — 채점 때 어느 줄의 어느 칸이 바뀌었는지 알려 주려고 둔다(스프레드시트가 21E027을 숫자로 바꾸는 등)
+        "rows": [{k: r[k] for k in ("sample_no", *ROW_FIELDS[1:], "text_sha256")} for r in rows],
         # 다시 뽑아 표본이 달라졌을 때 무엇이 달라졌는지 되짚는 입력(AGENTS.md 5-1)
         "eval_sha256": hashlib.sha256((OUT_DIR / "eval.jsonl").read_bytes()).hexdigest(),
         "raw_manifest_sha256": build.raw_manifest_sha256,
@@ -279,7 +295,8 @@ def score(rows: list[dict]) -> dict:
     return {
         **rate(rows),
         "by_source": {src: rate([r for r in rows if r["cause_source"] == src]) for src in sources},
-        "note": "분모 = yes+no(unsure는 따로). 서버가 보여 주는 원인 글이 원인을 말하는 비율 — 원인이 옳은지는 판정하지 않는다",
+        "note": "분모 = yes+no(unsure는 따로). 749문항 대리 평가 질문 30개에서, 서버 화면에 나오고 합친 순위 10위 안인 카드의 원인 글이"
+        " 원인을 말하는 비율 — 서비스 전체 원인 품질이 아니고, 원인이 옳은지는 판정하지 않는다",
     }
 
 
@@ -290,6 +307,19 @@ def cmd_score(a) -> None:
     meta = json.loads(meta_path.read_text("utf-8")) if meta_path.exists() else None
     if meta is None:
         sys.exit(f"{meta_path.name}이 없다 — 시트를 만든 기록 없이 채점하지 않는다")
+    changed = [
+        f"{m['sample_no']}번 {k}: {m[k]!r} → {r.get(k)!r}"
+        for m in meta.get("rows", [])
+        for r in rows
+        if r.get("sample_no") == m["sample_no"]
+        for k in m
+        if r.get(k) != m[k]
+    ]
+    if changed:
+        sys.exit(
+            "시트의 읽기 전용 칸이 만들 때와 다르다 — 스프레드시트가 값을 바꿨을 수 있다(모든 칸을 텍스트로 가져온다): "
+            + "; ".join(changed[:5])
+        )
     if sample_fingerprint(rows) != meta["sample_sha256"]:
         sys.exit(
             "시트의 표본이 만들 때와 다르다(줄을 빼거나 더했거나 리콜·원인 글이 바뀌었다 — 줄 순서는 상관없다)"
