@@ -48,7 +48,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 | `eval.jsonl` | 시험 질문 1개 (조사 1건) | `action_no, question, open_date, gold_campnos[], set[]` (`all` · `since2010` · `rclrpt_range`) |
 | `causes_sample.jsonl` / `causes.jsonl` | 원본 보고서 1건 (최신 판본) | `campaign, versions, source_file, submission_date, cause_text, cause_status(filled/empty/no_field), supplier_names[], supplier_countries[], new_form, pdfs{판본: sha256}, resolution(auto/manual/unresolved), unresolved_reasons[]` |
 | `causes_*_failures.jsonl` | 읽지 못한 리콜 1건 | `campaign, keys[], error` (받기·변환 실패, 기준 sha256 불일치 — "원인 칸 없음"과 구분) |
-| `build.json` | build 1회 | `raw_manifest_sha256, recalls_sha256, eval_sha256, snapshot_date` — 카드·시험지가 어떤 원본에서 나왔는지. build는 이 셋을 한 폴더에 만든 뒤 폴더째 교체한다 |
+| `build.json` | build 1회 | `raw_manifest_sha256, recalls_sha256, eval_sha256, maker_aliases_sha256, maker_aliases_draft_sha256, snapshot_date` — 카드·시험지가 어떤 원본과 어떤 회사명 대응표(확인본·대조한 초안)에서 나왔는지. `verify_build`가 기록된 칸을 모두 대조한다(옛 build.json에 없는 칸은 건너뜀, 초안 해시는 #45). build는 카드·시험지·build.json을 한 폴더에 만든 뒤 폴더째 교체하고, 이 단계가 만들지 않는 파일·하위 폴더(573 판독 결과, 시트, 벡터 사본 등)는 새 폴더로 옮겨 둔다 |
 
 - `maker`는 회사명 대응표(초안 `maker_aliases_draft.csv`는 `uv run python -m scripts.defect_precedent.maker_aliases`가 만들고, 사람이 확인한 `maker_aliases.csv`는 스크립트가 건드리지 않는다. 안내 `docs/회사명_대응표_안내.md`, DEC-033)를 카드에 적용하기 전까지 `raw_maker`와 같다. 대응표는 `maker`(정리한 이름)와 `maker_group`(같은 회사로 묶어 볼 단위) 두 칸을 담는다 — 확인 전이라 아직 카드에는 적용하지 않았다.
 - `dup_group`이 같은 리콜은 결함 설명 본문이 같다 (약어를 고려해 자른 첫 문장 = 회사·차종 나열을 뺀 본문이 60자 넘게 같음). **서로 다른 회사가 같은 공급사 부품 설명을 그대로 쓴 경우도 여기 묶인다** (예: Gillig·Cummins 구동계, Unicell·Mickey Truck의 ASA 모니터). 검색에서 묶음당 1건만 보여 주면 "다른 회사의 같은 부품 선례"가 숨겨질 수 있으니, 묶음의 회사 목록은 함께 보여 준다.

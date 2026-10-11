@@ -39,6 +39,7 @@
   "recalls_sha256": "3f996182fe2efb37b3ac0fde0863ac85a1356dc3495a542e6e0bf697c127b32b",
   "eval_sha256": "fe5433db5c7864a01aaa98d6b5af0d8a211429bec7a24f0c5f8e19c2d959695c",
   "maker_aliases_sha256": "ee528c18c8224269928984010e707cd57e72e6aa149809c41450dc48b7895e2d",
+  "maker_aliases_draft_sha256": "5d5b4f140f43a75c2753e482ddd08c68003f13445cc87978aece73dcb1a4b234",
   "snapshot_date": "2026-10-06"
  },
  "eval_action_nos": [
