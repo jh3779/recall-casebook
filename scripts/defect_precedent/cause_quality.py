@@ -7,7 +7,7 @@
     # 사람이 표시한 뒤 비율 계산
     uv run python -m scripts.defect_precedent.cause_quality score --sheet <폴더>/cause_quality_sheet.csv
 
-표본 규칙(2026-10-11, 표본·표시를 보기 전에 고정 — 결과를 보고 고치지 않는다, AGENTS.md 5-2):
+표본 규칙(2026-10-11, 표시를 보기 전에 고정 — 변경은 아래 "규칙 변경 기록". 표시 결과를 보고 고치지 않는다, AGENTS.md 5-2):
 1. 749문항 대리 평가 질문을 시드 `SEED`로 섞는다.
 2. 질문마다 서버 검색(`server.rag.search.Searcher`, DEC-039 — BM25 + bge-small RRF)의 결과 중 **서버 화면에 실제로 나오는
    카드**(`server.rag.customers.split` — 고객사 최대 5건 + 그 밖 10건)이면서 **합친 순위 10위 안**인 카드에서 **원인 글이 있는
@@ -22,7 +22,9 @@
 규칙 변경 기록: 처음 고정한 규칙(같은 날, 표본 지문 `9428e8162d635d85`)은 합친 순위 상위 10을 그대로 써서 서버가 고객사 카드를
 5건만 보여 주는 질문에서 화면에 안 나오는 카드 2건(14·18번)이 섞였다(PR #73 리뷰). **누구도 표시하기 전에** 2번을 위처럼 고치고
 같은 원인 글 중복 제외(3번)를 더해 다시 뽑았다 — 옛 시트는 쓰지 않는다. 바꾼 이유는 표본 결과가 아니라 "화면에 나오는 원인 글"이라는
-정의와의 불일치다.
+정의와의 불일치다. 질문 30개는 그대로이고 **리콜 5건이 바뀌었다** — 화면 밖 카드 2건(PE02055·PE12027) + 2번 규칙으로 풀 크기가
+달라져 같은 시드의 난수 선택이 연쇄로 바뀐 3건(PE11040·PE08020·PE04056). 3번 규칙만 켜면 옛 시트와 같다(리뷰 `c5dbc85` 분리 실험).
+같은 날 시트 변조 검사 칸에 `maker`·`components`를 더해 시트를 같은 표본으로 다시 만들었다(표본 지문 그대로, 표시 전).
 
 표시 기준(시트의 `label`): `yes` = 이 글이 이 리콜의 결함 원인(왜 생겼나)을 말한다 / `no` = 원인을 말하지 않는다(현상·조사 경과·
 "원인 미확인"만 등) / `unsure` = 판단하기 어렵다. 보고는 yes 비율(분모 = yes+no, unsure는 따로)과 Wilson 95% 구간을
@@ -53,6 +55,8 @@ ROW_FIELDS = (
     "question_action",
     "question",
     "campno",
+    "maker",
+    "components",
     "defect",
     "cause_source",
     "speaker",
@@ -196,6 +200,11 @@ def cmd_sheet(a) -> None:
     from server.rag.investigations import load_investigations
     from server.rag.search import Searcher
 
+    sheet = a.out / "cause_quality_sheet.csv"
+    meta_path = sheet.with_name(sheet.name + ".meta.json")
+    if sheet.exists() or meta_path.exists():
+        # 표시한 시트를 빈 시트로 덮어쓰지 않는다 — 다시 만들려면 사람이 폴더를 옮기거나 지운다
+        sys.exit(f"{a.out}에 시트·메타가 이미 있다 — 표시를 덮어쓰지 않게 멈춘다(새 폴더를 쓴다)")
     build = load_build()
     embeddings.check_fastembed()
     texts = [card_text(c) for c in build.cards]
@@ -213,7 +222,6 @@ def cmd_sheet(a) -> None:
     by_id = {c["campno"]: c for c in build.cards}
     rows = draw(questions, rankings, by_id, build.causes, build.unreadable, invs)
     a.out.mkdir(parents=True, exist_ok=True)
-    sheet = a.out / "cause_quality_sheet.csv"
     with sheet.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=COLS)
         w.writeheader()
@@ -247,7 +255,9 @@ def score(rows: list[dict]) -> dict:
         sys.exit(f"시트의 cause_text가 text_sha256과 다르다(원문을 고치지 않는다): {edited[:5]}")
     changed = [r["sample_no"] for r in rows if row_sha(r) != r["row_sha256"]]
     if changed:
-        sys.exit(f"질문·카드·말한 주체 칸이 만들 때와 다르다(표시 칸만 고친다): {changed[:5]}")
+        sys.exit(
+            f"질문·카드(회사·부품·결함)·원인 글·말한 주체 칸이 만들 때와 다르다(표시 칸만 고친다): {changed[:5]}"
+        )
     bad = [r["sample_no"] for r in rows if norm(r["label"]) not in LABELS]
     if bad:
         sys.exit(f"표시가 비었거나 yes/no/unsure가 아닌 줄: {bad[:5]}")

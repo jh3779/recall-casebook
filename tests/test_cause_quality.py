@@ -153,3 +153,19 @@ def test_score_reports_rates_by_source():
     got = cq.score(rows)["by_source"]
     assert set(got) == {"573", "조사 요약"}
     assert all(v["yes_rate"] == 1.0 and v["yes_rate_wilson95"] for v in got.values())
+
+
+def test_sheet_refuses_to_overwrite_an_existing_sheet(tmp_path):
+    """표시한 시트를 빈 시트로 덮어쓰지 않는다 — 데이터를 읽기 전에 멈춘다."""
+    (tmp_path / "cause_quality_sheet.csv").write_text("labeled", encoding="utf-8")
+    with pytest.raises(SystemExit, match="이미 있다"):
+        cq.main(["sheet", "--out", str(tmp_path)])
+    assert (tmp_path / "cause_quality_sheet.csv").read_text(encoding="utf-8") == "labeled"
+
+
+def test_score_refuses_changed_maker_or_components():
+    for field in ("maker", "components"):
+        rows = _labeled()
+        rows[0] = {**rows[0], field: "edited"}
+        with pytest.raises(SystemExit, match="질문·카드"):
+            cq.score(rows)
