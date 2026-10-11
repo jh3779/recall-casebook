@@ -83,7 +83,7 @@ def test_score_uses_agreed_label_first_and_counts_both_scores(tmp_path):
     qs, skipped = ts.per_question(merged, cand, partial=False)
     out = ts.summarize(qs)
     assert out["answered"] == 1 and out["labeled_questions"] == 3
-    assert out["no_answer"] == {ts.NO_PART: 1, "후보에 선례 없음": 1}
+    assert out["no_answer"] == {ts.NO_PART: 1, ts.UNSURE_ONLY: 0, "후보에 선례 없음": 1}
     # PE1의 정답 B는 b_rrf 2위·bm25 15위
     assert out["b_rrf"]["hit@3"]["pool"] == 1.0 and out["bm25"]["hit@10"]["pool"] == 0.0
     assert out["b_rrf"]["hit@3"]["lower_bound"] == round(1 / 3, 3)  # 하한은 표시한 전체 문항이 분모
@@ -381,11 +381,11 @@ def test_agreed_label_conflict_between_sheets_stops(tmp_path):
 
 
 def test_all_unsure_without_note_is_no_precedent(tmp_path):
-    """모두 unsure여도 메모에 "질문 부품 불명"이 없으면 사유는 "후보에 선례 없음"."""
+    """모두 unsure인데 메모에 "질문 부품 불명"이 없으면 "unsure만(판단 불가)"로 따로 센다 — "후보에 선례 없음"에 숨기지 않는다(DEC-037 ⑦(a))."""
     cand = items(("PE1", {"A": {"bm25": 1}}))
     s = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "unsure")])
     qs, _ = ts.per_question(ts.merge_labels([ts.read_sheet(s)]), cand, partial=False)
-    assert qs[0]["reason"] == "후보에 선례 없음"
+    assert qs[0]["reason"] == ts.UNSURE_ONLY
 
 
 def _qr(bm, b, answered=True):
@@ -767,3 +767,100 @@ def test_cli_lists_recheck_questions_labeled_by_one_person_when_flag_is_missing(
     sheet = write_sheet(tmp_path / "s.csv", [row(r, "A", "yes") for r in ("R1", "R2", "R3")])
     ts.main(["score", "--candidates", str(p), "--sheets", str(sheet), "--questions", str(q)])
     assert json.loads(capsys.readouterr().out)["recheck_single_labeler"] == ["R1", "R2", "R3"]
+
+
+def test_no_answer_reasons_are_reported_separately(tmp_path):
+    """정답 없음 사유 세 칸: 모두 unsure(메모 없음) / 모두 no / no+unsure — 섞이지 않는다(리뷰 2da97c4)."""
+    cand = items(*((q, {"A": {"bm25": 1}, "B": {"bm25": 2}}) for q in ("Q1", "Q2", "Q3")))
+    s = write_sheet(
+        tmp_path / "s.csv",
+        [
+            row("Q1", "A", "unsure"), row("Q1", "B", "unsure"),
+            row("Q2", "A", "no"), row("Q2", "B", "no"),
+            row("Q3", "A", "no"), row("Q3", "B", "unsure"),
+        ],
+    )  # fmt: skip
+    qs, _ = ts.per_question(ts.merge_labels([ts.read_sheet(s)]), cand, partial=False)
+    assert ts.summarize(qs)["no_answer"] == {
+        ts.NO_PART: 0,
+        ts.UNSURE_ONLY: 1,
+        "후보에 선례 없음": 2,
+    }
+
+
+def test_bm25_higher_direction_uses_hit_at_10():
+    """BM25만 7위로 맞히는 문항 6개 — BM25 쪽도 Hit@10 기준으로 센다(리뷰 2da97c4 🟢2)."""
+    qs = [_q(True, True)] * 34 + [_qr(7, None)] * 6
+    cmp = ts.summarize(qs)["hit@10_comparison"]
+    assert (cmp["b_only"], cmp["bm25_only"]) == (0, 6) and cmp[
+        "outcome"
+    ] == "차이 있음 — BM25가 높음"
+
+
+def test_cli_all_double_labeled_requires_every_question_from_two_people(tmp_path, capsys):
+    """재확인도 미달하면 본 평가 전체를 두 사람이 표시한다(안내서 4절 3항) — 한 문항이라도 한 사람 표시면 멈춘다(PR #72 Codex)."""
+    p = tmp_path / "candidates_main.json"
+    p.write_text(
+        json.dumps(
+            {**_cand("main"), "items": items(*((q, {"A": {"bm25": 1}}) for q in ("Q1", "Q2")))}
+        ),
+        encoding="utf-8",
+    )
+    # Q2는 한 사람만 표시(합의값 없음) — 이 경우를 --all-double-labeled가 잡아야 한다
+    a_part = write_sheet(
+        tmp_path / "a.csv", [row("Q1", "A", "yes", agreed_label="yes"), row("Q2", "A", "yes")]
+    )
+    c_part = write_sheet(
+        tmp_path / "c.csv", [row("Q1", "A", "yes", labeler_id="L-C1", agreed_label="yes")]
+    )
+    with pytest.raises(SystemExit, match="--all-double-labeled"):
+        ts.main(
+            [
+                "score",
+                "--candidates",
+                str(p),
+                "--sheets",
+                str(a_part),
+                str(c_part),
+                "--all-double-labeled",
+            ]
+        )
+    a = write_sheet(
+        tmp_path / "a2.csv", [row(q, "A", "yes", agreed_label="yes") for q in ("Q1", "Q2")]
+    )
+    c_all = write_sheet(
+        tmp_path / "c2.csv",
+        [row(q, "A", "yes", labeler_id="L-C1", agreed_label="yes") for q in ("Q1", "Q2")],
+    )
+    ts.main(
+        ["score", "--candidates", str(p), "--sheets", str(a), str(c_all), "--all-double-labeled"]
+    )
+    assert json.loads(capsys.readouterr().out)["labeled_questions"] == 2
+
+
+def test_cli_agreement_records_candidates_and_questions_files(tmp_path, capsys):
+    q = tmp_path / "questions.json"
+    q.write_text(json.dumps({"pilot": [{"action_no": "P1"}], "main": []}), encoding="utf-8")
+    cand = tmp_path / "candidates_pilot.json"
+    cand.write_text(
+        json.dumps({**_cand("pilot"), "items": items(("P1", {"A": {"bm25": 1}}))}), encoding="utf-8"
+    )
+    a = write_sheet(tmp_path / "a.csv", [row("P1", "A", "no")])
+    c = write_sheet(tmp_path / "c.csv", [row("P1", "A", "no", labeler_id="L-C1")])
+    ts.main(
+        [
+            "agreement",
+            "--phase",
+            "pilot",
+            "--questions",
+            str(q),
+            "--candidates",
+            str(cand),
+            "--sheets",
+            str(a),
+            str(c),
+        ]
+    )
+    out = json.loads(capsys.readouterr().out)["inputs"]
+    assert out["candidates"]["set"] == "pilot" and len(out["candidates"]["sha256"]) == 64
+    assert len(out["questions"]["sha256"]) == 64 and len(out["sheets"]) == 2

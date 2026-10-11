@@ -4,6 +4,7 @@
     # 예비 5문항 두 사람 일치(합격선, docs/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
     uv run python -m scripts.defect_precedent.time_eval_score agreement --phase pilot --candidates <candidates_pilot.json> --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
     # 재확인 3문항(안내서 4절 — 질문 파일 main 앞 3개)은 그 3문항만 추린 두 사람의 시트로: agreement --phase recheck --candidates <candidates_main.json> --sheets …; 이때 score에 --rechecked
+    # 재확인도 미달해 본 평가 전체를 두 사람이 표시했으면 score에 --all-double-labeled
     # 본 평가 채점 — 나눠 표시한 시트 여러 개를 합친다(같은 후보를 둘이 표시했으면 agreed_label 필요)
     uv run python -m scripts.defect_precedent.time_eval_score score \
         --candidates <candidates_main.json> [<candidates_<대체 회차>.json> ...] --sheets <시트1.csv> [<시트2.csv> ...] [--partial]
@@ -12,7 +13,7 @@
 - 점수에 쓰는 표시 = `agreed_label`이 있으면 그것, 없으면 `label`. 한 후보에 서로 다른 `label`이 둘 이상인데 `agreed_label`이
   없으면 멈춘다(두 사람이 함께 표시한 문항은 합의 결과를 쓴다 — ⑦(a)).
 - "정답 있음" = `yes`가 1개 이상. 아니면 "정답 없음" — 사유는 그 문항의 `note`에 "질문 부품 불명"이 있으면 그것, 아니면
-  "후보에 선례 없음"(⑦(g)).
+  "후보에 선례 없음"(⑦(g)). 최종 표시가 모두 unsure인데 메모가 없으면 "unsure만(판단 불가)"로 따로 센다(⑦(a)).
 - 방식별 Hit@k = `yes` 후보 중 하나라도 그 방식의 순위 k 안(순위는 숨긴 후보 파일 `candidates_<set>.json`). k = 1·3·5·10.
   ① 후보 묶음 한정(분모 = 정답 있는 문항) ② 하한(분모 = 표시한 전체 문항, 정답 없는 문항은 실패). 모두 Wilson 95% 구간.
 - 판정은 Hit@10 하나(분모 = 정답 있는 문항): 정확 McNemar(양측) p < 0.05이고 |B만 맞힘 − BM25만 맞힘|/n ≥ 0.03일 때만
@@ -38,6 +39,9 @@ KS = (1, 3, 5, 10)
 METHODS = ("bm25", "b_rrf")
 MIN_ANSWERED = 34
 NO_PART = "질문 부품 불명"
+UNSURE_ONLY = (
+    "unsure만(판단 불가)"  # DEC-037 ⑦(a): unsure만 있으면 정답 없음으로 세고 따로 보고한다
+)
 BOOT_SEED, BOOT_N = 20261008, 10_000
 
 
@@ -163,7 +167,10 @@ def per_question(merged: dict, items: list[dict], partial: bool) -> tuple[list[d
         q = {"action_no": it["action_no"], "answered": bool(yes), "labelers": len(labelers)}
         if not yes:
             all_unsure = all(m["final"] == "unsure" for m in rows)
-            q["reason"] = NO_PART if all_unsure and NO_PART in notes else "후보에 선례 없음"
+            if all_unsure:
+                q["reason"] = NO_PART if NO_PART in notes else UNSURE_ONLY
+            else:
+                q["reason"] = "후보에 선례 없음"
         for method in METHODS:
             ranks = [it["pool"][c][method] for c in yes if method in it["pool"][c]]
             q[method] = min(ranks) if ranks else None
@@ -183,7 +190,7 @@ def summarize(questions: list[dict], partial: bool = False) -> dict:
         "answered": n_ans,
         "no_answer": {
             r: sum(1 for q in questions if q.get("reason") == r)
-            for r in (NO_PART, "후보에 선례 없음")
+            for r in (NO_PART, UNSURE_ONLY, "후보에 선례 없음")
         },
         "status": "측정"
         if n_ans >= MIN_ANSWERED
@@ -256,17 +263,17 @@ def pool_keys(items: list[dict], actions: set[str]) -> set[tuple[str, str]]:
     }
 
 
-def check_rechecked(merged: dict, recheck: set[str]) -> None:
+def check_rechecked(merged: dict, recheck: set[str], flag: str = "--rechecked") -> None:
     """재확인을 했다면(안내서 4절 3항) 그 문항의 모든 후보에 서로 다른 두 사람의 label과 agreed_label이 있어야 한다 —
     한 사람 시트만 넘기거나 합의값을 빠뜨리면 합의 전 표시로 공식 점수가 계산된다(PR #72 Codex)."""
     rows = {k: m for k, m in merged.items() if k[0] in recheck}
     missing_q = sorted(recheck - {k[0] for k in rows})
     if missing_q:
-        sys.exit(f"재확인 문항 {missing_q}이 시트에 없다(--rechecked)")
+        sys.exit(f"두 사람이 표시해야 할 문항 {missing_q[:3]}이 시트에 없다({flag})")
     bad = sorted(k for k, m in rows.items() if len(m["labelers"]) < 2 or not m["agreed"])
     if bad:
         sys.exit(
-            f"재확인 문항의 후보 {bad[:3]} 등 {len(bad)}개에 두 사람의 label 또는 agreed_label이 없다(--rechecked, 안내서 4절)"
+            f"두 사람이 표시해야 할 문항의 후보 {bad[:3]} 등 {len(bad)}개에 두 사람의 label 또는 agreed_label이 없다({flag}, 안내서 4절)"
         )
 
 
@@ -399,6 +406,11 @@ def main(argv: list[str] | None = None) -> None:
         help="예비 미달로 재확인을 했다(안내서 4절 3항) — 재확인 3문항의 이중 표시·합의값을 강제한다",
     )
     sc.add_argument(
+        "--all-double-labeled",
+        action="store_true",
+        help="재확인도 미달해 본 평가 전체를 두 사람이 표시했다(안내서 4절 3항) — 모든 문항·후보의 이중 표시·합의값을 강제한다",
+    )
+    sc.add_argument(
         "--questions", type=Path, default=QUESTIONS, help="질문 파일(재확인 문항을 정함)"
     )
     a = p.parse_args(argv)
@@ -413,7 +425,18 @@ def main(argv: list[str] | None = None) -> None:
             pool_keys(cand_items, expected),
         )
         out["phase"] = a.phase
-        out["inputs"] = {str(s): sha256_of(s) for s in a.sheets}
+        cand_meta = json.loads(a.candidates.read_text(encoding="utf-8"))
+        # 어느 후보 목록·질문 파일과 대조한 결과인지 되짚을 수 있게(AGENTS.md 2-4, PR #72 Codex)
+        out["inputs"] = {
+            "sheets": {str(s): sha256_of(s) for s in a.sheets},
+            "candidates": {
+                "file": str(a.candidates),
+                "sha256": sha256_of(a.candidates),
+                "set": cand_meta.get("set"),
+                "code": cand_meta.get("code"),
+            },
+            "questions": {"file": str(a.questions), "sha256": sha256_of(a.questions)},
+        }
         print(json.dumps(out, ensure_ascii=False, indent=1))
         return
 
@@ -431,6 +454,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(f"후보 파일들에 같은 문항이 두 번 있다 {dup[:3]} — 회차마다 다른 문항이어야 한다")
     merged = merge_labels([read_sheet(s) for s in a.sheets])
     check_against_candidates(merged, items)
+    if a.all_double_labeled:
+        check_rechecked(merged, {it["action_no"] for it in items}, "--all-double-labeled")
     if a.rechecked:
         check_rechecked(merged, phase_actions("recheck", a.questions))
     questions, skipped = per_question(merged, items, a.partial)
