@@ -2,8 +2,8 @@
 
 사용법:
     # 예비 5문항 두 사람 일치(합격선, docs/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
-    uv run python -m scripts.defect_precedent.time_eval_score agreement --phase pilot --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
-    # 재확인 3문항(안내서 4절 — 질문 파일 main 앞 3개)은 그 3문항만 추린 두 사람의 시트로: agreement --phase recheck --sheets …
+    uv run python -m scripts.defect_precedent.time_eval_score agreement --phase pilot --candidates <candidates_pilot.json> --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
+    # 재확인 3문항(안내서 4절 — 질문 파일 main 앞 3개)은 그 3문항만 추린 두 사람의 시트로: agreement --phase recheck --candidates <candidates_main.json> --sheets …; 이때 score에 --rechecked
     # 본 평가 채점 — 나눠 표시한 시트 여러 개를 합친다(같은 후보를 둘이 표시했으면 agreed_label 필요)
     uv run python -m scripts.defect_precedent.time_eval_score score \
         --candidates <candidates_main.json> [<candidates_<대체 회차>.json> ...] --sheets <시트1.csv> [<시트2.csv> ...] [--partial]
@@ -249,7 +249,33 @@ def phase_actions(phase: str, questions: Path = QUESTIONS) -> set[str]:
     return {r["action_no"] for r in rows}
 
 
-def agreement(sheet_a: list[dict], sheet_b: list[dict], expected: set[str]) -> dict:
+def pool_keys(items: list[dict], actions: set[str]) -> set[tuple[str, str]]:
+    """숨긴 후보 파일에서 정해진 문항의 (문항, 후보) 목록."""
+    return {
+        (it["action_no"], cid) for it in items if it["action_no"] in actions for cid in it["pool"]
+    }
+
+
+def check_rechecked(merged: dict, recheck: set[str]) -> None:
+    """재확인을 했다면(안내서 4절 3항) 그 문항의 모든 후보에 서로 다른 두 사람의 label과 agreed_label이 있어야 한다 —
+    한 사람 시트만 넘기거나 합의값을 빠뜨리면 합의 전 표시로 공식 점수가 계산된다(PR #72 Codex)."""
+    rows = {k: m for k, m in merged.items() if k[0] in recheck}
+    missing_q = sorted(recheck - {k[0] for k in rows})
+    if missing_q:
+        sys.exit(f"재확인 문항 {missing_q}이 시트에 없다(--rechecked)")
+    bad = sorted(k for k, m in rows.items() if len(m["labelers"]) < 2 or not m["agreed"])
+    if bad:
+        sys.exit(
+            f"재확인 문항의 후보 {bad[:3]} 등 {len(bad)}개에 두 사람의 label 또는 agreed_label이 없다(--rechecked, 안내서 4절)"
+        )
+
+
+def agreement(
+    sheet_a: list[dict],
+    sheet_b: list[dict],
+    expected: set[str],
+    candidates: set[tuple[str, str]] | None = None,
+) -> dict:
     """예비 합격선(안내서 4절) — 합의 전 표시(label)로 계산. agreed_label은 쓰지 않는다.
     expected = 함께 표시하기로 정해진 문항 번호(`phase_actions`) — 덜 표시했거나 다른 문항을 고른 시트로 합격이 나오지 않게."""
     for name, sheet in (("첫째", sheet_a), ("둘째", sheet_b)):
@@ -279,6 +305,12 @@ def agreement(sheet_a: list[dict], sheet_b: list[dict], expected: set[str]) -> d
     if set(actions) != expected:
         sys.exit(
             f"시트의 문항 {actions}이 정해진 문항 {sorted(expected)}과 다르다(--phase, 안내서 4절)"
+        )
+    if candidates is not None and set(a) != candidates:
+        # 두 시트에서 같은 줄이 함께 빠지면(스프레드시트 필터 등) 그 후보의 불일치가 분모에서 사라진다(PR #72 Codex)
+        missing, extra = candidates - set(a), set(a) - candidates
+        sys.exit(
+            f"시트의 후보가 숨긴 후보 파일과 다르다 — 빠짐 {len(missing)}개 {sorted(missing)[:3]}, 남음 {len(extra)}개 {sorted(extra)[:3]}"
         )
     q_same = [
         any(a[k] == "yes" for k in a if k[0] == act) == any(b[k] == "yes" for k in b if k[0] == act)
@@ -345,6 +377,12 @@ def main(argv: list[str] | None = None) -> None:
         help="예비 5문항 / 재확인 3문항(안내서 4절)",
     )
     ag.add_argument("--questions", type=Path, default=QUESTIONS, help="질문 파일(기본: 커밋된 것)")
+    ag.add_argument(
+        "--candidates",
+        type=Path,
+        required=True,
+        help="그 회차의 숨긴 후보 파일(예비 = candidates_pilot.json, 재확인 = candidates_main.json)",
+    )
     sc = sub.add_parser("score", help="본 평가 채점")
     sc.add_argument(
         "--candidates",
@@ -355,11 +393,24 @@ def main(argv: list[str] | None = None) -> None:
     )
     sc.add_argument("--sheets", type=Path, nargs="+", required=True)
     sc.add_argument("--partial", action="store_true", help="표시가 빈 문항을 빼고 중간 결과로 낸다")
+    sc.add_argument(
+        "--rechecked",
+        action="store_true",
+        help="예비 미달로 재확인을 했다(안내서 4절 3항) — 재확인 3문항의 이중 표시·합의값을 강제한다",
+    )
+    sc.add_argument(
+        "--questions", type=Path, default=QUESTIONS, help="질문 파일(재확인 문항을 정함)"
+    )
     a = p.parse_args(argv)
 
     if a.cmd == "agreement":
+        expected = phase_actions(a.phase, a.questions)
+        cand_items = json.loads(a.candidates.read_text(encoding="utf-8"))["items"]
         out = agreement(
-            read_sheet(a.sheets[0]), read_sheet(a.sheets[1]), phase_actions(a.phase, a.questions)
+            read_sheet(a.sheets[0]),
+            read_sheet(a.sheets[1]),
+            expected,
+            pool_keys(cand_items, expected),
         )
         out["phase"] = a.phase
         out["inputs"] = {str(s): sha256_of(s) for s in a.sheets}
@@ -380,6 +431,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(f"후보 파일들에 같은 문항이 두 번 있다 {dup[:3]} — 회차마다 다른 문항이어야 한다")
     merged = merge_labels([read_sheet(s) for s in a.sheets])
     check_against_candidates(merged, items)
+    if a.rechecked:
+        check_rechecked(merged, phase_actions("recheck", a.questions))
     questions, skipped = per_question(merged, items, a.partial)
     out = summarize(questions, partial=bool(skipped))
     if skipped:

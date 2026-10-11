@@ -594,11 +594,33 @@ def test_cli_agreement_uses_the_phase_and_questions_file(tmp_path, capsys):
         encoding="utf-8",
     )
 
+    def sheets_missing_candidate():
+        rows = [row(x, "A", "no") for x in ("M1", "M2", "M3")]
+        rows_c = [row(x, "A", "no", labeler_id="L-C1") for x in ("M1", "M2", "M3")]
+        return [
+            str(write_sheet(tmp_path / "a2.csv", rows[:2] + [row("M3", "Z", "no")])),
+            str(
+                write_sheet(
+                    tmp_path / "c2.csv", rows_c[:2] + [row("M3", "Z", "no", labeler_id="L-C1")]
+                )
+            ),
+        ]
+
     def sheets(actions):
         a = write_sheet(tmp_path / "a.csv", [row(x, "A", "no") for x in actions])
         c = write_sheet(tmp_path / "c.csv", [row(x, "A", "no", labeler_id="L-C1") for x in actions])
         return [str(a), str(c)]
 
+    cand = tmp_path / "candidates_main.json"  # 정해진 문항의 후보 목록과 시트를 대조한다
+    cand.write_text(
+        json.dumps(
+            {
+                "set": "main",
+                "items": items(*((m, {"A": {"bm25": 1}}) for m in ("M1", "M2", "M3", "M4"))),
+            }
+        ),
+        encoding="utf-8",
+    )
     ts.main(
         [
             "agreement",
@@ -606,12 +628,23 @@ def test_cli_agreement_uses_the_phase_and_questions_file(tmp_path, capsys):
             "recheck",
             "--questions",
             str(q),
+            "--candidates",
+            str(cand),
             "--sheets",
             *sheets(["M1", "M2", "M3"]),
         ]
     )
     out = json.loads(capsys.readouterr().out)
     assert out["phase"] == "recheck" and out["questions"] == 3
+    with pytest.raises(
+        SystemExit, match="숨긴 후보 파일과 다르다"
+    ):  # 후보 파일 대조가 실행 명령에 이어져 있다
+        ts.main(
+            [
+                "agreement", "--phase", "recheck", "--questions", str(q), "--candidates", str(cand),
+                "--sheets", *sheets_missing_candidate(),
+            ]
+        )  # fmt: skip
     with pytest.raises(SystemExit, match="정해진 문항"):
         ts.main(
             [
@@ -620,7 +653,59 @@ def test_cli_agreement_uses_the_phase_and_questions_file(tmp_path, capsys):
                 "pilot",
                 "--questions",
                 str(q),
+                "--candidates",
+                str(cand),
                 "--sheets",
                 *sheets(["M1", "M2", "M3"]),
             ]
         )
+
+
+def test_agreement_refuses_sheets_missing_candidates_from_the_hidden_file():
+    """두 시트에서 같은 후보 줄이 함께 빠져도(스프레드시트 필터 등) 숨긴 후보 파일과 대조해 멈춘다(PR #72 Codex)."""
+    a = [row("PE1", "A", "no", labeler_id="L-A1")]
+    c = [row("PE1", "A", "no", labeler_id="L-C1")]
+    pool = ts.pool_keys(items(("PE1", {"A": {"bm25": 1}, "B": {"bm25": 2}})), {"PE1"})
+    with pytest.raises(SystemExit, match="숨긴 후보 파일과 다르다"):
+        ts.agreement(a, c, expected={"PE1"}, candidates=pool)
+    full = [row("PE1", "A", "no", labeler_id="L-A1"), row("PE1", "B", "no", labeler_id="L-A1")]
+    full_c = [row("PE1", "A", "no", labeler_id="L-C1"), row("PE1", "B", "no", labeler_id="L-C1")]
+    assert ts.agreement(full, full_c, expected={"PE1"}, candidates=pool)["pass"] is True
+
+
+def test_rechecked_questions_need_two_labelers_and_agreed_label_on_every_candidate(tmp_path):
+    """재확인을 했다면 그 문항은 두 사람 표시 + 합의값으로만 채점 — 한 사람 시트만 넘기거나 합의값을 빠뜨리면 멈춘다(PR #72 Codex)."""
+    one = write_sheet(tmp_path / "a.csv", [row("R1", "A", "yes")])
+    with pytest.raises(SystemExit, match="두 사람의 label 또는 agreed_label"):
+        ts.check_rechecked(ts.merge_labels([ts.read_sheet(one)]), {"R1"})
+    a = write_sheet(tmp_path / "a2.csv", [row("R1", "A", "yes")])
+    c = write_sheet(tmp_path / "c2.csv", [row("R1", "A", "yes", labeler_id="L-C1")])
+    with pytest.raises(
+        SystemExit, match="agreed_label"
+    ):  # 두 사람이 같게 표시했어도 합의값이 없으면
+        ts.check_rechecked(ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c)]), {"R1"})
+    c_ok = write_sheet(
+        tmp_path / "c3.csv", [row("R1", "A", "yes", labeler_id="L-C1", agreed_label="yes")]
+    )
+    ts.check_rechecked(ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c_ok)]), {"R1"})
+    with pytest.raises(SystemExit, match="시트에 없다"):
+        ts.check_rechecked(ts.merge_labels([ts.read_sheet(a)]), {"R1", "R2"})
+
+
+def test_cli_rechecked_flag_is_wired(tmp_path, capsys):
+    q = tmp_path / "questions.json"
+    q.write_text(
+        json.dumps({"pilot": [], "main": [{"action_no": a} for a in ("R1", "R2", "R3")]}),
+        encoding="utf-8",
+    )
+    cand = _cand_file(tmp_path, "candidates_main.json", "main", "R1")
+    p = tmp_path / "candidates_main.json"
+    d = json.loads(p.read_text(encoding="utf-8"))
+    d["items"] = items(*((r, {"A": {"bm25": 1}}) for r in ("R1", "R2", "R3")))
+    p.write_text(json.dumps(d), encoding="utf-8")
+    sheet = write_sheet(tmp_path / "s.csv", [row(r, "A", "yes") for r in ("R1", "R2", "R3")])
+    args = ["score", "--candidates", cand, "--sheets", str(sheet), "--questions", str(q)]
+    ts.main(args)  # 재확인을 하지 않았으면 한 사람 표시로 채점
+    capsys.readouterr()
+    with pytest.raises(SystemExit, match="재확인"):
+        ts.main([*args, "--rechecked"])
