@@ -16,7 +16,7 @@
   (stated = 원인을 말함 / unknown = 원인을 모른다·조사 중·해당 없음 / mixed = "근본 원인은 모른다"와 추정 원인을 함께 말함).
   채점은 unknown만 양성으로 보고 mixed는 따로 센다. 시트에는 규칙·모델 결과를 넣지 않는다(눈가림).
   AI가 정답을 표시하지 않는다(AGENTS.md 5-2).
-- 검사(AI 없음): engine2_trial.check — 정규화 없이 원문에서 그대로 찾은 구간만 남긴다.
+- 검사(AI 없음): rules.check(engine2_trial과 같은 검사) — 정규화 없이 원문에서 그대로 찾은 구간만 남긴다.
 """
 
 import argparse
@@ -24,15 +24,14 @@ import csv
 import hashlib
 import json
 import random
-import re
 import sys
 import time
 from pathlib import Path
 
 from scripts.defect_precedent.bm25_baseline import BM25, tokenize
-from scripts.defect_precedent.engine2_trial import check
 from scripts.defect_precedent.nhtsa import OUT_DIR
 from scripts.defect_precedent.retrieval_compare import card_text, provenance, read_jsonl
+from scripts.defect_precedent.rules import UNKNOWN_RE, check
 
 SEED = 20261008
 DEFECT_INSTRUCTIONS = (
@@ -49,13 +48,7 @@ UNKNOWN_INSTRUCTIONS = (
     "cause has not been identified, still under investigation). "
     "Do not judge whether a recall is required and do not add anything that is not in the text."
 )
-# 표본을 보기 전에 정한 규칙 — 원인을 모른다·조사 중·해당 없음을 말하는 흔한 표현
-UNKNOWN_RE = re.compile(
-    r"\b(unknown|not known|under investigation|(continues?|continuing) to investigate|still investigating"
-    r"|not (yet )?(been )?(determined|identified|established)|no root cause|root cause (is|has) not"
-    r"|not applicable|n/a)\b",  # 'NA'(North America)를 잡지 않게 n/a만 (표본 150건에는 영향 없음)
-    re.I,
-)
+# 표본을 보기 전에 정한 규칙 — 원인을 모른다·조사 중·해당 없음을 말하는 흔한 표현 (정의는 rules.py — 서버와 함께 쓴다)
 
 
 def rule_unknown(text: str) -> bool:

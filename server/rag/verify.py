@@ -1,14 +1,14 @@
 """응답을 내보내기 전 검사 (AGENTS.md 2-2).
 
 1. 응답의 모든 리콜 번호가 검색이 넘긴 후보 안에 있어야 한다 — 밖의 번호는 지어낸 것으로 보고 응답을 내보내지 않는다.
-2. 원인 문장은 원인 원문에서 글자 그대로 찾아져야 한다(`engine2_trial.check`, 정규화 없음). 지금은 원문을 통째로 옮기므로 항상
+2. 원인 문장은 원인 원문에서 글자 그대로 찾아져야 한다(`rules.check`, 정규화 없음). 지금은 원문을 통째로 옮기므로 항상
    통과해야 하고, 실패하면 그 원인 글을 빼고 상태만 남긴다.
 3. 조사 요약은 서버가 시작할 때 읽은 조사 기록(원본 zip은 그때 sha256으로 대조)과 글자 그대로 같아야 하고, 573 원인 글의
    표시 꼬리표 구간은 그 글의 같은 위치에서 같은 글자여야 한다. 다르면 응답 자체를 내보내지 않는다 — 원문을 그대로 옮기는
    경로라 어긋나면 코드 결함이다.
 """
 
-from scripts.defect_precedent.engine2_trial import check
+from scripts.defect_precedent.rules import check
 
 
 class OutOfCandidates(RuntimeError):

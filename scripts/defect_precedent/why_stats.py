@@ -3,7 +3,7 @@
 세는 것 (정의는 이슈 #24, 패턴이 넓어서 "원인처럼 보이는 표현이 있는 비율"의 상한에 가까운 대략치다):
 - 결함문 원인 표현: 카드 `defect`가 PATTERN과 맞는 리콜 (제조사가 한 말)
 - 조사 요약 연결: 결함 조사 파일의 `CAMPNO`가 카드에 있고 요약이 비어 있지 않은 리콜 (정부 조사관이 한 말).
-  자리표시 요약(PLACEHOLDER)은 제외한다
+  자리표시 요약(`rules.INV_SUMMARY_PLACEHOLDER`)은 제외한다
 - 둘 중 하나 = 합집합
 - 추정: 2014-08-20 이후 리콜은 573 표본(`causes_sample.jsonl`)에서 잰 "둘 중 하나" 비율로 바꿔 전체에 적용한다.
   573 원인 칸이 채워진 것도 근거로 센다. 표본은 573이 있는 캠페인에서 뽑았으므로 573이 없는 리콜에는 약간 과대다.
@@ -43,6 +43,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from scripts.defect_precedent import nhtsa
+from scripts.defect_precedent.rules import INV_SUMMARY_PLACEHOLDER
 
 PATTERN = re.compile(
     r"due to|caused by|because|result(?:s|ed)? (?:of|from)|attributed to|insufficient|improper(?:ly)?"
@@ -50,7 +51,6 @@ PATTERN = re.compile(
     r"|supplier",
     re.I,
 )
-PLACEHOLDER = re.compile(r"no summary currently available|^=+$", re.I)
 # 회사 이름에서 흔해서 겹쳐도 같은 회사라고 보기 어려운 단어 (이슈 #24 정의)
 GENERIC_WORDS = {
     "INC", "CORP", "CO", "LLC", "LTD", "THE", "OF", "AND", "COMPANY", "CORPORATION", "MOTOR", "MOTORS",
@@ -68,7 +68,7 @@ def linked_campnos(inv_rows: list[dict], campnos: set[str]) -> set[str]:
     out = set()
     for r in inv_rows:
         campno, summary = r["CAMPNO"].strip(), r["SUMMARY"].strip()
-        if campno in campnos and summary and not PLACEHOLDER.search(summary):
+        if campno in campnos and summary and not INV_SUMMARY_PLACEHOLDER.search(summary):
             out.add(campno)
     return out
 
@@ -145,9 +145,10 @@ def compute(recalls: list[dict], inv_rows: list[dict], causes_sample: list[dict]
 
 
 def sample_digest(rows: list[dict]) -> str:
-    """573 표본의 내용 지문 — 줄마다 [캠페인, cause_status, resolution, submission_date, 정렬한 (판본, sha256)]을 정렬해 해시한다.
+    """573 표본의 내용 지문 — 줄마다 [캠페인, cause_status, resolution, submission_date, 정렬한 (판본, sha256), cause_text]를 정렬해 해시한다.
 
-    줄바꿈 방식·칸 순서와 무관하고, 원인 칸 판독 결과(205/95)를 정하는 값이 바뀌면 달라진다.
+    줄바꿈 방식·칸 순서와 무관하고, 원인 칸 판독 결과(205·83·12)를 정하는 값이나 원인 글이 바뀌면 달라진다
+    (상태는 같고 글만 달라진 판독도 잡는다 — 2026-10-12 #84, 그 전 지문은 원인 글을 넣지 않았다).
     """
     items = [
         [
@@ -156,6 +157,7 @@ def sample_digest(rows: list[dict]) -> str:
             r["resolution"],
             r["submission_date"],
             sorted(r["pdfs"].items()),
+            r["cause_text"],
         ]
         for r in rows
     ]

@@ -176,7 +176,7 @@ def causes_spec(data_dir: Path, kind: str, baseline: Path) -> dict:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     for key in (
         "kind", "rows", "file_sha256", "campaigns_sha256", "expected_campaigns_sha256", "expect_campaigns",
-        "failures", "failed_campaigns",
+        "failures", "failed_campaigns", "text_basis",
     ):  # fmt: skip
         if key not in manifest:
             sys.exit(f"{MANIFEST_NAME}에 {key} 칸이 없다")
@@ -218,6 +218,19 @@ def load_files(data_dir: Path, causes_kind: str, baseline: Path | None = None) -
             sys.exit(
                 f"{name}의 sha256이 build.json과 다르다 — 어느 원본에서 나온 파일인지 확인한다 "
                 f"(파일 {actual[:12]}…, 기록 {build[key][:12]}…)"
+            )
+    if causes_kind == "full":
+        # 원인 파일은 recalls.jsonl로 수집 대상을 정한다 — 다른 카드 스냅샷의 원인 파일을 붙이지 않는다
+        made_from = spec.get("recalls_sha256")
+        if made_from is None:
+            print(
+                f"경고: {MANIFEST_NAME}에 recalls_sha256이 없다(2026-10-12 이전 수집) — 카드 스냅샷과의 대조를 건너뛴다",
+                file=sys.stderr,
+            )
+        elif made_from != build["recalls_sha256"]:
+            sys.exit(
+                f"{MANIFEST_NAME}의 recalls_sha256이 build.json과 다르다 — 다른 카드 스냅샷으로 수집한 원인 파일이다 "
+                f"(명세 {made_from[:12]}…, build {build['recalls_sha256'][:12]}…)"
             )
     snapshot = parse_iso(build["snapshot_date"], "build.json snapshot_date")
     build_id = build_id_of(

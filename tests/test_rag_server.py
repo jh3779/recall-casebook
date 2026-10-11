@@ -747,3 +747,127 @@ def test_card_source_says_who_wrote_card_text_only_as_far_as_the_source_says():
     CardSource.model_validate(ok)
     with pytest.raises(ValidationError):
         CardSource.model_validate({**ok, "speaker": "리콜 제조사"})  # 근거 없는 주체 표시는 막는다
+
+
+def test_card_model_accepts_stated_unknown_cause_made_by_cause_573():
+    """정상 stated_unknown 원인이 응답 모델을 그대로 통과한다 — 거부 경로만 시험하면 모델이 바뀌어도 못 잡는다(#84)."""
+    from scripts.defect_precedent.rclrpt import CAUSE_TEXT_BASIS
+    from server.api import CARD_TEXT_SPEAKER, Card
+
+    pdf = {"pdfs": {"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "ab" * 32}}
+    row = loaded(cause("24V001", text="NR", cause_status="stated_unknown", **pdf), CAUSE_TEXT_BASIS)
+    card = {
+        "rank": 1, "campno": "24V001000", "maker": "m", "maker_group": "Kia", "received_date": "20240101",
+        "components": [], "defect": "", "consequence": "", "remedy": "", "dup_group": "24V001000",
+        "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06", "speaker": CARD_TEXT_SPEAKER},
+        "investigations": [], "checklist": [],
+    }  # fmt: skip
+    got = Card.model_validate({**card, "cause": cause_573(CARDS[0], {"24V001": row})})
+    assert (got.cause.status, got.cause.text) == ("stated_unknown", "NR")
+
+
+def test_search_request_rejects_unknown_fields(tmp_path):
+    """요청에 모르는 칸이 있으면 받지 않는다 — 화면이 보낸 칸이 말없이 무시되지 않게."""
+    from fastapi.testclient import TestClient
+
+    from server.api import RagState, create_app
+
+    pdfs = {"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32}
+    b = load_build(full_data_dir(tmp_path, CARDS, [cause("24V001", pdfs=pdfs)]))
+    model = FakeModel()
+    vecs = np.array(model.passage_embed([c["defect"] for c in b.cards]))
+    state = RagState(b, Searcher(b.cards, vecs, model), "fake")
+    with TestClient(create_app(lambda: state)) as client:
+        assert (
+            client.post("/search", json={"question": "airbag inflator rupture"}).status_code == 200
+        )
+        bad = {"question": "airbag inflator rupture", "top_k": 50}
+        assert client.post("/search", json=bad).status_code == 422
+
+
+def test_customers_look_only_within_the_top_pool():
+    """고객사 선례는 합친 순위 상위 POOL(100) 안에서만 찾는다 — 100위(0부터 99)는 들고 101위는 안 든다."""
+    others = [recall(f"20V{i:03d}000", maker_group="Other") for i in range(customers.POOL + 1)]
+    inside = recall("24V901000", maker_group="Kia")
+    outside = recall("24V902000", maker_group="Hyundai Motor America")
+    by_id = {c["campno"]: c for c in [*others, inside, outside]}
+    ranking = [c["campno"] for c in others[: customers.POOL - 1]] + [
+        inside["campno"],
+        outside["campno"],
+    ]
+    cust, _ = customers.split(ranking, by_id)
+    assert [ranking[i] for i in cust] == ["24V901000"]
+    assert ranking.index("24V901000") == customers.POOL - 1
+
+
+def test_load_state_checks_db_then_vectors_then_probe_then_investigations(monkeypatch):
+    """서버 시작 순서: 로컬 build → 임베딩 버전 → 모델 → DB 명세 대조 → DB 벡터 → 탐침 검사 → 조사 원본.
+    어느 단계든 실패하면 예외가 그대로 올라가 서버가 뜨지 않는다(삼키지 않는다)."""
+    import contextlib
+    from types import SimpleNamespace
+
+    import fastembed
+
+    import server.api as api_mod
+    from server.rag import build as build_mod
+    from server.rag import investigations as inv_mod
+
+    calls = []
+    fake_build = SimpleNamespace(cards=[CARDS[0]], build_id="b", raw_manifest_sha256="r")
+
+    def rec(name, result=None):
+        def f(*a, **k):
+            calls.append(name)
+            return result
+
+        return f
+
+    @contextlib.contextmanager
+    def fake_conn():
+        calls.append("connect")
+        yield object()
+
+    monkeypatch.setattr(build_mod, "load_build", rec("load_build", fake_build))
+    monkeypatch.setattr(build_mod, "check_against_db", rec("check_against_db"))
+    monkeypatch.setattr(embeddings, "check_fastembed", rec("check_fastembed"))
+    monkeypatch.setattr(embeddings, "load_vectors", rec("load_vectors", np.zeros((1, 384))))
+    monkeypatch.setattr(embeddings, "verify_probe", rec("verify_probe"))
+    monkeypatch.setattr(inv_mod, "load_investigations", rec("load_investigations", {}))
+    monkeypatch.setattr(fastembed, "TextEmbedding", rec("TextEmbedding", FakeModel()))
+    monkeypatch.setattr(api_mod, "server_connection", fake_conn)
+    monkeypatch.setattr(api_mod, "Searcher", rec("Searcher"))
+
+    api_mod.load_state()
+    assert calls == [
+        "load_build", "check_fastembed", "TextEmbedding", "connect", "check_against_db",
+        "load_vectors", "verify_probe", "load_investigations", "Searcher",
+    ]  # fmt: skip
+
+    for step in ("check_against_db", "load_vectors", "verify_probe", "load_investigations"):
+        calls.clear()
+
+        def boom(*a, _step=step, **k):
+            calls.append(_step)
+            raise BuildMismatch(f"{_step} 실패")
+
+        mod = {"check_against_db": build_mod, "load_investigations": inv_mod}.get(step, embeddings)
+        with monkeypatch.context() as m:
+            m.setattr(mod, step, boom)
+            with pytest.raises(BuildMismatch, match=step):
+                api_mod.load_state()
+        assert "Searcher" not in calls  # 실패한 뒤 검색기를 만들지 않는다
+
+
+def test_parity_stats_builds_every_card_like_the_api_and_counts(tmp_path):
+    """`parity --stats`는 서버 응답과 같은 경로로 전체 카드를 만들어 응답 모델 통과·조사 연결·꼬리표를 센다."""
+    from server.rag.parity import card_stats
+
+    pdfs = {"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32}
+    causes = [cause("24V001", text="The root cause is unknown.", pdfs=pdfs)]
+    b = load_build(full_data_dir(tmp_path, CARDS, causes))
+    inv = {"action": "PE24001", "subject": "s", "summary": "Inflator ruptures.", "open_date": "20240101", "close_date": ""}  # fmt: skip
+    got = card_stats(b, {"24V001000": [inv], "23V002000": [inv, {**inv, "action": "PE24002"}]})
+    assert got["cards"] == 3 and got["model_failed"] == 0
+    assert got["flags_by_kind_and_status"] == {"unknown_expression·filled": 1}
+    assert (got["investigation_linked_cards"], got["investigation_actions"]) == (2, 2)
+    assert got["cards_with_2plus_investigations"] == 1

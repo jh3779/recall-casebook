@@ -415,6 +415,7 @@ def run(
     poppler_version = require_poppler()
     print(f"pdftotext: {poppler_version}")
     manual = load_manual_dates()
+    recalls_sha = None  # 전체 수집 대상을 계산한 카드 파일 — 원인 파일을 그 카드 스냅샷에 묶는다
     if baseline is not None:
         # 기준 실행과 같은 입력: 당시 판본 목록만 쓰고, 각 PDF가 당시 sha256과 같은지 확인한다
         base = json.loads(baseline.read_text(encoding="utf-8"))
@@ -429,6 +430,7 @@ def run(
         recalls_path = OUT_DIR / "recalls.jsonl"
         if not recalls_path.exists():
             sys.exit("recalls.jsonl이 없다 — 먼저 `... nhtsa build`를 실행한다")
+        recalls_sha = hashlib.sha256(recalls_path.read_bytes()).hexdigest()
         received = {}
         for line in recalls_path.open(encoding="utf-8"):
             card = json.loads(line)
@@ -595,6 +597,7 @@ def run(
             "listing_campaigns": len(reports),
             "pdftotext": poppler_version,
             "text_basis": CAUSE_TEXT_BASIS,
+            "recalls_sha256": recalls_sha,
             "generated_at": datetime.now(UTC).isoformat(),
         }
         manifest_path.write_text(

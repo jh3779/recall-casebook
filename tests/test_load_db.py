@@ -305,6 +305,36 @@ def test_full_requires_a_manifest_that_matches_the_file(tmp_path):
     assert "causes.manifest.json이 없다" in str(e.value)
 
 
+def test_full_refuses_a_manifest_without_text_basis(tmp_path):
+    # DEC-047 이전 명세는 서버가 띄우지 않는다 — 적재 단계에서 먼저 막는다(이미 적재한 build는 다시 쓰지 않으므로, #84)
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001"), cause("23V002")])
+    manifest = json.loads((d / "causes.manifest.json").read_text(encoding="utf-8"))
+    del manifest["text_basis"]
+    (d / "causes.manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(d, "full", make_baseline(tmp_path))
+    assert "text_basis 칸이 없다" in str(e.value)
+
+
+def test_full_refuses_causes_collected_from_another_card_snapshot(tmp_path, capsys):
+    d = make_data_dir(tmp_path)
+    baseline = make_baseline(tmp_path)
+    rows = [cause("24V001"), cause("23V002")]
+    # 같은 카드 파일로 수집한 원인 파일은 통과한다
+    write_full(d, rows, recalls_sha256=sha(d / "recalls.jsonl"))
+    assert load_db.load_files(d, "full", baseline)["build"]["causes_rows"] == 2
+    # 다른 카드 스냅샷으로 수집한 원인 파일은 멈춘다
+    write_full(d, rows, recalls_sha256="cd" * 32)
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(d, "full", baseline)
+    assert "recalls_sha256이 build.json과 다르다" in str(e.value)
+    # 2026-10-12 이전 수집분(기록 없음)은 경고만 하고 올린다
+    write_full(d, rows)
+    assert load_db.load_files(d, "full", baseline)["build"]["causes_rows"] == 2
+    assert "recalls_sha256이 없다" in capsys.readouterr().err
+
+
 @pytest.mark.parametrize(
     "tamper, message",
     [

@@ -6,11 +6,13 @@
 사용법:
     uv run --env-file .env python -m server.rag.parity --vectors db      # 서버와 같이 Supabase 벡터로
     RETRIEVAL_CACHE=<캐시 폴더> uv run python -m server.rag.parity --vectors local   # 연구 캐시 벡터로 (DB 적재 전)
+    uv run python -m server.rag.parity --stats   # 벡터 없이: 전체 카드의 응답 모델 통과·조사 연결·꼬리표 수 (DEC-044 검증 수치)
 """
 
 import argparse
 import json
 import sys
+from collections import Counter
 
 from scripts.defect_precedent.retrieval_compare import card_text, load, provenance, score
 from server.rag import customers, embeddings
@@ -22,15 +24,63 @@ REPORT_INPUT = {"recalls_sha256": "3f996182fe2efb37", "eval_sha256": "fe5433db5c
 REPORT_V2 = {"any@1": 0.311, "any@3": 0.411, "any@5": 0.462, "any@10": 0.542}
 
 
+def card_stats(build, investigations: dict[str, list[dict]]) -> dict:
+    """전체 카드를 서버 응답과 같은 경로(card_view → verify → add_checklist → 응답 모델)로 만들어 센다 — 검색은 하지 않는다."""
+    from pydantic import ValidationError
+
+    from server.api import Card, RagState, add_checklist, card_view
+    from server.rag.verify import verify
+
+    state = RagState(build, None, "stats", investigations)
+    cards = [card_view(state, c["campno"], 1) for c in build.cards]
+    verify(cards, {c["campno"] for c in build.cards}, build.causes, investigations)
+    failed, flags = 0, Counter()
+    for card in cards:
+        add_checklist(state, card)
+        try:
+            Card.model_validate(card)
+        except ValidationError:
+            failed += 1
+        for f in card["cause"].get("flags", []):
+            flags[f"{f['kind']}·{card['cause']['status']}"] += 1
+    linked = [c for c in cards if c["investigations"]]
+    return {
+        "cards": len(cards),
+        "model_failed": failed,
+        "cause_status": dict(sorted(Counter(c["cause"]["status"] for c in cards).items())),
+        "flags_by_kind_and_status": dict(sorted(flags.items())),
+        "investigation_linked_cards": len(linked),
+        "investigation_actions": len({i["action"] for c in linked for i in c["investigations"]}),
+        "cards_with_2plus_investigations": sum(len(c["investigations"]) >= 2 for c in linked),
+    }
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--vectors", choices=["db", "local"], required=True)
+    p.add_argument("--vectors", choices=["db", "local"])
+    p.add_argument(
+        "--stats",
+        action="store_true",
+        help="검색 점수 대신 전체 카드의 응답 모델 통과·조사 연결·꼬리표 수를 낸다(벡터·DB 불필요)",
+    )
     p.add_argument(
         "--allow-drift",
         action="store_true",
         help="입력이 보고서와 달라도 점수를 낸다 — 재현이 아니라 재평가로 표시하고 보고서와 비교하지 않는다",
     )
     a = p.parse_args(argv)
+    if a.stats:
+        from server.rag.investigations import load_investigations
+
+        build = load_build()
+        invs = load_investigations(build.raw_manifest_sha256, {c["campno"] for c in build.cards})
+        out = {"build_id": build.build_id, **card_stats(build, invs)}
+        print(json.dumps(out, ensure_ascii=False))
+        if out["model_failed"]:
+            sys.exit(f"응답 모델을 통과하지 못한 카드 {out['model_failed']}장")
+        return
+    if a.vectors is None:
+        p.error("--vectors(db|local) 또는 --stats 중 하나가 필요하다")
     from fastembed import TextEmbedding
 
     data = provenance()
