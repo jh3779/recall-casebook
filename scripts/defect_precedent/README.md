@@ -102,3 +102,21 @@ uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes 
 - 중복·변경을 종류별로 어떻게 다루는지: [`docs/데이터_중복_처리_패턴.md`](../../docs/데이터_중복_처리_패턴.md)
 - CI(`lint-and-test`)는 일회용 Postgres 17을 띄워 DB 테스트도 항상 실행한다 (`REQUIRE_DB_TESTS=1` — DB가 없으면 건너뛰지 않고 실패).
 - 로컬 확인(DB 테스트 포함): `docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=lgcns_test -p 54329:5432 pgvector/pgvector:pg17` 뒤 `TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54329/lgcns_test uv run pytest tests/test_load_db.py`. 테스트가 `public` 스키마를 통째로 지우므로 주소가 localhost가 아니면 건너뛴다.
+
+## 원인 품질 표본 — 573 원인 칸 30건 + 조사 요약 30건 (기획 6절 표 "원인 품질", `cause_quality.py`)
+
+서버가 선례 카드에 붙여 보여 주는 원인 글(573 원인 칸 원문·연결된 조사 요약)이 실제로 원인을 말하는지 **사람이** 표시하고 비율만 낸다. 원인 미확인 150건(`cause_trials`, 꼬리표 정확도)과는 다른 시험이다.
+
+```bash
+uv run python -m scripts.defect_precedent.cause_quality sheet --out data/processed/defect/cause_quality_<날짜>   # 약 40초, cause_quality_573.csv·cause_quality_inv.csv
+uv run python -m scripts.defect_precedent.cause_quality score --sheet data/processed/defect/cause_quality_<날짜>/cause_quality_573.csv   # 조사 요약 시트도 따로
+```
+
+- 표본 규칙(결과를 보기 전에 고정, 파일 머리말): 749문항을 시드 `20261011`로 섞고, 질문마다 서버 화면에 실제로 나오는 카드(고객사 최대 5 + 그 밖 10) 중 합친 순위 10위 안인 카드에서 원인 글을 **출처별로**(573 원인 칸 / 조사 요약) 모아 같은 시드로 하나씩 고른다 — 출처마다 30건, 시트 두 장(같은 리콜·같은 원인 글은 한 번만). 질문의 출처 조사 요약은 빼고(누수), 30건이 차면 멈춘다.
+- **시트를 더블클릭으로 열지 말고, 스프레드시트의 "가져오기"로 모든 칸을 텍스트로 가져온다. 저장은 CSV UTF-8로** (573 시트에는 `25E074` 같은 캠페인 번호가 6줄 있다) — `21E027` 같은 캠페인 번호가 숫자(`2.1E+28`)로 바뀌면 `score`가 그 줄·칸을 알려 주며 멈춘다(`.meta.json`의 줄별 읽기 전용 칸과 대조). 573 줄에는 어느 판본 PDF의 글인지(`source_file`·`pdf_sha256`·`submission_date`)가 있다.
+- 결과는 시트마다 "749문항 대리 평가 질문 30개에서, 서버 화면에 나오고 합친 순위 10위 안인 카드의 원인 글이 **원인을 말하는 글의 비율**"이다 — 서비스 전체 원인 품질이나 "원인이 맞는 문장인가"(기획 6절 문구)의 판정이 아니다(서비스 원칙 1).
+- `sheet`는 30건을 채우지 못하면 시트를 만들지 않는다. 출력 폴더에 시트·메타가 이미 있으면 멈춘다(표시한 시트를 빈 시트로 덮어쓰지 않게) — 다시 만들려면 새 폴더를 쓴다.
+- 벡터는 서버의 로컬 사본(`data/processed/defect/vector_cache/`)을 쓴다 — 서버를 한 번 띄우면 생긴다. DB·유료 API 호출은 없다.
+- 표시(`label`): `yes`(이 리콜의 결함 원인을 말한다) / `no`(현상·조사 경과·"원인 미확인"만) / `unsure`. `labeler_id`는 실명 대신 임의 기호. AI는 표시하지 않는다(AGENTS.md 5-2).
+- `score`는 시트 옆 `.meta.json`의 표본 지문과 다르거나(줄을 빼거나 더함 — 정렬은 괜찮다), `cause_text`·질문·카드·말한 주체 칸이 바뀌었거나(`text_sha256`·`row_sha256`), 표시·`labeler_id`가 빈 줄이 있으면 멈춘다. 표시는 대소문자를 가리지 않는다. 보고 값은 yes 비율(분모 yes+no, unsure는 따로)과 Wilson 95% 구간을 전체와 출처별(573 원인 칸 / 조사 요약)로 — 기획 6절 "엔진 2 원인 문장"에 해당하는 것은 573 숫자다.
+- 2026-10-11 시트(`build_id c6872ae8e9743c56`): 573 30건(표본 지문 `c0da342e8a6239a9`)·조사 요약 30건(`1c1077367c6b9185`), 시트마다 리콜·질문·원인 글 모두 서로 다름. **보고는 시트마다 따로**(6절 "엔진 2 원인 문장"은 573 시트) — 두 숫자를 합치지 않는다. 표시 전에 규칙을 세 번 고쳤다: 화면 밖 카드 제외(첫 시트 `9428e8162d635d85`, 리콜 5건 교체), 변조 검사 칸·573 원본 PDF 칸 추가(같은 표본으로 재생성), 섞은 30건(573 13 · 조사 요약 17, `a0029d755f925dbe`)을 출처별 30건씩으로(사용자 결정, 이슈 #75) — 파일 머리말 "규칙 변경 기록".
