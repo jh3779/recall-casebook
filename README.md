@@ -26,7 +26,7 @@ uv run python -m scripts.defect_precedent.nhtsa build      # 리콜 카드 · �
 uv run python -m scripts.defect_precedent.bm25_baseline    # 기준 점수
 ```
 
-실행 순서·기준 파일·재현 조건은 `scripts/defect_precedent/README.md`. 이전 주제(온보딩)의 핸드북 데이터셋은 `uv run python scripts/fetch_handbook_dataset.py`로 받는다 ([`docs/handbook/README.md`](docs/handbook/README.md)).
+실행 순서·기준 파일·재현 조건은 `scripts/defect_precedent/README.md`. 이전 주제(온보딩)의 핸드북 데이터셋은 `uv run python scripts/fetch_handbook_dataset.py`로 받는다(데이터셋 안내서는 삭제 — git 이력 `6d12818`의 `docs/handbook/README.md`).
 
 ## 시작하기
 
@@ -53,7 +53,7 @@ AI 에이전트로 작업할 때의 규칙은 [`AGENTS.md`](AGENTS.md)에 있다
 
 | 경로 | 용도 |
 |---|---|
-| `docs/` | 기획(`기획_결함선례.md` — 현행, DEC-030 / 이전 주제 `기획v1.md`·`기획.md`)·진행계획(이전 주제 기준, 개정 예정)·개발환경·병합 전 검증 프로토콜(`MERGE_PROTOCOL.md`)·핸드북 데이터셋 안내(`handbook/README.md`) 등 문서 |
+| `docs/` | 기획(`기획_결함선례.md` — 현행, DEC-030 / 이전 주제 `기획v1.md`·`기획.md`)·진행계획(이전 주제 기준, 개정 예정)·개발환경·병합 전 검증 프로토콜(`MERGE_PROTOCOL.md`) 등 문서 |
 | `tests/` | pytest 테스트 |
 | `AGENTS.md` · `CLAUDE.md` | AI 에이전트 행동강령 (원본은 AGENTS.md) |
 | `.claude/settings.json` | Claude Code 팀 공유 권한 설정 |
