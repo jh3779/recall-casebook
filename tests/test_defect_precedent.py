@@ -281,12 +281,77 @@ def test_parse_report_new_form_empty_cause_does_not_take_next_heading():
     assert r["new_form"] is True
 
 
-def test_parse_report_nr_cause_is_empty():
+def test_parse_report_nr_cause_is_stated_unknown_with_text_kept():
+    # DEC-047: "NR"·"조사 중"은 제조사가 원인 칸에 적은 서술 — 버리지 않고 원문을 보존한다(예전에는 empty로 버림)
     r = parse_report(
         "Description of the Cause : NR\nSupplier Identification :\n Name : NR\nChronology :"
     )
-    assert r["cause_status"] == "empty"
+    assert r["cause_status"] == "stated_unknown"
+    assert r["cause_text"] == "NR"
     assert r["supplier_names"] == []
+
+
+def test_parse_report_only_whole_page_lines_are_removed():
+    """쪽 머리말·꼬리말 줄만 지우고, 본문 안의 "Page 2"는 남긴다(DEC-047)."""
+    text = (
+        "Description of the Cause : The bracket shown on Page 2 of the attachment\n"
+        "      The information contained in this report was submitted pursuant to 49 CFR §573\n"
+        "Part 573 Safety Recall Report                15V-213              Page   2\n"
+        "cracked under load.\n"
+        "Page 3 of 4\n"
+        "Chronology :"
+    )
+    r = parse_report(text)
+    assert r["cause_status"] == "filled"
+    assert r["cause_text"] == "The bracket shown on Page 2 of the attachment cracked under load."
+
+
+def test_parse_report_keeps_quoted_report_titles_and_inline_page_refs():
+    """머리말로 지우는 것은 쪽 경계(\\f) 바로 뒤의 머리말과 줄 전체 머리말뿐 — 본문에 인용된 보고서 제목은 다른 번호든 자기 번호든
+    쪽 번호가 붙어 있든 남기고, "See Page 2 of 3"도 남긴다(PR #82 리뷰·Codex)."""
+    text = (
+        "Part 573 Safety Recall Report 24V-412\n"
+        " NHTSA Recall No. : 24V-412\n"
+        "Description of the Cause : Per ECCO Holdings Corp. [Part 573 Safety Recall Report 20E-041].\n"
+        "The analysis cites Part 573 Safety Recall Report 24V-412 Page 3 as evidence.\n"
+        "See Page 2 of 3 for the analysis. The base\n"
+        "\fPart 573 Safety Recall Report   24V-412   Page 2\n"
+        " may crack.\n"
+        "Page 2 of 3\n"
+        "Chronology :"
+    )
+    r = parse_report(text)
+    assert r["cause_text"] == (
+        "Per ECCO Holdings Corp. [Part 573 Safety Recall Report 20E-041]. "
+        "The analysis cites Part 573 Safety Recall Report 24V-412 Page 3 as evidence. "
+        "See Page 2 of 3 for the analysis. The base may crack."
+    )
+
+
+def test_parse_report_removes_new_form_headers_without_page_numbers():
+    """새 양식은 쪽 맨 위 머리말에 쪽 번호가 없고(\\f 바로 뒤), 첨부된 다른 보고서 머리말이 줄 전체로 끼기도 한다(PR #82 리뷰 26V404).
+    본문 인용("Reference no.: …")은 남긴다."""
+    text = (
+        "Part 573 Safety Recall Report   26V404\n"
+        " NHTSA Recall No. : 26V-404\n"
+        "Description of the Cause : Ltd. recall (Reference no.: Part 573 Safety Recall Report 25E-007) states a\n"
+        "2P (two cells in parallel)\n"
+        "Part 573 Safety Recall Report 26E009\n"
+        "The information contained in this report was submitted pursuant to 49 CFR § 573\n"
+        "Page 2 of 6\n"
+        "\fPart 573 Safety Recall Report   26V404\n"
+        "configuration. Debris in the housing.\n"
+        "Chronology :"
+    )
+    assert parse_report(text)["cause_text"] == (
+        "Ltd. recall (Reference no.: Part 573 Safety Recall Report 25E-007) states a "
+        "2P (two cells in parallel) configuration. Debris in the housing."
+    )
+
+
+def test_parse_report_blank_cause_is_empty():
+    r = parse_report("Description of the Cause :\n\nChronology :")
+    assert r["cause_status"] == "empty" and r["cause_text"] == ""
 
 
 def test_bm25_ranks_matching_doc_first_and_hit_counts():

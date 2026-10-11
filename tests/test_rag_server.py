@@ -187,17 +187,31 @@ def test_load_build_rejects_empty_failure_reasons(tmp_path):
         {"status": "report_unreadable", "campaign": "24V001", "reason": ""},
         {"status": "report_status_unknown"},  # 캠페인 번호 없음
         {"status": "no_573_report", "campaign": "x", "reason": "y"},  # 모델 밖 칸
+        # stated_unknown도 원문·말한 주체·출처(정리 방식 포함)가 반드시 있어야 한다(DEC-047, PR #82 리뷰)
+        {"status": "stated_unknown", "text": "NR", "speaker": "s", "flags": []},
+        {
+            "status": "stated_unknown",
+            "text": "NR",
+            "speaker": "s",
+            "flags": [],
+            "source": {
+                "campaign": "24V001",
+                "file": "f",
+                "pdf_sha256": "ab" * 32,
+                "submission_date": "20240101",
+            },
+        },  # text_basis 없음
     ],
 )
 def test_card_model_requires_fields_for_each_cause_status(cause):
     from pydantic import ValidationError
 
-    from server.api import Card
+    from server.api import CARD_TEXT_SPEAKER, Card
 
     card = {
         "rank": 1, "campno": "24V001000", "maker": "m", "maker_group": "Kia", "received_date": "20240101",
         "components": [], "defect": "", "consequence": "", "remedy": "", "dup_group": "24V001000",
-        "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06"},
+        "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06", "speaker": CARD_TEXT_SPEAKER},
         "investigations": [], "checklist": [],
     }  # fmt: skip
     Card.model_validate(
@@ -233,8 +247,13 @@ def test_check_against_db_rejects_a_spec_that_differs_from_the_loaded_build(tmp_
         check_against_db(FakeConn(None), b)
 
 
+def loaded(row, basis="rclrpt-test; pdftotext-layout"):
+    """load_build가 원인 행에 붙이는 것처럼 — 이 build의 원인 글 정리 방식(명세의 text_basis)을 얹는다(DEC-047)."""
+    return {**row, "text_basis": basis}
+
+
 def test_cause_573_copies_text_verbatim_with_speaker_and_source():
-    row = cause("24V001", pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32})
+    row = loaded(cause("24V001", pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32}))
     got = cause_573(CARDS[0], {"24V001": row})
     assert got["text"] == row["cause_text"]
     assert got["speaker"].startswith("리콜 제조사")
@@ -242,13 +261,34 @@ def test_cause_573_copies_text_verbatim_with_speaker_and_source():
 
 
 def test_verify_rejects_campno_outside_candidates_and_drops_altered_cause():
-    causes = {"24V001": cause("24V001", pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32})}
+    causes = {
+        "24V001": loaded(cause("24V001", pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32}))
+    }
     card = {"campno": "24V001000", "cause": cause_573(CARDS[0], causes) | {"text": "changed"}}
     card["cause"]["source"] = {"campaign": "24V001"}
     with pytest.raises(OutOfCandidates):
         verify([dict(card)], frozenset({"23V002000"}), causes)
     out = verify([card], frozenset({"24V001000"}), causes)
     assert out[0]["cause"]["status"] == "verify_failed"
+
+
+def test_verify_also_checks_stated_unknown_text_against_the_source():
+    """미보고·조사 중 서술도 원문 대조를 거친다 — 글이 바뀌면 빼고 verify_failed(DEC-047, PR #82 리뷰)."""
+    row = loaded(
+        cause(
+            "24V001",
+            text="NR",
+            cause_status="stated_unknown",
+            pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32},
+        )
+    )
+    causes = {"24V001": row}
+    card = {"campno": "24V001000", "cause": cause_573(CARDS[0], causes) | {"text": "Not reported"}}
+    assert verify([card], frozenset({"24V001000"}), causes)[0]["cause"]["status"] == "verify_failed"
+    same = {"campno": "24V001000", "cause": cause_573(CARDS[0], causes)}
+    assert (
+        verify([same], frozenset({"24V001000"}), causes)[0]["cause"]["status"] == "stated_unknown"
+    )
 
 
 def _keys(obj):
@@ -592,6 +632,14 @@ def test_checklist_links_evidence_and_skips_items_without_it():
         {"field": "investigations.speaker", "text": SPEAKER_INV},
         {"field": "investigations.action", "text": "PE20001"},  # 원본 조사 번호 그대로
     ]
+    stated = [
+        c
+        for c in checklist(card, row, [], {"status": "stated_unknown"})
+        if c["item"] == "cause_speaker"
+    ]
+    assert stated[0]["evidence"] == [
+        {"field": "cause.speaker", "text": SPEAKER_573}
+    ]  # 미보고 서술도 말한 주체를 보인다
     bare = {**card, "defect": "", "remedy": ""}
     assert [c["item"] for c in checklist(bare, None, [], {"status": "no_573_report"})] == [
         "same_part"
@@ -652,3 +700,50 @@ def test_api_returns_investigations_and_checklist(tmp_path):
     assert "flags" not in card["investigations"][0]  # 꼬리표는 573 원인 칸에만 (DEC-044)
     assert {c["item"] for c in card["checklist"]} >= {"same_part", "cause_speaker"}
     assert FORBIDDEN_KEYS.isdisjoint(set(_keys(body)))
+
+
+def test_cause_573_keeps_manufacturer_stated_unknown_text_with_speaker_and_basis():
+    """DEC-047: 원인 칸에 "NR"·"조사 중"을 적은 경우도 원문 그대로, 말한 주체·출처·정리 방식과 함께 싣는다."""
+    from scripts.defect_precedent.rclrpt import CAUSE_TEXT_BASIS
+    from server.rag.causes import SPEAKER_573
+
+    pdf = {"pdfs": {"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "ab" * 32}}
+    row = loaded(
+        cause("24V001", text="Still being investigated.", cause_status="stated_unknown", **pdf),
+        CAUSE_TEXT_BASIS,
+    )
+    got = cause_573(CARDS[0], {"24V001": row})
+    assert (got["status"], got["text"], got["speaker"]) == (
+        "stated_unknown",
+        "Still being investigated.",
+        SPEAKER_573,
+    )
+    assert got["source"]["text_basis"] == CAUSE_TEXT_BASIS
+    filled = cause_573(CARDS[0], {"24V001": loaded(cause("24V001", **pdf), "rclrpt-old; other")})
+    assert (
+        filled["source"]["text_basis"] == "rclrpt-old; other"
+    )  # 서버 상수가 아니라 그 build의 기록을 쓴다
+
+
+def test_load_build_takes_text_basis_from_manifest_and_refuses_files_without_it(tmp_path):
+    """원인 글 정리 방식은 build의 원인 명세에서 읽는다 — 기록이 없는 옛 원인 파일로는 서버를 띄우지 않는다(DEC-047, PR #82 Codex)."""
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001")], text_basis="rclrpt-2099-01-01; test")
+    b = load_build(d)
+    assert b.causes["24V001"]["text_basis"] == "rclrpt-2099-01-01; test"
+    d2 = make_data_dir(tmp_path / "old")
+    write_full(d2, [cause("24V001")], text_basis=None)
+    with pytest.raises(BuildMismatch, match="text_basis"):
+        load_build(d2)
+
+
+def test_card_source_says_who_wrote_card_text_only_as_far_as_the_source_says():
+    """카드 글(FLAT_RCL)의 작성 주체는 원본 칸 설명에 없다 — 아는 출처만 적은 고정 문구여야 한다(DEC-047)."""
+    from pydantic import ValidationError
+
+    from server.api import CARD_TEXT_SPEAKER, CardSource
+
+    ok = {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06", "speaker": CARD_TEXT_SPEAKER}
+    CardSource.model_validate(ok)
+    with pytest.raises(ValidationError):
+        CardSource.model_validate({**ok, "speaker": "리콜 제조사"})  # 근거 없는 주체 표시는 막는다

@@ -21,6 +21,7 @@ def _cause(campaign: str, text: str) -> dict:
         "campaign": campaign,
         "resolution": "single",
         "cause_status": "filled",
+        "text_basis": "rclrpt-test",  # load_build가 원인 명세에서 붙이는 정리 방식(DEC-047)
         "cause_text": text,
         "source_file": "a.pdf",
         "pdfs": {"a.pdf": "0" * 64},
