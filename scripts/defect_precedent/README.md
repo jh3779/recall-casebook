@@ -44,13 +44,13 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 
 | 파일 | 한 줄 = | 칸 |
 |---|---|---|
-| `recalls.jsonl` | 리콜 카드 1건 | `campno, maker, raw_maker, components[], defect, consequence, remedy, received_date, recall_type, influenced_by, dup_group, snapshot_date` |
+| `recalls.jsonl` | 리콜 카드 1건 | `campno, maker, maker_group, raw_maker, components[], defect, consequence, remedy, received_date, recall_type, influenced_by, dup_group, snapshot_date` |
 | `eval.jsonl` | 시험 질문 1개 (조사 1건) | `action_no, question, open_date, gold_campnos[], set[]` (`all` · `since2010` · `rclrpt_range`) |
 | `causes_sample.jsonl` / `causes.jsonl` | 원본 보고서 1건 (최신 판본) | `campaign, versions, source_file, submission_date, cause_text, cause_status(filled/empty/no_field), supplier_names[], supplier_countries[], new_form, pdfs{판본: sha256}, resolution(auto/manual/unresolved), unresolved_reasons[]` |
 | `causes_*_failures.jsonl` | 읽지 못한 리콜 1건 | `campaign, keys[], error` (받기·변환 실패, 기준 sha256 불일치 — "원인 칸 없음"과 구분) |
 | `build.json` | build 1회 | `raw_manifest_sha256, recalls_sha256, eval_sha256, maker_aliases_sha256, maker_aliases_draft_sha256, snapshot_date` — 카드·시험지가 어떤 원본과 어떤 회사명 대응표(확인본·대조한 초안)에서 나왔는지. `verify_build`가 기록된 칸을 모두 대조한다(옛 build.json에 없는 칸은 건너뜀, 초안 해시는 #45). build는 카드·시험지·build.json을 한 폴더에 만든 뒤 폴더째 교체하고, 이 단계가 만들지 않는 파일·하위 폴더(573 판독 결과, 시트, 벡터 사본 등)는 새 폴더로 옮겨 둔다 |
 
-- `maker`는 회사명 대응표(초안 `maker_aliases_draft.csv`는 `uv run python -m scripts.defect_precedent.maker_aliases`가 만들고, 사람이 확인한 `maker_aliases.csv`는 스크립트가 건드리지 않는다. 안내 `docs/회사명_대응표_안내.md`, DEC-033)를 카드에 적용하기 전까지 `raw_maker`와 같다. 대응표는 `maker`(정리한 이름)와 `maker_group`(같은 회사로 묶어 볼 단위) 두 칸을 담는다 — 확인 전이라 아직 카드에는 적용하지 않았다.
+- `maker`는 회사명 대응표(초안 `maker_aliases_draft.csv`는 `uv run python -m scripts.defect_precedent.maker_aliases`가 만들고, 사람이 확인한 `maker_aliases.csv`는 스크립트가 건드리지 않는다. 안내 `docs/회사명_대응표_안내.md`, DEC-033)의 확인본을 `build`가 카드에 반영한 값이다(DEC-036, PR #42). 대응표는 `maker`(정리한 이름)와 `maker_group`(같은 회사로 묶어 볼 단위) 두 칸을 담고, 신고서 원문 이름은 `raw_maker`에 그대로 남는다. 적용한 표의 sha256은 `build.json`의 `maker_aliases_sha256`(확인본)·`maker_aliases_draft_sha256`(대조한 초안)에 남는다.
 - `dup_group`이 같은 리콜은 결함 설명 본문이 같다 (약어를 고려해 자른 첫 문장 = 회사·차종 나열을 뺀 본문이 60자 넘게 같음). **서로 다른 회사가 같은 공급사 부품 설명을 그대로 쓴 경우도 여기 묶인다** (예: Gillig·Cummins 구동계, Unicell·Mickey Truck의 ASA 모니터). 검색에서 묶음당 1건만 보여 주면 "다른 회사의 같은 부품 선례"가 숨겨질 수 있으니, 묶음의 회사 목록은 함께 보여 준다.
 - `set`의 `rclrpt_range`는 **첫 번째 정답 리콜**의 접수일이 2014-08-20 이후인 질문이다 (정답 중 하나라도 기준이면 94개).
 - `campaign`은 리콜 번호 앞 6자리(예: `24V412`)다. `recalls.jsonl`의 `campno`(예: `24V412000`) 앞 6자리와 잇는다.
@@ -91,7 +91,7 @@ uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes 
 - **build 단위로 보관한다.** `build_id`는 입력 파일 4개(원본 명세·카드·시험지·원인 파일)의 sha256으로 정해지는 불변 식별자다. **내용이 하나라도 다르면 다른 build라서 같은 날짜라도 덮어쓰지 않고 둘 다 남는다** (예: 같은 날짜의 표본 build와 전체 build). 줄마다 `build_id`를 두고 `(build_id, 번호)`가 기본키다. 같은 build를 다시 올리면 저장된 행 해시·원인 명세가 새 계산과 모두 같을 때만 아무것도 바꾸지 않고 끝나고, 하나라도 다르면 덮어쓰지 않고 중단한다.
 - 평소 조회는 `recalls_latest`·`eval_questions_latest`·`causes_latest` 뷰로 한다. 뷰는 `latest_build`가 고른 build 하나만 보여 준다: **전체본(full)이 있으면 가장 최근 전체본 → 없을 때만 가장 최근 표본(sample) → 같은 종류 안에서는 나중에 올린 것.** 나중 날짜의 표본을 올려도 전체본이 가려지지 않고, 표본 build는 지워지지 않는다. 표본만 보려면 `recalls_latest_sample`·`eval_questions_latest_sample`·`causes_latest_sample` 뷰를 쓴다. 표본 기준 파일(`baseline_2026-10-06.json`)은 저장소의 것만 쓰고 명령으로 바꿀 수 없다(불완전한 표본이 정상 데이터로 올라가는 것을 막기 위해).
 - 변경 요약(`data_builds.change_summary`): 리콜·시험지는 직전 날짜의 build와, **원인(`causes`)은 같은 종류(표본/전체본)의 직전 build와** 비교한다 (크기가 다른 표본과 전체본을 비교하면 '사라짐'이 부풀려진다). 원인이 다른 날짜와 비교됐으면 출력에 비교 대상 날짜·build가 따로 적힌다.
-- 올리는 테이블: `data_builds`(build 1개 = 1줄. 원본·원인 파일의 종류·이름·sha256·건수, 대조한 명세, 직전 날짜 build 대비 변경 요약) · `recalls` · `eval_questions` · `causes`. 회사명 대응표(`maker_aliases`)는 PR #29 병합 뒤 추가한다.
+- 올리는 테이블: `data_builds`(build 1개 = 1줄. 원본·원인 파일의 종류·이름·sha256·건수, 대조한 명세, 직전 날짜 build 대비 변경 요약) · `recalls` · `eval_questions` · `causes`. 회사명 대응표는 따로 테이블로 올리지 않고 카드의 `maker`·`maker_group` 칸으로 들어간다(DEC-036).
 - **원인 파일의 완전성은 사람이 입력한 숫자가 아니라 독립된 명세와 대조한다.** `--causes`는 반드시 적는다 (파일을 자동으로 고르지 않는다).
   - `sample`(`causes_sample.jsonl`): 커밋된 기준 파일 `baseline_2026-10-06.json`의 `rclrpt_sample` 300개 캠페인과 **정확히 같아야** 한다 (줄 수와 캠페인 목록 모두).
   - `full`(`causes.jsonl`): `rclrpt all`이 완성본과 함께 만드는 `causes.manifest.json`(줄 수·파일 sha256·캠페인 목록 sha256·기대 캠페인 수)과 같아야 한다. **명세가 없으면 올리지 않는다** — 중간까지만 만들어진 파일에는 명세가 없다. 원본 자체의 결함으로 읽지 못한 캠페인은 `rclrpt all --accept-failures`로 수용한 목록(`failed_campaigns`)이 명세에 있고, `줄 수 + 실패 = 기대 캠페인 수`가 맞아야 하며 실패한 캠페인은 파일에 있으면 안 된다 (대조한 명세는 `data_builds.causes_spec`에 남는다).
@@ -100,7 +100,7 @@ uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes 
 - 모든 테이블은 RLS를 켜고 정책을 두지 않았다 — Supabase의 anon·authenticated API 키로는 읽히지 않는다. `*_latest`·`latest_build` 뷰는 `security_invoker = true`다 (없으면 뷰가 RLS를 우회한다). 서버·스크립트는 `postgres` 계정으로 접속한다.
 - **build를 지우는 명령은 없다.** 지운 데이터를 되살릴 보관소(아카이브)와 복원 절차가 생기기 전에는 NHTSA가 옛 파일을 다시 주지 않아 근거를 잃는다 — 필요해지면 아카이브와 함께 추가한다 (DEC-034 미결).
 - 중복·변경을 종류별로 어떻게 다루는지: [`docs/데이터_중복_처리_패턴.md`](../../docs/데이터_중복_처리_패턴.md)
-- CI(`lint-and-test`)는 일회용 Postgres 17을 띄워 DB 테스트도 항상 실행한다 (`REQUIRE_DB_TESTS=1` — DB가 없으면 건너뛰지 않고 실패).
+- CI(`lint-and-test`)는 일회용 Postgres 17(pgvector 포함)을 띄워 DB 테스트도 실행한다 (`REQUIRE_DB_TESTS=1` — DB가 없으면 건너뛰지 않고 실패). 단, 2026-10-10부터 Actions가 꺼져 있어(DEC-040) CI는 돌지 않는다 — 병합 전에는 `scripts/local_ci.sh`를 `LOCAL_CI_REQUIRE_PR=1`과 `TEST_DATABASE_URL`(일회용 DB)을 붙여 돌려 DB 테스트까지 로컬에서 확인한다.
 - 로컬 확인(DB 테스트 포함): `docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=lgcns_test -p 54329:5432 pgvector/pgvector:pg17` 뒤 `TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54329/lgcns_test uv run pytest tests/test_load_db.py`. 테스트가 `public` 스키마를 통째로 지우므로 주소가 localhost가 아니면 건너뛴다.
 
 ## 원인 품질 표본 — 573 원인 칸 30건 + 조사 요약 30건 (기획 6절 표 "원인 품질", `cause_quality.py`)

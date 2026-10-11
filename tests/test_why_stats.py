@@ -148,7 +148,7 @@ def test_full_coverage_separates_confirmed_unknown_and_missing_and_gives_a_range
         recall("20V003000", "Brake may fail"),  # 573 원인 칸 비어 있음(확인)
         recall("20V004000", "Brake may fail"),  # 최신판 미확정 → 확인 불가
         recall("20V005000", "Brake may fail"),  # 읽지 못해 수용한 실패 → 확인 불가
-        recall("20V006000", "Brake may fail"),  # 573 보고서가 없음 → 근거 없음 확정
+        recall("20V006000", "Brake may fail"),  # 573 보고서가 목록에 없음 → 이유 미확인, 0으로 셈
         recall("20V007000", "caused by a weld"),  # 확인 불가이지만 기존 방식 근거가 이미 있음
         recall("10V008000", "caused by a weld", received="20100101"),  # 이전 리콜: 기존 방식만
     ]
