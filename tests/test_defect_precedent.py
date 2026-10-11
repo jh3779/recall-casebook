@@ -281,12 +281,34 @@ def test_parse_report_new_form_empty_cause_does_not_take_next_heading():
     assert r["new_form"] is True
 
 
-def test_parse_report_nr_cause_is_empty():
+def test_parse_report_nr_cause_is_stated_unknown_with_text_kept():
+    # DEC-047: "NR"·"조사 중"은 제조사가 원인 칸에 적은 서술 — 버리지 않고 원문을 보존한다(예전에는 empty로 버림)
     r = parse_report(
         "Description of the Cause : NR\nSupplier Identification :\n Name : NR\nChronology :"
     )
-    assert r["cause_status"] == "empty"
+    assert r["cause_status"] == "stated_unknown"
+    assert r["cause_text"] == "NR"
     assert r["supplier_names"] == []
+
+
+def test_parse_report_only_whole_page_lines_are_removed():
+    """쪽 머리말·꼬리말 줄만 지우고, 본문 안의 "Page 2"는 남긴다(DEC-047)."""
+    text = (
+        "Description of the Cause : The bracket shown on Page 2 of the attachment\n"
+        "      The information contained in this report was submitted pursuant to 49 CFR §573\n"
+        "Part 573 Safety Recall Report                15V-213              Page   2\n"
+        "cracked under load.\n"
+        "Page 3 of 4\n"
+        "Chronology :"
+    )
+    r = parse_report(text)
+    assert r["cause_status"] == "filled"
+    assert r["cause_text"] == "The bracket shown on Page 2 of the attachment cracked under load."
+
+
+def test_parse_report_blank_cause_is_empty():
+    r = parse_report("Description of the Cause :\n\nChronology :")
+    assert r["cause_status"] == "empty" and r["cause_text"] == ""
 
 
 def test_bm25_ranks_matching_doc_first_and_hit_counts():
