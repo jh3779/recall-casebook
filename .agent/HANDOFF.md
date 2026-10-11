@@ -42,7 +42,7 @@ _갱신: 2026-10-12 체크포인트 (감사 후속 ①~⑤ 모두 병합 — #74
 - **열린 이슈**: #83(미보고 판별 경계) · #84(PR #82·#86 리뷰 후속 — 서버 쪽 도달 불가 `text_basis` 검사, 순위 계산 모듈 위치, 다음 재수집 때 `recalls_sha256` 확인) · #87(작성 주체·규칙 위치·옛 v4 재현 백업·부품 범위 기각 범위 표기) · #79(이 체크포인트로 처리) · #80(작업 현황 공유) · #75·#76·#77·#78(감사 PR 후속) · #63 · #61(박예원, 10/14) · #53 · #54 · #36 · #38 · #24.
 - **Actions: 꺼져 있음**(DEC-040). 병합 근거는 엄격 로컬 검사(`LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=… bash scripts/local_ci.sh`, 스크립트가 PR에 직접 기록)·로컬 `merge_gate.py`·리뷰 원문·Codex(DEC-046). Codex 리뷰는 push 뒤 5~30분.
 - **운영 Supabase**: latest build `f1fe1843ed0f2c66`(DEC-047 원인 파일, 옛 build `c6872ae8e9743c56`·`6edfafc92572c6d9`·`ef5ca2ad4b79d755`는 보관) + 카드 벡터. 서버용 조회 전용 계정 `rag_reader`는 아직 없음(#63) — 로컬은 `ALLOW_ADMIN_DB_FOR_SERVER=1 uv run --env-file .env uvicorn server.api:app`. 서버는 `data/raw/nhtsa/`(manifest·FLAT_INV)도 있어야 뜬다. 적재 때 원인 명세에 `recalls_sha256`이 없다는 경고 한 줄이 나오는 것은 정상(2026-10-12 이전 수집분).
-- **로컬**: `data/processed/defect/`에 DEC-047 원인 파일(`causes.jsonl` `06b0fe44…`·명세 `4e57ed30…`)과 10/7 보관 사본(`causes.20261007.jsonl`·`causes.20261007.manifest.json` — 옛 v4 재현용), 벡터 사본 `vector_cache/`. 테스트 DB 컨테이너 `lgcns-test-pg`(포트 54331, 비밀번호 `localtest`, DB `lgcns_test`)가 떠 있다. `.claude/worktrees/`에 리뷰·작업용 worktree가 60개 넘게 남아 있다 — 정리 여부는 사용자 확인.
+- **로컬**: `data/processed/defect/`에 DEC-047 원인 파일(`causes.jsonl` `06b0fe44…`·명세 `4e57ed30…`)과 10/7 보관 사본(`causes.20261007.jsonl`·`causes.20261007.manifest.json` — 옛 v4 재현용), 벡터 사본 `vector_cache/`. 사람 표시용 시트도 같은 폴더에 있다 — 원인 품질 30건 `cause_quality_20261011/`, 원인 미확인 150건 `cause_unknown_2026-10-09/`, 시점 평가 `time_eval_2026-10-10/`(gitignore, 팀 드라이브에 사본). 테스트 DB 컨테이너 `lgcns-test-pg`(포트 54331, 비밀번호 `localtest`, DB `lgcns_test`)가 떠 있다. `.claude/worktrees/`에 리뷰·작업용 worktree가 60개 넘게 남아 있다 — 정리 여부는 사용자 확인.
 - 출처 미확인 원격 브랜치 3개(`docs/finance-domain-notes`·`docs/onboarding-plan`·`docs/onboarding-plan-draft`)는 그대로(할 일 25).
 
 ### 충돌·관련 이슈 (2026-10-08~10 병합 과정)
@@ -56,7 +56,7 @@ _갱신: 2026-10-12 체크포인트 (감사 후속 ①~⑤ 모두 병합 — #74
 | 시점 평가 일정이 문서마다 다름(#38 10/8 댓글 vs HANDOFF·DEC) | 일정을 앞당기며 이슈 댓글은 고치지 않음 | 팀 확인 일정(시트 10/10·늦어도 10/16)으로 안내서·HANDOFF·PROJECT_CONTEXT 정리, #38에 새 코멘트 | 일정이 바뀌면 이슈 댓글·안내서·HANDOFF를 같은 커밋/코멘트로 함께 |
 | #62 결과 코멘트가 무효 | 결과(`b992ed3`) 게시 뒤 Codex 리뷰 3건이 올라옴(`af81a67`·`b992ed3`·`0037c22`) | 최신 head의 Codex 리뷰가 올라올 때까지 백그라운드로 기다린 뒤(`178ddfc`) 재게시 | 결과 게시 전 "현재 head" Codex 리뷰를 기다린다 — 커밋을 더 쌓으면 그만큼 다시 기다린다 |
 | #66·#67에 main을 합칠 때 결정 기록의 끝 줄이 사라짐 | DEC-043·DEC-044의 `Status`·`Date` 줄이 다음 DEC와 글자까지 같아 git이 공통 꼬리로 한 번만 남김 | #66은 새 커밋(`15c5aef`)으로, #67은 합침 커밋 안에서 복원 | `.agent/DECISIONS.md` 충돌을 풀면 `git show origin/main:.agent/DECISIONS.md`와 앞부분을 `diff`해 main 부분이 그대로인지 확인한다 |
-| 관련 이슈 | — | #53(원인 표시 미결 3가지·스크립트 후속, **10/12 전**), #54(시트 재생성·`agreed_label`·대체 문항·status/gap 검사, **10/10 시트 전달과 함께**), #56(CI 패턴 주석) | — |
+| 관련 이슈 | — | #53(원인 표시 미결 3가지·스크립트 후속, 당시 기한 10/12 전 — 2026-10-12 현재 열림), #54(시트 재생성·`agreed_label`·대체 문항·status/gap 검사, 당시 기한 10/10 — 시트는 전달돼 표시 중), #56(CI 패턴 주석 — 닫힘, PR #69) | — |
 
 ## Open Issues
 
@@ -97,7 +97,7 @@ _갱신: 2026-10-12 체크포인트 (감사 후속 ①~⑤ 모두 병합 — #74
   34. **force push 사후 차단 훅 (PR #37 후속, [[DEC-035]])**: `.claude/settings.json` deny 패턴은 에이전트 명령만 막는다. lefthook pre-push에서 강제 push를 막는 훅은 사용자 결정으로 후속("패턴 추가 + 훅은 후속").
   35. ✅ **결정(DEC-043, 2026-10-10)** — PR 본문 태그 규칙 삭제, 요청은 결과 코멘트에서. **리뷰어 `@태그` 규칙 불일치 — 사용자 결정 필요**(당시): 사용자 지시는 "이 저장소 PR 본문에 `@태그`를 넣지 않음"인데 AGENTS.md 6절·CONTRIBUTING.md·`docs/시작하기.md`는 `@태그`를 요구해, Codex가 PR마다 같은 지적을 반복한다(#33·#37·#39). 문서를 지시에 맞출지 정한다.
   36. **인계 문서 보완(PR #33 리뷰 `98dee4b`·`8e67152` 🟢)**: `docs/환경셋팅.md` 4절 확인 기록에 실행한 main 커밋·판본 582개 sha256 일치를 덧붙이고, `scripts/defect_precedent/README.md` "재현 범위"에 그 기록으로 가는 링크 한 줄. `docs/시작하기.md`의 force push 차단 설명에 `git -c`·`HEAD:+x`를 넣거나 "자세한 한계는 DEC-035"로 돌린다(PR #37 리뷰 `d62e5f9`).
-  37. ~~**PR #42 리뷰 후속**~~ — **PR #71에서 처리(병합되면 완료, #45 닫힘)**. 기록: **대부분 완료(2026-10-08, 박예원 PR #46 `62203f2`)**: 리뷰 에이전트 `344a6f8`의 🟡2(옛 카드에서 회사명 테스트 실패 → 카드 버전별 테스트)·🟡3(기준 파일 둘 사이 안내)·🟢4~8(DEC-035 `Date`, DEC-036 Status·운영 메모, `schema.sql` 헤더 등)을 #46이 처리. **남은 것: 🟡1 초안(`maker_aliases_draft.csv`) 해시를 `build.json`에 기록 → 이슈 #45**(박예원 → 2026-10-11 우지훈이 맡음, PR #71).
+  37. ~~**PR #42 리뷰 후속**~~ — **PR #71에서 처리(병합되면 완료, #45 닫힘)**. 기록: **대부분 완료(2026-10-08, 박예원 PR #46 `62203f2`)**: 리뷰 에이전트 `344a6f8`의 🟡2(옛 카드에서 회사명 테스트 실패 → 카드 버전별 테스트)·🟡3(기준 파일 둘 사이 안내)·🟢4~8(DEC-035 `Date`, DEC-036 Status·운영 메모, `schema.sql` 헤더 등)을 #46이 처리. **남은 것: 🟡1 초안(`maker_aliases_draft.csv`) 해시를 `build.json`에 기록 → 이슈 #45**(박예원 → 2026-10-11 우지훈이 맡음, PR #71). → **병합·완료(2026-10-11, PR #71 `ba84dfc`, #45 닫힘)**.
   38. **AGENTS.md 5-2 시점 평가 판본 문구 (DEC-037 ⑥)**: 5-2는 "질문도 기준일 당시 공개된 판본"을 요구하지만 공개일을 증명할 기록이 없어 DEC-037 ⑥이 PDF 수정일 3일 이내로 근사한다(요건 완화). 5-2 문구에 이 근사를 넣을지, DEC 예외로만 둘지 팀이 정한다.
   39. **P2 실험 후속 (이슈 #53)**: ~~엔진 2 30건 3모델 재측정~~ — 완료(2026-10-08, PR #49 보고서 5절: 해석 실패 0건, 실행마다 3~7건 달라짐). ~~`code_provenance` 실패 분기 테스트~~ — 완료(2026-10-11, PR #70). **원인 표시 미결(DEC-039 확정 범위 밖)**: 원인 칸이 없는 카드의 표시·라벨 문구(말한 주체(제조사)를 표시한다는 것 자체는 DEC-039로 확정), 원인 칸이 NR·Unknown·Pending인 경우의 처리, "원인 미확인" 표현 표시 방법(150건 사람 표시 뒤 정확도).
   40. **시점 평가 표시 전 정리 (이슈 #54)**: ~~#52를 DEC-037 ⑥ 3일 기준으로 다시 뽑기~~ ✅(PR #52 병합 `ff27005`, 박예원 — 3일 초과 0건) → ~~`time_eval_candidates.py`가 임의 묶음(대체 회차)을 받고 수정일 3일 초과·미확보 질문을 거르게, `agreed_label` 열~~ ✅(PR `feat/time-eval-sheets-and-local-ci`). **10/10에는 예비·본 시트만 main 최신 커밋에서 만들어 전달하고, 대체 회차는 필요할 때(`yes` 있는 문항 수로만 판단) `time_eval_draw.json` 다음 해시 순위로 질문 파일을 갱신해 같은 커밋의 스크립트로 만든다**(DEC-037 ⑦(c) — 시트 생성 커밋을 기록하고 그 뒤 scripts/ 변경을 피한다). ⚠️ **대체 회차 질문을 만드는 도구는 아직 없다** — `time_eval_questions.py`(`build()`는 pilot·main·replacements만, `--check`는 파일 전체 대조)에 대체 회차 묶음 생성을 넣는 작은 PR이 필요하다. 표시 도중 scripts 변경을 피하려면 **10/10 시트 생성 전**에 하는 것이 맞고, 늦어지면 대체 시트를 만든 커밋을 결과 보고에 따로 적는다(이슈 #54). ~~재확인 3문항 선정 규칙, 예비 합격선의 `yes` 불일치 처리~~ ✅(안내서 4절, 2026-10-09), ~~발표 문구 방향 칸~~ ✅(기획 6절). 원인 미확인 150건 시트는 새 형식(`text_sha256`·`.meta.json`)으로 다시 써서 나눠 준다.
@@ -107,6 +107,7 @@ _갱신: 2026-10-12 체크포인트 (감사 후속 ①~⑤ 모두 병합 — #74
   44. **미보고 판별 경계 (이슈 #83, DEC-047 한계)**: "unknown/unclear"로 시작하는 실제 원인 글(26V219 등 약 20건)이 `stated_unknown`, `filled`에 남은 "Pending" 등 약 60건. 경계를 바꾸면 "왜" 집계(8,179·8,160)가 바뀌므로 수치 재보고와 함께. 화면(#60)은 상태 이름으로 단정하지 말고 원문을 보여 준다.
   45. **PR #82·#86 리뷰 후속 (이슈 #84)**: 서버 쪽 `text_basis` 검사가 도달 불가(지우거나 직접 시험), 순위 계산 모듈(`bm25_baseline`·`retrieval_compare`)을 서버가 연구 스크립트에서 가져옴, **다음 `rclrpt all` 전체 재수집 때 명세에 `recalls_sha256`이 생기는지 확인**(운영 build는 아직 경고만).
   46. **표기 정합 (이슈 #87)**: 실험 보고서·HANDOFF의 작성 주체 "제조사", DEC-044의 규칙 위치(정본 `rules.py`), 옛 v4 재현의 백업 단계, "부품 범위 좁히기 기각"의 범위.
+  47. **꼬리표 구간 끊김 — `root cause is not`(573 원인 글 26건)**: "`root cause is not`에서 꼬리표 구간이 끊기는 문제(573 26건)" — 2026-10-11 HANDOFF Next Action 2의 문장을 그대로 옮김(원인 분석은 아직 없음). 규칙을 바꾸면 꼬리표 수(226)가 바뀌므로 DEC와 수치 재보고가 필요하다. 화면(#60)이 꼬리표 구간을 칠할 때 함께 정한다.
 - 역할(이슈 #24): A 박예원 · B 우지훈 · C 박성호(발표) · D 이승노 → **2026-10-07부터 D는 임시 제외, D 일은 우지훈**.
 - **주의(재발 방지)**: `.gitignore`에 핸드북 데이터 무시 줄(`docs/handbook/`, 옛 브랜치는 `docs/handbook/*`)이 없는 브랜치에서 `uv run ruff format .` 금지. 결과 코멘트는 수정하지 말고 새로 올린다.
 
@@ -158,7 +159,9 @@ _갱신: 2026-10-12 체크포인트 (감사 후속 ①~⑤ 모두 병합 — #74
 - `docs/MERGE_PROTOCOL.md`, `.claude/skills/pre-merge-check/` — 병합 전 검증
 - `docs/실험_P2_검색방식비교.md` — P2 비교 보고서(DEC-039 근거), `scripts/defect_precedent/{retrieval_compare,storage_bench,engine2_trial,cause_trials,time_eval_candidates}.py`
 - `docs/시점평가_정답표시_안내.md` — 표시 기준·합격선·일정, `scripts/defect_precedent/time_eval_questions.json`(#52)
-- `.agent/DECISIONS.md` — DEC-037(시점 평가)·DEC-038(API 서버)·DEC-039(검색 확정)
+- `.agent/DECISIONS.md` — DEC-037(시점 평가)·DEC-038(API 서버)·DEC-039(검색 확정)·DEC-046(병합 절차)·DEC-047(원인 글 정리·`stated_unknown`)
+- `server/`(API 서버 — `api.py` 응답 모델, `rag/{search,causes,flags,checks,verify,investigations,parity}.py`, `README.md` 응답 칸), `scripts/defect_precedent/rules.py`(서버·연구 공용 규칙)
+- `scripts/defect_precedent/{time_eval_score,cause_quality}.py` — 시점 평가 채점(#72)·원인 품질 표본(#73)
 
 ## Next Action
 
@@ -171,7 +174,7 @@ _갱신: 2026-10-12 체크포인트 (감사 후속 ①~⑤ 모두 병합 — #74
 4. **미보고 판별 경계(#83)** — 바꾸면 "왜" 집계 재보고.
 5. **배포 전 보완(#63)** — 조회 전용 계정 `rag_reader`, raw 원본 배포 방법, 인증·호출 상한, 배포 주소 CORS.
 6. 사용자 몫: 원인 미확인 150건 표시, 디스코드 공지(#80), Notion 재인증. 대기: #61(박예원, 10/14). 정리 후보: `.claude/worktrees/` 60여 개.
-7. 후속 이슈: #84·#87·#75~#78, 할 일 22·25·34·36·38·41·43.
+7. 후속 이슈: #84·#87·#75~#78, 할 일 22·25·34·36·38·41·43·47. #53 제목이 원인 표시 미결을 드러내지 않으니 이슈를 나누거나 제목을 고친다.
 
 ## Definition of Done
 
