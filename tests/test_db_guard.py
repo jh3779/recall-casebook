@@ -27,16 +27,21 @@ def test_local_urls_pass(url):
 @pytest.mark.parametrize(
     "url",
     [
-        "postgresql://x:y@db.example.com:5432/postgres",
-        "postgresql://postgres:pw@localhost:54331/postgres?host=prod.example.com",  # 겉은 localhost
-        "postgresql://a@localhost/db?hostaddr=10.1.2.3",  # 실제 접속 주소는 hostaddr
-        "postgresql://a@localhost,prod.example.com/db",  # 여러 호스트 중 하나라도 밖
-        "postgresql:///db",  # 호스트 없음 — PGHOST·소켓에 따라 달라짐
-        "not a url",
+        # DB 이름은 모두 전용 이름(lgcns_test) — 호스트 검사만으로 거부되는지 본다(이름 때문에 거부되면 호스트 검사 회귀를 못 잡는다, PR #74 Codex)
+        "postgresql://x:y@db.example.com:5432/lgcns_test",
+        "postgresql://postgres:pw@localhost:54331/lgcns_test?host=prod.example.com",  # 겉은 localhost
+        "postgresql://a@localhost/lgcns_test?hostaddr=10.1.2.3",  # 실제 접속 주소는 hostaddr
+        "postgresql://a@localhost,prod.example.com/lgcns_test",  # 여러 호스트 중 하나라도 밖
+        "postgresql:///lgcns_test",  # 호스트 없음 — PGHOST·소켓에 따라 달라짐
+        "postgresql://a@localhost/lgcns_test?service=prod",  # 서비스 파일이 대상을 바꿀 수 있음
     ],
 )
-def test_remote_or_ambiguous_urls_fail(url):
+def test_remote_or_ambiguous_hosts_fail_even_with_the_test_db_name(url):
     assert not is_local_test_db(url)
+
+
+def test_unparsable_url_fails():
+    assert not is_local_test_db("not a url")
 
 
 def test_pghostaddr_env_is_checked(monkeypatch):
