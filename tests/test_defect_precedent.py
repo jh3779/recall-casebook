@@ -10,7 +10,7 @@ import zipfile
 import pytest
 
 from scripts.defect_precedent import bm25_baseline as bm
-from scripts.defect_precedent import nhtsa, rclrpt
+from scripts.defect_precedent import maker_aliases, nhtsa, rclrpt
 from scripts.defect_precedent.rclrpt import parse_report
 
 
@@ -524,6 +524,26 @@ def test_verify_build_checks_the_alias_table_hash_when_build_json_records_it(tmp
     assert "회사명 대응표" in str(e.value)
 
 
+def test_verify_build_checks_the_alias_draft_hash_when_build_json_records_it(tmp_path, monkeypatch):
+    # 확인본과 초안의 "확인 필요" 표시를 함께 지우면 대조 검사는 통과한다 — 어느 초안과 대조했는지 build.json으로 되짚는다(#45)
+    raw, out, info = _fake_build(tmp_path)
+    draft = tmp_path / "maker_aliases_draft.csv"
+    draft.write_text("raw_maker,maker,review_required\nA,A,필요\n", encoding="utf-8")
+    monkeypatch.setattr(nhtsa, "MAKER_ALIASES_DRAFT", draft)
+    info = {**info, "maker_aliases_draft_sha256": nhtsa.sha256_aliases(draft)}
+    (out / "build.json").write_text(json.dumps(info))
+    assert nhtsa.verify_build(raw, out) == info
+    draft.write_text(
+        "raw_maker,maker,review_required\r\nA,A,필요\r\n", encoding="utf-8"
+    )  # 줄바꿈만 다르면 같다
+    assert nhtsa.verify_build(raw, out) == info
+    draft.write_text(
+        "raw_maker,maker,review_required\nA,A,\n", encoding="utf-8"
+    )  # 확인 필요 표시를 지움
+    with pytest.raises(SystemExit, match="초안"):
+        nhtsa.verify_build(raw, out)
+
+
 def test_verify_build_stops_when_eval_changed(tmp_path):
     # 기준과 다른 시험지로 점수를 내면 "재현"이 아니다 — 중단해야 한다
     raw, out, _ = _fake_build(tmp_path)
@@ -926,3 +946,25 @@ def test_the_chrysler_rows_use_the_plain_company_name_as_group():
     ]
     assert {aliases[n]["maker_group"] for n in chrysler} == {"Chrysler"}
     assert not [v for v in aliases.values() if "이어짐" in v["maker_group"]]
+
+
+def test_build_carry_over_keeps_subfolders_and_files_but_not_build_outputs(tmp_path):
+    # 출력 폴더에 시트·벡터 사본 같은 하위 폴더가 생긴 뒤에도 build가 멈추지 않고 옮겨야 한다
+    old, new = tmp_path / "old", tmp_path / "new"
+    (old / "time_eval_2026-10-10").mkdir(parents=True)
+    (old / "time_eval_2026-10-10" / "labels_main.csv").write_text("x", encoding="utf-8")
+    (old / "causes.jsonl").write_text("{}\n", encoding="utf-8")
+    for name in nhtsa.BUILD_OUTPUTS:
+        (old / name).write_text("old", encoding="utf-8")
+    new.mkdir()
+    nhtsa.carry_over(old, new)
+    assert (new / "time_eval_2026-10-10" / "labels_main.csv").read_text(encoding="utf-8") == "x"
+    assert (new / "causes.jsonl").exists()
+    assert not any((new / name).exists() for name in nhtsa.BUILD_OUTPUTS)
+
+
+def test_committed_alias_draft_keeps_its_31_review_required_rows():
+    """초안의 "확인 필요" 줄을 확인본과 함께 지우면 `unreviewed` 대조를 통과한다 — 커밋된 초안의 줄 수를 고정해 막는다(#45).
+    초안을 다시 만들어 줄 수가 달라지면 이 숫자와 기준 파일의 `maker_aliases_draft_sha256`을 함께 고치고 `nhtsa build`를 다시 한다."""
+    rows = maker_aliases.read_table(nhtsa.MAKER_ALIASES_DRAFT)
+    assert sum(r.get("review_required") == "필요" for r in rows) == 31
