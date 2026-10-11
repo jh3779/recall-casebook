@@ -1021,3 +1021,21 @@ def test_cli_score_refuses_agreement_from_another_candidate_build(tmp_path):
     ]
     with pytest.raises(SystemExit, match="본 평가 후보 파일로 만든 것이 아니다"):
         ts.main([*args, "--agreement", *agr])
+
+
+def test_cli_score_refuses_recheck_pass_with_unresolved_one_sided_yes(tmp_path):
+    """재확인이 합격해도 한 사람만 yes인 후보가 미해소면 본 평가를 나눈 근거가 되지 않는다(PR #72 Codex f755b62)."""
+    q, args = _recheck_setup(tmp_path)
+    cand = tmp_path / "candidates_main.json"
+    c = write_sheet(
+        tmp_path / "c.csv",
+        [row(r, "A", "yes", labeler_id="L-C1", agreed_label="yes") for r in ("R1", "R2", "R3")],
+    )
+    pilot_bad = agreement_file(tmp_path, "pilot", False, q)
+    unresolved = agreement_file(
+        tmp_path, "recheck", True, q, "r.json", cand=cand, resolution_complete=False
+    )
+    with pytest.raises(SystemExit, match="재확인 결과가 합격했지만"):
+        ts.main([*args, str(c), "--agreement", pilot_bad, unresolved])
+    resolved = agreement_file(tmp_path, "recheck", True, q, "r2.json", cand=cand)
+    ts.main([*args, str(c), "--agreement", pilot_bad, resolved])

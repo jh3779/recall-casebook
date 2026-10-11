@@ -289,6 +289,15 @@ def check_rechecked(merged: dict, recheck: set[str], flag: str = "agreement 결�
         )
 
 
+def require_resolved(g: dict, name: str) -> None:
+    """합격한 agreement 결과(예비·재확인)는 한 사람만 yes인 후보를 모두 합의로 해소한 뒤에야 본 평가를 나누는 근거가 된다(안내서 4절 2항)."""
+    if g.get("resolution_complete") is not True:
+        sys.exit(
+            f"{name} 결과가 합격했지만 한 사람만 yes로 표시한 후보 {(g.get('unresolved_one_sided_yes') or [])[:3]}가 합의로 해소되지 않았다 — "
+            "두 시트 모두에 같은 agreed_label과 합의 이유(note)를 적고 agreement를 다시 낸다(안내서 4절 2항)"
+        )
+
+
 def double_label_scope(
     agreements: list[dict],
     items: list[dict],
@@ -325,11 +334,7 @@ def double_label_scope(
         )
     pilot, recheck = by_phase["pilot"][0], (by_phase.get("recheck") or [None])[0]
     if pilot["pass"]:
-        if pilot.get("resolution_complete") is not True:
-            sys.exit(
-                f"예비가 합격했지만 한 사람만 yes로 표시한 후보 {(pilot.get('unresolved_one_sided_yes') or [])[:3]}가 합의로 해소되지 않았다 — "
-                "두 시트에 agreed_label·합의 이유(note)를 적고 agreement를 다시 낸다(안내서 4절 2항)"
-            )
+        require_resolved(pilot, "예비")
         if recheck is not None:
             sys.exit(
                 "예비가 합격인데 재확인 결과가 있다 — 어느 절차를 따랐는지 확인한다(안내서 4절)"
@@ -340,6 +345,8 @@ def double_label_scope(
             "예비가 미달이다 — 재확인 3문항 agreement 결과(phase recheck)를 함께 넘긴다(안내서 4절 3항)"
         )
     if recheck["pass"]:
+        # 재확인도 같은 합격선이라 합의 해소도 같다 — 해소 전에 본 평가를 나누면 서로 다른 기준이 섞인다(PR #72 Codex f755b62)
+        require_resolved(recheck, "재확인")
         return "재확인 3문항(예비 미달·재확인 합격)", phase_actions("recheck", questions)
     return "본 평가 전 문항(재확인도 미달)", {it["action_no"] for it in items}
 
