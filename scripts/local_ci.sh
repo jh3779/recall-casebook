@@ -18,7 +18,7 @@
 #   ⚠️ 이 테스트는 대상 DB의 public 스키마를 지운다. 반드시 일회용 컨테이너에만 쓴다:
 #      docker run -d --rm --name lgcns-test-pg -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=lgcns_test -p 54331:5432 pgvector/pgvector:pg17
 #      TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54331/lgcns_test bash scripts/local_ci.sh
-#   DB 이름이 lgcns_test가 아니거나 호스트가 로컬이 아니면 DB 테스트를 돌리지 않는다(scripts/ci/db_guard.py).
+#   DB 이름이 lgcns_test가 아니거나 호스트가 로컬이 아니면 DB 테스트 전에 멈춘다(scripts/ci/db_guard.py — 기본 모드도).
 # 프런트(frontend/) 검사는 CI 필수가 아니라(frontend-ci.yml) 여기 넣지 않았다 — frontend/package.json이 생기는 PR에서 함께 넣는다.
 # AGENTS.md 6절의 훅 우회 금지(--no-verify, LEFTHOOK=0)는 CI를 끈 동안에도 그대로다.
 
@@ -29,7 +29,17 @@ HEAD_SHA=$(git -C "$ROOT" rev-parse HEAD)
 BRANCH=$(git -C "$ROOT" branch --show-current)
 REQUIRE_PR="${LOCAL_CI_REQUIRE_PR:-0}"
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/local-ci.XXXXXX")
-cleanup() { git -C "$ROOT" worktree remove --force "$TMP" >/dev/null 2>&1 || rm -rf "$TMP"; }
+DONE=0
+# macOS 기본 bash 3.2는 set -u 오류(unbound variable)로 끝날 때 종료 코드가 EXIT trap의 결과(0)가 된다 — 검사가 깨져도
+# "성공"으로 끝나지 않게, 맨 끝에 도달했을 때만 DONE=1이고 그 전에 끝나면 실패로 바꾼다(PR #74 첫 엄격 실행에서 발견)
+cleanup() {
+  local rc=$?
+  git -C "$ROOT" worktree remove --force "$TMP" >/dev/null 2>&1 || rm -rf "$TMP"
+  if [[ "$DONE" != 1 && "$rc" == 0 ]]; then
+    echo "❌ local CI가 끝까지 가지 못하고 멈췄다(위 오류 확인) — 통과가 아니다" >&2
+    exit 1
+  fi
+}
 trap cleanup EXIT
 
 if [[ "$REQUIRE_PR" == "1" ]]; then
@@ -77,6 +87,11 @@ uv sync --locked --quiet
 uv run --locked ruff check .
 uv run --locked ruff format --check .
 if [[ -n "${TEST_DATABASE_URL:-}" ]]; then
+  # 기본 모드(pre-push)에서도 전용 시험 DB가 아니면 이유를 한 줄로 알리고 멈춘다(예전 안내의 …/postgres 주소 등)
+  if ! (cd "$ROOT" && uv run --quiet python -m scripts.ci.db_guard "$TEST_DATABASE_URL"); then
+    echo "❌ TEST_DATABASE_URL이 전용 시험 DB가 아니다(로컬 + DB 이름 lgcns_test — scripts/ci/db_guard.py) — 머리말대로 컨테이너를 띄우거나 변수를 지운다"
+    exit 1
+  fi
   REQUIRE_DB_TESTS=1 uv run --locked pytest -q -rs
   DB_TESTS="실행됨"
 else
@@ -141,11 +156,12 @@ if [[ "$REQUIRE_PR" == "1" ]]; then
   # 같은 계정이라 위조를 완전히 막지는 못하지만, 손으로 붙여 넣는 단계는 없앤다 — 코멘트를 못 남기면 통과가 아니다(DEC-046)
   if ! (cd "$ROOT" && gh pr comment "$PR_NUMBER" --body "$(printf '### 🧪 local CI (엄격) — 커밋 %s\n\n%s\n\n- pytest: %s\n- 로그 전체 sha256: `%s` (실행한 컴퓨터의 %s)\n- origin/main: `%s`' \
     "${HEAD_SHA:0:7}" "$FINAL" "${TESTS_LINE:-요약 줄 없음}" "$LOG_SHA" "$LOG" "$MAIN_AT_START")" >/dev/null); then
-    echo "❌ 검사는 통과했지만 PR #$PR_NUMBER에 결과 코멘트를 남기지 못했다(gh 인증·네트워크) — 같은 명령을 다시 돌린다(출력을 손으로 옮겨 근거로 쓰지 않는다)"
+    echo "❌ 검사는 통과했지만 PR #${PR_NUMBER}에 결과 코멘트를 남기지 못했다(gh 인증·네트워크) — 같은 명령을 다시 돌린다(출력을 손으로 옮겨 근거로 쓰지 않는다)"
     exit 1
   fi
-  echo "   로그 $LOG (전체 sha256 $LOG_SHA) — PR #$PR_NUMBER에 결과 코멘트를 남겼다"
+  echo "   로그 $LOG (전체 sha256 $LOG_SHA) — PR #${PR_NUMBER}에 결과 코멘트를 남겼다"
   echo "$FINAL"
 else
   echo "✅ local CI 통과(기본 — 병합 근거 아님, 엄격 모드는 LOCAL_CI_REQUIRE_PR=1) — 커밋 $HEAD_SHA · DB 테스트 $DB_TESTS · $PR_NOTE"
 fi
+DONE=1
