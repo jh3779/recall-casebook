@@ -7,6 +7,7 @@
 """
 
 from scripts.defect_precedent.nhtsa import RCLRPT_FROM
+from server.rag.flags import flags
 
 SPEAKER_573 = "리콜 제조사 (Part 573 결함·불합치 보고서)"
 
@@ -31,6 +32,7 @@ def cause_573(
         "status": "filled",
         "text": row["cause_text"],
         "speaker": SPEAKER_573,
+        "flags": flags(row["cause_text"]),
         "source": {
             "campaign": row["campaign"],
             "file": row["source_file"],
