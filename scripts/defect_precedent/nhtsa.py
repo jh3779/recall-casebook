@@ -335,6 +335,20 @@ def write_jsonl(path: Path, rows) -> None:
     tmp.replace(path)
 
 
+BUILD_OUTPUTS = ("recalls.jsonl", "eval.jsonl", "build.json")
+
+
+def carry_over(old_dir: Path, new_dir: Path) -> None:
+    """이번 build가 만들지 않는 파일·폴더(573 판독 결과, 시점 평가 시트, 벡터 사본 등)를 새 폴더로 옮겨 둔다."""
+    for old in old_dir.iterdir():
+        if old.name in BUILD_OUTPUTS:
+            continue
+        if old.is_dir():
+            shutil.copytree(old, new_dir / old.name)
+        else:
+            shutil.copy2(old, new_dir / old.name)
+
+
 def build() -> None:
     snapshot_date = verify_raw(RAW_DIR)["downloaded_at"][:10]
 
@@ -358,13 +372,13 @@ def build() -> None:
         "recalls_sha256": sha256_file(tmp / "recalls.jsonl"),
         "eval_sha256": sha256_file(tmp / "eval.jsonl"),
         "maker_aliases_sha256": sha256_aliases(MAKER_ALIASES),
+        # 확인본을 대조한 초안 — 확인본과 초안의 "확인 필요" 표시를 함께 지우면 검사를 통과하므로 어느 초안과 대조했는지 남긴다(#45)
+        "maker_aliases_draft_sha256": sha256_aliases(MAKER_ALIASES_DRAFT),
         "snapshot_date": snapshot_date,
     }
     (tmp / "build.json").write_text(json.dumps(build_info, indent=1) + "\n", encoding="utf-8")
     if OUT_DIR.exists():
-        for old in OUT_DIR.iterdir():
-            if old.name not in ("recalls.jsonl", "eval.jsonl", "build.json"):
-                shutil.copy2(old, tmp / old.name)
+        carry_over(OUT_DIR, tmp)
     install_dir(tmp, OUT_DIR)
 
     groups: dict[str, int] = {}
@@ -400,8 +414,17 @@ def verify_build(raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR) -> dict:
     }
     if "maker_aliases_sha256" in info:  # 회사명 대응표를 반영하기 전의 build.json에는 없다
         checks["회사명 대응표(maker_aliases.csv)"] = (MAKER_ALIASES, info["maker_aliases_sha256"])
+    if "maker_aliases_draft_sha256" in info:  # #45 이전에 만든 build.json에는 없다
+        checks["회사명 대응표 초안(maker_aliases_draft.csv)"] = (
+            MAKER_ALIASES_DRAFT,
+            info["maker_aliases_draft_sha256"],
+        )
     for label, (path, expected) in checks.items():
-        digest = sha256_aliases(path) if path == MAKER_ALIASES else sha256_file(path)
+        digest = (
+            sha256_aliases(path)
+            if path in (MAKER_ALIASES, MAKER_ALIASES_DRAFT)
+            else sha256_file(path)
+        )
         if digest != expected:
             sys.exit(f"{label}이 build.json과 다르다 — `... nhtsa build`를 다시 실행한다")
     return info
