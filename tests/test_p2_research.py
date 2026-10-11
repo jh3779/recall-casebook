@@ -236,3 +236,72 @@ def test_time_eval_questions_file_passes_rule6():
 
     d = json.loads(Path("scripts/defect_precedent/time_eval_questions.json").read_text("utf-8"))
     assert te.unusable_questions(d["pilot"]) == [] and te.unusable_questions(d["main"]) == []
+
+
+def _fake_git(outputs: dict, returncode: int = 0, missing: bool = False):
+    """`code_provenance`가 부르는 git 명령을 흉내 낸다 — git 상태와 무관하게 분기를 시험한다(#53 a).
+
+    진짜 `subprocess.run`처럼 `check=True`일 때만 0이 아닌 종료 코드를 예외로 바꾼다 — `check=True`가 빠지면 실패가
+    조용히 "깨끗함"으로 기록되므로 그 회귀를 잡기 위해서다. 명령 인자도 그대로인지 본다."""
+    import subprocess
+
+    expected = {
+        "status": ["git", "status", "--porcelain", "--", "scripts/"],
+        "rev-parse": ["git", "rev-parse", "HEAD"],
+    }
+
+    from scripts.defect_precedent.time_eval_candidates import ROOT
+
+    def run(cmd, **kw):
+        assert cmd == expected[cmd[1]], cmd
+        assert kw.get("cwd") == ROOT  # 다른 폴더(다른 저장소)의 상태를 기록하지 않게
+        if missing:
+            raise FileNotFoundError("git")
+        done = subprocess.CompletedProcess(
+            cmd, returncode, stdout=outputs.get(cmd[1], ""), stderr=""
+        )
+        if kw.get("check"):
+            done.check_returncode()
+        return done
+
+    return run
+
+
+def test_time_eval_code_provenance_records_clean_and_dirty_scripts(monkeypatch):
+    import subprocess
+
+    from scripts.defect_precedent import time_eval_candidates as tec
+
+    monkeypatch.setattr(subprocess, "run", _fake_git({"status": "", "rev-parse": "abc123"}))
+    clean = tec.code_provenance(allow_dirty=False)  # 깨끗하면 허용 없이 통과
+    assert clean["commit"] == "abc123" and clean["dirty"] is False
+    import hashlib
+
+    # 시트를 만든 코드 — 운영 목록(CODE_FILES)에서 빠지면 실패하도록 따로 적는다
+    expected_files = [
+        "scripts/defect_precedent/time_eval_candidates.py",
+        "scripts/defect_precedent/retrieval_compare.py",
+        "scripts/defect_precedent/bm25_baseline.py",
+    ]
+    # 스크립트 해시는 파일 내용의 sha256이어야 한다(빈 값·다른 파일이면 실패)
+    want = {f: hashlib.sha256((tec.ROOT / f).read_bytes()).hexdigest() for f in expected_files}
+    assert clean["script_sha256"] == want
+
+    monkeypatch.setattr(
+        subprocess, "run", _fake_git({"status": " M scripts/x.py", "rev-parse": "abc123"})
+    )
+    with pytest.raises(SystemExit, match="커밋하지 않은 변경"):
+        tec.code_provenance(allow_dirty=False)
+    assert tec.code_provenance(allow_dirty=True)["dirty"] is True
+
+
+@pytest.mark.parametrize("kind", ["exit_code", "git_missing"])
+def test_time_eval_code_provenance_stops_when_git_fails(monkeypatch, kind):
+    import subprocess
+
+    from scripts.defect_precedent import time_eval_candidates as tec
+
+    fake = _fake_git({}, returncode=128) if kind == "exit_code" else _fake_git({}, missing=True)
+    monkeypatch.setattr(subprocess, "run", fake)
+    with pytest.raises(SystemExit, match="코드 판본을 기록할 수 없어"):
+        tec.code_provenance(allow_dirty=True)

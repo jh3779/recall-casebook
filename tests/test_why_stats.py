@@ -459,3 +459,7 @@ def test_the_maker_aliases_baseline_differs_from_the_old_one_only_in_the_cards()
     assert "maker_aliases_sha256" not in old["build"]
     # 대응표 확인본(main)의 해시가 새 기준에 적힌 값과 같다
     assert new["build"]["maker_aliases_sha256"] == nhtsa.sha256_aliases(nhtsa.MAKER_ALIASES)
+    # 대조한 초안의 해시도 새 기준에 같은 값으로 남는다(#45 — 손으로 넣은 값이 맞는지)
+    assert new["build"]["maker_aliases_draft_sha256"] == nhtsa.sha256_aliases(
+        nhtsa.MAKER_ALIASES_DRAFT
+    )

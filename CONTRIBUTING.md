@@ -12,7 +12,7 @@ brew install lefthook     # Windows: scoop install lefthook
 lefthook install
 ```
 
-⚠️ 클라이언트 측 방어선이다. `--no-verify`로 우회하면 통과되며, 평소에는 서버 쪽 CI가 한 번 더 검사한다 — **Actions를 끈 동안(아래 '자동 검증' 안내)은 다시 검사하는 곳이 없으므로 병합 전 검증 G-01의 엄격 모드 출력으로 확인한다.**
+⚠️ 클라이언트 측 방어선이다. `--no-verify`로 우회하면 통과되며, 평소에는 서버 쪽 CI가 한 번 더 검사한다 — **Actions를 끈 동안(아래 '자동 검증' 안내)은 다시 검사하는 곳이 없으므로 병합 전 검증 G-01의 엄격 모드가 PR에 남긴 코멘트로 확인한다.**
 훅을 일시적으로 끄려면 `LEFTHOOK=0 git push`, 특정 검사만 건너뛰려면 `LEFTHOOK_EXCLUDE=<이름> git push`를 쓴다
 (`SKIP=`은 lefthook에서 동작하지 않는다 — SACHO 실측).
 
@@ -53,7 +53,7 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 
 ## 자동 검증
 
-> ⏸️ **2026-10-10부터 GitHub Actions를 임시로 껐다**(계정 한도, DEC-040). 그동안 PR의 CI 체크는 돌지 않고 GitHub가 병합을 막지 않는다 — push 때 lefthook이 `scripts/local_ci.sh`를 돌리고(훅 우회 금지), 병합 전 검증 G-01은 저장소 소유자(우지훈)가 `LOCAL_CI_REQUIRE_PR=1` 엄격 모드 출력으로 확인한다(`docs/MERGE_PROTOCOL.md` 7절). 프런트(`frontend/`)를 바꾸면 `npm ci`·`npm run lint`·`npm run build`·`npm test` 결과를 PR에 적는다. 한도가 생기면 7절 5단계로 되돌리고 이 안내를 지운다.
+> ⏸️ **2026-10-10부터 GitHub Actions를 임시로 껐다**(계정 한도, DEC-040). 그동안 PR의 CI 체크는 돌지 않고 GitHub가 병합을 막지 않는다 — push 때 lefthook이 `scripts/local_ci.sh`를 돌리고(훅 우회 금지), 병합 전 검증 G-01은 저장소 소유자(우지훈)가 `LOCAL_CI_REQUIRE_PR=1` 엄격 모드로 돌리고 스크립트가 PR에 남긴 `### 🧪 local CI (엄격)` 코멘트로 확인한다(출력을 손으로 옮기지 않는다, `docs/MERGE_PROTOCOL.md` 7절). 프런트(`frontend/`)를 바꾸면 `npm ci`·`npm run lint`·`npm run build`·`npm test` 결과를 PR에 적는다. 한도가 생기면 7절 5단계로 되돌리고 이 안내를 지운다.
 
 - `.github/workflows/ci.yml` — uv로 설치 후 ruff lint·format 검사 + pytest (`uv sync --locked`라 `uv.lock` 누락도 잡음)
 - `.github/workflows/pr-verify.yml` — PR 내용 상세 검증: 판정 필드·비밀값·RAG 수치 근거·PR 본문 필수 항목 + 저장소 정합성(type 목록 일치·문서 링크·AGENTS import). `scripts/ci/pr_checks.py`
