@@ -233,6 +233,13 @@ def bootstrap(answered: list[dict]) -> tuple[float, float] | None:
 def agreement(sheet_a: list[dict], sheet_b: list[dict], expect: int) -> dict:
     """예비 합격선(안내서 4절) — 합의 전 표시(label)로 계산. agreed_label은 쓰지 않는다.
     expect = 두 사람이 함께 표시하기로 한 문항 수(예비 5, 재확인 3) — 덜 표시한 시트로 합격이 나오지 않게."""
+    for name, sheet in (("첫째", sheet_a), ("둘째", sheet_b)):
+        keys = [(r["action_no"], r["campno"]) for r in sheet]
+        if len(keys) != len(set(keys)):
+            # 덮어쓰면 한 사람의 yes가 조용히 사라져 해소 목록에서 빠진다 — score(merge_labels)처럼 멈춘다
+            sys.exit(
+                f"{name} 시트에 같은 (문항, 후보) 줄이 두 번 있다 — 한 후보는 한 줄로 표시한다"
+            )
     a = {(r["action_no"], r["campno"]): r.get("label", "").strip() for r in sheet_a}
     b = {(r["action_no"], r["campno"]): r.get("label", "").strip() for r in sheet_b}
     ids = []
@@ -299,6 +306,10 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     cands = [json.loads(c.read_text(encoding="utf-8")) for c in a.candidates]
+    if any(c["set"] == "pilot" for c in cands):
+        sys.exit(
+            "예비(pilot) 후보 파일은 점수 분모에 넣지 않는다(DEC-037 ⑦(a)) — 예비 일치는 agreement로 본다"
+        )
     items = [it for cand in cands for it in cand["items"]]
     seen: dict[str, int] = {}
     for it in items:

@@ -377,3 +377,79 @@ def test_all_unsure_without_note_is_no_precedent(tmp_path):
     s = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "unsure")])
     qs, _ = ts.per_question(ts.merge_labels([ts.read_sheet(s)]), cand, partial=False)
     assert qs[0]["reason"] == "후보에 선례 없음"
+
+
+def _qr(bm, b, answered=True):
+    """순위를 직접 주는 문항(None = 후보에 없음)."""
+    return {"answered": answered, "bm25": bm, "b_rrf": b}
+
+
+def test_measured_threshold_counts_answered_questions_not_all_labeled():
+    """34개 문턱은 "정답 있는" 문항 수다 — 정답 없는 문항을 섞어도 표시한 수로 세지 않는다(DEC-037 ⑤)."""
+    out = ts.summarize([_q(True, True)] * 33 + [_qr(None, None, answered=False)] * 12)
+    assert out["status"].startswith("미측정") and out["hit@10_comparison"]["outcome"] == "미측정"
+    assert (
+        ts.summarize([_q(True, True)] * 34 + [_qr(None, None, answered=False)] * 11)["status"]
+        == "측정"
+    )
+
+
+def test_outcome_is_judged_on_hit_at_10_only():
+    """B가 7위, BM25가 12위로만 맞히는 문항 — Hit@5로는 둘 다 실패지만 Hit@10 판정은 B가 높다."""
+    qs = [_q(True, True)] * 34 + [_qr(12, 7)] * 6
+    cmp = ts.summarize(qs)["hit@10_comparison"]
+    assert (cmp["b_only"], cmp["bm25_only"]) == (6, 0) and cmp["outcome"] == "차이 있음 — B가 높음"
+
+
+def test_question_rank_is_the_best_ranked_yes_candidate(tmp_path):
+    """정답이 둘(3위·15위)이면 가장 높은 순위(3)로 센다 — 하나라도 상위 k면 Hit(DEC-037 ⑦(g))."""
+    cand = items(("PE1", {"A": {"bm25": 3, "b_rrf": 15}, "B": {"bm25": 15, "b_rrf": 3}}))
+    s = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes"), row("PE1", "B", "yes")])
+    qs, _ = ts.per_question(ts.merge_labels([ts.read_sheet(s)]), cand, partial=False)
+    assert (qs[0]["bm25"], qs[0]["b_rrf"]) == (3, 3)
+
+
+def test_typo_in_agreed_label_stops(tmp_path):
+    a = write_sheet(tmp_path / "a.csv", [row("PE1", "A", "yes", agreed_label="yse")])
+    with pytest.raises(SystemExit, match="yes/no/unsure"):
+        ts.merge_labels([ts.read_sheet(a)])
+
+
+def test_agreement_refuses_blank_or_typo_labels():
+    good = [row("PE1", "A", "no", labeler_id="L-A1")]
+    for bad in ("", "nO!"):
+        other = [row("PE1", "A", bad, labeler_id="L-C1")]
+        with pytest.raises(SystemExit, match="yes/no/unsure"):
+            ts.agreement(good, other, expect=1)
+
+
+def test_one_sided_yes_list_ignores_disagreements_without_yes():
+    """해소 목록은 "한 사람만 yes"인 후보만 — no·unsure 불일치는 넣지 않는다(안내서 4절)."""
+    a = [row("PE1", "A", "no", labeler_id="L-A1"), row("PE1", "B", "yes", labeler_id="L-A1")]
+    c = [row("PE1", "A", "unsure", labeler_id="L-C1"), row("PE1", "B", "no", labeler_id="L-C1")]
+    assert ts.agreement(a, c, expect=1)["one_sided_yes_to_resolve"] == [["PE1", "B"]]
+
+
+def test_agreement_refuses_duplicate_rows_in_a_sheet():
+    a = [row("PE1", "A", "yes", labeler_id="L-A1"), row("PE1", "A", "no", labeler_id="L-A1")]
+    c = [row("PE1", "A", "no", labeler_id="L-C1")]
+    with pytest.raises(SystemExit, match="두 번"):
+        ts.agreement(a, c, expect=1)
+
+
+def test_wilson_value_and_lower_bound_denominator():
+    assert ts.wilson(17, 34) == (0.341, 0.659)
+    out = ts.summarize([_q(True, True)] * 34 + [_qr(None, None, answered=False)] * 6)
+    assert out["bm25"]["hit@10"]["lower_bound_wilson95"] == ts.wilson(
+        34, 40
+    )  # 하한은 표시한 전체가 분모
+
+
+def test_cli_score_refuses_pilot_candidates(tmp_path):
+    p = tmp_path / "candidates_pilot.json"
+    p.write_text(
+        json.dumps({"set": "pilot", "items": items(("PE1", {"A": {"bm25": 1}}))}), encoding="utf-8"
+    )
+    sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes")])
+    with pytest.raises(SystemExit, match="pilot"):
+        ts.main(["score", "--candidates", str(p), "--sheets", str(sheet)])
