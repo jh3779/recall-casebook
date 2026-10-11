@@ -149,7 +149,7 @@ def test_full_coverage_separates_confirmed_unknown_and_missing_and_gives_a_range
         recall("20V003000", "Brake may fail"),  # 573 원인 칸 비어 있음(확인)
         recall("20V004000", "Brake may fail"),  # 최신판 미확정 → 확인 불가
         recall("20V005000", "Brake may fail"),  # 읽지 못해 수용한 실패 → 확인 불가
-        recall("20V006000", "Brake may fail"),  # 573 보고서가 없음 → 근거 없음 확정
+        recall("20V006000", "Brake may fail"),  # 573 보고서가 목록에 없음 → 이유 미확인, 0으로 셈
         recall("20V007000", "caused by a weld"),  # 확인 불가이지만 기존 방식 근거가 이미 있음
         recall("10V008000", "caused by a weld", received="20100101"),  # 이전 리콜: 기존 방식만
     ]
@@ -470,3 +470,19 @@ def test_the_maker_aliases_baseline_differs_from_the_old_one_only_in_the_cards()
     assert new["build"]["maker_aliases_draft_sha256"] == nhtsa.sha256_aliases(
         nhtsa.MAKER_ALIASES_DRAFT
     )
+
+
+@pytest.mark.skipif(
+    not (nhtsa.OUT_DIR / "causes.jsonl").exists()
+    or not (nhtsa.OUT_DIR / "causes.manifest.json").exists()
+    or not (nhtsa.OUT_DIR / "recalls.jsonl").exists()
+    or not (nhtsa.RAW_DIR / "FLAT_INV.zip").exists(),
+    reason="573 전체 수집 결과(causes.jsonl·명세)나 원본이 없다 (data/는 커밋하지 않는다)",
+)
+def test_full_output_says_not_found_in_lists_instead_of_report_absent(capsys):
+    """목록·실패 목록에서 못 찾은 274건을 "보고서가 없다"로 단정하지 않는다(AGENTS.md 2-3, DEC-042 ③)."""
+    base_path = nhtsa.REPO_ROOT / "scripts/defect_precedent/baseline_2026-10-06.json"
+    why_stats.main_full(baseline=base_path, allow_drift=True)
+    out = capsys.readouterr().out
+    assert "573 목록·실패 목록에서 찾지 못함 274건 (이유 미확인)" in out
+    assert "자체가 없음" not in out

@@ -26,7 +26,7 @@
   고정한 전수 결과의 값(대상 목록·실패 목록·원인 파일·명세 파일 지문)과도 같아야 한다(일부 캠페인만 모은 파일과 그에 맞춘 명세는
   여기서 걸린다. 고정값이 없는 기준 파일이면 멈추고, 대조 없이 재계산만 하려면 `--allow-drift`). 값은 **하한~상한**이다:
   원인 칸이 확인된 채움(최신판 확정)과 기존 방식의 합집합이 하한이고, 확인 불가(읽지 못해 수용한 실패·최신판 미확정)의 리콜을
-  모두 "있음"으로 더한 값이 상한이다. 573 보고서가 목록에 없는 리콜은 근거 없음이 확정이라 두 값 모두 0으로 센다.
+  모두 "있음"으로 더한 값이 상한이다. 573 보고서가 목록에 없는 리콜은 목록에 없는 이유를 확인하지 못했고(`report_status_unknown`) 두 값 모두 0으로 센다.
 
     uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06_maker-aliases.json
     uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06_maker-aliases.json --full
@@ -206,7 +206,7 @@ def full_coverage(
     확인 상태를 나눈다:
     - 확인된 채움: `cause_status == "filled"`이고 최신판이 확정된(`resolution != "unresolved"`) 캠페인
     - 확인된 비어 있음: 최신판이 확정된 `empty`
-    - 573 자체가 없음: 보고서가 목록에 없는 리콜 (근거 없음이 확정)
+    - 573 목록에서 찾지 못함: 원문 목록에도 실패 목록에도 없는 리콜 (보고서가 없다는 뜻이 아니다 — 이유 미확인, `report_status_unknown`)
     - 확인 불가: 읽지 못해 수용한 실패(`failed_campaigns`)와 최신판 미확정(`unresolved`) 캠페인
     하한은 확인 불가를 "없음"으로 센 값이고(= 확인된 근거의 최소), 상한은 확인 불가의 리콜 중 기존 방식 근거가 없는 것을 모두 "있음"으로 더한 값이다.
     """
@@ -414,7 +414,7 @@ def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
         f"  확인 불가              {s['unknown_recalls']}건 = 읽지 못해 수용한 실패 {s['failed_campaigns']} + 최신판 미확정 "
         f"{s['unresolved_campaigns']} (합 {unknown}캠페인)"
     )
-    print(f"  573 보고서 자체가 없음 {no_report}건 (근거 없음이 확정)")
+    print(f"  573 목록·실패 목록에서 찾지 못함 {no_report}건 (이유 미확인)")
     print(
         f"  둘 중 하나             하한 {pct(s['post_union'], post)} ~ 상한 {pct(s['post_union_upper'], post)}"
     )

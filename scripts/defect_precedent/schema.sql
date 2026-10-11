@@ -126,7 +126,7 @@ create or replace view causes_latest_sample with (security_invoker = true) as
     select c.* from causes c join latest_sample_build l using (build_id);
 
 -- Supabase는 public 테이블을 REST API로 열어 준다. 정책 없이 RLS를 켜서 anon·authenticated 키로는 아무것도 못 읽게 막는다.
--- 서버·스크립트는 postgres 계정으로 접속하므로 영향이 없다 (RLS를 우회한다).
+-- 적재 스크립트는 관리자(postgres) 연결이라 RLS를 우회한다. 서버용 조회 전용 계정(rag_reader)과 조회 정책은 배포 때 만든다(server/README.md 3단계, DEC-042 ⑤ — 2026-10-12 현재 아직 없음, #63).
 alter table data_builds    enable row level security;
 alter table recalls        enable row level security;
 alter table eval_questions enable row level security;
