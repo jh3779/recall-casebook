@@ -102,3 +102,18 @@ uv run --env-file .env python -m scripts.defect_precedent.load_db load --causes 
 - 중복·변경을 종류별로 어떻게 다루는지: [`docs/데이터_중복_처리_패턴.md`](../../docs/데이터_중복_처리_패턴.md)
 - CI(`lint-and-test`)는 일회용 Postgres 17을 띄워 DB 테스트도 항상 실행한다 (`REQUIRE_DB_TESTS=1` — DB가 없으면 건너뛰지 않고 실패).
 - 로컬 확인(DB 테스트 포함): `docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -p 54329:5432 pgvector/pgvector:pg17` 뒤 `TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54329/postgres uv run pytest tests/test_load_db.py`. 테스트가 `public` 스키마를 통째로 지우므로 주소가 localhost가 아니면 건너뛴다.
+
+## 원인 품질 표본 30건 (기획 6절 표 "원인 품질", `cause_quality.py`)
+
+서버가 선례 카드에 붙여 보여 주는 원인 글(573 원인 칸 원문·연결된 조사 요약)이 실제로 원인을 말하는지 **사람이** 표시하고 비율만 낸다. 원인 미확인 150건(`cause_trials`, 꼬리표 정확도)과는 다른 시험이다.
+
+```bash
+uv run python -m scripts.defect_precedent.cause_quality sheet --out data/processed/defect/cause_quality_<날짜>   # 약 40초
+uv run python -m scripts.defect_precedent.cause_quality score --sheet data/processed/defect/cause_quality_<날짜>/cause_quality_sheet.csv
+```
+
+- 표본 규칙(결과를 보기 전에 고정, 파일 머리말): 749문항을 시드 `20261011`로 섞고, 질문마다 서버 검색의 합친 순위 상위 10건에서 원인 글이 있는 카드를 모아 같은 시드로 하나씩 고른다(같은 리콜은 한 번만). 질문의 출처 조사 요약은 빼고(누수), 30건이 차면 멈춘다.
+- 벡터는 서버의 로컬 사본(`data/processed/defect/vector_cache/`)을 쓴다 — 서버를 한 번 띄우면 생긴다. DB·유료 API 호출은 없다.
+- 표시(`label`): `yes`(이 리콜의 결함 원인을 말한다) / `no`(현상·조사 경과·"원인 미확인"만) / `unsure`. `labeler_id`는 실명 대신 임의 기호. AI는 표시하지 않는다(AGENTS.md 5-2).
+- `score`는 시트 옆 `.meta.json`의 표본 지문과 다르거나(줄을 빼거나 더함), `cause_text`가 바뀌었거나, 표시·`labeler_id`가 빈 줄이 있으면 멈춘다. 보고 값은 yes 비율(분모 yes+no, unsure는 따로)과 Wilson 95% 구간, 출처(573·조사 요약)별 건수다.
+- 2026-10-11 시트(`build_id c6872ae8e9743c56`, 표본 지문 `9428e8162d635d85`): 30건 = 조사 요약 17 · 573 13, 리콜·질문 모두 서로 다름.
