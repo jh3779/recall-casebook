@@ -99,7 +99,6 @@ def merge_labels(sheets: list[list[dict]]) -> dict[tuple[str, str], dict]:
                     sys.exit(f"{key}: 표시했는데 labeler_id가 비어 있다")
                 m["labels"].append(label)
                 m["labelers"].add(r["labeler_id"].strip())
-                m.setdefault("by_labeler", {})[r["labeler_id"].strip()] = label
             if agreed:
                 m["agreed"].add(agreed)
             if r.get("note", "").strip():
@@ -302,7 +301,9 @@ def agreement(sheet_a: list[dict], sheet_b: list[dict], expected: set[str]) -> d
 # 후보 파일을 합칠 때 같아야 하는 것(DEC-037 ⑦(c) — 같은 데이터·같은 스크립트·같은 모델). 질문 파일 해시는 대체 회차가
 # 질문 파일을 갱신해 만들어지므로(⑦(c)) 회차마다 다른 것이 정상이라 비교하지 않는다. 커밋 해시도 squash 병합 뒤 달라질 수 있어 빼고
 # 스크립트 내용 해시로 본다.
-SAME_BUILD_KEYS = ("data", "model", "embedding", "top")
+SAME_BUILD_KEYS = ("data", "model", "top")
+# 임베딩은 판본·모델 지문만 본다 — cache·cache_verified는 캐시 파일이 있었는지라 같은 계산이어도 회차마다 다를 수 있다
+EMBEDDING_KEYS = ("fastembed", "model_fingerprint")
 
 
 def check_same_build(cands: list[dict], partial: bool = False) -> None:
@@ -316,6 +317,12 @@ def check_same_build(cands: list[dict], partial: bool = False) -> None:
     first = cands[0]
     for c in cands[1:]:
         diff = [k for k in SAME_BUILD_KEYS if k not in first or first.get(k) != c.get(k)]
+        diff += [
+            f"embedding.{k}"
+            for k in EMBEDDING_KEYS
+            if (first.get("embedding") or {}).get(k) is None
+            or (first.get("embedding") or {}).get(k) != (c.get("embedding") or {}).get(k)
+        ]
         if (first.get("code") or {}).get("script_sha256") is None or (first.get("code") or {}).get(
             "script_sha256"
         ) != (c.get("code") or {}).get("script_sha256"):

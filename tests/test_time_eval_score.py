@@ -486,7 +486,7 @@ def _cand(set_name, **kw):
         "data": {"recalls_sha256_full": "r"},
         "code": {"dirty": False, "script_sha256": {"x.py": "s"}},
         "model": "m",
-        "embedding": {"fastembed": "0.9.0"},
+        "embedding": {"fastembed": "0.9.0", "model_fingerprint": "f", "cache_verified": True},
         "top": 20,
     }
     return {**base, **kw}
@@ -494,11 +494,24 @@ def _cand(set_name, **kw):
 
 def test_candidate_files_must_share_data_code_and_model():
     ts.check_same_build([_cand("main"), _cand("r1")])  # 같으면 통과
+    # 캐시가 있었는지(cache_verified)만 다르면 같은 계산이다 — 막지 않는다
+    ts.check_same_build(
+        [
+            _cand("main"),
+            _cand(
+                "r1",
+                embedding={"fastembed": "0.9.0", "model_fingerprint": "f", "cache_verified": False},
+            ),
+        ]
+    )
+    with pytest.raises(SystemExit, match="r2"):  # 세 번째 파일만 달라도 잡는다
+        ts.check_same_build([_cand("main"), _cand("r1"), _cand("r2", model="other")])
     for change in (
         {"data": {"recalls_sha256_full": "other"}},
         {"code": {"dirty": False, "script_sha256": {"x.py": "other"}}},
         {"model": "other"},
         {"top": 30},
+        {"embedding": {"fastembed": "0.9.0", "model_fingerprint": "other", "cache_verified": True}},
     ):
         with pytest.raises(SystemExit, match="같은 데이터"):
             ts.check_same_build([_cand("main"), _cand("r1", **change)])
@@ -532,3 +545,82 @@ def test_cli_score_refuses_candidate_files_from_different_builds(tmp_path):
     sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes"), row("PE2", "A", "no")])
     with pytest.raises(SystemExit, match="같은 데이터"):
         ts.main(["score", "--candidates", *files, "--sheets", str(sheet)])
+
+
+def _cand_file(tmp_path, name, set_name, action, **kw):
+    p = tmp_path / name
+    p.write_text(
+        json.dumps({**_cand(set_name, **kw), "items": items((action, {"A": {"bm25": 1}}))}),
+        encoding="utf-8",
+    )
+    return str(p)
+
+
+def test_cli_score_refuses_dirty_candidates_unless_partial(tmp_path, capsys):
+    """--partial이 실행 명령에서 check_same_build로 전달되는지(연결부) — 정식 채점은 dirty 후보를 거부한다."""
+    dirty = {"code": {"dirty": True, "script_sha256": {"x.py": "s"}}}
+    cand = _cand_file(tmp_path, "candidates_main.json", "main", "PE1", **dirty)
+    sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes")])
+    with pytest.raises(SystemExit, match="커밋하지 않은"):
+        ts.main(["score", "--candidates", cand, "--sheets", str(sheet)])
+    ts.main(["score", "--candidates", cand, "--sheets", str(sheet), "--partial"])
+    capsys.readouterr()
+
+
+def test_cli_partial_score_hides_direction(tmp_path, capsys):
+    """--partial로 표시 안 끝난 문항을 빼면, 34문항 이상·6:0이어도 outcome은 "미측정(중간 결과)"(연결부)."""
+    pool = {f"PE{i}": {"A": {"bm25": 1, "b_rrf": 1}} for i in range(34)}
+    pool.update({f"PB{i}": {"A": {"b_rrf": 1}} for i in range(6)})
+    pool["PX"] = {"A": {"bm25": 1}}
+    p = tmp_path / "candidates_main.json"
+    p.write_text(json.dumps({**_cand("main"), "items": items(*pool.items())}), encoding="utf-8")
+    rows = [row(a, "A", "yes") for a in pool if a != "PX"] + [row("PX", "A", "", labeler_id="")]
+    sheet = write_sheet(tmp_path / "s.csv", rows)
+    ts.main(["score", "--candidates", str(p), "--sheets", str(sheet), "--partial"])
+    out = json.loads(capsys.readouterr().out)
+    assert out["skipped"] == ["PX"] and out["hit@10_comparison"]["outcome"] == "미측정(중간 결과)"
+
+
+def test_cli_agreement_uses_the_phase_and_questions_file(tmp_path, capsys):
+    """--phase·--questions가 실행 명령에서 정해진 문항 집합으로 이어지는지(연결부)."""
+    q = tmp_path / "questions.json"
+    q.write_text(
+        json.dumps(
+            {
+                "pilot": [{"action_no": a} for a in ("P1", "P2")],
+                "main": [{"action_no": a} for a in ("M1", "M2", "M3", "M4")],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def sheets(actions):
+        a = write_sheet(tmp_path / "a.csv", [row(x, "A", "no") for x in actions])
+        c = write_sheet(tmp_path / "c.csv", [row(x, "A", "no", labeler_id="L-C1") for x in actions])
+        return [str(a), str(c)]
+
+    ts.main(
+        [
+            "agreement",
+            "--phase",
+            "recheck",
+            "--questions",
+            str(q),
+            "--sheets",
+            *sheets(["M1", "M2", "M3"]),
+        ]
+    )
+    out = json.loads(capsys.readouterr().out)
+    assert out["phase"] == "recheck" and out["questions"] == 3
+    with pytest.raises(SystemExit, match="정해진 문항"):
+        ts.main(
+            [
+                "agreement",
+                "--phase",
+                "pilot",
+                "--questions",
+                str(q),
+                "--sheets",
+                *sheets(["M1", "M2", "M3"]),
+            ]
+        )
