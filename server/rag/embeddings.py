@@ -13,6 +13,7 @@
 
 import argparse
 import hashlib
+import os
 from pathlib import Path
 
 from scripts.defect_precedent.load_db import connect
@@ -63,10 +64,16 @@ def vec_literal(v) -> str:
     return "[" + ",".join(format(float(x), ".9g") for x in v) + "]"
 
 
-def fetch(conn, build_id: str, campnos: list[str], texts: list[str], model: str = MODEL):
-    """(build, 모델)의 벡터를 카드 순서대로 읽는다. 정규화하지 않은 값을 돌려준다."""
-    import numpy as np
+CACHE_DIR = (
+    Path(__file__).resolve().parents[2] / "data" / "processed" / "defect" / "vector_cache"
+)  # gitignore됨
+SAMPLE_ROWS = 64  # 로컬 사본을 쓸 때 DB에서 다시 읽어 글자 그대로 같은지 보는 줄 수
 
+
+def check_set(
+    conn, build_id: str, campnos: list[str], texts: list[str], model: str = MODEL
+) -> None:
+    """DB의 벡터 기록(판본·카드 글 해시·줄 수)이 지금 카드와 맞는지."""
     row = conn.execute(
         "select fastembed_version, texts_sha256, rows from embedding_sets where build_id = %s and model = %s",
         (build_id, model),
@@ -81,19 +88,81 @@ def fetch(conn, build_id: str, campnos: list[str], texts: list[str], model: str 
         raise EmbeddingMismatch(
             f"DB의 벡터 기록(fastembed {version}, {n:,}줄)이 지금 카드·판본과 다르다 — 섞인 판본으로 검색하지 않는다"
         )
+
+
+def _read_rows(conn, build_id: str, model: str, campnos: list[str] | None):
+    """(리콜 번호, float32 벡터)를 바이너리로 읽는다 — 글자 배열(real[])보다 작고 값이 float32 그대로다."""
+    from pgvector.psycopg import register_vector
+
+    register_vector(conn)
+    sql = "select campno, embedding from recall_embeddings where build_id = %s and model = %s"
+    params: tuple = (build_id, model)
+    if campnos is not None:
+        sql += " and campno = any(%s)"
+        params += (campnos,)
+    with conn.cursor(binary=True) as cur:
+        cur.execute(sql, params)
+        yield from ((c, e.to_numpy()) for c, e in cur)
+
+
+def fetch(conn, build_id: str, campnos: list[str], texts: list[str], model: str = MODEL):
+    """(build, 모델)의 벡터 전체를 카드 순서대로 DB에서 읽는다. 정규화하지 않은 값을 돌려준다."""
+    import numpy as np
+
+    check_set(conn, build_id, campnos, texts, model)
     pos = {c: i for i, c in enumerate(campnos)}
     vecs = np.zeros((len(campnos), 384), dtype="float32")
     seen = 0
-    with conn.cursor() as cur:
-        cur.execute(
-            "select campno, embedding::real[] from recall_embeddings where build_id = %s and model = %s",
-            (build_id, model),
-        )
-        for campno, emb in cur:
-            vecs[pos[campno]] = emb
-            seen += 1
+    for campno, emb in _read_rows(conn, build_id, model, None):
+        vecs[pos[campno]] = emb
+        seen += 1
     if seen != len(campnos):
         raise EmbeddingMismatch(f"DB 벡터 {seen:,}줄 ≠ 카드 {len(campnos):,}장")
+    return vecs
+
+
+def _file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def load_vectors(
+    conn, build_id: str, campnos: list[str], texts: list[str], cache_dir: Path = CACHE_DIR
+):
+    """서버가 쓰는 벡터. 정본은 DB이고, 로컬 사본은 DB에서 다시 받는 시간(운영 Supabase에서 24~100초, 2026-10-10 실측)을
+    줄이기 위한 캐시다(배포용 파일이 아니다 — DEC-042가 기각한 ".npy 배포"와 달리 판본은 DB 기록으로만 정한다).
+    사본은 ① 옆에 둔 sha256이 파일과 같고(파일 손상) ② DB 기록이 지금 카드와 맞고 ③ DB에서 고르게 뽑은 64줄(마지막 줄 포함)이
+    사본과 글자 그대로 같을 때만 쓴다. 하나라도 아니거나 읽지 못하면 DB에서 전부 다시 받아 사본을 새로 쓴다."""
+    import numpy as np
+
+    check_set(conn, build_id, campnos, texts)
+    path = cache_dir / f"{build_id}_{MODEL.replace('/', '_')}.npy"
+    digest_path = path.with_suffix(".sha256")
+    cached = None
+    if path.exists() and digest_path.exists():
+        try:
+            if digest_path.read_text().strip() == _file_sha256(path):
+                cached = np.load(path)
+        except (OSError, ValueError, EOFError):  # 잘리거나 깨진 사본 — 버리고 다시 받는다
+            cached = None
+    if cached is not None and cached.shape == (len(campnos), 384):
+        step = max(1, len(campnos) // SAMPLE_ROWS)
+        idx = sorted(set(range(0, len(campnos), step)[:SAMPLE_ROWS]) | {len(campnos) - 1})
+        sample = dict(_read_rows(conn, build_id, MODEL, [campnos[i] for i in idx]))
+        if len(sample) == len(idx) and all(
+            np.array_equal(cached[i], sample[campnos[i]]) for i in idx
+        ):
+            return cached
+    vecs = fetch(conn, build_id, campnos, texts)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(
+        f"{path.stem}.{os.getpid()}.tmp.npy"
+    )  # 여러 프로세스가 같은 임시 파일을 쓰지 않게
+    with tmp.open("wb") as f:
+        np.save(f, vecs)
+        f.flush()
+        os.fsync(f.fileno())
+    tmp.replace(path)  # 다 쓴 뒤에만 이름을 바꾼다 — 중간에 멈춰도 반쯤 쓴 사본을 쓰지 않는다
+    digest_path.write_text(_file_sha256(path))
     return vecs
 
 

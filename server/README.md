@@ -1,12 +1,13 @@
 # server — 결함 선례 찾기 API 서버
 
 질문(영어)을 받아 같은 부품의 리콜 선례와 원인 서술을 **원문 그대로** 돌려준다. 판정하지 않는다(AGENTS.md 2절).
-결정 근거: DEC-038(API 서버)·DEC-039(검색 방식)·DEC-042(벡터 보관·고객사 선례).
+결정 근거: DEC-038(API 서버)·DEC-039(검색 방식)·DEC-042(벡터 보관·고객사 선례)·DEC-044(조사 요약 원인·표시 꼬리표·확인 항목·벡터 로컬 사본).
 
 ## 띄우기
 
 1. 로컬 build 파일이 있어야 한다: `data/processed/defect/`의 `build.json`·`recalls.jsonl`·`eval.jsonl`·`causes.jsonl`·`causes.manifest.json`
-   (`scripts/defect_precedent/README.md` — 팀 드라이브 사본 또는 `nhtsa build`·`rclrpt all`).
+   (`scripts/defect_precedent/README.md` — 팀 드라이브 사본 또는 `nhtsa build`·`rclrpt all`). 조사 요약을 붙이려면 같은 날 받은 원본
+   `data/raw/nhtsa/manifest.json`·`FLAT_INV.zip`도 있어야 한다 — `manifest.json`의 sha256이 build의 `raw_manifest_sha256`과 같아야 서버가 뜬다.
 2. Supabase에 같은 build와 카드 벡터가 있어야 한다 (`.env`의 `DATABASE_URL`, 값은 출력하지 않는다):
    ```bash
    uv run --env-file .env python -m scripts.defect_precedent.load_db schema
@@ -37,7 +38,10 @@
    curl localhost:8000/health
    curl -X POST localhost:8000/search -H 'content-type: application/json' -d '{"question":"airbag inflator rupture"}'
    ```
-   시작할 때 build 파일(적재와 같은 검사)·DB에 적재된 원인 명세(실패 사유 포함)·DB 벡터 기록·카드 16장 재임베딩을 대조하고, 어긋나면 뜨지 않는다.
+   시작할 때 build 파일(적재와 같은 검사)·DB에 적재된 원인 명세(실패 사유 포함)·DB 벡터 기록·카드 16장 재임베딩·조사 원본 해시를 대조하고, 어긋나면 뜨지 않는다.
+   카드 벡터는 정본이 DB이고, 처음 뜰 때 받아 `data/processed/defect/vector_cache/`(gitignore)에 사본을 둔다. 다음부터는 옆에 둔 sha256이 사본과 같고, DB 기록이 맞고,
+   DB에서 고르게 뽑은 64줄(마지막 줄 포함)이 사본과 글자 그대로 같을 때만 사본을 쓴다(아니거나 사본이 깨졌으면 다시 받는다). 운영 Supabase 기준 처음 18~100초,
+   사본이 있으면 약 8~10초(2026-10-10, 집 회선 실측 — 벡터 46MB를 약 1.8MB/s로 받는다).
 
 ## 응답 (`POST /search`)
 
@@ -50,8 +54,11 @@
 | 카드: `campno`·`maker`·`maker_group`·`received_date`·`components`·`dup_group` | NHTSA 리콜 카드 칸 그대로 |
 | 카드: `defect`·`consequence`·`remedy` | 결함·결과·시정 원문 (`source` = NHTSA FLAT_RCL, 스냅샷 날짜) |
 | 카드: `cause` | Part 573 원인 칸. `status = filled`면 `text`(원문 그대로)·`speaker`(리콜 제조사)·`source`(캠페인·PDF 파일·sha256·제출일)가 반드시 있다. 그 밖의 `status`에는 글이 없다: `no_573_report`(573 원문 수집 범위 밖 — 접수일 2014-08-20 이전) · `report_status_unknown`(범위 안인데 원문 목록에도 읽기 실패 목록에도 없음 — 이유 미확인, 현재 build 274장) · `report_unreadable`(보고서는 있지만 읽지 못함 — `reason`에 사유, 현재 build 18개 캠페인) · `cause_empty`·`cause_no_field`(칸이 비었거나 없음) · `version_unresolved`(최신 판본을 정하지 못함) · `verify_failed`(원문 대조 실패 — 글을 뺀다) |
+| 카드: `cause.flags` | `filled` 573 원인 글의 표시 꼬리표 — 판정이 아니라 글에 그 표현이 있다는 사실. `unknown_expression`(원인 미확인 표현 있음 — `cause_trials.UNKNOWN_RE`)·`hedge_expression`(추정 표현 있음 — `appear(s/ed) to`·`might`·`possibly`·`likely`·`probably`·`suspect(ed)`·`believe(d)`, 2026-10-10 고정, `may`·`could`는 결과 설명에 흔해 뺐다). `spans`는 원문의 시작·끝·글자. 조사 요약에는 붙이지 않는다(규칙이 573 원인 칸으로만 검증됨) |
+| 카드: `investigations[]` | 이 리콜에 연결된 NHTSA 결함 조사 요약(`FLAT_INV`, 요약이 있는 것만). `action`(조사 번호)·`speaker`(NHTSA 결함 조사 — 조사관 요약)·`subject`·`summary`(원문 그대로)·`open_date`·`close_date`(원본 칸 그대로, 비어 있으면 빈 문자열). **색인에는 넣지 않는다**(시험 질문 출처라 누수). 조사 기록의 리콜 번호가 9자리로 카드와 같을 때만 잇는다 — 6자리(캠페인 번호)로 적힌 기록은 어느 카드인지 짐작해야 해서 잇지 않고, 그 경우 "조사 요약 없음"과 구별되지 않는다. 현재 build: 1,870장에 연결, 917개 조사, 2개 이상 연결된 카드 35장(6자리 기록 72,977줄은 앞 6자리로 보면 284장에 걸림) |
+| 카드: `checklist[]` | 확인 항목 고정 틀(LLM 없음) — `same_part`(같은 부품: `components`)·`failure_mode`(고장 양상: 결함 원문 `defect` + 결과 원문 `consequence`, 칸 이름으로 구분)·`remedy`(시정 원문)·`supplier`(573 `supplier_names`, 판본 미확정 보고서는 제외)·`cause_speaker`(원인을 말한 주체: 573 리콜 제조사 `cause.speaker`, NHTSA 조사 `investigations.speaker` + 원본 조사 번호 `investigations.action`). 항목마다 `evidence[]`(칸 이름·원문 글)가 있고, 근거가 없는 항목은 싣지 않는다. 같은지 다른지는 판단하지 않는다 |
 
-응답은 Pydantic 모델(`server/api.py`의 `SearchResponse`)로 검사한다 — 모델에 없는 칸(판정 칸 포함)이나 말한 주체·출처가 빠진 원인 글은 내보내지 않고 서버 오류로 끝난다. 응답의 모든 리콜 번호는 검색 후보 안에 있어야 하고, 원인 글은 원문과 글자 그대로 같아야 한다(`server/rag/verify.py`). 지금은 카드와 원인 글을 검색 결과·원문에서 그대로 꺼내므로 구조상 항상 통과하는 방어선이다 — 조사 요약 원인처럼 고른 문장이 들어오는 다음 PR부터 실제로 걸러낸다.
+응답은 Pydantic 모델(`server/api.py`의 `SearchResponse`)로 검사한다 — 모델에 없는 칸(판정 칸 포함)이나 말한 주체·출처가 빠진 원인 글은 내보내지 않고 서버 오류로 끝난다. 응답의 모든 리콜 번호는 검색 후보 안에 있어야 하고, 원인 글은 원문과 글자 그대로 같아야 한다(`server/rag/verify.py`). 지금은 카드와 원인 글을 검색 결과·원문에서 그대로 꺼내므로 구조상 항상 통과하는 방어선이다. 조사 요약은 시작 때 읽은 조사 기록과 같은 글인지(원본 zip은 시작 때 sha256 대조), 573 원인 글의 꼬리표 구간은 그 글의 같은 위치·같은 글자인지도 본다 — 어긋나면 응답을 내보내지 않는다(원문을 옮기는 경로라 어긋나면 코드 결함).
 
 질문은 영어 단어가 하나 이상 있어야 한다(색인·모델이 영어 — 기획 1절). 공백뿐이거나 영어 단어가 없으면 422로 돌려보낸다.
 
@@ -63,4 +70,4 @@
 
 ## 아직 없는 것
 
-조사 요약 원인(NHTSA 조사관)·추정 표현 표시·확인 항목 틀(계획 PR 2), 부품 범위 좁히기 실험(PR 3), 배포 주소·CORS·호출 상한.
+부품 범위 좁히기 실험(계획 PR 3), 배포 주소·CORS·호출 상한(#63), 화면 문구(박성호 님, PR #60). 생산 기간 확인 항목은 카드에 연식·생산일 칸이 없어 뺐다.
