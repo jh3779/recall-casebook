@@ -80,7 +80,7 @@ create table if not exists causes (
     source_file        text not null,
     submission_date    date,                -- 날짜를 모르는 판본은 비워 둔다 (resolution = unresolved)
     cause_text         text,
-    cause_status       text not null check (cause_status in ('filled', 'empty', 'no_field')),
+    cause_status       text not null,       -- 허용 값은 아래 causes_cause_status_check (DEC-047)
     supplier_names     text[] not null default '{}',
     supplier_countries text[] not null default '{}',
     new_form           boolean not null,
@@ -91,6 +91,10 @@ create table if not exists causes (
     primary key (build_id, campaign)
 );
 create index if not exists causes_submission_date_idx on causes (build_id, submission_date);
+-- 2026-10-11 DEC-047: 원인 칸의 "미보고·조사 중" 서술을 버리지 않고 stated_unknown으로 보존한다 — 이미 만든 테이블에도 허용 목록을 넓힌다
+alter table causes drop constraint if exists causes_cause_status_check;
+alter table causes add constraint causes_cause_status_check
+    check (cause_status in ('filled', 'stated_unknown', 'empty', 'no_field'));
 
 -- 평소 조회용: build 하나만 고른다 — 전체본(full)이 하나라도 있으면 가장 최근 날짜의 전체본, 없을 때만 가장 최근 표본(sample).
 -- 날짜보다 종류가 먼저다: 나중 날짜의 표본(300건)이 이전 날짜의 전체본(약 1.2만 건)을 평소 조회에서 가리지 않게 한다.

@@ -34,7 +34,9 @@ def checklist(
             if s and cause_row.get("resolution") != "unresolved"
         ],
         "cause_speaker": (
-            [{"field": "cause.speaker", "text": SPEAKER_573}] if cause["status"] == "filled" else []
+            [{"field": "cause.speaker", "text": SPEAKER_573}]
+            if cause["status"] in ("filled", "stated_unknown")
+            else []
         )
         + (
             [{"field": "investigations.speaker", "text": SPEAKER_INV}]

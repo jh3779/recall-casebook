@@ -35,6 +35,7 @@ from server.rag.verify import verify
 
 # 프런트 개발 서버(Vite 기본 주소). 배포 주소는 배포를 정할 때 더한다
 ALLOWED_ORIGINS = ["http://localhost:5173"]
+CARD_TEXT_SPEAKER = "NHTSA 리콜 기록 요약(FLAT_RCL 결함·결과·시정 칸) — 원본에 작성 주체 표시 없음"
 CARD_FIELDS = (
     "campno", "maker", "maker_group", "received_date", "components",
     "defect", "consequence", "remedy", "dup_group",
@@ -142,12 +143,25 @@ class CauseSource(Strict):
     file: str
     pdf_sha256: str
     submission_date: str
+    text_basis: str = Field(
+        min_length=1
+    )  # 원인 글이 PDF에서 어떻게 정리됐는지(DEC-047) — "원문 그대로"의 범위
 
 
 class CauseText(Strict):
     """573 원인 칸 원문 그대로 — 말한 주체와 출처 없이는 내보내지 않는다."""
 
     status: Literal["filled"]
+    text: str = Field(min_length=1)
+    speaker: str = Field(min_length=1)
+    source: CauseSource
+    flags: list[Flag]
+
+
+class CauseStated(Strict):
+    """제조사가 원인 칸에 원인 대신 "미보고·조사 중"을 적은 경우 — 그 글을 원문 그대로, 말한 주체·출처와 함께 싣는다(DEC-047)."""
+
+    status: Literal["stated_unknown"]
     text: str = Field(min_length=1)
     speaker: str = Field(min_length=1)
     source: CauseSource
@@ -180,6 +194,8 @@ class CauseMissingText(Strict):
 class CardSource(Strict):
     dataset: Literal["NHTSA FLAT_RCL"]
     snapshot_date: str
+    # 결함·결과·시정 글을 누가 썼는지는 원본 칸 설명(RCL.txt: "Defect Summary" 등)에 없다 — 아는 것(출처)만 적는다(DEC-047)
+    speaker: Literal[CARD_TEXT_SPEAKER]
 
 
 class Card(Strict):
@@ -195,7 +211,7 @@ class Card(Strict):
     dup_group: str
     source: CardSource
     cause: Annotated[
-        CauseText | CauseNoReport | CauseUnreadable | CauseMissingText,
+        CauseText | CauseStated | CauseNoReport | CauseUnreadable | CauseMissingText,
         Field(discriminator="status"),
     ]
     investigations: list[Investigation]
@@ -239,7 +255,11 @@ def card_view(state: RagState, campno: str, rank: int) -> dict:
     return {
         "rank": rank,
         **{k: card[k] for k in CARD_FIELDS},
-        "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": state.build.snapshot_date},
+        "source": {
+            "dataset": "NHTSA FLAT_RCL",
+            "snapshot_date": state.build.snapshot_date,
+            "speaker": CARD_TEXT_SPEAKER,
+        },
         "cause": cause,
         "investigations": [{**i, "speaker": SPEAKER_INV} for i in invs],
     }

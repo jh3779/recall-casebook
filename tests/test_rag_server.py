@@ -192,12 +192,12 @@ def test_load_build_rejects_empty_failure_reasons(tmp_path):
 def test_card_model_requires_fields_for_each_cause_status(cause):
     from pydantic import ValidationError
 
-    from server.api import Card
+    from server.api import CARD_TEXT_SPEAKER, Card
 
     card = {
         "rank": 1, "campno": "24V001000", "maker": "m", "maker_group": "Kia", "received_date": "20240101",
         "components": [], "defect": "", "consequence": "", "remedy": "", "dup_group": "24V001000",
-        "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06"},
+        "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06", "speaker": CARD_TEXT_SPEAKER},
         "investigations": [], "checklist": [],
     }  # fmt: skip
     Card.model_validate(
@@ -652,3 +652,33 @@ def test_api_returns_investigations_and_checklist(tmp_path):
     assert "flags" not in card["investigations"][0]  # 꼬리표는 573 원인 칸에만 (DEC-044)
     assert {c["item"] for c in card["checklist"]} >= {"same_part", "cause_speaker"}
     assert FORBIDDEN_KEYS.isdisjoint(set(_keys(body)))
+
+
+def test_cause_573_keeps_manufacturer_stated_unknown_text_with_speaker_and_basis():
+    """DEC-047: 원인 칸에 "NR"·"조사 중"을 적은 경우도 원문 그대로, 말한 주체·출처·정리 방식과 함께 싣는다."""
+    from scripts.defect_precedent.rclrpt import CAUSE_TEXT_BASIS
+    from server.rag.causes import SPEAKER_573
+
+    pdf = {"pdfs": {"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "ab" * 32}}
+    row = cause("24V001", text="Still being investigated.", cause_status="stated_unknown", **pdf)
+    got = cause_573(CARDS[0], {"24V001": row})
+    assert (got["status"], got["text"], got["speaker"]) == (
+        "stated_unknown",
+        "Still being investigated.",
+        SPEAKER_573,
+    )
+    assert got["source"]["text_basis"] == CAUSE_TEXT_BASIS
+    filled = cause_573(CARDS[0], {"24V001": cause("24V001", **pdf)})
+    assert filled["source"]["text_basis"] == CAUSE_TEXT_BASIS
+
+
+def test_card_source_says_who_wrote_card_text_only_as_far_as_the_source_says():
+    """카드 글(FLAT_RCL)의 작성 주체는 원본 칸 설명에 없다 — 아는 출처만 적은 고정 문구여야 한다(DEC-047)."""
+    from pydantic import ValidationError
+
+    from server.api import CARD_TEXT_SPEAKER, CardSource
+
+    ok = {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06", "speaker": CARD_TEXT_SPEAKER}
+    CardSource.model_validate(ok)
+    with pytest.raises(ValidationError):
+        CardSource.model_validate({**ok, "speaker": "리콜 제조사"})  # 근거 없는 주체 표시는 막는다

@@ -7,6 +7,7 @@
 """
 
 from scripts.defect_precedent.nhtsa import RCLRPT_FROM
+from scripts.defect_precedent.rclrpt import CAUSE_TEXT_BASIS
 from server.rag.flags import flags
 
 SPEAKER_573 = "리콜 제조사 (Part 573 결함·불합치 보고서)"
@@ -26,10 +27,11 @@ def cause_573(
         return {"status": "report_status_unknown", "campaign": campaign}
     if row["resolution"] == "unresolved":
         return {"status": "version_unresolved", "campaign": row["campaign"]}
-    if row["cause_status"] != "filled":
+    if row["cause_status"] not in ("filled", "stated_unknown"):
         return {"status": f"cause_{row['cause_status']}", "campaign": row["campaign"]}
+    # stated_unknown = 제조사가 원인 칸에 원인 대신 "미보고·조사 중"을 적었다 — 그 글도 원문 그대로, 말한 주체와 함께 보여 준다(DEC-047)
     return {
-        "status": "filled",
+        "status": row["cause_status"],
         "text": row["cause_text"],
         "speaker": SPEAKER_573,
         "flags": flags(row["cause_text"]),
@@ -38,5 +40,6 @@ def cause_573(
             "file": row["source_file"],
             "pdf_sha256": row["pdfs"][row["source_file"]],
             "submission_date": row["submission_date"],
+            "text_basis": CAUSE_TEXT_BASIS,  # PDF 텍스트 추출본에서 쪽 머리말·꼬리말 제거와 공백 정리만 한 글(DEC-047)
         },
     }
