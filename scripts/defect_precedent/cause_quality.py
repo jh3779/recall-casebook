@@ -1,11 +1,12 @@
-"""원인 품질 표본 30건 — 서버가 선례 카드에 붙여 보여 주는 원인 글이 실제로 원인을 말하는지 사람이 확인한다(기획 6절 표 "원인 품질").
+"""원인 품질 표본 — 서버가 선례 카드에 붙여 보여 주는 원인 글이 실제로 원인을 말하는지 사람이 확인한다(기획 6절 표 "원인 품질").
+원인 글 출처별로 30건씩 따로 뽑는다: 573 원인 칸(엔진 2 원인 문장 — 6절이 묻는 숫자) 30건, NHTSA 조사 요약 30건.
 
 사용법:
     # 표시 시트 만들기 — 서버의 카드 벡터 로컬 사본(data/processed/defect/vector_cache/, 서버를 한 번 띄우면 생긴다)을 쓴다.
     # DB·유료 API 호출 없음
-    uv run python -m scripts.defect_precedent.cause_quality sheet --out <폴더>
-    # 사람이 표시한 뒤 비율 계산
-    uv run python -m scripts.defect_precedent.cause_quality score --sheet <폴더>/cause_quality_sheet.csv
+    uv run python -m scripts.defect_precedent.cause_quality sheet --out <폴더>   # cause_quality_573.csv·cause_quality_inv.csv
+    # 사람이 표시한 뒤 비율 계산(시트마다)
+    uv run python -m scripts.defect_precedent.cause_quality score --sheet <폴더>/cause_quality_573.csv
 
 표본 규칙(2026-10-11, 표시를 보기 전에 고정 — 변경은 아래 "규칙 변경 기록". 표시 결과를 보고 고치지 않는다, AGENTS.md 5-2):
 1. 749문항 대리 평가 질문을 시드 `SEED`로 섞는다.
@@ -15,8 +16,8 @@
    (`server.rag.causes.cause_573`이 `filled`로 돌려주는 것 — 서버 응답과 같은 함수)
    또는 그 카드에 연결된 NHTSA 조사 요약(`server.rag.investigations`, 서버와 같은 연결 규칙). 단 **질문의 출처인 조사 자신의
    요약은 뺀다** — 질문 문장과 같은 글이라 원인 판단을 부풀린다.
-3. 모은 (카드, 원인 글) 중 하나를 같은 시드의 난수로 고르고, 이미 고른 리콜 번호·이미 고른 원인 글(같은 573 보고서를 앞 6자리가
-   같은 여러 리콜이 공유하고, 한 조사가 여러 리콜에 이어진다)은 건너뛴다. 30건이 차면 멈춘다.
+3. 원인 글 출처(573 원인 칸 / 조사 요약)마다 따로: 그 출처의 (카드, 원인 글)만 모아 하나를 같은 시드의 난수로 고르고, 이미 고른 리콜 번호·이미 고른 원인 글(같은 573 보고서를 앞 6자리가
+   같은 여러 리콜이 공유하고, 한 조사가 여러 리콜에 이어진다)은 건너뛴다. 출처마다 30건이 차면 멈춘다(두 시트는 서로 독립 — 같은 시드로 각각 처음부터).
 4. 시트에는 질문·카드 원문·원인 글·말한 주체만 넣고 순위·검색 방식은 넣지 않는다. 표시(`label`)는 사람이 한다 — AI는 표시하지 않는다.
 
 규칙 변경 기록: 처음 고정한 규칙(같은 날, 표본 지문 `9428e8162d635d85`)은 합친 순위 상위 10을 그대로 써서 서버가 고객사 카드를
@@ -24,11 +25,14 @@
 같은 원인 글 중복 제외(3번)를 더해 다시 뽑았다 — 옛 시트는 쓰지 않는다. 바꾼 이유는 표본 결과가 아니라 "화면에 나오는 원인 글"이라는
 정의와의 불일치다. 질문 30개는 그대로이고 **리콜 5건이 바뀌었다** — 화면 밖 카드 2건(PE02055·PE12027) + 2번 규칙으로 풀 크기가
 달라져 같은 시드의 난수 선택이 연쇄로 바뀐 3건(PE11040·PE08020·PE04056). 3번 규칙만 켜면 옛 시트와 같다(리뷰 `c5dbc85` 분리 실험).
-같은 날 시트 변조 검사 칸에 `maker`·`components`를 더해 시트를 같은 표본으로 다시 만들었다(표본 지문 그대로, 표시 전).
+같은 날 시트 변조 검사 칸에 `maker`·`components`를 더해, 이어 573 원본 PDF 칸(`source_file`·`pdf_sha256`·`submission_date`)을
+더해 같은 표본으로 두 번 더 다시 만들었다(표본 지문 `a0029d755f925dbe` 그대로, 표시 전).
+**두 출처를 한 시트에 섞어 30건(573 13 · 조사 요약 17)을 뽑던 규칙은 표시 전에 바꿨다**(2026-10-11 사용자 결정 — 6절 "엔진 2 원인 문장"
+숫자가 13건뿐이라 구간이 너무 넓어서, 이슈 #75). 섞은 시트는 쓰지 않는다. 바꾼 이유는 표시 결과가 아니라 표본 크기다.
 
 표시 기준(시트의 `label`): `yes` = 이 글이 이 리콜의 결함 원인(왜 생겼나)을 말한다 / `no` = 원인을 말하지 않는다(현상·조사 경과·
 "원인 미확인"만 등) / `unsure` = 판단하기 어렵다. 보고는 yes 비율(분모 = yes+no, unsure는 따로)과 Wilson 95% 구간을
-전체와 출처별(573 원인 칸 / 조사 요약)로 따로 낸다 — 기획 6절 "엔진 2 원인 문장"에 해당하는 것은 573 숫자다.
+시트마다(573 원인 칸 / 조사 요약) 따로 낸다 — 기획 6절 "엔진 2 원인 문장"에 해당하는 것은 573 시트 숫자다. 두 숫자를 합치지 않는다.
 """
 
 import argparse
@@ -43,6 +47,7 @@ from pathlib import Path
 from scripts.defect_precedent.cause_trials import sample_sha, text_sha
 
 SEED = 20261011
+SOURCES = {"573": "cause_quality_573.csv", "조사 요약": "cause_quality_inv.csv"}
 N = 30
 TOP = 10
 COLS = [
@@ -133,8 +138,9 @@ def draw(
     causes: dict,
     unreadable: dict,
     investigations: dict,
+    source: str,
 ) -> list[dict]:
-    """표본 규칙 1~3. rankings = 질문 번호 → 합친 순위."""
+    """표본 규칙 1~3을 원인 글 출처 하나(`source` = "573" 또는 "조사 요약")에 대해. rankings = 질문 번호 → 합친 순위."""
     from server.rag import customers
 
     rng = random.Random(SEED)
@@ -152,7 +158,7 @@ def draw(
             for cid in (ranking[r] for r in shown)
             if cid not in seen
             for ct in cause_texts(by_id[cid], causes, unreadable, investigations, q["action_no"])
-            if text_sha(ct["cause_text"]) not in seen_text
+            if ct["cause_source"] == source and text_sha(ct["cause_text"]) not in seen_text
         ]
         if not pool:
             continue
@@ -212,11 +218,13 @@ def cmd_sheet(a) -> None:
     from server.rag.investigations import load_investigations
     from server.rag.search import Searcher
 
-    sheet = a.out / "cause_quality_sheet.csv"
-    meta_path = sheet.with_name(sheet.name + ".meta.json")
-    if sheet.exists() or meta_path.exists():
-        # 표시한 시트를 빈 시트로 덮어쓰지 않는다 — 다시 만들려면 사람이 폴더를 옮기거나 지운다
-        sys.exit(f"{a.out}에 시트·메타가 이미 있다 — 표시를 덮어쓰지 않게 멈춘다(새 폴더를 쓴다)")
+    sheets = {src: a.out / name for src, name in SOURCES.items()}
+    for sheet in sheets.values():
+        if sheet.exists() or sheet.with_name(sheet.name + ".meta.json").exists():
+            # 표시한 시트를 빈 시트로 덮어쓰지 않는다 — 다시 만들려면 사람이 폴더를 옮기거나 지운다
+            sys.exit(
+                f"{a.out}에 시트·메타가 이미 있다 — 표시를 덮어쓰지 않게 멈춘다(새 폴더를 쓴다)"
+            )
     build = load_build()
     embeddings.check_fastembed()
     texts = [card_text(c) for c in build.cards]
@@ -232,33 +240,49 @@ def cmd_sheet(a) -> None:
         for q, v in zip(questions, qv, strict=True)
     }
     by_id = {c["campno"]: c for c in build.cards}
-    rows = draw(questions, rankings, by_id, build.causes, build.unreadable, invs)
-    if len(rows) != N:
-        sys.exit(f"표본이 {len(rows)}건뿐이다 — 규칙대로 {N}건을 채우지 못해 시트를 만들지 않는다")
-    a.out.mkdir(parents=True, exist_ok=True)
-    with sheet.open("w", encoding="utf-8-sig", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=COLS)
-        w.writeheader()
-        w.writerows(rows)
-    meta = {
-        "build_id": build.build_id,
-        "seed": SEED,
-        "n": len(rows),
-        "top": TOP,
-        "sample_sha256": sample_fingerprint(rows),
-        # 줄마다 읽기 전용 칸 — 채점 때 어느 줄의 어느 칸이 바뀌었는지 알려 주려고 둔다(스프레드시트가 21E027을 숫자로 바꾸는 등)
-        "rows": [{k: r[k] for k in ("sample_no", *ROW_FIELDS[1:], "text_sha256")} for r in rows],
-        # 다시 뽑아 표본이 달라졌을 때 무엇이 달라졌는지 되짚는 입력(AGENTS.md 5-1)
-        "eval_sha256": hashlib.sha256((OUT_DIR / "eval.jsonl").read_bytes()).hexdigest(),
-        "raw_manifest_sha256": build.raw_manifest_sha256,
-        "fastembed": fastembed.__version__,
-        "model": embeddings.MODEL,
-        "sheet_sha256": hashlib.sha256(sheet.read_bytes()).hexdigest(),
+    drawn = {
+        src: draw(questions, rankings, by_id, build.causes, build.unreadable, invs, src)
+        for src in SOURCES
     }
-    sheet.with_name(sheet.name + ".meta.json").write_text(
-        json.dumps(meta, ensure_ascii=False, indent=1), "utf-8"
-    )
-    print(json.dumps({**meta, "sheet": str(sheet)}, ensure_ascii=False))
+    short = {src: len(rows) for src, rows in drawn.items() if len(rows) != N}
+    if short:
+        sys.exit(
+            f"표본이 {short}건뿐이다 — 규칙대로 출처마다 {N}건을 채우지 못해 시트를 만들지 않는다"
+        )
+    a.out.mkdir(parents=True, exist_ok=True)
+    for src, rows in drawn.items():
+        sheet = sheets[src]
+        with sheet.open("w", encoding="utf-8-sig", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=COLS)
+            w.writeheader()
+            w.writerows(rows)
+        meta = {
+            "build_id": build.build_id,
+            "seed": SEED,
+            "source": src,
+            "n": len(rows),
+            "top": TOP,
+            "sample_sha256": sample_fingerprint(rows),
+            # 줄마다 읽기 전용 칸 — 채점 때 어느 줄의 어느 칸이 바뀌었는지 알려 주려고 둔다(스프레드시트가 21E027을 숫자로 바꾸는 등)
+            "rows": [
+                {k: r[k] for k in ("sample_no", *ROW_FIELDS[1:], "text_sha256")} for r in rows
+            ],
+            # 다시 뽑아 표본이 달라졌을 때 무엇이 달라졌는지 되짚는 입력(AGENTS.md 5-1)
+            "eval_sha256": hashlib.sha256((OUT_DIR / "eval.jsonl").read_bytes()).hexdigest(),
+            "raw_manifest_sha256": build.raw_manifest_sha256,
+            "fastembed": fastembed.__version__,
+            "model": embeddings.MODEL,
+            "sheet_sha256": hashlib.sha256(sheet.read_bytes()).hexdigest(),
+        }
+        sheet.with_name(sheet.name + ".meta.json").write_text(
+            json.dumps(meta, ensure_ascii=False, indent=1), "utf-8"
+        )
+        print(
+            json.dumps(
+                {k: v for k, v in meta.items() if k != "rows"} | {"sheet": str(sheet)},
+                ensure_ascii=False,
+            )
+        )
 
 
 def norm(label: str) -> str:

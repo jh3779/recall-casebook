@@ -62,8 +62,8 @@ def _setup(n_questions: int = 40):
 
 def test_draw_is_fixed_by_seed_and_never_repeats_a_recall():
     args = _setup()
-    a = cq.draw(*args[:4], {}, args[4])
-    b = cq.draw(*args[:4], {}, args[4])
+    a = cq.draw(*args[:4], {}, args[4], "573")
+    b = cq.draw(*args[:4], {}, args[4], "573")
     assert a == b  # 같은 입력이면 같은 표본(시드 고정)
     campnos = [r["campno"] for r in a]
     assert len(campnos) == len(set(campnos))
@@ -81,11 +81,11 @@ def test_draw_stops_at_n():
     invs = {
         c: [_inv("PE00000", f"s {c}")] for c in ids
     }  # 원인 글이 카드마다 다르다(같은 글은 한 번만 뽑힌다)
-    assert len(cq.draw(questions, rankings, cards, {}, {}, invs)) == cq.N
+    assert len(cq.draw(questions, rankings, cards, {}, {}, invs, "조사 요약")) == cq.N
 
 
-def _labeled(label: str = "yes") -> list[dict]:
-    rows = cq.draw(*_setup()[:4], {}, _setup()[4])
+def _labeled(label: str = "yes", source: str = "573") -> list[dict]:
+    rows = cq.draw(*_setup()[:4], {}, _setup()[4], source)
     return [{**r, "label": label, "labeler_id": "L1"} for r in rows]
 
 
@@ -123,7 +123,9 @@ def test_customer_cards_beyond_the_five_shown_are_not_sampled():
     invs = {c: [_inv(f"PE{i:05d}", f"s{i}")] for i, c in enumerate(cards)}
     ranking = list(cards)
     questions = [{"action_no": f"EA{i:05d}", "question": "q"} for i in range(40)]
-    rows = cq.draw(questions, {q["action_no"]: ranking for q in questions}, cards, {}, {}, invs)
+    rows = cq.draw(
+        questions, {q["action_no"]: ranking for q in questions}, cards, {}, {}, invs, "조사 요약"
+    )
     assert {r["campno"] for r in rows} == set(ranking[:5])
 
 
@@ -133,7 +135,7 @@ def test_same_cause_text_is_sampled_only_once():
     causes = {"20V001": _cause("20V001", "same cause")}
     questions = [{"action_no": f"EA{i:05d}", "question": "q"} for i in range(5)]
     rows = cq.draw(
-        questions, {q["action_no"]: list(cards) for q in questions}, cards, causes, {}, {}
+        questions, {q["action_no"]: list(cards) for q in questions}, cards, causes, {}, {}, "573"
     )
     assert len(rows) == 1
 
@@ -149,7 +151,9 @@ def test_score_refuses_changed_context_but_accepts_sorted_rows_and_capitalized_l
 
 
 def test_score_reports_rates_by_source():
-    rows = _labeled()
+    rows = _labeled() + _labeled(
+        source="조사 요약"
+    )  # 점수 함수는 출처가 섞인 줄도 출처별로 나눠 센다
     got = cq.score(rows)["by_source"]
     assert set(got) == {"573", "조사 요약"}
     assert all(v["yes_rate"] == 1.0 and v["yes_rate_wilson95"] for v in got.values())
@@ -157,10 +161,10 @@ def test_score_reports_rates_by_source():
 
 def test_sheet_refuses_to_overwrite_an_existing_sheet(tmp_path):
     """표시한 시트를 빈 시트로 덮어쓰지 않는다 — 데이터를 읽기 전에 멈춘다."""
-    (tmp_path / "cause_quality_sheet.csv").write_text("labeled", encoding="utf-8")
+    (tmp_path / cq.SOURCES["573"]).write_text("labeled", encoding="utf-8")
     with pytest.raises(SystemExit, match="이미 있다"):
         cq.main(["sheet", "--out", str(tmp_path)])
-    assert (tmp_path / "cause_quality_sheet.csv").read_text(encoding="utf-8") == "labeled"
+    assert (tmp_path / cq.SOURCES["573"]).read_text(encoding="utf-8") == "labeled"
 
 
 def test_score_refuses_changed_maker_or_components():
@@ -223,3 +227,15 @@ def test_cmd_score_names_the_row_and_field_a_spreadsheet_changed(tmp_path):
     (tmp_path / "cause_quality_sheet.csv.meta.json").write_text(json.dumps(meta), encoding="utf-8")
     with pytest.raises(SystemExit, match=r"3번 cause_ref"):
         cq.main(["score", "--sheet", str(sheet)])
+
+
+@pytest.mark.parametrize("source", ["573", "조사 요약"])
+def test_draw_takes_only_the_requested_source(source):
+    """원인 글 출처마다 따로 30건(2026-10-11 결정, 이슈 #75) — 한 시트에 다른 출처가 섞이지 않는다."""
+    rows = cq.draw(*_setup()[:4], {}, _setup()[4], source)
+    assert rows and {r["cause_source"] for r in rows} == {source}
+
+
+def test_sheet_files_are_one_per_source():
+    assert set(cq.SOURCES) == {"573", "조사 요약"}
+    assert len(set(cq.SOURCES.values())) == 2
