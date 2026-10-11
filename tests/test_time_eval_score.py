@@ -23,6 +23,19 @@ def write_sheet(path, rows):
     return path
 
 
+def agreement_file(tmp_path, phase, passed, questions=None, name=None):
+    """agreement 출력 모양 그대로 — score가 phase·pass와 질문 파일 해시를 본다."""
+    q = questions or ts.QUESTIONS
+    p = tmp_path / (name or f"agreement_{phase}.json")
+    out = {"phase": phase, "pass": passed, "inputs": {"questions": {"sha256": ts.sha256_of(q)}}}
+    p.write_text(json.dumps(out), encoding="utf-8")
+    return str(p)
+
+
+def _pilot_pass(tmp_path):
+    return ["--agreement", agreement_file(tmp_path, "pilot", True, name="agreement_pilot_ok.json")]
+
+
 def row(action, campno, label, **kw):
     return {
         "action_no": action,
@@ -247,7 +260,9 @@ def test_cli_score_prints_inputs_and_note(tmp_path, capsys):
         encoding="utf-8",
     )
     sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes")])
-    ts.main(["score", "--candidates", str(cand_path), "--sheets", str(sheet)])
+    ts.main(
+        ["score", *_pilot_pass(tmp_path), "--candidates", str(cand_path), "--sheets", str(sheet)]
+    )
     out = json.loads(capsys.readouterr().out)
     (cand,) = out["inputs"]["candidates"]
     assert cand["set"] == "main" and cand["code"] == {"commit": "abc"} and len(cand["sha256"]) == 64
@@ -324,7 +339,17 @@ def test_cli_score_combines_replacement_candidates_and_refuses_overlap(tmp_path,
     main = cand_file("candidates_main.json", "main", "PE1")
     repl = cand_file("candidates_r1.json", "r1", "PE2")
     sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes"), row("PE2", "A", "no")])
-    ts.main(["score", "--candidates", str(main), str(repl), "--sheets", str(sheet)])
+    ts.main(
+        [
+            "score",
+            *_pilot_pass(tmp_path),
+            "--candidates",
+            str(main),
+            str(repl),
+            "--sheets",
+            str(sheet),
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     assert out["labeled_questions"] == 2 and [c["set"] for c in out["inputs"]["candidates"]] == [
         "main",
@@ -332,7 +357,17 @@ def test_cli_score_combines_replacement_candidates_and_refuses_overlap(tmp_path,
     ]
     overlap = cand_file("candidates_r2.json", "r2", "PE1")
     with pytest.raises(SystemExit, match="같은 문항이 두 번"):
-        ts.main(["score", "--candidates", str(main), str(overlap), "--sheets", str(sheet)])
+        ts.main(
+            [
+                "score",
+                *_pilot_pass(tmp_path),
+                "--candidates",
+                str(main),
+                str(overlap),
+                "--sheets",
+                str(sheet),
+            ]
+        )
 
 
 def _agree_rows(labeler, labels):
@@ -461,7 +496,7 @@ def test_cli_score_refuses_pilot_candidates(tmp_path):
     )
     sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes")])
     with pytest.raises(SystemExit, match="pilot"):
-        ts.main(["score", "--candidates", str(p), "--sheets", str(sheet)])
+        ts.main(["score", *_pilot_pass(tmp_path), "--candidates", str(p), "--sheets", str(sheet)])
 
 
 def test_phase_actions_are_the_fixed_questions():
@@ -544,7 +579,7 @@ def test_cli_score_refuses_candidate_files_from_different_builds(tmp_path):
         files.append(str(p))
     sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes"), row("PE2", "A", "no")])
     with pytest.raises(SystemExit, match="같은 데이터"):
-        ts.main(["score", "--candidates", *files, "--sheets", str(sheet)])
+        ts.main(["score", *_pilot_pass(tmp_path), "--candidates", *files, "--sheets", str(sheet)])
 
 
 def _cand_file(tmp_path, name, set_name, action, **kw):
@@ -562,8 +597,10 @@ def test_cli_score_refuses_dirty_candidates_unless_partial(tmp_path, capsys):
     cand = _cand_file(tmp_path, "candidates_main.json", "main", "PE1", **dirty)
     sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes")])
     with pytest.raises(SystemExit, match="커밋하지 않은"):
-        ts.main(["score", "--candidates", cand, "--sheets", str(sheet)])
-    ts.main(["score", "--candidates", cand, "--sheets", str(sheet), "--partial"])
+        ts.main(["score", *_pilot_pass(tmp_path), "--candidates", cand, "--sheets", str(sheet)])
+    ts.main(
+        ["score", *_pilot_pass(tmp_path), "--candidates", cand, "--sheets", str(sheet), "--partial"]
+    )
     capsys.readouterr()
 
 
@@ -576,7 +613,17 @@ def test_cli_partial_score_hides_direction(tmp_path, capsys):
     p.write_text(json.dumps({**_cand("main"), "items": items(*pool.items())}), encoding="utf-8")
     rows = [row(a, "A", "yes") for a in pool if a != "PX"] + [row("PX", "A", "", labeler_id="")]
     sheet = write_sheet(tmp_path / "s.csv", rows)
-    ts.main(["score", "--candidates", str(p), "--sheets", str(sheet), "--partial"])
+    ts.main(
+        [
+            "score",
+            *_pilot_pass(tmp_path),
+            "--candidates",
+            str(p),
+            "--sheets",
+            str(sheet),
+            "--partial",
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     assert out["skipped"] == ["PX"] and out["hit@10_comparison"]["outcome"] == "미측정(중간 결과)"
 
@@ -692,44 +739,68 @@ def test_rechecked_questions_need_two_labelers_and_agreed_label_on_every_candida
         ts.check_rechecked(ts.merge_labels([ts.read_sheet(a)]), {"R1", "R2"})
 
 
-def test_cli_rechecked_flag_is_wired(tmp_path, capsys):
+def _recheck_setup(tmp_path):
+    """질문 파일 main 앞 3문항(R1~R3) + 그 밖의 Q4, 모두 한 사람(L-A1) 표시."""
     q = tmp_path / "questions.json"
     q.write_text(
-        json.dumps({"pilot": [], "main": [{"action_no": a} for a in ("R1", "R2", "R3")]}),
+        json.dumps({"pilot": [], "main": [{"action_no": a} for a in ("R1", "R2", "R3", "Q4")]}),
         encoding="utf-8",
     )
-    cand = _cand_file(tmp_path, "candidates_main.json", "main", "R1")
     p = tmp_path / "candidates_main.json"
-    d = json.loads(p.read_text(encoding="utf-8"))
-    d["items"] = items(*((r, {"A": {"bm25": 1}}) for r in ("R1", "R2", "R3")))
-    p.write_text(json.dumps(d), encoding="utf-8")
-    sheet = write_sheet(tmp_path / "s.csv", [row(r, "A", "yes") for r in ("R1", "R2", "R3")])
-    args = ["score", "--candidates", cand, "--sheets", str(sheet), "--questions", str(q)]
-    ts.main(args)  # 재확인을 하지 않았으면 한 사람 표시로 채점
-    capsys.readouterr()
-    with pytest.raises(
-        SystemExit, match="두 사람의 label 또는 agreed_label"
-    ):  # 질문 파일(--questions)의 R1~R3 기준
-        ts.main([*args, "--rechecked"])
-    # 두 사람 표시 + 합의값을 갖추면 --rechecked로 채점된다
+    acts = ("R1", "R2", "R3", "Q4")
+    p.write_text(
+        json.dumps({**_cand("main"), "items": items(*((r, {"A": {"bm25": 1}}) for r in acts))}),
+        encoding="utf-8",
+    )
+    sheet = write_sheet(tmp_path / "s.csv", [row(r, "A", "yes") for r in acts])
+    return q, ["score", "--candidates", str(p), "--questions", str(q), "--sheets", str(sheet)]
+
+
+def test_cli_score_takes_double_label_scope_from_agreement_results(tmp_path, capsys):
+    """이중 표시 범위를 옵션이 아니라 agreement 결과의 phase·pass로 정한다(안내서 4절, PR #72 Codex 7301978)."""
+    q, args = _recheck_setup(tmp_path)
+    pilot_ok = agreement_file(tmp_path, "pilot", True, q, "p_ok.json")
+    pilot_bad = agreement_file(tmp_path, "pilot", False, q, "p_bad.json")
+    recheck_ok = agreement_file(tmp_path, "recheck", True, q, "r_ok.json")
+    recheck_bad = agreement_file(tmp_path, "recheck", False, q, "r_bad.json")
+    ts.main([*args, "--agreement", pilot_ok])  # 예비 합격 — 한 사람 표시로 채점
+    checks = json.loads(capsys.readouterr().out)["checks"]
+    assert checks["double_label_scope"].startswith("없음") and checks["agreements"][0]["pass"]
+    with pytest.raises(SystemExit, match="재확인 3문항 agreement 결과"):
+        ts.main([*args, "--agreement", pilot_bad])  # 예비 미달인데 재확인 결과를 빠뜨림
+    with pytest.raises(SystemExit, match="두 사람의 label 또는 agreed_label"):
+        ts.main([*args, "--agreement", pilot_bad, recheck_ok])  # R1~R3이 한 사람 표시
+    with pytest.raises(SystemExit, match="두 사람의 label 또는 agreed_label"):
+        ts.main([*args, "--agreement", pilot_bad, recheck_bad])  # 전 문항이 한 사람 표시
+    with pytest.raises(SystemExit, match="예비가 합격인데"):
+        ts.main([*args, "--agreement", pilot_ok, recheck_ok])
+    with pytest.raises(SystemExit, match="예비\\(pilot\\) 하나"):
+        ts.main([*args, "--agreement", recheck_ok])
+    other_q = tmp_path / "other_questions.json"
+    other_q.write_text(json.dumps({"pilot": [], "main": []}), encoding="utf-8")
+    with pytest.raises(SystemExit, match="이 질문 파일"):
+        ts.main([*args, "--agreement", agreement_file(tmp_path, "pilot", True, other_q, "x.json")])
+    no_phase = tmp_path / "no_phase.json"
+    no_phase.write_text(json.dumps({"pass": True}), encoding="utf-8")
+    with pytest.raises(SystemExit, match="phase"):
+        ts.main([*args, "--agreement", str(no_phase)])
+
+
+def test_cli_score_recheck_scope_needs_two_people_only_on_recheck_questions(tmp_path, capsys):
+    q, args = _recheck_setup(tmp_path)
     c = write_sheet(
         tmp_path / "c.csv",
         [row(r, "A", "yes", labeler_id="L-C1", agreed_label="yes") for r in ("R1", "R2", "R3")],
     )
-    ts.main(
-        [
-            "score",
-            "--candidates",
-            cand,
-            "--sheets",
-            str(sheet),
-            str(c),
-            "--questions",
-            str(q),
-            "--rechecked",
-        ]
+    agr = [
+        agreement_file(tmp_path, "pilot", False, q),
+        agreement_file(tmp_path, "recheck", True, q),
+    ]
+    ts.main([*args, str(c), "--agreement", *agr])  # Q4는 한 사람 표시여도 된다
+    out = json.loads(capsys.readouterr().out)
+    assert out["labeled_questions"] == 4 and out["checks"]["double_label_scope"].startswith(
+        "재확인 3문항"
     )
-    assert json.loads(capsys.readouterr().out)["labeled_questions"] == 3
 
 
 def test_cli_partial_with_dirty_candidates_is_interim_even_without_skipped(tmp_path, capsys):
@@ -742,31 +813,35 @@ def test_cli_partial_with_dirty_candidates_is_interim_even_without_skipped(tmp_p
         json.dumps({**_cand("main", **dirty), "items": items(*pool.items())}), encoding="utf-8"
     )
     sheet = write_sheet(tmp_path / "s.csv", [row(a, "A", "yes") for a in pool])
-    ts.main(["score", "--candidates", str(p), "--sheets", str(sheet), "--partial"])
+    ts.main(
+        [
+            "score",
+            *_pilot_pass(tmp_path),
+            "--candidates",
+            str(p),
+            "--sheets",
+            str(sheet),
+            "--partial",
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     assert out["status"].startswith("중간 결과") and "커밋하지 않은" in out["status"]
     assert out["hit@10_comparison"]["outcome"] == "미측정(중간 결과)"
 
 
-def test_cli_lists_recheck_questions_labeled_by_one_person_when_flag_is_missing(tmp_path, capsys):
-    q = tmp_path / "questions.json"
-    q.write_text(
-        json.dumps({"pilot": [], "main": [{"action_no": a} for a in ("R1", "R2", "R3")]}),
-        encoding="utf-8",
+def test_double_label_check_needs_a_note_when_the_two_labels_differed(tmp_path):
+    """두 사람 표시가 달랐던 후보는 합의 이유(note)가 있어야 한다(안내서 4절, PR #72 Codex 7301978)."""
+    a = write_sheet(tmp_path / "a.csv", [row("R1", "A", "yes", agreed_label="no")])
+    c = write_sheet(
+        tmp_path / "c.csv", [row("R1", "A", "no", labeler_id="L-C1", agreed_label="no")]
     )
-    p = tmp_path / "candidates_main.json"
-    p.write_text(
-        json.dumps(
-            {
-                **_cand("main"),
-                "items": items(*((r, {"A": {"bm25": 1}}) for r in ("R1", "R2", "R3"))),
-            }
-        ),
-        encoding="utf-8",
+    with pytest.raises(SystemExit, match="합의 이유"):
+        ts.check_rechecked(ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c)]), {"R1"})
+    a_note = write_sheet(
+        tmp_path / "a2.csv",
+        [row("R1", "A", "yes", agreed_label="no", note="생산 기간이 겹치지 않음")],
     )
-    sheet = write_sheet(tmp_path / "s.csv", [row(r, "A", "yes") for r in ("R1", "R2", "R3")])
-    ts.main(["score", "--candidates", str(p), "--sheets", str(sheet), "--questions", str(q)])
-    assert json.loads(capsys.readouterr().out)["recheck_single_labeler"] == ["R1", "R2", "R3"]
+    ts.check_rechecked(ts.merge_labels([ts.read_sheet(a_note), ts.read_sheet(c)]), {"R1"})
 
 
 def test_no_answer_reasons_are_reported_separately(tmp_path):
@@ -797,45 +872,29 @@ def test_bm25_higher_direction_uses_hit_at_10():
     ] == "차이 있음 — BM25가 높음"
 
 
-def test_cli_all_double_labeled_requires_every_question_from_two_people(tmp_path, capsys):
+def test_cli_score_failed_recheck_requires_every_question_from_two_people(tmp_path, capsys):
     """재확인도 미달하면 본 평가 전체를 두 사람이 표시한다(안내서 4절 3항) — 한 문항이라도 한 사람 표시면 멈춘다(PR #72 Codex)."""
-    p = tmp_path / "candidates_main.json"
-    p.write_text(
-        json.dumps(
-            {**_cand("main"), "items": items(*((q, {"A": {"bm25": 1}}) for q in ("Q1", "Q2")))}
-        ),
-        encoding="utf-8",
-    )
-    # Q2는 한 사람만 표시(합의값 없음) — 이 경우를 --all-double-labeled가 잡아야 한다
-    a_part = write_sheet(
-        tmp_path / "a.csv", [row("Q1", "A", "yes", agreed_label="yes"), row("Q2", "A", "yes")]
-    )
+    q, args = _recheck_setup(tmp_path)
+    acts = ("R1", "R2", "R3", "Q4")
+    agr = [
+        agreement_file(tmp_path, "pilot", False, q),
+        agreement_file(tmp_path, "recheck", False, q),
+    ]
     c_part = write_sheet(
-        tmp_path / "c.csv", [row("Q1", "A", "yes", labeler_id="L-C1", agreed_label="yes")]
+        tmp_path / "c.csv",
+        [row(r, "A", "yes", labeler_id="L-C1", agreed_label="yes") for r in acts[:3]],
     )
-    with pytest.raises(SystemExit, match="--all-double-labeled"):
-        ts.main(
-            [
-                "score",
-                "--candidates",
-                str(p),
-                "--sheets",
-                str(a_part),
-                str(c_part),
-                "--all-double-labeled",
-            ]
-        )
-    a = write_sheet(
-        tmp_path / "a2.csv", [row(q, "A", "yes", agreed_label="yes") for q in ("Q1", "Q2")]
-    )
+    with pytest.raises(SystemExit, match="본 평가 전 문항"):  # Q4가 한 사람 표시
+        ts.main([*args, str(c_part), "--agreement", *agr])
     c_all = write_sheet(
         tmp_path / "c2.csv",
-        [row(q, "A", "yes", labeler_id="L-C1", agreed_label="yes") for q in ("Q1", "Q2")],
+        [row(r, "A", "yes", labeler_id="L-C1", agreed_label="yes") for r in acts],
     )
-    ts.main(
-        ["score", "--candidates", str(p), "--sheets", str(a), str(c_all), "--all-double-labeled"]
+    ts.main([*args, str(c_all), "--agreement", *agr])
+    out = json.loads(capsys.readouterr().out)
+    assert out["labeled_questions"] == 4 and out["checks"]["double_label_scope"].startswith(
+        "본 평가"
     )
-    assert json.loads(capsys.readouterr().out)["labeled_questions"] == 2
 
 
 def test_cli_agreement_records_candidates_and_questions_files(tmp_path, capsys):

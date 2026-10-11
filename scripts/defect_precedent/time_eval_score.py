@@ -3,11 +3,15 @@
 사용법:
     # 예비 5문항 두 사람 일치(합격선, docs/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
     uv run python -m scripts.defect_precedent.time_eval_score agreement --phase pilot --candidates <candidates_pilot.json> --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
-    # 재확인 3문항(안내서 4절 — 질문 파일 main 앞 3개)은 그 3문항만 추린 두 사람의 시트로: agreement --phase recheck --candidates <candidates_main.json> --sheets …; 이때 score에 --rechecked
-    # 재확인도 미달해 본 평가 전체를 두 사람이 표시했으면 score에 --all-double-labeled
+    #   결과를 파일로 남긴다: … agreement … > agreement_pilot.json
+    # 예비 미달이면 재확인 3문항(안내서 4절 — 질문 파일 main 앞 3개)만 추린 두 사람의 시트로:
+    #   agreement --phase recheck --candidates <candidates_main.json> --sheets … > agreement_recheck.json
+    # score는 agreement 결과 파일을 필수로 받아 이중 표시 검사 범위를 스스로 정한다(옵션으로 고르지 않는다):
+    #   예비 합격 → 없음 / 예비 미달·재확인 합격 → 재확인 3문항 / 재확인도 미달 → 본 평가 전 문항(안내서 4절 3항)
     # 본 평가 채점 — 나눠 표시한 시트 여러 개를 합친다(같은 후보를 둘이 표시했으면 agreed_label 필요)
     uv run python -m scripts.defect_precedent.time_eval_score score \
-        --candidates <candidates_main.json> [<candidates_<대체 회차>.json> ...] --sheets <시트1.csv> [<시트2.csv> ...] [--partial]
+        --candidates <candidates_main.json> [<candidates_<대체 회차>.json> ...] --sheets <시트1.csv> [<시트2.csv> ...] \
+        --agreement <agreement_pilot.json> [<agreement_recheck.json>] [--partial]
 
 규칙(이 도구 작성자가 정답 표시 결과를 보기 전인 2026-10-11에 DEC-037 ⑦·안내서 4·5절을 그대로 옮겨 고정 — 결과를 보고 고치지 않는다):
 - 점수에 쓰는 표시 = `agreed_label`이 있으면 그것, 없으면 `label`. 한 후보에 서로 다른 `label`이 둘 이상인데 `agreed_label`이
@@ -263,7 +267,7 @@ def pool_keys(items: list[dict], actions: set[str]) -> set[tuple[str, str]]:
     }
 
 
-def check_rechecked(merged: dict, recheck: set[str], flag: str = "--rechecked") -> None:
+def check_rechecked(merged: dict, recheck: set[str], flag: str = "agreement 결과") -> None:
     """재확인을 했다면(안내서 4절 3항) 그 문항의 모든 후보에 서로 다른 두 사람의 label과 agreed_label이 있어야 한다 —
     한 사람 시트만 넘기거나 합의값을 빠뜨리면 합의 전 표시로 공식 점수가 계산된다(PR #72 Codex)."""
     rows = {k: m for k, m in merged.items() if k[0] in recheck}
@@ -275,6 +279,49 @@ def check_rechecked(merged: dict, recheck: set[str], flag: str = "--rechecked") 
         sys.exit(
             f"두 사람이 표시해야 할 문항의 후보 {bad[:3]} 등 {len(bad)}개에 두 사람의 label 또는 agreed_label이 없다({flag}, 안내서 4절)"
         )
+    # 원래 표시가 달랐다면 합의 이유를 note에 남긴다(안내서 4절 3항 — 어떤 근거로 정했는지 되짚게, PR #72 Codex)
+    no_reason = sorted(k for k, m in rows.items() if len(set(m["labels"])) > 1 and not m["notes"])
+    if no_reason:
+        sys.exit(
+            f"두 사람의 표시가 달랐던 후보 {no_reason[:3]} 등 {len(no_reason)}개에 합의 이유(note)가 없다(안내서 4절)"
+        )
+
+
+def double_label_scope(
+    agreements: list[dict], items: list[dict], questions: Path
+) -> tuple[str, set[str]]:
+    """agreement 결과(예비·재확인)의 phase·pass로 이중 표시 검사 범위를 정한다 — 사람이 옵션을 빠뜨려 한 사람 표시로
+    정식 점수가 나오지 않게(PR #72 Codex 2da97c4·7301978). 안내서 4절: 예비 합격 → 없음, 예비 미달 → 재확인 3문항을 두 사람이,
+    재확인도 미달 → 본 평가 전 문항을 두 사람이."""
+    by_phase: dict[str, list[dict]] = {}
+    for g in agreements:
+        if g.get("phase") not in ("pilot", "recheck") or not isinstance(g.get("pass"), bool):
+            sys.exit(
+                "agreement 결과 파일에 phase(pilot/recheck)·pass가 없다 — agreement 출력 그대로 저장한 파일을 넘긴다"
+            )
+        if (g.get("inputs") or {}).get("questions", {}).get("sha256") != sha256_of(questions):
+            sys.exit(
+                "agreement 결과가 이 질문 파일(--questions)로 만든 것이 아니다 — 같은 질문 파일로 다시 낸다"
+            )
+        by_phase.setdefault(g["phase"], []).append(g)
+    if len(by_phase.get("pilot", [])) != 1 or len(by_phase.get("recheck", [])) > 1:
+        sys.exit(
+            "agreement 결과는 예비(pilot) 하나와, 예비가 미달일 때만 재확인(recheck) 하나를 넘긴다"
+        )
+    pilot, recheck = by_phase["pilot"][0], (by_phase.get("recheck") or [None])[0]
+    if pilot["pass"]:
+        if recheck is not None:
+            sys.exit(
+                "예비가 합격인데 재확인 결과가 있다 — 어느 절차를 따랐는지 확인한다(안내서 4절)"
+            )
+        return "없음(예비 합격)", set()
+    if recheck is None:
+        sys.exit(
+            "예비가 미달이다 — 재확인 3문항 agreement 결과(phase recheck)를 함께 넘긴다(안내서 4절 3항)"
+        )
+    if recheck["pass"]:
+        return "재확인 3문항(예비 미달·재확인 합격)", phase_actions("recheck", questions)
+    return "본 평가 전 문항(재확인도 미달)", {it["action_no"] for it in items}
 
 
 def agreement(
@@ -401,14 +448,11 @@ def main(argv: list[str] | None = None) -> None:
     sc.add_argument("--sheets", type=Path, nargs="+", required=True)
     sc.add_argument("--partial", action="store_true", help="표시가 빈 문항을 빼고 중간 결과로 낸다")
     sc.add_argument(
-        "--rechecked",
-        action="store_true",
-        help="예비 미달로 재확인을 했다(안내서 4절 3항) — 재확인 3문항의 이중 표시·합의값을 강제한다",
-    )
-    sc.add_argument(
-        "--all-double-labeled",
-        action="store_true",
-        help="재확인도 미달해 본 평가 전체를 두 사람이 표시했다(안내서 4절 3항) — 모든 문항·후보의 이중 표시·합의값을 강제한다",
+        "--agreement",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="agreement 결과 파일 — 예비(pilot), 예비가 미달이면 재확인(recheck)도. 이중 표시 검사 범위를 여기서 정한다",
     )
     sc.add_argument(
         "--questions", type=Path, default=QUESTIONS, help="질문 파일(재확인 문항을 정함)"
@@ -454,10 +498,10 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(f"후보 파일들에 같은 문항이 두 번 있다 {dup[:3]} — 회차마다 다른 문항이어야 한다")
     merged = merge_labels([read_sheet(s) for s in a.sheets])
     check_against_candidates(merged, items)
-    if a.all_double_labeled:
-        check_rechecked(merged, {it["action_no"] for it in items}, "--all-double-labeled")
-    if a.rechecked:
-        check_rechecked(merged, phase_actions("recheck", a.questions))
+    agreements = [json.loads(g.read_text(encoding="utf-8")) for g in a.agreement]
+    scope, must_double = double_label_scope(agreements, items, a.questions)
+    if must_double:
+        check_rechecked(merged, must_double, f"이중 표시 범위: {scope}")
     questions, skipped = per_question(merged, items, a.partial)
     dirty = [c["set"] for c in cands if (c.get("code") or {}).get("dirty")]
     # 표시가 덜 끝났거나(--partial로 문항 제외) 커밋하지 않은 코드로 만든 후보를 썼으면(--partial일 때만 허용) 중간 결과다 —
@@ -471,15 +515,14 @@ def main(argv: list[str] | None = None) -> None:
             why.append(f"커밋하지 않은 코드로 만든 후보 {dirty}")
         out["status"] = f"중간 결과({' · '.join(why)} — 최종 보고에 쓰지 않음)"
         out["skipped"] = skipped
-    if not a.rechecked:
-        # 재확인을 했는데 --rechecked를 빠뜨린 경우 눈에 띄게 — 재확인 문항 중 한 사람만 표시한 것(판정은 바꾸지 않는다)
-        recheck = phase_actions("recheck", a.questions)
-        single = sorted(
-            q["action_no"]
-            for q in questions
-            if q["action_no"] in recheck and q.get("labelers", 0) < 2
-        )
-        out["recheck_single_labeler"] = single
+    out["checks"] = {  # 어떤 검사를 거친 결과인지 결과 파일만으로 되짚게(이슈 #77)
+        "double_label_scope": scope,
+        "agreements": [
+            {"file": str(g), "sha256": sha256_of(g), "phase": d["phase"], "pass": d["pass"]}
+            for g, d in zip(a.agreement, agreements, strict=True)
+        ],
+        "partial": a.partial,
+    }
     out["inputs"] = {
         "candidates": [
             {"file": str(c), "sha256": sha256_of(c), "set": cand["set"], "code": cand.get("code")}
