@@ -465,3 +465,19 @@ def test_the_maker_aliases_baseline_differs_from_the_old_one_only_in_the_cards()
     assert new["build"]["maker_aliases_draft_sha256"] == nhtsa.sha256_aliases(
         nhtsa.MAKER_ALIASES_DRAFT
     )
+
+
+@pytest.mark.skipif(
+    not (nhtsa.OUT_DIR / "causes.jsonl").exists()
+    or not (nhtsa.OUT_DIR / "causes.manifest.json").exists()
+    or not (nhtsa.OUT_DIR / "recalls.jsonl").exists()
+    or not (nhtsa.RAW_DIR / "FLAT_INV.zip").exists(),
+    reason="573 전체 수집 결과(causes.jsonl·명세)나 원본이 없다 (data/는 커밋하지 않는다)",
+)
+def test_full_output_says_not_found_in_lists_instead_of_report_absent(capsys):
+    """목록·실패 목록에서 못 찾은 274건을 "보고서가 없다"로 단정하지 않는다(AGENTS.md 2-3, DEC-042 ③)."""
+    base_path = nhtsa.REPO_ROOT / "scripts/defect_precedent/baseline_2026-10-06.json"
+    why_stats.main_full(baseline=base_path, allow_drift=True)
+    out = capsys.readouterr().out
+    assert "573 목록·실패 목록에서 찾지 못함 274건 (이유 미확인)" in out
+    assert "자체가 없음" not in out

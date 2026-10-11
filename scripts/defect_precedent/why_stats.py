@@ -204,7 +204,7 @@ def full_coverage(
     확인 상태를 나눈다:
     - 확인된 채움: `cause_status == "filled"`이고 최신판이 확정된(`resolution != "unresolved"`) 캠페인
     - 확인된 비어 있음: 최신판이 확정된 `empty`
-    - 573 자체가 없음: 보고서가 목록에 없는 리콜 (목록에 없는 이유 미확인 — `report_status_unknown`)
+    - 573 목록에서 찾지 못함: 원문 목록에도 실패 목록에도 없는 리콜 (보고서가 없다는 뜻이 아니다 — 이유 미확인, `report_status_unknown`)
     - 확인 불가: 읽지 못해 수용한 실패(`failed_campaigns`)와 최신판 미확정(`unresolved`) 캠페인
     하한은 확인 불가를 "없음"으로 센 값이고(= 확인된 근거의 최소), 상한은 확인 불가의 리콜 중 기존 방식 근거가 없는 것을 모두 "있음"으로 더한 값이다.
     """
@@ -412,7 +412,7 @@ def main_full(baseline: Path | None = None, allow_drift: bool = False) -> None:
         f"  확인 불가              {s['unknown_recalls']}건 = 읽지 못해 수용한 실패 {s['failed_campaigns']} + 최신판 미확정 "
         f"{s['unresolved_campaigns']} (합 {unknown}캠페인)"
     )
-    print(f"  573 보고서 자체가 없음 {no_report}건 (이유 미확인)")
+    print(f"  573 목록·실패 목록에서 찾지 못함 {no_report}건 (이유 미확인)")
     print(
         f"  둘 중 하나             하한 {pct(s['post_union'], post)} ~ 상한 {pct(s['post_union_upper'], post)}"
     )
