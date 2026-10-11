@@ -967,6 +967,26 @@ def test_pg_reloading_an_existing_build_never_rewrites_it(pgconn, tmp_path, caps
 
 
 @pg
+def test_pg_schema_widens_old_cause_status_constraint_for_stated_unknown(pgconn, tmp_path):
+    # DEC-047 전에 만든 DB는 옛 허용 목록(filled/empty/no_field)을 갖고 있다 — 스키마를 다시 적용하면 stated_unknown이 들어가야 한다
+    pgconn.execute(
+        "alter table causes drop constraint causes_cause_status_check;"
+        " alter table causes add constraint causes_cause_status_check"
+        " check (cause_status in ('filled', 'empty', 'no_field'))"
+    )
+    load_db.main(["schema"])
+    d = make_data_dir(
+        tmp_path,
+        "2026-10-06",
+        causes=[cause("24V001", text="NR - Not Reported", cause_status="stated_unknown")],
+    )
+    load(d, baseline=make_baseline(tmp_path))
+    assert pgconn.execute(
+        "select cause_status from causes where campaign = '24V001'"
+    ).fetchall() == [("stated_unknown",)]
+
+
+@pg
 def test_pg_failed_load_rolls_back_everything(pgconn, tmp_path):
     import psycopg
 
