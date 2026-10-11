@@ -8,8 +8,9 @@
 #       LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh
 #     로 돌린 출력만 쓴다. 이 모드는 열린 PR이 없거나, PR의 최신 커밋(headRefOid)이 검사한 커밋과 다르거나,
 #     DB 테스트를 건너뛰거나, scripts/·server/·tests/에 추적하지 않는 새 파일이 있거나, TEST_DATABASE_URL이
-#     localhost가 아니면 실패한다. 통과하면 출력 로그의 sha256과 마지막 줄을 PR 코멘트
-#     (`### 🧪 local CI (엄격) — 커밋 <SHA>`)로 직접 남긴다 — 결과 코멘트에 손으로 붙여 넣지 않게(DEC-046).
+#     실제로 접속할 곳(host·hostaddr, scripts/ci/test_db_guard.py)이 localhost가 아니면 실패한다. 통과하면 결과
+#     줄·pytest 요약·로그 sha256(마지막 두 줄 앞까지)을 PR 코멘트(`### 🧪 local CI (엄격) — 커밋 <SHA>`)로 직접 남기고,
+#     코멘트를 남기지 못하면 실패한다 — 결과 코멘트의 G-01 근거는 그 PR 코멘트뿐이다(DEC-046).
 #
 # 검사 대상은 **커밋된 HEAD**다. 작업 트리의 커밋하지 않은 변경이 결과에 섞이지 않게 HEAD를 임시 worktree에 꺼내서 돈다.
 # 이 브랜치의 **열린** PR이 있으면 gh로 제목·본문을 읽어 제목 규칙과 PR 본문 검사(변경 요약·검증 방법 수치 등)도 돈다.
@@ -42,12 +43,9 @@ if [[ "$REQUIRE_PR" == "1" ]]; then
     exit 1
   fi
   # DB 테스트는 대상 DB의 public 스키마를 지운다 — 일회용 로컬 컨테이너가 아니면 돌리지 않는다
-  if [[ -n "${TEST_DATABASE_URL:-}" ]]; then
-    DB_HOST=$(TEST_DATABASE_URL="$TEST_DATABASE_URL" uv run --quiet python -c "import os,urllib.parse; print(urllib.parse.urlparse(os.environ['TEST_DATABASE_URL']).hostname or '')")
-    if [[ "$DB_HOST" != "localhost" && "$DB_HOST" != "127.0.0.1" && "$DB_HOST" != "::1" ]]; then
-      echo "❌ TEST_DATABASE_URL의 호스트가 localhost가 아니다 — 일회용 로컬 컨테이너만 쓴다(머리말)"
-      exit 1
-    fi
+  if [[ -n "${TEST_DATABASE_URL:-}" ]] && ! (cd "$ROOT" && uv run --quiet python -m scripts.ci.test_db_guard "$TEST_DATABASE_URL"); then
+    echo "❌ TEST_DATABASE_URL이 실제로 접속할 곳(host·hostaddr)이 localhost가 아니다 — 일회용 로컬 컨테이너만 쓴다(머리말)"
+    exit 1
   fi
   # 병합 근거로 쓸 때는 CI가 보던 "main에 합친 상태"와 맞춘다 — 최신 origin/main이 HEAD에 들어 있어야 한다
   # 이 스크립트·검사 스크립트(scripts/·lefthook.yml)는 작업 트리에서 돌므로, 커밋하지 않은 변경이 있으면 근거로 쓰지 않는다
@@ -127,15 +125,17 @@ if [[ "$REQUIRE_PR" == "1" ]]; then
     exit 1
   fi
   TESTS_LINE=$(grep -E '[0-9]+ passed' "$LOG" | tail -1 || true)
+  # 로그 sha256은 "마지막 두 줄(로그 안내·결과 줄) 앞까지" — 그 두 줄을 쓰기 전에 계산한다
   LOG_SHA=$(shasum -a 256 "$LOG" | cut -c1-64)
   FINAL="✅ local CI 통과(엄격 — 병합 근거로 쓸 수 있음) — 커밋 $HEAD_SHA · DB 테스트 $DB_TESTS · $PR_NOTE · origin/main 포함"
+  # 같은 계정이라 위조를 완전히 막지는 못하지만, 손으로 붙여 넣는 단계는 없앤다 — 코멘트를 못 남기면 통과가 아니다(DEC-046)
+  if ! (cd "$ROOT" && gh pr comment "$PR_NUMBER" --body "$(printf '### 🧪 local CI (엄격) — 커밋 %s\n\n%s\n\n- pytest: %s\n- 로그 sha256(마지막 두 줄 앞까지): `%s` (실행한 컴퓨터의 %s)\n- origin/main: `%s`' \
+    "${HEAD_SHA:0:7}" "$FINAL" "${TESTS_LINE:-요약 줄 없음}" "$LOG_SHA" "$LOG" "$MAIN_AT_START")" >/dev/null); then
+    echo "❌ 검사는 통과했지만 PR #$PR_NUMBER에 결과 코멘트를 남기지 못했다(gh 인증·네트워크) — 같은 명령을 다시 돌린다(출력을 손으로 옮겨 근거로 쓰지 않는다)"
+    exit 1
+  fi
+  echo "   로그 $LOG (마지막 두 줄 앞까지 sha256 $LOG_SHA) — PR #$PR_NUMBER에 결과 코멘트를 남겼다"
   echo "$FINAL"
-  echo "   로그 $LOG (이 줄 앞까지 sha256 $LOG_SHA)"
-  # 같은 계정이라 위조를 완전히 막지는 못하지만, 손으로 붙여 넣는 단계는 없앤다(DEC-046)
-  (cd "$ROOT" && gh pr comment "$PR_NUMBER" --body "$(printf '### 🧪 local CI (엄격) — 커밋 %s\n\n%s\n\n- pytest: %s\n- 로그 sha256(마지막 줄 전까지): `%s` (실행한 컴퓨터의 %s)\n- origin/main: `%s`' \
-    "${HEAD_SHA:0:7}" "$FINAL" "${TESTS_LINE:-요약 줄 없음}" "$LOG_SHA" "$LOG" "$MAIN_AT_START")" >/dev/null) \
-    && echo "   PR #$PR_NUMBER에 결과 코멘트를 남겼다" \
-    || echo "   ⚠️ PR 코멘트를 남기지 못했다(gh 인증·네트워크) — 위 마지막 줄을 그대로 근거로 쓰고 이 사실을 결과 코멘트에 적는다"
 else
   echo "✅ local CI 통과(기본 — 병합 근거 아님, 엄격 모드는 LOCAL_CI_REQUIRE_PR=1) — 커밋 $HEAD_SHA · DB 테스트 $DB_TESTS · $PR_NOTE"
 fi
