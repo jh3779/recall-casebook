@@ -7,7 +7,7 @@
     uv run python -m scripts.defect_precedent.time_eval_score score \
         --candidates <candidates_main.json> --sheets <시트1.csv> [<시트2.csv> ...] [--partial]
 
-규칙(정답 표시를 보기 전인 2026-10-11에 DEC-037 ⑦·안내서 4·5절을 그대로 옮겨 고정 — 결과를 보고 고치지 않는다):
+규칙(이 도구 작성자가 정답 표시 결과를 보기 전인 2026-10-11에 DEC-037 ⑦·안내서 4·5절을 그대로 옮겨 고정 — 결과를 보고 고치지 않는다):
 - 점수에 쓰는 표시 = `agreed_label`이 있으면 그것, 없으면 `label`. 한 후보에 서로 다른 `label`이 둘 이상인데 `agreed_label`이
   없으면 멈춘다(두 사람이 함께 표시한 문항은 합의 결과를 쓴다 — ⑦(a)).
 - "정답 있음" = `yes`가 1개 이상. 아니면 "정답 없음" — 사유는 그 문항의 `note`에 "질문 부품 불명"이 있으면 그것, 아니면
@@ -17,7 +17,7 @@
 - 판정은 Hit@10 하나(분모 = 정답 있는 문항): 정확 McNemar(양측) p < 0.05이고 |B만 맞힘 − BM25만 맞힘|/n ≥ 0.03일 때만
   "차이 있음"과 방향, 아니면 "우열 불확실". 짝 부트스트랩(`default_rng(20261008)`, 10,000회, 2.5·97.5 백분위)은 차이 크기
   설명용이고 판정에 쓰지 않는다(⑦(e)).
-- 정답 있는 문항이 34개 미만이면 "미측정"(⑤). 정답 있는 문항이 34개를 넘어도 표시한 문항을 모두 쓴다(⑦(g)).
+- 정답 있는 문항이 34개 미만이면 "미측정"(⑤) — 이때는 비교 결과(`outcome`)도 "미측정"으로 내고 차이 방향을 쓰지 않는다. 정답 있는 문항이 34개를 넘어도 표시한 문항을 모두 쓴다(⑦(g)).
 - 시트가 숨긴 후보 파일과 같은 묶음인지(문항·후보 번호가 정확히 같은지), 표시 값이 yes/no/unsure인지, 표시한 줄에
   `labeler_id`가 있는지, 같은 문항의 같은 `dup_group`에 다른 표시가 없는지 먼저 확인하고 어긋나면 멈춘다.
 - 표시가 빈 후보가 있으면 멈춘다 — `--partial`이면 그 문항을 빼고 중간 결과로 표시한다(최종 보고에 쓰지 않는다).
@@ -79,6 +79,7 @@ def merge_labels(sheets: list[list[dict]]) -> dict[tuple[str, str], dict]:
                     "campno": r["campno"],
                     "dup_group": r["dup_group"],
                     "labels": [],
+                    "labelers": set(),
                     "agreed": set(),
                     "notes": [],
                 },
@@ -91,6 +92,7 @@ def merge_labels(sheets: list[list[dict]]) -> dict[tuple[str, str], dict]:
                 if not r.get("labeler_id", "").strip():
                     sys.exit(f"{key}: 표시했는데 labeler_id가 비어 있다")
                 m["labels"].append(label)
+                m["labelers"].add(r["labeler_id"].strip())
             if agreed:
                 m["agreed"].add(agreed)
             if r.get("note", "").strip():
@@ -139,7 +141,8 @@ def per_question(merged: dict, items: list[dict], partial: bool) -> tuple[list[d
             continue
         yes = [m["campno"] for m in rows if m["final"] == "yes"]
         notes = " ".join(n for m in rows for n in m["notes"])
-        q = {"action_no": it["action_no"], "answered": bool(yes)}
+        labelers = set().union(*(m["labelers"] for m in rows)) if rows else set()
+        q = {"action_no": it["action_no"], "answered": bool(yes), "labelers": len(labelers)}
         if not yes:
             q["reason"] = NO_PART if NO_PART in notes else "후보에 선례 없음"
         for method in METHODS:
@@ -181,7 +184,9 @@ def summarize(questions: list[dict]) -> dict:
     bm_only = sum(1 for q in answered if hit(q, "bm25", 10) and not hit(q, "b_rrf", 10))
     p = mcnemar_exact(b_only, bm_only)
     diff = (b_only - bm_only) / n_ans if n_ans else 0.0
-    if p < 0.05 and abs(diff) >= 0.03:
+    if n_ans < MIN_ANSWERED:
+        outcome = "미측정"  # 발췌해도 방향이 보이지 않게 — 숫자는 남기되 판정 문구는 내지 않는다
+    elif p < 0.05 and abs(diff) >= 0.03:
         outcome = "차이 있음 — " + ("B가 높음" if diff > 0 else "BM25가 높음")
     else:
         outcome = "우열 불확실"
@@ -193,6 +198,10 @@ def summarize(questions: list[dict]) -> dict:
         "outcome": outcome,
         "bootstrap95_for_description_only": bootstrap(answered),
     }
+    # 두 사람 이상이 표시한 문항 — 재확인 문항(안내서 4절)이 실제로 두 사람 표시로 채점됐는지 눈으로 확인한다
+    out["multi_labeler_questions"] = [
+        q["action_no"] for q in questions if q.get("labelers", 0) >= 2
+    ]
     return out
 
 
@@ -212,6 +221,12 @@ def agreement(sheet_a: list[dict], sheet_b: list[dict]) -> dict:
     """예비 합격선(안내서 4절) — 합의 전 표시(label)로 계산. agreed_label은 쓰지 않는다."""
     a = {(r["action_no"], r["campno"]): r.get("label", "").strip() for r in sheet_a}
     b = {(r["action_no"], r["campno"]): r.get("label", "").strip() for r in sheet_b}
+    ids_a = {r.get("labeler_id", "").strip() for r in sheet_a} - {""}
+    ids_b = {r.get("labeler_id", "").strip() for r in sheet_b} - {""}
+    if ids_a & ids_b:
+        sys.exit(
+            f"두 시트에 같은 labeler_id {sorted(ids_a & ids_b)}가 있다 — 서로 다른 두 사람의 시트여야 한다"
+        )
     if set(a) != set(b):
         sys.exit("두 시트의 문항·후보가 다르다 — 같은 예비 시트를 따로 표시한 것이어야 한다")
     if any(v not in LABELS for v in [*a.values(), *b.values()]):
@@ -270,6 +285,9 @@ def main(argv: list[str] | None = None) -> None:
         },
         "sheets": {str(s): sha256_of(s) for s in a.sheets},
         "candidates_code": cand.get("code"),
+        "numpy": __import__(
+            "numpy"
+        ).__version__,  # 부트스트랩 난수열은 numpy 판본에 따라 달라질 수 있다
     }
     out["note"] = (
         "후보 묶음(BM25 상위 20 + B 상위 20) 안에서만 잰 근사 시점 평가 — 일반적인 과거 선례 찾기 성능이 아니다(DEC-037)"

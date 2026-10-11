@@ -10,6 +10,7 @@ import pytest
 
 from scripts.defect_precedent import time_eval_score as ts
 
+PINNED_BOOTSTRAP = (-0.125, 0.325)  # 아래 부트스트랩 고정 테스트의 기댓값
 COLS = ["action_no", "campno", "dup_group", "label", "agreed_label", "labeler_id", "note"]
 
 
@@ -142,16 +143,57 @@ def test_score_stops_on_unlabeled_rows_unless_partial(tmp_path):
     assert skipped == ["PE2"] and len(qs) == 1
 
 
-def test_outcome_needs_both_p_value_and_003_difference():
-    def q(bm, b):
-        return {"answered": True, "bm25": 1 if bm else None, "b_rrf": 1 if b else None}
+def _q(bm, b):
+    return {"answered": True, "bm25": 1 if bm else None, "b_rrf": 1 if b else None}
 
-    many = [q(True, True)] * 34
-    out = ts.summarize(many + [q(False, True)] * 6)  # 6:0, n=40
+
+def test_outcome_needs_both_p_value_and_003_difference():
+    many = [_q(True, True)] * 34
+    out = ts.summarize(many + [_q(False, True)] * 6)  # 6:0, n=40
     assert out["hit@10_comparison"]["outcome"] == "차이 있음 — B가 높음"
-    out = ts.summarize(many + [q(False, True)] * 5)  # 5:0 — p ≥ 0.05
+    out = ts.summarize(many + [_q(False, True)] * 5)  # 5:0 — p ≥ 0.05
     assert out["hit@10_comparison"]["outcome"] == "우열 불확실"
     assert out["status"] == "측정"
+    # p는 아주 작지만 차이가 0.03 미만(25:5, n=1000 → 0.02) — 0.03 조건만으로 "우열 불확실"
+    big = [_q(True, True)] * 970 + [_q(False, True)] * 25 + [_q(True, False)] * 5
+    cmp = ts.summarize(big)["hit@10_comparison"]
+    assert cmp["mcnemar_exact_p"] < 0.05 and cmp["diff_b_minus_bm25"] == 0.02
+    assert cmp["outcome"] == "우열 불확실"
+
+
+def test_outcome_is_unmeasured_below_34_answered_even_if_lopsided():
+    """정답 있는 문항이 34개 미만이면 6:0이어도 방향을 내지 않는다(DEC-037 ⑤) — 발췌 오해 방지."""
+    out = ts.summarize([_q(False, True)] * 6)
+    assert out["status"].startswith("미측정")
+    assert out["hit@10_comparison"]["outcome"] == "미측정"
+
+
+def test_hit_at_k_boundary_is_inclusive():
+    """정답이 정확히 k위면 Hit@k, k+1위면 아니다."""
+    assert ts.hit({"bm25": 10}, "bm25", 10) and not ts.hit({"bm25": 11}, "bm25", 10)
+    assert ts.hit({"bm25": 1}, "bm25", 1) and not ts.hit({"bm25": None}, "bm25", 10)
+
+
+def test_bootstrap_is_pinned_to_dec037_seed_draws_and_percentiles():
+    """시드 20261008·10,000회·2.5/97.5 백분위(DEC-037 ⑦(e))가 바뀌면 이 값이 달라진다(2026-10-11 numpy로 고정)."""
+    answered = [_q(True, True)] * 20 + [_q(False, True)] * 12 + [_q(True, False)] * 8
+    assert ts.BOOT_SEED == 20261008 and ts.BOOT_N == 10_000
+    assert ts.bootstrap(answered) == PINNED_BOOTSTRAP
+
+
+def test_agreement_refuses_two_sheets_from_the_same_labeler():
+    rows = [row("PE1", "A", "yes", labeler_id="L-A1")]
+    with pytest.raises(SystemExit, match="같은 labeler_id"):
+        ts.agreement(rows, rows)
+
+
+def test_score_lists_questions_labeled_by_two_people(tmp_path):
+    cand = items(("PE1", {"A": {"bm25": 1}}), ("PE2", {"B": {"bm25": 1}}))
+    a = write_sheet(tmp_path / "a.csv", [row("PE1", "A", "yes"), row("PE2", "B", "yes")])
+    c = write_sheet(tmp_path / "c.csv", [row("PE1", "A", "yes", labeler_id="L-C1")])
+    merged = ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c)])
+    qs, _ = ts.per_question(merged, cand, partial=False)
+    assert ts.summarize(qs)["multi_labeler_questions"] == ["PE1"]
 
 
 def test_agreement_uses_raw_labels_and_lists_one_sided_yes(tmp_path):
@@ -189,3 +231,4 @@ def test_cli_score_prints_inputs_and_note(tmp_path, capsys):
         "commit": "abc"
     }
     assert "근사 시점 평가" in out["note"]
+    assert out["inputs"]["numpy"]
