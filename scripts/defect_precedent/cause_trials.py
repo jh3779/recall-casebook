@@ -48,7 +48,7 @@ UNKNOWN_INSTRUCTIONS = (
     "cause has not been identified, still under investigation). "
     "Do not judge whether a recall is required and do not add anything that is not in the text."
 )
-# 표본을 보기 전에 정한 규칙 — 원인을 모른다·조사 중·해당 없음을 말하는 흔한 표현 (정의는 rules.py — 서버와 함께 쓴다)
+# 원인 미확인 판별 규칙 UNKNOWN_RE(표본을 보기 전에 정함)의 정의는 rules.py — 서버와 함께 쓴다
 
 
 def rule_unknown(text: str) -> bool:

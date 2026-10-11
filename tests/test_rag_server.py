@@ -871,3 +871,24 @@ def test_parity_stats_builds_every_card_like_the_api_and_counts(tmp_path):
     assert got["flags_by_kind_and_status"] == {"unknown_expression·filled": 1}
     assert (got["investigation_linked_cards"], got["investigation_actions"]) == (2, 2)
     assert got["cards_with_2plus_investigations"] == 1
+
+
+def test_parity_cli_needs_exactly_one_mode_and_stops_when_cards_fail_the_model(
+    tmp_path, monkeypatch, capsys
+):
+    from server.rag import parity
+
+    for argv in ([], ["--stats", "--vectors", "db"], ["--stats", "--allow-drift"]):
+        with pytest.raises(SystemExit):
+            parity.main(argv)
+    pdfs = {"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32}
+    b = load_build(full_data_dir(tmp_path, CARDS, [cause("24V001", pdfs=pdfs)]))
+    monkeypatch.setattr(parity, "load_build", lambda: b)
+    import server.rag.investigations as inv_mod
+
+    monkeypatch.setattr(inv_mod, "load_investigations", lambda *a: {})
+    parity.main(["--stats"])  # 모두 통과하면 정상 종료
+    assert '"model_failed": 0' in capsys.readouterr().out
+    monkeypatch.setattr(parity, "card_stats", lambda *a: {"model_failed": 2})
+    with pytest.raises(SystemExit, match="2장"):
+        parity.main(["--stats"])

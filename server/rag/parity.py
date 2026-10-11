@@ -57,8 +57,9 @@ def card_stats(build, investigations: dict[str, list[dict]]) -> dict:
 
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--vectors", choices=["db", "local"])
-    p.add_argument(
+    mode = p.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--vectors", choices=["db", "local"])
+    mode.add_argument(
         "--stats",
         action="store_true",
         help="검색 점수 대신 전체 카드의 응답 모델 통과·조사 연결·꼬리표 수를 낸다(벡터·DB 불필요)",
@@ -69,6 +70,8 @@ def main(argv: list[str] | None = None) -> None:
         help="입력이 보고서와 달라도 점수를 낸다 — 재현이 아니라 재평가로 표시하고 보고서와 비교하지 않는다",
     )
     a = p.parse_args(argv)
+    if a.stats and a.allow_drift:
+        p.error("--allow-drift는 검색 점수(--vectors)에만 쓴다")
     if a.stats:
         from server.rag.investigations import load_investigations
 
@@ -79,8 +82,6 @@ def main(argv: list[str] | None = None) -> None:
         if out["model_failed"]:
             sys.exit(f"응답 모델을 통과하지 못한 카드 {out['model_failed']}장")
         return
-    if a.vectors is None:
-        p.error("--vectors(db|local) 또는 --stats 중 하나가 필요하다")
     from fastembed import TextEmbedding
 
     data = provenance()

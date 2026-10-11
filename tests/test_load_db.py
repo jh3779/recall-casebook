@@ -329,10 +329,23 @@ def test_full_refuses_causes_collected_from_another_card_snapshot(tmp_path, caps
     with pytest.raises(SystemExit) as e:
         load_db.load_files(d, "full", baseline)
     assert "recalls_sha256이 build.json과 다르다" in str(e.value)
-    # 2026-10-12 이전 수집분(기록 없음)은 경고만 하고 올린다
+    # 2026-10-12 이전 수집분(칸 자체가 없음)은 경고만 하고 올린다
     write_full(d, rows)
     assert load_db.load_files(d, "full", baseline)["build"]["causes_rows"] == 2
     assert "recalls_sha256이 없다" in capsys.readouterr().err
+    # 칸이 있는데 값이 비었거나 sha256 모양이 아니면 손상된 명세로 보고 멈춘다(대조를 건너뛰지 않는다)
+    for bad in (None, "", "abc"):
+        write_full(d, rows, recalls_sha256=bad)
+        with pytest.raises(SystemExit, match="sha256 값이 아니다"):
+            load_db.load_files(d, "full", baseline)
+
+
+@pytest.mark.parametrize("basis", [None, "", "   ", 7])
+def test_full_refuses_an_empty_text_basis(tmp_path, basis):
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001"), cause("23V002")], text_basis=basis)
+    with pytest.raises(SystemExit, match="text_basis가 비어 있다"):
+        load_db.load_files(d, "full", make_baseline(tmp_path))
 
 
 @pytest.mark.parametrize(

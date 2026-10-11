@@ -182,6 +182,18 @@ def causes_spec(data_dir: Path, kind: str, baseline: Path) -> dict:
             sys.exit(f"{MANIFEST_NAME}에 {key} 칸이 없다")
     if manifest["kind"] != "full":
         sys.exit(f"{MANIFEST_NAME}의 종류가 full이 아니다 ({manifest['kind']})")
+    if not isinstance(manifest["text_basis"], str) or not manifest["text_basis"].strip():
+        sys.exit(
+            f"{MANIFEST_NAME}의 text_basis가 비어 있다 — 원인 글 정리 방식을 밝히지 못하는 원인 파일은 올리지 않는다(DEC-047)"
+        )
+    # 칸이 아예 없는 것만 옛 명세(2026-10-12 이전 수집)로 본다 — 칸이 있는데 값이 이상하면 손상된 명세다
+    if "recalls_sha256" in manifest and not (
+        isinstance(manifest["recalls_sha256"], str)
+        and re.fullmatch(r"[0-9a-f]{64}", manifest["recalls_sha256"])
+    ):
+        sys.exit(
+            f"{MANIFEST_NAME}의 recalls_sha256이 sha256 값이 아니다 ({manifest['recalls_sha256']!r})"
+        )
     if len(manifest["failed_campaigns"]) != manifest["failures"]:
         sys.exit(
             f"{MANIFEST_NAME}: 실패 {manifest['failures']:,}건인데 실패 캠페인 목록은 {len(manifest['failed_campaigns']):,}개다"
@@ -222,14 +234,15 @@ def load_files(data_dir: Path, causes_kind: str, baseline: Path | None = None) -
     if causes_kind == "full":
         # 원인 파일은 recalls.jsonl로 수집 대상을 정한다 — 다른 카드 스냅샷의 원인 파일을 붙이지 않는다
         made_from = spec.get("recalls_sha256")
-        if made_from is None:
+        if "recalls_sha256" not in spec:
             print(
                 f"경고: {MANIFEST_NAME}에 recalls_sha256이 없다(2026-10-12 이전 수집) — 카드 스냅샷과의 대조를 건너뛴다",
                 file=sys.stderr,
             )
         elif made_from != build["recalls_sha256"]:
             sys.exit(
-                f"{MANIFEST_NAME}의 recalls_sha256이 build.json과 다르다 — 다른 카드 스냅샷으로 수집한 원인 파일이다 "
+                f"{MANIFEST_NAME}의 recalls_sha256이 build.json과 다르다 — 다른 카드 파일(recalls.jsonl)로 수집 대상을 정한 원인 파일이다. "
+                "build_id가 카드 파일 sha256을 포함하므로 카드 칸만 바뀌어도 `rclrpt all`로 다시 수집한다 "
                 f"(명세 {made_from[:12]}…, build {build['recalls_sha256'][:12]}…)"
             )
     snapshot = parse_iso(build["snapshot_date"], "build.json snapshot_date")
