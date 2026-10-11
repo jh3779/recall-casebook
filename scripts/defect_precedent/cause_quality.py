@@ -28,7 +28,8 @@
 같은 날 시트 변조 검사 칸에 `maker`·`components`를 더해, 이어 573 원본 PDF 칸(`source_file`·`pdf_sha256`·`submission_date`)을
 더해 같은 표본으로 두 번 더 다시 만들었다(표본 지문 `a0029d755f925dbe` 그대로, 표시 전).
 **두 출처를 한 시트에 섞어 30건(573 13 · 조사 요약 17)을 뽑던 규칙은 표시 전에 바꿨다**(2026-10-11 사용자 결정 — 6절 "엔진 2 원인 문장"
-숫자가 13건뿐이라 구간이 너무 넓어서, 이슈 #75). 섞은 시트는 쓰지 않는다. 바꾼 이유는 표시 결과가 아니라 표본 크기다.
+숫자가 13건뿐이라 구간이 너무 넓어서, 이슈 #75). 섞은 시트는 쓰지 않는다(`score`가 거부한다). 바꾼 이유는 표시 결과가 아니라 표본 크기다.
+같은 날 표시 기준도 기획 6절과 맞췄다: "원인이 맞는 문장인가"가 아니라 원인을 **말하는** 글인가(맞는지는 판정하지 않음 — 서비스 원칙 1).
 
 표시 기준(시트의 `label`): `yes` = 이 글이 이 리콜의 결함 원인(왜 생겼나)을 말한다 / `no` = 원인을 말하지 않는다(현상·조사 경과·
 "원인 미확인"만 등) / `unsure` = 판단하기 어렵다. 보고는 yes 비율(분모 = yes+no, unsure는 따로)과 Wilson 95% 구간을
@@ -331,6 +332,14 @@ def cmd_score(a) -> None:
     meta = json.loads(meta_path.read_text("utf-8")) if meta_path.exists() else None
     if meta is None:
         sys.exit(f"{meta_path.name}이 없다 — 시트를 만든 기록 없이 채점하지 않는다")
+    # 출처별 시트만 채점한다 — 버린 섞인 시트(메타에 source 없음)·출처가 섞인 줄은 거부(리뷰 acaa624). 줄 수는 표본 지문이 본다
+    if meta.get("source") not in SOURCES:
+        sys.exit(
+            f"메타에 출처(source)가 없거나 알 수 없다({meta.get('source')!r}) — 버린 옛 시트일 수 있다. 출처별 시트({list(SOURCES.values())})를 쓴다"
+        )
+    mixed = sorted({r.get("cause_source") for r in rows} - {meta["source"]})
+    if mixed:
+        sys.exit(f"시트에 다른 출처의 줄이 있다 {mixed} — 출처마다 따로 채점한다")
     changed = [
         f"{m['sample_no']}번 {k}: {m[k]!r} → {r.get(k)!r}"
         for m in meta.get("rows", [])

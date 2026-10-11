@@ -215,6 +215,7 @@ def test_cmd_score_names_the_row_and_field_a_spreadsheet_changed(tmp_path):
     meta = {
         "build_id": "b",
         "seed": cq.SEED,
+        "source": "573",
         "sample_sha256": cq.sample_fingerprint(rows),
         "rows": [{k: r[k] for k in ("sample_no", *cq.ROW_FIELDS[1:], "text_sha256")} for r in rows],
     }
@@ -239,3 +240,37 @@ def test_draw_takes_only_the_requested_source(source):
 def test_sheet_files_are_one_per_source():
     assert set(cq.SOURCES) == {"573", "조사 요약"}
     assert len(set(cq.SOURCES.values())) == 2
+
+
+def _write_sheet_and_meta(tmp_path, rows, meta_extra):
+    import csv
+    import json
+
+    sheet = tmp_path / cq.SOURCES["573"]
+    with sheet.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cq.COLS)
+        w.writeheader()
+        w.writerows(rows)
+    meta = {
+        "build_id": "b",
+        "seed": cq.SEED,
+        "sample_sha256": cq.sample_fingerprint(rows),
+        **meta_extra,
+    }
+    (tmp_path / (sheet.name + ".meta.json")).write_text(json.dumps(meta), encoding="utf-8")
+    return sheet
+
+
+def test_cmd_score_refuses_discarded_mixed_sheet_without_source(tmp_path):
+    """버린 섞인 시트(메타에 source 없음)를 오류 없이 채점하면 6절 숫자가 옛 13건으로 나온다 — 거부한다(리뷰 acaa624)."""
+    sheet = _write_sheet_and_meta(tmp_path, _labeled(), {})
+    with pytest.raises(SystemExit, match="출처"):
+        cq.main(["score", "--sheet", str(sheet)])
+
+
+def test_cmd_score_refuses_rows_from_another_source(tmp_path):
+    rows = _labeled()
+    rows[0] = {**rows[0], "cause_source": "조사 요약"}
+    sheet = _write_sheet_and_meta(tmp_path, rows, {"source": "573"})
+    with pytest.raises(SystemExit, match="다른 출처"):
+        cq.main(["score", "--sheet", str(sheet)])
