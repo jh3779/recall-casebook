@@ -236,3 +236,46 @@ def test_time_eval_questions_file_passes_rule6():
 
     d = json.loads(Path("scripts/defect_precedent/time_eval_questions.json").read_text("utf-8"))
     assert te.unusable_questions(d["pilot"]) == [] and te.unusable_questions(d["main"]) == []
+
+
+def _fake_git(outputs: dict, fail: Exception | None = None):
+    """`code_provenance`가 부르는 git 명령을 흉내 낸다 — 실제 저장소 상태와 무관하게 분기를 시험한다(#53 a)."""
+    import subprocess
+
+    def run(cmd, **_):
+        if fail is not None:
+            raise fail
+        return subprocess.CompletedProcess(cmd, 0, stdout=outputs[cmd[1]], stderr="")
+
+    return run
+
+
+def test_time_eval_code_provenance_stops_on_dirty_scripts_unless_allowed(monkeypatch):
+    import subprocess
+
+    from scripts.defect_precedent import time_eval_candidates as tec
+
+    monkeypatch.setattr(
+        subprocess, "run", _fake_git({"status": " M scripts/x.py", "rev-parse": "abc123"})
+    )
+    with pytest.raises(SystemExit, match="커밋하지 않은 변경"):
+        tec.code_provenance(allow_dirty=False)
+    got = tec.code_provenance(allow_dirty=True)
+    assert got["commit"] == "abc123" and got["dirty"] is True
+    assert set(got["script_sha256"]) == set(tec.CODE_FILES)
+
+
+@pytest.mark.parametrize("kind", ["exit_code", "git_missing"])
+def test_time_eval_code_provenance_stops_when_git_fails(monkeypatch, kind):
+    import subprocess
+
+    from scripts.defect_precedent import time_eval_candidates as tec
+
+    fail = (
+        subprocess.CalledProcessError(128, ["git", "status"])  # git이 0이 아닌 코드로 끝남
+        if kind == "exit_code"
+        else FileNotFoundError("git")  # git이 없음
+    )
+    monkeypatch.setattr(subprocess, "run", _fake_git({}, fail))
+    with pytest.raises(SystemExit, match="코드 판본을 기록할 수 없어"):
+        tec.code_provenance(allow_dirty=True)
