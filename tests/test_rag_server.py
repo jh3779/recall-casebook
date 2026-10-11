@@ -2,7 +2,7 @@
 
 DB·모델 없이 도는 테스트가 기본이다 — 가짜 임베딩 모델과 작은 build 폴더를 쓴다.
 `@pg` 테스트는 pgvector가 있는 Postgres에서 돈다 (tests/test_load_db.py와 같은 TEST_DATABASE_URL·REQUIRE_DB_TESTS 규칙):
-    docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -p 54329:5432 pgvector/pgvector:pg17
+    docker run -d --rm --name pgtest -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=lgcns_test -p 54329:5432 pgvector/pgvector:pg17
 """
 
 import hashlib
