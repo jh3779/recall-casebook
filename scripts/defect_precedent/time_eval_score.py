@@ -93,6 +93,7 @@ def merge_labels(sheets: list[list[dict]]) -> dict[tuple[str, str], dict]:
                     "labels": [],
                     "labelers": set(),
                     "agreed": set(),
+                    "agreed_by": set(),  # 합의값을 적은 표시자 — 이중 표시 문항은 두 사람 모두 적어야 한다
                     "notes": [],
                 },
             )
@@ -111,6 +112,7 @@ def merge_labels(sheets: list[list[dict]]) -> dict[tuple[str, str], dict]:
                 m["labelers"].add(r["labeler_id"].strip())
             if agreed:
                 m["agreed"].add(agreed)
+                m["agreed_by"].add(r.get("labeler_id", "").strip())
             if r.get("note", "").strip():
                 m["notes"].append(r["note"].strip())
     for key, m in merged.items():
@@ -280,6 +282,13 @@ def check_rechecked(merged: dict, recheck: set[str], flag: str = "agreement 결�
     if bad:
         sys.exit(
             f"두 사람이 표시해야 할 문항의 후보 {bad[:3]} 등 {len(bad)}개에 두 사람의 label 또는 agreed_label이 없다({flag}, 안내서 4절)"
+        )
+    # 합의값은 표시한 사람 모두가 자기 시트에 같은 값으로 적어야 한다 — 한 시트에만 있으면 옮기다 바뀐 값이 그대로
+    # 공식 점수가 된다(agreement의 합의 해소 기준과 같게, PR #72 Codex 38dd135). 값이 서로 다르면 merge_labels가 이미 멈춘다.
+    one_side = sorted(k for k, m in rows.items() if not m["labelers"] <= m["agreed_by"])
+    if one_side:
+        sys.exit(
+            f"두 사람이 표시해야 할 문항의 후보 {one_side[:3]} 등 {len(one_side)}개에 합의값이 한 사람 시트에만 있다 — 두 시트 모두에 같은 agreed_label을 적는다({flag}, 안내서 4절)"
         )
     # 원래 표시가 달랐다면 합의 이유를 note에 남긴다(안내서 4절 3항 — 어떤 근거로 정했는지 되짚게, PR #72 Codex)
     no_reason = sorted(k for k, m in rows.items() if len(set(m["labels"])) > 1 and not m["notes"])

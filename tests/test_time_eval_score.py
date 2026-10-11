@@ -745,13 +745,18 @@ def test_rechecked_questions_need_two_labelers_and_agreed_label_on_every_candida
     c_ok = write_sheet(
         tmp_path / "c3.csv", [row("R1", "A", "yes", labeler_id="L-C1", agreed_label="yes")]
     )
-    ts.check_rechecked(ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c_ok)]), {"R1"})
+    with pytest.raises(
+        SystemExit, match="한 사람 시트에만"
+    ):  # 합의값이 C 시트에만(PR #72 Codex 38dd135)
+        ts.check_rechecked(ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c_ok)]), {"R1"})
+    a_ok = write_sheet(tmp_path / "a3.csv", [row("R1", "A", "yes", agreed_label="yes")])
+    ts.check_rechecked(ts.merge_labels([ts.read_sheet(a_ok), ts.read_sheet(c_ok)]), {"R1"})
     with pytest.raises(SystemExit, match="시트에 없다"):
         ts.check_rechecked(ts.merge_labels([ts.read_sheet(a)]), {"R1", "R2"})
 
 
-def _recheck_setup(tmp_path):
-    """질문 파일 main 앞 3문항(R1~R3) + 그 밖의 Q4, 모두 한 사람(L-A1) 표시."""
+def _recheck_setup(tmp_path, agreed=()):
+    """질문 파일 main 앞 3문항(R1~R3) + 그 밖의 Q4, 모두 한 사람(L-A1) 표시. agreed: A 시트에도 합의값(yes)을 적을 문항."""
     q = tmp_path / "questions.json"
     q.write_text(
         json.dumps({"pilot": [], "main": [{"action_no": a} for a in ("R1", "R2", "R3", "Q4")]}),
@@ -763,7 +768,10 @@ def _recheck_setup(tmp_path):
         json.dumps({**_cand("main"), "items": items(*((r, {"A": {"bm25": 1}}) for r in acts))}),
         encoding="utf-8",
     )
-    sheet = write_sheet(tmp_path / "s.csv", [row(r, "A", "yes") for r in acts])
+    sheet = write_sheet(
+        tmp_path / "s.csv",
+        [row(r, "A", "yes", agreed_label="yes" if r in agreed else "") for r in acts],
+    )
     return q, ["score", "--candidates", str(p), "--questions", str(q), "--sheets", str(sheet)]
 
 
@@ -802,7 +810,7 @@ def test_cli_score_takes_double_label_scope_from_agreement_results(tmp_path, cap
 
 
 def test_cli_score_recheck_scope_needs_two_people_only_on_recheck_questions(tmp_path, capsys):
-    q, args = _recheck_setup(tmp_path)
+    q, args = _recheck_setup(tmp_path, agreed=("R1", "R2", "R3"))
     c = write_sheet(
         tmp_path / "c.csv",
         [row(r, "A", "yes", labeler_id="L-C1", agreed_label="yes") for r in ("R1", "R2", "R3")],
@@ -889,7 +897,7 @@ def test_bm25_higher_direction_uses_hit_at_10():
 
 def test_cli_score_failed_recheck_requires_every_question_from_two_people(tmp_path, capsys):
     """재확인도 미달하면 본 평가 전체를 두 사람이 표시한다(안내서 4절 3항) — 한 문항이라도 한 사람 표시면 멈춘다(PR #72 Codex)."""
-    q, args = _recheck_setup(tmp_path)
+    q, args = _recheck_setup(tmp_path, agreed=("R1", "R2", "R3"))
     acts = ("R1", "R2", "R3", "Q4")
     agr = [
         agreement_file(tmp_path, "pilot", False, q),
@@ -905,6 +913,7 @@ def test_cli_score_failed_recheck_requires_every_question_from_two_people(tmp_pa
         tmp_path / "c2.csv",
         [row(r, "A", "yes", labeler_id="L-C1", agreed_label="yes") for r in acts],
     )
+    q, args = _recheck_setup(tmp_path, agreed=acts)  # A 시트에도 전 문항 합의값
     ts.main([*args, str(c_all), "--agreement", *agr])
     out = json.loads(capsys.readouterr().out)
     assert out["labeled_questions"] == 4 and out["checks"]["double_label_scope"].startswith(
@@ -1025,7 +1034,7 @@ def test_cli_score_refuses_agreement_from_another_candidate_build(tmp_path):
 
 def test_cli_score_refuses_recheck_pass_with_unresolved_one_sided_yes(tmp_path):
     """재확인이 합격해도 한 사람만 yes인 후보가 미해소면 본 평가를 나눈 근거가 되지 않는다(PR #72 Codex f755b62)."""
-    q, args = _recheck_setup(tmp_path)
+    q, args = _recheck_setup(tmp_path, agreed=("R1", "R2", "R3"))
     cand = tmp_path / "candidates_main.json"
     c = write_sheet(
         tmp_path / "c.csv",
@@ -1039,3 +1048,18 @@ def test_cli_score_refuses_recheck_pass_with_unresolved_one_sided_yes(tmp_path):
         ts.main([*args, str(c), "--agreement", pilot_bad, unresolved])
     resolved = agreement_file(tmp_path, "recheck", True, q, "r2.json", cand=cand)
     ts.main([*args, str(c), "--agreement", pilot_bad, resolved])
+
+
+def test_cli_score_refuses_recheck_sheets_with_agreed_label_on_one_side_only(tmp_path):
+    """재확인 합격 결과는 정상이어도 채점 시트 한쪽에만 합의값이 있으면 공식 점수를 내지 않는다(PR #72 Codex 38dd135)."""
+    q, args = _recheck_setup(tmp_path)  # A 시트에는 합의값 없음
+    c = write_sheet(
+        tmp_path / "c.csv",
+        [row(r, "A", "yes", labeler_id="L-C1", agreed_label="yes") for r in ("R1", "R2", "R3")],
+    )
+    agr = [
+        agreement_file(tmp_path, "pilot", False, q),
+        agreement_file(tmp_path, "recheck", True, q, cand=tmp_path / "candidates_main.json"),
+    ]
+    with pytest.raises(SystemExit, match="한 사람 시트에만"):
+        ts.main([*args, str(c), "--agreement", *agr])
