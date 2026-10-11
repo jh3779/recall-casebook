@@ -412,11 +412,12 @@ def test_reproduces_the_numbers_of_the_2026_10_06_snapshot():
     or not (nhtsa.RAW_DIR / "FLAT_INV.zip").exists(),
     reason="573 전체 수집 결과(causes.jsonl·명세)나 원본이 없다 (data/는 커밋하지 않는다)",
 )
-def test_reproduces_the_full_573_numbers_of_2026_10_07():
+def test_reproduces_the_full_573_numbers():
     causes_path = nhtsa.OUT_DIR / "causes.jsonl"
     causes = why_stats.read_jsonl(causes_path)
     manifest = why_stats.verify_causes(causes_path, nhtsa.OUT_DIR / "causes.manifest.json", causes)
-    assert manifest["file_sha256"].startswith("d215ff583281")  # 이 값을 센 완성본
+    # 2026-10-11 재수집 완성본(DEC-047 — stated_unknown 원문 보존). 10/7 완성본 d215ff583281…과 filled·실패·줄 수가 같아 수치는 그대로다
+    assert manifest["file_sha256"].startswith("6089505793dd")
     # 기준 파일에 고정한 전수 결과의 값(대상 목록·실패 목록·원인 파일·명세 파일 지문)과 같다
     base_path = nhtsa.REPO_ROOT / "scripts/defect_precedent/baseline_2026-10-06.json"
     base = json.loads(base_path.read_text(encoding="utf-8"))

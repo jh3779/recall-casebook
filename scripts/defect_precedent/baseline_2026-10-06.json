@@ -3184,11 +3184,11 @@
   "rows": 11719,
   "failures": 18,
   "expect_campaigns": 11737,
-  "causes_sha256": "d215ff583281b5ed264d1a5a95006a96281b1ad47cf6e875781a7e184ba4336f",
+  "causes_sha256": "6089505793dd61a403adf021b44cce6b3e1d85d27ed59fb062d93d1266ea44dd",
   "expected_campaigns_sha256": "671d6465f273bdef4efc4a42748e26cff8d34c0f53a39c15bfa18090cc582175",
   "failed_campaigns_sha256": "8f8f7a311774e01ebaeaf936b4dab82d289861b5ab8a303f32afc1bf92d4be57",
-  "manifest_sha256": "ec55807ee2abe5afd52ab485a6f48f4f8741c23566b0d07d6a55949990845549",
-  "note": "2026-10-07 `rclrpt all`(11,737개 캠페인 전체 수집, 사람이 확인해 수용한 실패 18건)이 남긴 전수 결과의 고정값. expected_campaigns_sha256은 수집을 시작할 때 기록한 대상 목록의 지문(rclrpt.campaigns_digest 규칙), failed_campaigns_sha256은 수용한 실패 캠페인 목록의 지문, manifest_sha256은 causes.manifest.json 파일 전체의 sha256이다. why_stats --baseline --full이 대조한다 — 일부 캠페인만 모은 파일과 그에 맞춘 명세는 여기서 걸린다."
+  "manifest_sha256": "677d6c4b2393071f67a3dc46a2b370feb25cfe6f1160008ed94aef4d0cf97ea0",
+  "note": "2026-10-11 재수집(PR D·DEC-047 — 미보고·조사 중 서술을 stated_unknown으로 원문 보존)으로 원인 파일·명세 지문을 갱신했다(10/7 값: causes d215ff583281…, manifest ec55807ee2ab…). 대상 목록·실패 목록(18건)·줄 수와 filled 8,179건(글 변경 0)은 같아 아래 집계 수치는 그대로다. 2026-10-07 `rclrpt all`(11,737개 캠페인 전체 수집, 사람이 확인해 수용한 실패 18건)이 남긴 전수 결과의 고정값. expected_campaigns_sha256은 수집을 시작할 때 기록한 대상 목록의 지문(rclrpt.campaigns_digest 규칙), failed_campaigns_sha256은 수용한 실패 캠페인 목록의 지문, manifest_sha256은 causes.manifest.json 파일 전체의 sha256이다. why_stats --baseline --full이 대조한다 — 일부 캠페인만 모은 파일과 그에 맞춘 명세는 여기서 걸린다."
  },
  "note": "원본(NHTSA flat 파일)은 커밋하지 않는다. raw의 sha256과 같은 원본 사본(data/raw/nhtsa 또는 fetch가 보관한 data/raw/nhtsa.<받은 시각>)이 있어야 bm25_baseline --baseline이 '재현'으로 실행된다. 사본이 없으면 --allow-drift로 같은 질문 번호만 재평가한다. rclrpt_sample은 2026-10-06 당시 판본 목록(582개)과 각 PDF의 sha256이다 — --baseline은 이 목록만 받아 sha256을 확인한다.",
  "expected": {
