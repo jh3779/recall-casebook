@@ -4,6 +4,8 @@
     # 예비 5문항 두 사람 일치(합격선, docs/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
     uv run python -m scripts.defect_precedent.time_eval_score agreement --phase pilot --candidates <candidates_pilot.json> --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
     #   결과를 파일로 남긴다: … agreement … > agreement_pilot.json
+    #   합격해도 한 사람만 yes인 후보는 두 시트에 같은 agreed_label과 합의 이유(note)를 적은 뒤 agreement를 다시 낸다
+    #   (resolution_complete가 참이어야 score가 받는다 — 일치율은 label로만 계산하므로 다시 내도 pass는 그대로)
     # 예비 미달이면 재확인 3문항(안내서 4절 — 질문 파일 main 앞 3개)만 추린 두 사람의 시트로:
     #   agreement --phase recheck --candidates <candidates_main.json> --sheets … > agreement_recheck.json
     # score는 agreement 결과 파일을 필수로 받아 이중 표시 검사 범위를 스스로 정한다(옵션으로 고르지 않는다):
@@ -288,7 +290,11 @@ def check_rechecked(merged: dict, recheck: set[str], flag: str = "agreement 결�
 
 
 def double_label_scope(
-    agreements: list[dict], items: list[dict], questions: Path
+    agreements: list[dict],
+    items: list[dict],
+    questions: Path,
+    cands: list[dict],
+    cand_shas: set[str],
 ) -> tuple[str, set[str]]:
     """agreement 결과(예비·재확인)의 phase·pass로 이중 표시 검사 범위를 정한다 — 사람이 옵션을 빠뜨려 한 사람 표시로
     정식 점수가 나오지 않게(PR #72 Codex 2da97c4·7301978). 안내서 4절: 예비 합격 → 없음, 예비 미달 → 재확인 3문항을 두 사람이,
@@ -303,6 +309,15 @@ def double_label_scope(
             sys.exit(
                 "agreement 결과가 이 질문 파일(--questions)로 만든 것이 아니다 — 같은 질문 파일로 다시 낸다"
             )
+        used = (g.get("inputs") or {}).get("candidates") or {}
+        if diff := build_diff(cands[0], used):
+            sys.exit(
+                f"agreement 결과의 후보 판본이 지금 채점하는 후보와 {diff}가 다르거나 없다 — 같은 데이터·스크립트·모델로 다시 낸다(DEC-037 ⑦(c))"
+            )
+        if g["phase"] == "recheck" and used.get("sha256") not in cand_shas:
+            sys.exit(
+                "재확인 agreement 결과가 지금 채점하는 본 평가 후보 파일로 만든 것이 아니다(안내서 4절 3항)"
+            )
         by_phase.setdefault(g["phase"], []).append(g)
     if len(by_phase.get("pilot", [])) != 1 or len(by_phase.get("recheck", [])) > 1:
         sys.exit(
@@ -310,6 +325,11 @@ def double_label_scope(
         )
     pilot, recheck = by_phase["pilot"][0], (by_phase.get("recheck") or [None])[0]
     if pilot["pass"]:
+        if pilot.get("resolution_complete") is not True:
+            sys.exit(
+                f"예비가 합격했지만 한 사람만 yes로 표시한 후보 {(pilot.get('unresolved_one_sided_yes') or [])[:3]}가 합의로 해소되지 않았다 — "
+                "두 시트에 agreed_label·합의 이유(note)를 적고 agreement를 다시 낸다(안내서 4절 2항)"
+            )
         if recheck is not None:
             sys.exit(
                 "예비가 합격인데 재확인 결과가 있다 — 어느 절차를 따랐는지 확인한다(안내서 4절)"
@@ -374,6 +394,23 @@ def agreement(
     cand_rate = round(sum(a[k] == b[k] for k in focus) / len(focus), 3) if focus else None
     one_sided_yes = sorted(k for k in a if (a[k] == "yes") != (b[k] == "yes"))
     passed = all(q_same) and (cand_rate is None or cand_rate >= 0.8)
+    # 합격해도 한 사람만 yes인 후보는 합의로 해소한 뒤 본 평가를 나눈다(안내서 4절 2항) — 두 시트의 agreed_label이 같은
+    # yes/no/unsure이고 합의 이유(note)가 있어야 해소. 일치율 계산에는 쓰지 않는다(위 label만).
+    rows = {}
+    for r in [*sheet_a, *sheet_b]:
+        k = (r["action_no"], r["campno"])
+        agreed = r.get("agreed_label", "").strip()
+        rows.setdefault(k, {"agreed": set(), "note": False})
+        if agreed:
+            rows[k]["agreed"].add(agreed)
+        rows[k]["note"] |= bool(r.get("note", "").strip())
+    unresolved = [
+        list(k)
+        for k in one_sided_yes
+        if len(rows[k]["agreed"]) != 1
+        or not rows[k]["agreed"] <= set(LABELS)
+        or not rows[k]["note"]
+    ]
     return {
         "questions": len(actions),
         "question_level_same": sum(q_same),
@@ -381,6 +418,8 @@ def agreement(
         "candidate_agreement": cand_rate,
         "pass": passed,
         "one_sided_yes_to_resolve": [list(k) for k in one_sided_yes],
+        "unresolved_one_sided_yes": unresolved,
+        "resolution_complete": not unresolved,
     }
 
 
@@ -390,6 +429,21 @@ def agreement(
 SAME_BUILD_KEYS = ("data", "model", "top")
 # 임베딩은 판본·모델 지문만 본다 — cache·cache_verified는 캐시 파일이 있었는지라 같은 계산이어도 회차마다 다를 수 있다
 EMBEDDING_KEYS = ("fastembed", "model_fingerprint")
+
+
+def build_diff(first: dict, c: dict) -> list[str]:
+    """두 후보 파일(또는 agreement 결과에 적힌 후보 판본)이 같은 데이터·스크립트·모델인지 — 다르거나 없는 항목 목록."""
+    diff = [k for k in SAME_BUILD_KEYS if k not in first or first.get(k) != c.get(k)]
+    diff += [
+        f"embedding.{k}"
+        for k in EMBEDDING_KEYS
+        if (first.get("embedding") or {}).get(k) is None
+        or (first.get("embedding") or {}).get(k) != (c.get("embedding") or {}).get(k)
+    ]
+    script = (first.get("code") or {}).get("script_sha256")
+    if script is None or script != (c.get("code") or {}).get("script_sha256"):
+        diff.append("code.script_sha256")
+    return diff
 
 
 def check_same_build(cands: list[dict], partial: bool = False) -> None:
@@ -402,18 +456,7 @@ def check_same_build(cands: list[dict], partial: bool = False) -> None:
         return
     first = cands[0]
     for c in cands[1:]:
-        diff = [k for k in SAME_BUILD_KEYS if k not in first or first.get(k) != c.get(k)]
-        diff += [
-            f"embedding.{k}"
-            for k in EMBEDDING_KEYS
-            if (first.get("embedding") or {}).get(k) is None
-            or (first.get("embedding") or {}).get(k) != (c.get("embedding") or {}).get(k)
-        ]
-        if (first.get("code") or {}).get("script_sha256") is None or (first.get("code") or {}).get(
-            "script_sha256"
-        ) != (c.get("code") or {}).get("script_sha256"):
-            diff.append("code.script_sha256")
-        if diff:
+        if diff := build_diff(first, c):
             sys.exit(
                 f"후보 파일 {first.get('set')}·{c.get('set')}의 {diff}가 없거나 다르다 — 같은 데이터·스크립트·모델로 만든 회차만 합친다(DEC-037 ⑦(c))"
             )
@@ -478,6 +521,8 @@ def main(argv: list[str] | None = None) -> None:
                 "sha256": sha256_of(a.candidates),
                 "set": cand_meta.get("set"),
                 "code": cand_meta.get("code"),
+                # score가 지금 채점하는 후보와 같은 판본에서 낸 결과인지 대조한다(PR #72 Codex 110cf87)
+                **{k: cand_meta.get(k) for k in (*SAME_BUILD_KEYS, "embedding")},
             },
             "questions": {"file": str(a.questions), "sha256": sha256_of(a.questions)},
         }
@@ -499,7 +544,9 @@ def main(argv: list[str] | None = None) -> None:
     merged = merge_labels([read_sheet(s) for s in a.sheets])
     check_against_candidates(merged, items)
     agreements = [json.loads(g.read_text(encoding="utf-8")) for g in a.agreement]
-    scope, must_double = double_label_scope(agreements, items, a.questions)
+    scope, must_double = double_label_scope(
+        agreements, items, a.questions, cands, {sha256_of(c) for c in a.candidates}
+    )
     if must_double:
         check_rechecked(merged, must_double, f"이중 표시 범위: {scope}")
     questions, skipped = per_question(merged, items, a.partial)

@@ -5,6 +5,7 @@
 
 import csv
 import json
+from pathlib import Path
 
 import pytest
 
@@ -23,11 +24,22 @@ def write_sheet(path, rows):
     return path
 
 
-def agreement_file(tmp_path, phase, passed, questions=None, name=None):
-    """agreement 출력 모양 그대로 — score가 phase·pass와 질문 파일 해시를 본다."""
+def agreement_file(tmp_path, phase, passed, questions=None, name=None, cand=None, **extra):
+    """agreement 출력 모양 그대로 — score가 phase·pass·합의 해소, 질문 파일 해시, 후보 판본(_cand와 같은 판본)을 본다.
+    cand: 재확인 결과가 쓴 후보 파일(score의 본 평가 후보 파일과 해시 대조)."""
     q = questions or ts.QUESTIONS
     p = tmp_path / (name or f"agreement_{phase}.json")
-    out = {"phase": phase, "pass": passed, "inputs": {"questions": {"sha256": ts.sha256_of(q)}}}
+    used = {
+        **{k: v for k, v in _cand(phase).items()},
+        "sha256": ts.sha256_of(cand) if cand else None,
+    }
+    out = {
+        "phase": phase,
+        "pass": passed,
+        "resolution_complete": True,
+        "inputs": {"questions": {"sha256": ts.sha256_of(q)}, "candidates": used},
+        **extra,
+    }
     p.write_text(json.dumps(out), encoding="utf-8")
     return str(p)
 
@@ -252,8 +264,7 @@ def test_cli_score_prints_inputs_and_note(tmp_path, capsys):
     cand_path.write_text(
         json.dumps(
             {
-                "set": "main",
-                "code": {"commit": "abc"},
+                **_cand("main", code={"commit": "abc", "script_sha256": {"x.py": "s"}}),
                 "items": items(("PE1", {"A": {"bm25": 1, "b_rrf": 2}})),
             }
         ),
@@ -265,7 +276,7 @@ def test_cli_score_prints_inputs_and_note(tmp_path, capsys):
     )
     out = json.loads(capsys.readouterr().out)
     (cand,) = out["inputs"]["candidates"]
-    assert cand["set"] == "main" and cand["code"] == {"commit": "abc"} and len(cand["sha256"]) == 64
+    assert cand["set"] == "main" and cand["code"]["commit"] == "abc" and len(cand["sha256"]) == 64
     assert "근사 시점 평가" in out["note"]
     assert out["inputs"]["numpy"]
 
@@ -761,8 +772,12 @@ def test_cli_score_takes_double_label_scope_from_agreement_results(tmp_path, cap
     q, args = _recheck_setup(tmp_path)
     pilot_ok = agreement_file(tmp_path, "pilot", True, q, "p_ok.json")
     pilot_bad = agreement_file(tmp_path, "pilot", False, q, "p_bad.json")
-    recheck_ok = agreement_file(tmp_path, "recheck", True, q, "r_ok.json")
-    recheck_bad = agreement_file(tmp_path, "recheck", False, q, "r_bad.json")
+    recheck_ok = agreement_file(
+        tmp_path, "recheck", True, q, "r_ok.json", cand=tmp_path / "candidates_main.json"
+    )
+    recheck_bad = agreement_file(
+        tmp_path, "recheck", False, q, "r_bad.json", cand=tmp_path / "candidates_main.json"
+    )
     ts.main([*args, "--agreement", pilot_ok])  # 예비 합격 — 한 사람 표시로 채점
     checks = json.loads(capsys.readouterr().out)["checks"]
     assert checks["double_label_scope"].startswith("없음") and checks["agreements"][0]["pass"]
@@ -794,7 +809,7 @@ def test_cli_score_recheck_scope_needs_two_people_only_on_recheck_questions(tmp_
     )
     agr = [
         agreement_file(tmp_path, "pilot", False, q),
-        agreement_file(tmp_path, "recheck", True, q),
+        agreement_file(tmp_path, "recheck", True, q, cand=tmp_path / "candidates_main.json"),
     ]
     ts.main([*args, str(c), "--agreement", *agr])  # Q4는 한 사람 표시여도 된다
     out = json.loads(capsys.readouterr().out)
@@ -878,7 +893,7 @@ def test_cli_score_failed_recheck_requires_every_question_from_two_people(tmp_pa
     acts = ("R1", "R2", "R3", "Q4")
     agr = [
         agreement_file(tmp_path, "pilot", False, q),
-        agreement_file(tmp_path, "recheck", False, q),
+        agreement_file(tmp_path, "recheck", False, q, cand=tmp_path / "candidates_main.json"),
     ]
     c_part = write_sheet(
         tmp_path / "c.csv",
@@ -922,4 +937,83 @@ def test_cli_agreement_records_candidates_and_questions_files(tmp_path, capsys):
     )
     out = json.loads(capsys.readouterr().out)["inputs"]
     assert out["candidates"]["set"] == "pilot" and len(out["candidates"]["sha256"]) == 64
+    assert {"data", "model", "top", "embedding", "code"} <= set(
+        out["candidates"]
+    )  # score가 판본을 대조한다
     assert len(out["questions"]["sha256"]) == 64 and len(out["sheets"]) == 2
+
+
+def test_agreement_reports_whether_one_sided_yes_was_resolved():
+    """합격해도 한 사람만 yes인 후보는 두 시트의 같은 agreed_label + 합의 이유(note)가 있어야 해소(안내서 4절 2항, PR #72 Codex 110cf87)."""
+    keys = [("PE1", f"C{i}") for i in range(5)]
+    a = dict.fromkeys(keys, "unsure")
+    a[("PE1", "C0")] = "yes"
+    c = {
+        **a,
+        ("PE1", "C0"): "unsure",
+        ("PE1", "C1"): "yes",
+    }  # 둘 다 정답 있음이지만 다른 후보를 yes로
+    rows_a, rows_c = _agree_rows("L-A1", a), _agree_rows("L-C1", c)
+    out = ts.agreement(rows_a, rows_c, expected={"PE1"})
+    assert out["resolution_complete"] is False
+    assert out["unresolved_one_sided_yes"] == [["PE1", "C0"], ["PE1", "C1"]]
+    for r in [*rows_a, *rows_c]:
+        if r["campno"] in ("C0", "C1"):
+            r["agreed_label"] = "yes"
+    assert (
+        ts.agreement(rows_a, rows_c, expected={"PE1"})["resolution_complete"] is False
+    )  # 이유 없음
+    rows_a[0]["note"] = "같은 부품·같은 원인 서술"
+    rows_a[1]["note"] = "같은 부품"
+    out = ts.agreement(rows_a, rows_c, expected={"PE1"})
+    assert out["resolution_complete"] is True and out["unresolved_one_sided_yes"] == []
+    typo = [dict(r, agreed_label="yse") if r["campno"] == "C0" else r for r in rows_a]
+    typo_c = [dict(r, agreed_label="yse") if r["campno"] == "C0" else r for r in rows_c]
+    assert ts.agreement(typo, typo_c, expected={"PE1"})["resolution_complete"] is False  # 오타
+    rows_c[1]["agreed_label"] = "no"  # 두 시트의 합의값이 다르면 해소 아님
+    assert ts.agreement(rows_a, rows_c, expected={"PE1"})["resolution_complete"] is False
+
+
+def test_cli_score_refuses_pilot_pass_with_unresolved_one_sided_yes(tmp_path):
+    q, args = _recheck_setup(tmp_path)
+    unresolved = agreement_file(
+        tmp_path,
+        "pilot",
+        True,
+        q,
+        "p.json",
+        resolution_complete=False,
+        unresolved_one_sided_yes=[["PE1", "C0"]],
+    )
+    with pytest.raises(SystemExit, match="합의로 해소되지 않았다"):
+        ts.main([*args, "--agreement", unresolved])
+    old = tmp_path / "old.json"  # 해소 여부를 기록하지 않은 옛 결과도 받지 않는다
+    d = json.loads(Path(agreement_file(tmp_path, "pilot", True, q, "o.json")).read_text("utf-8"))
+    del d["resolution_complete"]
+    old.write_text(json.dumps(d), encoding="utf-8")
+    with pytest.raises(SystemExit, match="합의로 해소되지 않았다"):
+        ts.main([*args, "--agreement", str(old)])
+
+
+def test_cli_score_refuses_agreement_from_another_candidate_build(tmp_path):
+    """다른 데이터·스크립트·모델로 만든 후보의 agreement 결과는 받지 않는다(DEC-037 ⑦(c), PR #72 Codex 110cf87)."""
+    q, args = _recheck_setup(tmp_path)
+    other_model = agreement_file(tmp_path, "pilot", True, q, "m.json")
+    d = json.loads(Path(other_model).read_text("utf-8"))
+    d["inputs"]["candidates"]["model"] = "m2"
+    Path(other_model).write_text(json.dumps(d), encoding="utf-8")
+    with pytest.raises(SystemExit, match=r"후보 판본.*model"):
+        ts.main([*args, "--agreement", other_model])
+    d["inputs"].pop("candidates")  # 판본 정보가 없는 결과
+    Path(other_model).write_text(json.dumps(d), encoding="utf-8")
+    with pytest.raises(SystemExit, match="후보 판본"):
+        ts.main([*args, "--agreement", other_model])
+    # 재확인 결과는 지금 채점하는 본 평가 후보 파일 그 자체로 만든 것이어야 한다
+    elsewhere = tmp_path / "candidates_other.json"
+    elsewhere.write_text(json.dumps({**_cand("main"), "items": []}), encoding="utf-8")
+    agr = [
+        agreement_file(tmp_path, "pilot", False, q),
+        agreement_file(tmp_path, "recheck", True, q, cand=elsewhere),
+    ]
+    with pytest.raises(SystemExit, match="본 평가 후보 파일로 만든 것이 아니다"):
+        ts.main([*args, "--agreement", *agr])
