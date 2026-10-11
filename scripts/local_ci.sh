@@ -16,8 +16,9 @@
 # 이 브랜치의 **열린** PR이 있으면 gh로 제목·본문을 읽어 제목 규칙과 PR 본문 검사(변경 요약·검증 방법 수치 등)도 돈다.
 # DB 테스트(tests/test_load_db.py·test_rag_server.py의 pg 테스트)는 TEST_DATABASE_URL이 있을 때만 돈다 — CI는 Postgres 17(pgvector 포함)을 띄워 REQUIRE_DB_TESTS=1로 돈다.
 #   ⚠️ 이 테스트는 대상 DB의 public 스키마를 지운다. 반드시 일회용 컨테이너에만 쓴다:
-#      docker run -d --rm --name lgcns-test-pg -e POSTGRES_PASSWORD=localtest -p 54331:5432 pgvector/pgvector:pg17
-#      TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54331/postgres bash scripts/local_ci.sh
+#      docker run -d --rm --name lgcns-test-pg -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=lgcns_test -p 54331:5432 pgvector/pgvector:pg17
+#      TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54331/lgcns_test bash scripts/local_ci.sh
+#   DB 이름이 lgcns_test가 아니거나 호스트가 로컬이 아니면 DB 테스트를 돌리지 않는다(scripts/ci/db_guard.py).
 # 프런트(frontend/) 검사는 CI 필수가 아니라(frontend-ci.yml) 여기 넣지 않았다 — frontend/package.json이 생기는 PR에서 함께 넣는다.
 # AGENTS.md 6절의 훅 우회 금지(--no-verify, LEFTHOOK=0)는 CI를 끈 동안에도 그대로다.
 
@@ -49,9 +50,9 @@ if [[ "$REQUIRE_PR" == "1" ]]; then
     echo "$UNTRACKED"
     exit 1
   fi
-  # DB 테스트는 대상 DB의 public 스키마를 지운다 — 일회용 로컬 컨테이너가 아니면 돌리지 않는다
+  # DB 테스트는 대상 DB의 public 스키마를 지운다 — 전용 시험 DB(로컬 + 이름 lgcns_test)가 아니면 돌리지 않는다
   if [[ -n "${TEST_DATABASE_URL:-}" ]] && ! (cd "$ROOT" && uv run --quiet python -m scripts.ci.db_guard "$TEST_DATABASE_URL"); then
-    echo "❌ TEST_DATABASE_URL이 실제로 접속할 곳(host·hostaddr)이 localhost가 아니다 — 일회용 로컬 컨테이너만 쓴다(머리말)"
+    echo "❌ TEST_DATABASE_URL이 전용 시험 DB가 아니다(로컬 host·hostaddr·PGHOSTADDR, DB 이름 lgcns_test, PGSERVICE 없음 — scripts/ci/db_guard.py) — 머리말의 일회용 컨테이너를 쓴다"
     exit 1
   fi
   # 병합 근거로 쓸 때는 CI가 보던 "main에 합친 상태"와 맞춘다 — 최신 origin/main이 HEAD에 들어 있어야 한다
