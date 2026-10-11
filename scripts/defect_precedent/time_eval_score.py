@@ -2,8 +2,8 @@
 
 사용법:
     # 예비 5문항 두 사람 일치(합격선, docs/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
-    uv run python -m scripts.defect_precedent.time_eval_score agreement --expect 5 --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
-    # 재확인 3문항(안내서 4절)은 그 3문항만 추린 두 사람의 시트로: agreement --expect 3 --sheets <A 3문항.csv> <C 3문항.csv>
+    uv run python -m scripts.defect_precedent.time_eval_score agreement --phase pilot --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
+    # 재확인 3문항(안내서 4절 — 질문 파일 main 앞 3개)은 그 3문항만 추린 두 사람의 시트로: agreement --phase recheck --sheets …
     # 본 평가 채점 — 나눠 표시한 시트 여러 개를 합친다(같은 후보를 둘이 표시했으면 agreed_label 필요)
     uv run python -m scripts.defect_precedent.time_eval_score score \
         --candidates <candidates_main.json> [<candidates_<대체 회차>.json> ...] --sheets <시트1.csv> [<시트2.csv> ...] [--partial]
@@ -99,6 +99,7 @@ def merge_labels(sheets: list[list[dict]]) -> dict[tuple[str, str], dict]:
                     sys.exit(f"{key}: 표시했는데 labeler_id가 비어 있다")
                 m["labels"].append(label)
                 m["labelers"].add(r["labeler_id"].strip())
+                m.setdefault("by_labeler", {})[r["labeler_id"].strip()] = label
             if agreed:
                 m["agreed"].add(agreed)
             if r.get("note", "").strip():
@@ -152,6 +153,14 @@ def per_question(merged: dict, items: list[dict], partial: bool) -> tuple[list[d
         yes = [m["campno"] for m in rows if m["final"] == "yes"]
         notes = " ".join(n for m in rows for n in m["notes"])
         labelers = set().union(*(m["labelers"] for m in rows)) if rows else set()
+        partial_double = sorted(
+            lab for lab in labelers if any(lab not in m["labelers"] for m in rows)
+        )
+        if len(labelers) >= 2 and partial_double:
+            # 두 사람이 표시한 문항(재확인)은 각자 모든 후보를 표시해야 한다 — 일부만 겹치면 나머지가 한 사람 표시로 채점된다
+            sys.exit(
+                f"{it['action_no']}: 두 사람 이상이 표시했는데 {partial_double}가 일부 후보를 표시하지 않았다(안내서 4절)"
+            )
         q = {"action_no": it["action_no"], "answered": bool(yes), "labelers": len(labelers)}
         if not yes:
             all_unsure = all(m["final"] == "unsure" for m in rows)
@@ -230,9 +239,20 @@ def bootstrap(answered: list[dict]) -> tuple[float, float] | None:
     return round(float(lo), 3), round(float(hi), 3)
 
 
-def agreement(sheet_a: list[dict], sheet_b: list[dict], expect: int) -> dict:
+QUESTIONS = Path(__file__).with_name("time_eval_questions.json")
+RECHECK_N = 3  # 안내서 4절 3항: 최종 main 목록의 앞 3문항
+
+
+def phase_actions(phase: str, questions: Path = QUESTIONS) -> set[str]:
+    """함께 표시하기로 정해진 문항(안내서 4절) — 예비는 질문 파일의 pilot 전부, 재확인은 main 앞 3개(내용을 보고 고르지 않는다)."""
+    q = json.loads(questions.read_text(encoding="utf-8"))
+    rows = q["pilot"] if phase == "pilot" else q["main"][:RECHECK_N]
+    return {r["action_no"] for r in rows}
+
+
+def agreement(sheet_a: list[dict], sheet_b: list[dict], expected: set[str]) -> dict:
     """예비 합격선(안내서 4절) — 합의 전 표시(label)로 계산. agreed_label은 쓰지 않는다.
-    expect = 두 사람이 함께 표시하기로 한 문항 수(예비 5, 재확인 3) — 덜 표시한 시트로 합격이 나오지 않게."""
+    expected = 함께 표시하기로 정해진 문항 번호(`phase_actions`) — 덜 표시했거나 다른 문항을 고른 시트로 합격이 나오지 않게."""
     for name, sheet in (("첫째", sheet_a), ("둘째", sheet_b)):
         keys = [(r["action_no"], r["campno"]) for r in sheet]
         if len(keys) != len(set(keys)):
@@ -257,9 +277,9 @@ def agreement(sheet_a: list[dict], sheet_b: list[dict], expect: int) -> dict:
     if any(v not in LABELS for v in [*a.values(), *b.values()]):
         sys.exit("표시가 비었거나 yes/no/unsure가 아닌 후보가 있다 — 둘 다 모두 표시한 뒤 계산한다")
     actions = sorted({k[0] for k in a})
-    if len(actions) != expect:
+    if set(actions) != expected:
         sys.exit(
-            f"시트의 문항이 {len(actions)}개다 — 함께 표시하기로 한 {expect}개와 다르다(--expect)"
+            f"시트의 문항 {actions}이 정해진 문항 {sorted(expected)}과 다르다(--phase, 안내서 4절)"
         )
     q_same = [
         any(a[k] == "yes" for k in a if k[0] == act) == any(b[k] == "yes" for k in b if k[0] == act)
@@ -279,14 +299,45 @@ def agreement(sheet_a: list[dict], sheet_b: list[dict], expect: int) -> dict:
     }
 
 
+# 후보 파일을 합칠 때 같아야 하는 것(DEC-037 ⑦(c) — 같은 데이터·같은 스크립트·같은 모델). 질문 파일 해시는 대체 회차가
+# 질문 파일을 갱신해 만들어지므로(⑦(c)) 회차마다 다른 것이 정상이라 비교하지 않는다. 커밋 해시도 squash 병합 뒤 달라질 수 있어 빼고
+# 스크립트 내용 해시로 본다.
+SAME_BUILD_KEYS = ("data", "model", "embedding", "top")
+
+
+def check_same_build(cands: list[dict], partial: bool = False) -> None:
+    dirty = [c.get("set") for c in cands if (c.get("code") or {}).get("dirty")]
+    if dirty and not partial:
+        sys.exit(
+            f"커밋하지 않은 코드로 만든 후보 파일이다 {dirty} — 정식 채점에 쓰지 않는다(중간 결과는 --partial)"
+        )
+    if len(cands) < 2:
+        return
+    first = cands[0]
+    for c in cands[1:]:
+        diff = [k for k in SAME_BUILD_KEYS if k not in first or first.get(k) != c.get(k)]
+        if (first.get("code") or {}).get("script_sha256") is None or (first.get("code") or {}).get(
+            "script_sha256"
+        ) != (c.get("code") or {}).get("script_sha256"):
+            diff.append("code.script_sha256")
+        if diff:
+            sys.exit(
+                f"후보 파일 {first.get('set')}·{c.get('set')}의 {diff}가 없거나 다르다 — 같은 데이터·스크립트·모델로 만든 회차만 합친다(DEC-037 ⑦(c))"
+            )
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = p.add_subparsers(dest="cmd", required=True)
     ag = sub.add_parser("agreement", help="예비 5문항 두 사람 일치(합격선)")
     ag.add_argument("--sheets", type=Path, nargs=2, required=True)
     ag.add_argument(
-        "--expect", type=int, required=True, help="함께 표시한 문항 수(예비 5, 재확인 3)"
+        "--phase",
+        choices=["pilot", "recheck"],
+        required=True,
+        help="예비 5문항 / 재확인 3문항(안내서 4절)",
     )
+    ag.add_argument("--questions", type=Path, default=QUESTIONS, help="질문 파일(기본: 커밋된 것)")
     sc = sub.add_parser("score", help="본 평가 채점")
     sc.add_argument(
         "--candidates",
@@ -300,12 +351,16 @@ def main(argv: list[str] | None = None) -> None:
     a = p.parse_args(argv)
 
     if a.cmd == "agreement":
-        out = agreement(read_sheet(a.sheets[0]), read_sheet(a.sheets[1]), a.expect)
+        out = agreement(
+            read_sheet(a.sheets[0]), read_sheet(a.sheets[1]), phase_actions(a.phase, a.questions)
+        )
+        out["phase"] = a.phase
         out["inputs"] = {str(s): sha256_of(s) for s in a.sheets}
         print(json.dumps(out, ensure_ascii=False, indent=1))
         return
 
     cands = [json.loads(c.read_text(encoding="utf-8")) for c in a.candidates]
+    check_same_build(cands, partial=a.partial)
     if any(c["set"] == "pilot" for c in cands):
         sys.exit(
             "예비(pilot) 후보 파일은 점수 분모에 넣지 않는다(DEC-037 ⑦(a)) — 예비 일치는 agreement로 본다"

@@ -72,7 +72,11 @@ def test_score_uses_agreed_label_first_and_counts_both_scores(tmp_path):
     )
     # 합의값은 두 사람이 표시한 후보에만 쓴다 — B를 함께 표시한 두 번째 사람(다르게 표시, 같은 합의값)
     second = write_sheet(
-        tmp_path / "c.csv", [row("PE1", "B", "yes", labeler_id="L-C1", agreed_label="yes")]
+        tmp_path / "c.csv",
+        [  # 두 사람이 표시한 문항은 각자 그 문항의 모든 후보를 표시한다(안내서 4절)
+            row("PE1", "A", "no", labeler_id="L-C1"),
+            row("PE1", "B", "yes", labeler_id="L-C1", agreed_label="yes"),
+        ],
     )
     merged = ts.merge_labels([ts.read_sheet(sheet), ts.read_sheet(second)])
     ts.check_against_candidates(merged, cand)
@@ -198,7 +202,7 @@ def test_bootstrap_is_pinned_to_dec037_seed_draws_and_percentiles():
 def test_agreement_refuses_two_sheets_from_the_same_labeler():
     rows = [row("PE1", "A", "yes", labeler_id="L-A1")]
     with pytest.raises(SystemExit, match="labeler_id가 같다"):
-        ts.agreement(rows, rows, expect=1)
+        ts.agreement(rows, rows, expected={"PE1"})
 
 
 def test_score_lists_questions_labeled_by_two_people(tmp_path):
@@ -223,7 +227,7 @@ def test_agreement_uses_raw_labels_and_lists_one_sided_yes(tmp_path):
         ),  # 합의 결과는 일치율에 쓰지 않는다
         row("PE2", "C", "no", labeler_id="L-C1"),
     ]
-    out = ts.agreement(rows_a, rows_b, expect=2)
+    out = ts.agreement(rows_a, rows_b, expected={"PE1", "PE2"})
     assert out["question_level_same"] == 2
     assert out["candidate_focus_n"] == 2 and out["candidate_agreement"] == 0.5
     assert out["pass"] is False
@@ -257,12 +261,14 @@ def test_agreement_requires_one_labeler_per_sheet_and_expected_question_count():
     blank = [row("PE1", "A", "yes", labeler_id="")]
     mixed = [row("PE1", "A", "yes", labeler_id="L-A1"), row("PE1", "B", "no", labeler_id="L-B1")]
     with pytest.raises(SystemExit, match="한 사람으로"):
-        ts.agreement(blank, c, expect=1)  # ID를 비운 시트
+        ts.agreement(blank, c, expected={"PE1"})  # ID를 비운 시트
     with pytest.raises(SystemExit, match="한 사람으로"):
-        ts.agreement(mixed, c, expect=1)  # 한 시트에 두 사람
-    with pytest.raises(SystemExit, match="--expect"):
-        ts.agreement(a, c, expect=5)  # 1문항짜리 시트로 예비 5문항 합격을 낼 수 없다
-    assert ts.agreement(a, c, expect=1)["pass"] is True
+        ts.agreement(mixed, c, expected={"PE1"})  # 한 시트에 두 사람
+    with pytest.raises(SystemExit, match="정해진 문항"):
+        ts.agreement(a, c, expected={"PE1", "PE2"})  # 덜 표시한 시트로 합격을 낼 수 없다
+    with pytest.raises(SystemExit, match="정해진 문항"):
+        ts.agreement(a, c, expected={"PE9"})  # 정해진 문항 대신 다른 문항을 고른 시트
+    assert ts.agreement(a, c, expected={"PE1"})["pass"] is True
 
 
 def test_agreed_label_needs_two_labelers(tmp_path):
@@ -309,7 +315,8 @@ def test_cli_score_combines_replacement_candidates_and_refuses_overlap(tmp_path,
     def cand_file(name, set_name, action):
         p = tmp_path / name
         p.write_text(
-            json.dumps({"set": set_name, "items": items((action, {"A": {"bm25": 1}}))}),
+            # 합치는 회차는 같은 데이터·스크립트·모델이어야 한다(check_same_build) — 같은 판본 정보를 넣는다
+            json.dumps({**_cand(set_name), "items": items((action, {"A": {"bm25": 1}}))}),
             encoding="utf-8",
         )
         return p
@@ -339,7 +346,9 @@ def test_agreement_pass_needs_question_level_agreement_even_with_high_candidate_
     a = dict.fromkeys(keys, "unsure")
     c = dict(a)
     a[("PE0", "C00")], c[("PE0", "C00")] = "yes", "no"
-    out = ts.agreement(_agree_rows("L-A1", a), _agree_rows("L-C1", c), expect=5)
+    out = ts.agreement(
+        _agree_rows("L-A1", a), _agree_rows("L-C1", c), expected={f"PE{q}" for q in range(5)}
+    )
     assert out["candidate_agreement"] == 0.975 and out["question_level_same"] == 4
     assert out["pass"] is False
 
@@ -351,7 +360,7 @@ def test_agreement_candidate_rate_boundary_is_080(same, expected):
     a = {("PE1", f"C{i}"): "unsure" for i in range(n)}
     c = dict(a)
     c[("PE1", f"C{n - 1}")] = "no"  # 하나만 다르게(정답 있음 여부는 둘 다 '없음'으로 같다)
-    out = ts.agreement(_agree_rows("L-A1", a), _agree_rows("L-C1", c), expect=1)
+    out = ts.agreement(_agree_rows("L-A1", a), _agree_rows("L-C1", c), expected={"PE1"})
     assert out["candidate_agreement"] == round(same / n, 3) and out["pass"] is expected
 
 
@@ -359,7 +368,7 @@ def test_agreement_refuses_sheets_with_different_candidates():
     a = {("PE1", "A"): "no", ("PE1", "B"): "no"}
     c = {("PE1", "A"): "no"}
     with pytest.raises(SystemExit, match="문항·후보가 다르다"):
-        ts.agreement(_agree_rows("L-A1", a), _agree_rows("L-C1", c), expect=1)
+        ts.agreement(_agree_rows("L-A1", a), _agree_rows("L-C1", c), expected={"PE1"})
 
 
 def test_agreed_label_conflict_between_sheets_stops(tmp_path):
@@ -420,21 +429,21 @@ def test_agreement_refuses_blank_or_typo_labels():
     for bad in ("", "nO!"):
         other = [row("PE1", "A", bad, labeler_id="L-C1")]
         with pytest.raises(SystemExit, match="yes/no/unsure"):
-            ts.agreement(good, other, expect=1)
+            ts.agreement(good, other, expected={"PE1"})
 
 
 def test_one_sided_yes_list_ignores_disagreements_without_yes():
     """해소 목록은 "한 사람만 yes"인 후보만 — no·unsure 불일치는 넣지 않는다(안내서 4절)."""
     a = [row("PE1", "A", "no", labeler_id="L-A1"), row("PE1", "B", "yes", labeler_id="L-A1")]
     c = [row("PE1", "A", "unsure", labeler_id="L-C1"), row("PE1", "B", "no", labeler_id="L-C1")]
-    assert ts.agreement(a, c, expect=1)["one_sided_yes_to_resolve"] == [["PE1", "B"]]
+    assert ts.agreement(a, c, expected={"PE1"})["one_sided_yes_to_resolve"] == [["PE1", "B"]]
 
 
 def test_agreement_refuses_duplicate_rows_in_a_sheet():
     a = [row("PE1", "A", "yes", labeler_id="L-A1"), row("PE1", "A", "no", labeler_id="L-A1")]
     c = [row("PE1", "A", "no", labeler_id="L-C1")]
     with pytest.raises(SystemExit, match="두 번"):
-        ts.agreement(a, c, expect=1)
+        ts.agreement(a, c, expected={"PE1"})
 
 
 def test_wilson_value_and_lower_bound_denominator():
@@ -453,3 +462,73 @@ def test_cli_score_refuses_pilot_candidates(tmp_path):
     sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes")])
     with pytest.raises(SystemExit, match="pilot"):
         ts.main(["score", "--candidates", str(p), "--sheets", str(sheet)])
+
+
+def test_phase_actions_are_the_fixed_questions():
+    """예비 = 질문 파일 pilot 전부, 재확인 = main 앞 3개(안내서 4절 — PE12017·PE11022·PE18009)."""
+    assert ts.phase_actions("recheck") == {"PE12017", "PE11022", "PE18009"}
+    assert len(ts.phase_actions("pilot")) == 5
+
+
+def test_double_labeled_question_needs_every_candidate_from_both(tmp_path):
+    """두 사람이 표시한 문항에서 한 사람이 일부 후보만 표시하면 멈춘다 — 나머지가 한 사람 표시로 채점되지 않게."""
+    cand = items(("PE1", {"A": {"bm25": 1}, "B": {"bm25": 2}}))
+    a = write_sheet(tmp_path / "a.csv", [row("PE1", "A", "yes"), row("PE1", "B", "no")])
+    c = write_sheet(tmp_path / "c.csv", [row("PE1", "A", "yes", labeler_id="L-C1")])
+    merged = ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c)])
+    with pytest.raises(SystemExit, match="일부 후보"):
+        ts.per_question(merged, cand, partial=False)
+
+
+def _cand(set_name, **kw):
+    base = {
+        "set": set_name,
+        "data": {"recalls_sha256_full": "r"},
+        "code": {"dirty": False, "script_sha256": {"x.py": "s"}},
+        "model": "m",
+        "embedding": {"fastembed": "0.9.0"},
+        "top": 20,
+    }
+    return {**base, **kw}
+
+
+def test_candidate_files_must_share_data_code_and_model():
+    ts.check_same_build([_cand("main"), _cand("r1")])  # 같으면 통과
+    for change in (
+        {"data": {"recalls_sha256_full": "other"}},
+        {"code": {"dirty": False, "script_sha256": {"x.py": "other"}}},
+        {"model": "other"},
+        {"top": 30},
+    ):
+        with pytest.raises(SystemExit, match="같은 데이터"):
+            ts.check_same_build([_cand("main"), _cand("r1", **change)])
+    with pytest.raises(SystemExit, match="같은 데이터"):
+        ts.check_same_build(
+            [{"set": "main"}, {"set": "r1"}]
+        )  # 판본 정보 없는 파일끼리는 합치지 않는다
+
+
+def test_dirty_candidates_are_refused_unless_partial():
+    dirty = _cand("main", code={"dirty": True, "script_sha256": {"x.py": "s"}})
+    with pytest.raises(SystemExit, match="커밋하지 않은"):
+        ts.check_same_build([dirty])
+    ts.check_same_build([dirty], partial=True)
+
+
+def test_cli_score_refuses_candidate_files_from_different_builds(tmp_path):
+    files = []
+    for name, model, action in (
+        ("candidates_main.json", "m", "PE1"),
+        ("candidates_r1.json", "other", "PE2"),
+    ):
+        p = tmp_path / name
+        p.write_text(
+            json.dumps(
+                {**_cand(name[11:-5], model=model), "items": items((action, {"A": {"bm25": 1}}))}
+            ),
+            encoding="utf-8",
+        )
+        files.append(str(p))
+    sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes"), row("PE2", "A", "no")])
+    with pytest.raises(SystemExit, match="같은 데이터"):
+        ts.main(["score", "--candidates", *files, "--sheets", str(sheet)])
