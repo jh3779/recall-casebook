@@ -4,7 +4,7 @@ _갱신: 2026-10-12 체크포인트 (감사 후속 ①~⑤ 모두 병합 — #74
 
 ## Current Objective
 
-결함 선례 찾기 도우미(DEC-030). **P2 서버 기능과 2026-10-11 감사 후속은 끝났다**(검색·573 원인 원문과 `text_basis`·`stated_unknown`·꼬리표·조사 요약·확인 항목·고객사 선례, 병합 절차 보강 DEC-046). 남은 P2·P3 일: ① 화면(PR #60, 박성호)과 서버 연결 — 응답 칸(#60 필드 계약 코멘트 2026-10-12)과 원인 상태별 화면 문구, ② 미보고 판별 경계(#83), ③ 시점 평가 정답 표시(늦어도 10/16) → 채점·보고(10/17, PR #72 도구), ④ 원인 품질 표본 30건 표시·보고(PR #73 도구), ⑤ 배포 전 보완(#63). 발표 10/20. 우지훈 담당은 B(RAG).
+결함 선례 찾기 도우미(DEC-030). **P2 서버 기능과 2026-10-11 감사 후속은 끝났다**(검색·573 원인 원문과 `text_basis`·`stated_unknown`·꼬리표·조사 요약·확인 항목·고객사 선례, 병합 절차 보강 DEC-046). 남은 P2·P3 일: ① 화면(PR #60, 박성호)과 서버 연결 — 응답 칸(PR #60에 2026-10-12 남긴 DEC-047 필드 계약 안내 코멘트)과 원인 상태별 화면 문구, ② 미보고 판별 경계(#83), ③ 시점 평가 정답 표시(늦어도 10/16) → 채점·보고(10/17, PR #72 도구), ④ 원인 품질 표본 30건 표시·보고(PR #73 도구), ⑤ 배포 전 보완(#63). 발표 10/20. 우지훈 담당은 B(RAG).
 
 ## Current Phase
 
@@ -40,7 +40,7 @@ _갱신: 2026-10-12 체크포인트 (감사 후속 ①~⑤ 모두 병합 — #74
 (2026-10-12, `git log`·`gh pr list`·`gh issue list`·`docker ps`로 확인)
 - main = `c287816` (#85까지). **열린 PR**: #60(박성호, 프런트 쇼룸 — 응답 칸 회신 대기, main과 충돌 상태)과 이 체크포인트 PR. 이후 상태는 `gh pr list`로 확인한다.
 - **열린 이슈**: #83(미보고 판별 경계) · #84(PR #82·#86 리뷰 후속 — 서버 쪽 도달 불가 `text_basis` 검사, 순위 계산 모듈 위치, 다음 재수집 때 `recalls_sha256` 확인) · #87(작성 주체·규칙 위치·옛 v4 재현 백업·부품 범위 기각 범위 표기) · #79(이 체크포인트로 처리) · #80(작업 현황 공유) · #75·#76·#77·#78(감사 PR 후속) · #63 · #61(박예원, 10/14) · #53 · #54 · #36 · #38 · #24.
-- **Actions: 꺼져 있음**(DEC-040). 병합 근거는 엄격 로컬 검사(`LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=… bash scripts/local_ci.sh`, 스크립트가 PR에 직접 기록)·로컬 `merge_gate.py`·리뷰 원문·Codex(DEC-046). Codex 리뷰는 push 뒤 5~30분.
+- **Actions: 꺼져 있음**(DEC-040). 룰셋 필수 체크 해제 — 되돌리기는 MERGE_PROTOCOL 7절 5단계(백업 `~/lgcns_ruleset_backup.json`). 병합 근거는 엄격 로컬 검사(`LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=… bash scripts/local_ci.sh`, 스크립트가 PR에 직접 기록)·로컬 `merge_gate.py`·리뷰 원문·Codex(DEC-046). Codex 리뷰는 push 뒤 5~30분.
 - **운영 Supabase**: latest build `f1fe1843ed0f2c66`(DEC-047 원인 파일, 옛 build `c6872ae8e9743c56`·`6edfafc92572c6d9`·`ef5ca2ad4b79d755`는 보관) + 카드 벡터. 서버용 조회 전용 계정 `rag_reader`는 아직 없음(#63) — 로컬은 `ALLOW_ADMIN_DB_FOR_SERVER=1 uv run --env-file .env uvicorn server.api:app`. 서버는 `data/raw/nhtsa/`(manifest·FLAT_INV)도 있어야 뜬다. 적재 때 원인 명세에 `recalls_sha256`이 없다는 경고 한 줄이 나오는 것은 정상(2026-10-12 이전 수집분).
 - **로컬**: `data/processed/defect/`에 DEC-047 원인 파일(`causes.jsonl` `06b0fe44…`·명세 `4e57ed30…`)과 10/7 보관 사본(`causes.20261007.jsonl`·`causes.20261007.manifest.json` — 옛 v4 재현용), 벡터 사본 `vector_cache/`. 사람 표시용 시트도 같은 폴더에 있다 — 원인 품질 30건 `cause_quality_20261011/`, 원인 미확인 150건 `cause_unknown_2026-10-09/`, 시점 평가 `time_eval_2026-10-10/`(gitignore, 팀 드라이브에 사본). 테스트 DB 컨테이너 `lgcns-test-pg`(포트 54331, 비밀번호 `localtest`, DB `lgcns_test`)가 떠 있다. `.claude/worktrees/`에 리뷰·작업용 worktree가 60개 넘게 남아 있다 — 정리 여부는 사용자 확인.
 - 출처 미확인 원격 브랜치 3개(`docs/finance-domain-notes`·`docs/onboarding-plan`·`docs/onboarding-plan-draft`)는 그대로(할 일 25).
