@@ -238,31 +238,48 @@ def test_time_eval_questions_file_passes_rule6():
     assert te.unusable_questions(d["pilot"]) == [] and te.unusable_questions(d["main"]) == []
 
 
-def _fake_git(outputs: dict, fail: Exception | None = None):
-    """`code_provenance`가 부르는 git 명령을 흉내 낸다 — 실제 저장소 상태와 무관하게 분기를 시험한다(#53 a)."""
+def _fake_git(outputs: dict, returncode: int = 0, missing: bool = False):
+    """`code_provenance`가 부르는 git 명령을 흉내 낸다 — git 상태와 무관하게 분기를 시험한다(#53 a).
+
+    진짜 `subprocess.run`처럼 `check=True`일 때만 0이 아닌 종료 코드를 예외로 바꾼다 — `check=True`가 빠지면 실패가
+    조용히 "깨끗함"으로 기록되므로 그 회귀를 잡기 위해서다. 명령 인자도 그대로인지 본다."""
     import subprocess
 
-    def run(cmd, **_):
-        if fail is not None:
-            raise fail
-        return subprocess.CompletedProcess(cmd, 0, stdout=outputs[cmd[1]], stderr="")
+    expected = {
+        "status": ["git", "status", "--porcelain", "--", "scripts/"],
+        "rev-parse": ["git", "rev-parse", "HEAD"],
+    }
+
+    def run(cmd, **kw):
+        assert cmd == expected[cmd[1]], cmd
+        if missing:
+            raise FileNotFoundError("git")
+        done = subprocess.CompletedProcess(
+            cmd, returncode, stdout=outputs.get(cmd[1], ""), stderr=""
+        )
+        if kw.get("check"):
+            done.check_returncode()
+        return done
 
     return run
 
 
-def test_time_eval_code_provenance_stops_on_dirty_scripts_unless_allowed(monkeypatch):
+def test_time_eval_code_provenance_records_clean_and_dirty_scripts(monkeypatch):
     import subprocess
 
     from scripts.defect_precedent import time_eval_candidates as tec
+
+    monkeypatch.setattr(subprocess, "run", _fake_git({"status": "", "rev-parse": "abc123"}))
+    clean = tec.code_provenance(allow_dirty=False)  # 깨끗하면 허용 없이 통과
+    assert clean["commit"] == "abc123" and clean["dirty"] is False
+    assert set(clean["script_sha256"]) == set(tec.CODE_FILES)
 
     monkeypatch.setattr(
         subprocess, "run", _fake_git({"status": " M scripts/x.py", "rev-parse": "abc123"})
     )
     with pytest.raises(SystemExit, match="커밋하지 않은 변경"):
         tec.code_provenance(allow_dirty=False)
-    got = tec.code_provenance(allow_dirty=True)
-    assert got["commit"] == "abc123" and got["dirty"] is True
-    assert set(got["script_sha256"]) == set(tec.CODE_FILES)
+    assert tec.code_provenance(allow_dirty=True)["dirty"] is True
 
 
 @pytest.mark.parametrize("kind", ["exit_code", "git_missing"])
@@ -271,11 +288,7 @@ def test_time_eval_code_provenance_stops_when_git_fails(monkeypatch, kind):
 
     from scripts.defect_precedent import time_eval_candidates as tec
 
-    fail = (
-        subprocess.CalledProcessError(128, ["git", "status"])  # git이 0이 아닌 코드로 끝남
-        if kind == "exit_code"
-        else FileNotFoundError("git")  # git이 없음
-    )
-    monkeypatch.setattr(subprocess, "run", _fake_git({}, fail))
+    fake = _fake_git({}, returncode=128) if kind == "exit_code" else _fake_git({}, missing=True)
+    monkeypatch.setattr(subprocess, "run", fake)
     with pytest.raises(SystemExit, match="코드 판본을 기록할 수 없어"):
         tec.code_provenance(allow_dirty=True)
