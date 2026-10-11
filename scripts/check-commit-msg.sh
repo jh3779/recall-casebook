@@ -23,7 +23,7 @@ case "$FIRST_LINE" in
   "Merge "*|"Revert "*) exit 0 ;;
 esac
 
-# 한글 subject 허용, 첫 글자 대문자(A-Z) 금지 (pr-title-check.yml과 같은 규칙)
+# 한글 subject 허용. 첫 글자 대문자(A-Z) 금지 규칙은 .github/workflows/pr-title-check.yml(subjectPattern), scripts/ci/pr_checks.py(check_pr_title), scripts/check-commit-msg.sh(PATTERN) 세 곳에 있다 — 바꿀 때 함께 고친다(#56). 설명 최소 길이는 다르다: yml·py는 2글자(`[^A-Z].+`), 커밋 훅은 1글자(`[^A-Z].*`)
 PATTERN="^(feat|fix|refactor|docs|research|data|chore|remove)(\(.+\))?!?: [^A-Z].*"
 if ! echo "$FIRST_LINE" | grep -Eq "$PATTERN"; then
   echo "❌ 커밋 메시지가 Conventional Commits 형식이 아닙니다."
