@@ -707,5 +707,63 @@ def test_cli_rechecked_flag_is_wired(tmp_path, capsys):
     args = ["score", "--candidates", cand, "--sheets", str(sheet), "--questions", str(q)]
     ts.main(args)  # 재확인을 하지 않았으면 한 사람 표시로 채점
     capsys.readouterr()
-    with pytest.raises(SystemExit, match="재확인"):
+    with pytest.raises(
+        SystemExit, match="두 사람의 label 또는 agreed_label"
+    ):  # 질문 파일(--questions)의 R1~R3 기준
         ts.main([*args, "--rechecked"])
+    # 두 사람 표시 + 합의값을 갖추면 --rechecked로 채점된다
+    c = write_sheet(
+        tmp_path / "c.csv",
+        [row(r, "A", "yes", labeler_id="L-C1", agreed_label="yes") for r in ("R1", "R2", "R3")],
+    )
+    ts.main(
+        [
+            "score",
+            "--candidates",
+            cand,
+            "--sheets",
+            str(sheet),
+            str(c),
+            "--questions",
+            str(q),
+            "--rechecked",
+        ]
+    )
+    assert json.loads(capsys.readouterr().out)["labeled_questions"] == 3
+
+
+def test_cli_partial_with_dirty_candidates_is_interim_even_without_skipped(tmp_path, capsys):
+    """--partial로 dirty 후보를 쓰면 빠진 문항이 없어도 중간 결과 — status·outcome이 정식 결과처럼 보이지 않는다(리뷰 cd39286)."""
+    pool = {f"PE{i}": {"A": {"bm25": 1, "b_rrf": 1}} for i in range(34)}
+    pool.update({f"PB{i}": {"A": {"b_rrf": 1}} for i in range(6)})
+    p = tmp_path / "candidates_main.json"
+    dirty = {"code": {"dirty": True, "script_sha256": {"x.py": "s"}}}
+    p.write_text(
+        json.dumps({**_cand("main", **dirty), "items": items(*pool.items())}), encoding="utf-8"
+    )
+    sheet = write_sheet(tmp_path / "s.csv", [row(a, "A", "yes") for a in pool])
+    ts.main(["score", "--candidates", str(p), "--sheets", str(sheet), "--partial"])
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"].startswith("중간 결과") and "커밋하지 않은" in out["status"]
+    assert out["hit@10_comparison"]["outcome"] == "미측정(중간 결과)"
+
+
+def test_cli_lists_recheck_questions_labeled_by_one_person_when_flag_is_missing(tmp_path, capsys):
+    q = tmp_path / "questions.json"
+    q.write_text(
+        json.dumps({"pilot": [], "main": [{"action_no": a} for a in ("R1", "R2", "R3")]}),
+        encoding="utf-8",
+    )
+    p = tmp_path / "candidates_main.json"
+    p.write_text(
+        json.dumps(
+            {
+                **_cand("main"),
+                "items": items(*((r, {"A": {"bm25": 1}}) for r in ("R1", "R2", "R3"))),
+            }
+        ),
+        encoding="utf-8",
+    )
+    sheet = write_sheet(tmp_path / "s.csv", [row(r, "A", "yes") for r in ("R1", "R2", "R3")])
+    ts.main(["score", "--candidates", str(p), "--sheets", str(sheet), "--questions", str(q)])
+    assert json.loads(capsys.readouterr().out)["recheck_single_labeler"] == ["R1", "R2", "R3"]

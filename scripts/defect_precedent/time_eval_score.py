@@ -434,12 +434,27 @@ def main(argv: list[str] | None = None) -> None:
     if a.rechecked:
         check_rechecked(merged, phase_actions("recheck", a.questions))
     questions, skipped = per_question(merged, items, a.partial)
-    out = summarize(questions, partial=bool(skipped))
-    if skipped:
-        out["status"] = (
-            f"중간 결과(표시 안 끝난 문항 {len(skipped)}개 제외 — 최종 보고에 쓰지 않음)"
-        )
+    dirty = [c["set"] for c in cands if (c.get("code") or {}).get("dirty")]
+    # 표시가 덜 끝났거나(--partial로 문항 제외) 커밋하지 않은 코드로 만든 후보를 썼으면(--partial일 때만 허용) 중간 결과다 —
+    # 빠진 문항이 없어도 dirty 후보면 정식 결과처럼 보이지 않게 방향 문구를 내지 않는다(PR #72 리뷰 cd39286)
+    out = summarize(questions, partial=bool(skipped) or bool(dirty))
+    if skipped or dirty:
+        why = []
+        if skipped:
+            why.append(f"표시 안 끝난 문항 {len(skipped)}개 제외")
+        if dirty:
+            why.append(f"커밋하지 않은 코드로 만든 후보 {dirty}")
+        out["status"] = f"중간 결과({' · '.join(why)} — 최종 보고에 쓰지 않음)"
         out["skipped"] = skipped
+    if not a.rechecked:
+        # 재확인을 했는데 --rechecked를 빠뜨린 경우 눈에 띄게 — 재확인 문항 중 한 사람만 표시한 것(판정은 바꾸지 않는다)
+        recheck = phase_actions("recheck", a.questions)
+        single = sorted(
+            q["action_no"]
+            for q in questions
+            if q["action_no"] in recheck and q.get("labelers", 0) < 2
+        )
+        out["recheck_single_labeler"] = single
     out["inputs"] = {
         "candidates": [
             {"file": str(c), "sha256": sha256_of(c), "set": cand["set"], "code": cand.get("code")}
