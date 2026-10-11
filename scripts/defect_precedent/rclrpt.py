@@ -84,21 +84,40 @@ _SUPPLIER_BLOCK = re.compile(
 )
 # "JUN 05, 2024", "NOV 18,2014", "Sep 14, 2015" 모두 있다
 _SUBMISSION = re.compile(r"Submission Date\s*:\s*([A-Za-z]{3})\s+(\d{1,2})\s*,\s*(\d{4})")
-# 원인 칸이 쪽을 넘으면 pdftotext가 쪽 꼬리말·머리말을 본문 사이에(같은 줄에 붙기도 한다) 끼운다.
-# 지우는 것은 머리말·꼬리말에만 나오는 모양뿐이다(DEC-047): 49 CFR 꼬리말 문장, 그리고 "Part 573 Safety Recall Report <번호>"에
-# 쪽 번호("Page N")가 **붙어 있는** 머리말. 쪽 번호 없이 본문에 인용된 "[Part 573 Safety Recall Report 20E-041]"은 남긴다
-# (실제 머리말 1,270여 건은 모두 쪽 번호가 붙어 있었다 — PR #82 리뷰). "Page N"·"Page N of M" 단독은 줄 전체일 때만 지운다
-# (본문의 "shown on Page 2", "See Page 2 of 3"은 남긴다).
+# 원인 칸이 쪽을 넘으면 pdftotext가 쪽 꼬리말·머리말을 본문 사이에 끼운다 — 본문 문장 중간에 같은 줄로 붙는 경우가 많다
+# (2026-10-12 전수 판독: 1,267개 캠페인). 지우는 것(DEC-047): 49 CFR 꼬리말 문장, 그리고 **그 보고서 자신의 리콜 번호**에 쪽 번호가
+# 붙은 머리말("Part 573 Safety Recall Report 15E-018 Page 2" — 위치와 무관). 다른 보고서 번호를 인용한 글(21V503의
+# "Part 573 Safety Recall Report 20E-041")은 남긴다. 단독 "Page N"·"Page N of M"은 줄 전체일 때만 지운다("See Page 2 of 3"은 남김).
 _PAGE_NOISE = re.compile(
     r"The information contained in this report was submitted pursuant to 49 CFR\s*§\s*573"
-    r"|(?:Page\s+\d+(?:\s+of\s+\d+)?\s+)?Part 573 Safety Recall Report\s+\d\d[A-Z]-?\d{3}\s+Page\s+\d+(?:\s+of\s+\d+)?"
-    r"|Page\s+\d+(?:\s+of\s+\d+)?\s+Part 573 Safety Recall Report\s+\d\d[A-Z]-?\d{3}"
 )
-_PAGE_ONLY_LINE = re.compile(r"^[ \t]*Page\s+\d+(?:\s+of\s+\d+)?[ \t]*$", re.M)
-# 원인 글 정리 방식(DEC-047) — 판독 규칙을 바꾸면 앞의 판본 날짜를 바꾼다. 원인 파일 명세(causes.manifest.json)에 기록되고,
+_OWN_RECALL_FIELD = re.compile(r"NHTSA Recall No\.\s*:\s*(\d\d[A-Z])-?(\d{3})")
+_OWN_REPORT_NO = re.compile(r"Part 573 Safety Recall Report\s+(\d\d[A-Z])-?(\d{3})")
+_PAGE_ONLY_LINE = re.compile(r"^[ \t]*Page[ \t]+\d+(?:[ \t]+of[ \t]+\d+)?[ \t]*$", re.M)
+# 다른 번호라도 줄 전체가 머리말뿐인 줄은 머리말이다(첨부된 다른 보고서의 머리말 등) — 본문 인용은 같은 줄에 다른 글이 있다
+_HEADER_ONLY_LINE = re.compile(
+    r"^[ \t]*(?:Page[ \t]+\d+(?:[ \t]+of[ \t]+\d+)?[ \t]+)?Part 573 Safety Recall Report[ \t]+\d\d[A-Z]-?\d{3}"
+    r"(?:[ \t]+Page[ \t]+\d+(?:[ \t]+of[ \t]+\d+)?)?[ \t]*$",
+    re.M,
+)
+
+
+def _own_header(text: str) -> re.Pattern | None:
+    """보고서 자신의 리콜 번호("NHTSA Recall No." 칸, 없으면 첫 머리말)로 그 번호의 머리말 모양을 만든다 — 앞뒤 쪽 번호는 있어도
+    없어도 된다(새 양식은 쪽 번호가 다른 줄에 있다, PR #82 리뷰 26V404). 번호를 못 찾으면 None — 짐작하지 않는다."""
+    m = _OWN_RECALL_FIELD.search(text) or _OWN_REPORT_NO.search(text)
+    if m is None:
+        return None
+    no = rf"{m.group(1)}-?{m.group(2)}"
+    page = r"Page\s+\d+(?:\s+of\s+\d+)?"
+    return re.compile(rf"(?:{page}\s+)?Part 573 Safety Recall Report\s+{no}\b(?:\s+{page})?")
+
+
+# 원인 글 정리 방식(DEC-047) — 판독 규칙을 바꿔 **출력이 달라지면** 앞의 판본을 바꾼다(12b: 새 양식의 쪽 번호 없는 자기 머리말·
+# 줄 전체 다른 번호 머리말도 지움 — 26V404 한 건이 달라짐, PR #82 리뷰). 원인 파일 명세(causes.manifest.json)에 기록되고,
 # 서버는 상수가 아니라 그 build의 명세에서 읽는다(옛 규칙으로 만든 build에 새 설명이 붙지 않게)
 CAUSE_TEXT_BASIS = (
-    "rclrpt-2026-10-12; pdftotext-layout; page-header-footer-removed; whitespace-collapsed"
+    "rclrpt-2026-10-12b; pdftotext-layout; page-header-footer-removed; whitespace-collapsed"
 )
 
 
@@ -115,8 +134,18 @@ def parse_report(text: str) -> dict:
     )
 
     m = _CAUSE.search(flat)
+    own = _own_header(flat)
     cause = (
-        re.sub(r"\s+", " ", _PAGE_NOISE.sub(" ", _PAGE_ONLY_LINE.sub("", m.group(1)))).strip()
+        re.sub(
+            r"\s+",
+            " ",
+            _PAGE_NOISE.sub(
+                " ",
+                _PAGE_ONLY_LINE.sub(
+                    "", _HEADER_ONLY_LINE.sub("", own.sub(" ", m.group(1)) if own else m.group(1))
+                ),
+            ),
+        ).strip()
         if m
         else None
     )

@@ -187,6 +187,20 @@ def test_load_build_rejects_empty_failure_reasons(tmp_path):
         {"status": "report_unreadable", "campaign": "24V001", "reason": ""},
         {"status": "report_status_unknown"},  # 캠페인 번호 없음
         {"status": "no_573_report", "campaign": "x", "reason": "y"},  # 모델 밖 칸
+        # stated_unknown도 원문·말한 주체·출처(정리 방식 포함)가 반드시 있어야 한다(DEC-047, PR #82 리뷰)
+        {"status": "stated_unknown", "text": "NR", "speaker": "s", "flags": []},
+        {
+            "status": "stated_unknown",
+            "text": "NR",
+            "speaker": "s",
+            "flags": [],
+            "source": {
+                "campaign": "24V001",
+                "file": "f",
+                "pdf_sha256": "ab" * 32,
+                "submission_date": "20240101",
+            },
+        },  # text_basis 없음
     ],
 )
 def test_card_model_requires_fields_for_each_cause_status(cause):
@@ -256,6 +270,25 @@ def test_verify_rejects_campno_outside_candidates_and_drops_altered_cause():
         verify([dict(card)], frozenset({"23V002000"}), causes)
     out = verify([card], frozenset({"24V001000"}), causes)
     assert out[0]["cause"]["status"] == "verify_failed"
+
+
+def test_verify_also_checks_stated_unknown_text_against_the_source():
+    """미보고·조사 중 서술도 원문 대조를 거친다 — 글이 바뀌면 빼고 verify_failed(DEC-047, PR #82 리뷰)."""
+    row = loaded(
+        cause(
+            "24V001",
+            text="NR",
+            cause_status="stated_unknown",
+            pdfs={"odi/rcl/2023/RCLRPT-24V001-0001.PDF": "cd" * 32},
+        )
+    )
+    causes = {"24V001": row}
+    card = {"campno": "24V001000", "cause": cause_573(CARDS[0], causes) | {"text": "Not reported"}}
+    assert verify([card], frozenset({"24V001000"}), causes)[0]["cause"]["status"] == "verify_failed"
+    same = {"campno": "24V001000", "cause": cause_573(CARDS[0], causes)}
+    assert (
+        verify([same], frozenset({"24V001000"}), causes)[0]["cause"]["status"] == "stated_unknown"
+    )
 
 
 def _keys(obj):
@@ -599,6 +632,14 @@ def test_checklist_links_evidence_and_skips_items_without_it():
         {"field": "investigations.speaker", "text": SPEAKER_INV},
         {"field": "investigations.action", "text": "PE20001"},  # 원본 조사 번호 그대로
     ]
+    stated = [
+        c
+        for c in checklist(card, row, [], {"status": "stated_unknown"})
+        if c["item"] == "cause_speaker"
+    ]
+    assert stated[0]["evidence"] == [
+        {"field": "cause.speaker", "text": SPEAKER_573}
+    ]  # 미보고 서술도 말한 주체를 보인다
     bare = {**card, "defect": "", "remedy": ""}
     assert [c["item"] for c in checklist(bare, None, [], {"status": "no_573_report"})] == [
         "same_part"

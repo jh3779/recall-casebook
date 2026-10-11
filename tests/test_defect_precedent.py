@@ -307,17 +307,42 @@ def test_parse_report_only_whole_page_lines_are_removed():
 
 
 def test_parse_report_keeps_quoted_report_titles_and_inline_page_refs():
-    """본문에 인용된 리콜 보고서 제목과 "Page 2 of 3"은 원문이다 — 쪽 번호가 붙은 머리말과 줄 전체 쪽 표시만 지운다(PR #82 리뷰·Codex)."""
+    """머리말로 지우는 것은 그 보고서 자신의 번호에 쪽 번호가 붙은 것뿐 — 다른 보고서 인용(쪽 번호가 있어도)과
+    "See Page 2 of 3"은 원문이다(PR #82 리뷰·Codex). 자기 머리말은 본문 문장 중간에 붙어 있어도 지운다(실제 1,267개 캠페인)."""
     text = (
+        "Part 573 Safety Recall Report 24V-412\n"
+        " NHTSA Recall No. : 24V-412\n"
         "Description of the Cause : Per ECCO Holdings Corp. [Part 573 Safety Recall Report 20E-041].\n"
-        "See Page 2 of 3 for the analysis. Part 573 Safety Recall Report 24V-412 Page 2 The lamps fail.\n"
+        "The analysis cites Part 573 Safety Recall Report 23V-100 Page 2 as evidence.\n"
+        "See Page 2 of 3 for the analysis. The base Part 573 Safety Recall Report 24V-412 Page 2 may crack.\n"
         "Page 2 of 3\n"
         "Chronology :"
     )
     r = parse_report(text)
     assert r["cause_text"] == (
         "Per ECCO Holdings Corp. [Part 573 Safety Recall Report 20E-041]. "
-        "See Page 2 of 3 for the analysis. The lamps fail."
+        "The analysis cites Part 573 Safety Recall Report 23V-100 Page 2 as evidence. "
+        "See Page 2 of 3 for the analysis. The base may crack."
+    )
+
+
+def test_parse_report_removes_new_form_headers_without_page_numbers():
+    """새 양식은 머리말 줄에 쪽 번호가 없고, 다른 번호 머리말과 쪽 번호 사이에 49 CFR 꼬리말이 끼기도 한다(PR #82 리뷰 26V404).
+    자기 번호 머리말은 문장 중간이라도, 다른 번호 머리말은 줄 전체일 때 지운다 — 본문 인용("Reference no.: …")은 남긴다."""
+    text = (
+        "Part 573 Safety Recall Report   26V404\n"
+        " NHTSA Recall No. : 26V-404\n"
+        "Description of the Cause : Ltd. recall (Reference no.: Part 573 Safety Recall Report 25E-007) states a\n"
+        "2P (two cells in parallel)\n"
+        "Part 573 Safety Recall Report 26E009\n"
+        "The information contained in this report was submitted pursuant to 49 CFR § 573\n"
+        "Page 2 of 6\n"
+        "configuration. Debris in the Part 573 Safety Recall Report   26V404 housing.\n"
+        "Chronology :"
+    )
+    assert parse_report(text)["cause_text"] == (
+        "Ltd. recall (Reference no.: Part 573 Safety Recall Report 25E-007) states a "
+        "2P (two cells in parallel) configuration. Debris in the housing."
     )
 
 
