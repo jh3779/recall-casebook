@@ -36,14 +36,15 @@ from scripts.defect_precedent.rules import UNKNOWN_RE, check
 SEED = 20261008
 # 추론 모델(gpt-6-luna 등)의 reasoning.effort 허용 값 — OpenAI 모델 문서(developers.openai.com/api/docs/models/gpt-6-luna, 2026-10-12 확인)
 REASONING_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
-# 기본 모델 — 사용자 지정 2026-10-12(docs/실험_LLM_Luna비교.md: 같은 입력 210회에서 더 싸고 원문 글자를 바꾼 건이 없었다).
+# 기본 모델 — 사용자 지정 2026-10-12(docs/실험_LLM_Luna비교.md: 같은 입력 210회에서 더 쌌고, 이번 1회 실행에서 원문 글자를 바꾼 건이 없었다).
 # 정확도는 사람 표시 뒤 채점으로 다시 확인한다.
 DEFAULT_MODEL, DEFAULT_EFFORT = "gpt-6-luna", "none"
 
 
 def model_and_effort(model: str | None, effort: str | None) -> tuple[str, str | None]:
-    """--model을 주지 않으면 기본 모델과 그 추론 강도. 주면 준 값 그대로 — 추론 강도는 줄 때만 보낸다(4o-mini 등)."""
-    if model is None:
+    """기본 모델(--model 없음 또는 같은 이름)이면 추론 강도를 주지 않았을 때 기본 강도로 — `--model gpt-6-luna`만 적어도
+    문서 기본값(medium)이 아니라 비교한 조건(none)으로 돈다. 다른 모델은 준 값 그대로, 추론 강도는 줄 때만 보낸다(4o-mini 등)."""
+    if model in (None, DEFAULT_MODEL):
         return DEFAULT_MODEL, effort or DEFAULT_EFFORT
     return model, effort
 

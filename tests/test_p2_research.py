@@ -388,3 +388,53 @@ def test_engine2_cli_defaults_to_luna(monkeypatch, tmp_path):
     with pytest.raises(Stop):
         e2.main(["--n", "1", "--out", str(tmp_path / "r.jsonl")])
     assert seen == [("gpt-6-luna", "none")]
+
+
+def test_naming_the_default_model_keeps_the_compared_effort():
+    from scripts.defect_precedent import cause_trials as ct
+
+    assert ct.model_and_effort("gpt-6-luna", None) == (
+        "gpt-6-luna",
+        "none",
+    )  # 문서 기본값 medium이 아니라
+
+
+def test_cause_trials_run_sends_the_effort_and_records_it(monkeypatch, tmp_path):
+    import json
+
+    from scripts.defect_precedent import cause_trials as ct
+
+    calls = []
+    _fake_openai(monkeypatch, calls)
+    monkeypatch.setattr(ct, "provenance", lambda: {"causes_sha256": "x"})
+    monkeypatch.setattr(ct, "pick_unknown", lambda n: [{"campaign": "24V001", "text": "x"}])
+    out = tmp_path / "o.jsonl"
+    ct.main(["unknown", "--n", "1", "--out", str(out)])  # 기본 모델 → Luna·none이 요청까지
+    assert calls[0]["model"] == "gpt-6-luna" and calls[0]["reasoning"] == {"effort": "none"}
+    meta = json.loads(out.with_suffix(".meta.json").read_text())
+    assert (meta["model"], meta["reasoning_effort"]) == ("gpt-6-luna", "none")
+
+
+def test_engine2_run_sends_the_effort_and_records_it(monkeypatch, tmp_path):
+    import json
+
+    from scripts.defect_precedent import engine2_trial as e2
+    from scripts.defect_precedent.retrieval_compare import card_text
+    from tests.test_rag_server import CARDS
+
+    calls = []
+    _fake_openai(monkeypatch, calls)
+    files = {
+        "recalls.jsonl": CARDS,
+        "eval.jsonl": [{"question": card_text(CARDS[0]), "action_no": "PE1"}],
+        "causes.jsonl": [
+            {"campaign": CARDS[0]["campno"][:6], "cause_status": "filled", "cause_text": "x"}
+        ],
+    }
+    monkeypatch.setattr(e2, "provenance", lambda: {"causes_sha256": "x"})
+    monkeypatch.setattr(e2, "read_jsonl", lambda path: files[path.name])
+    out = tmp_path / "e.jsonl"
+    e2.main(["--n", "1", "--out", str(out)])
+    assert calls[0]["model"] == "gpt-6-luna" and calls[0]["reasoning"] == {"effort": "none"}
+    meta = json.loads(out.with_suffix(".meta.json").read_text())
+    assert (meta["model"], meta["reasoning_effort"]) == ("gpt-6-luna", "none")
