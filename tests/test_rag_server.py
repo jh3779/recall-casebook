@@ -348,7 +348,12 @@ def test_verify_probe_and_fastembed_version_refuse_mismatched_vectors(monkeypatc
     texts = [c["defect"] for c in CARDS]
     vecs = np.array(model.passage_embed(texts))
     embeddings.verify_probe(model, texts, vecs)
-    with pytest.raises(embeddings.EmbeddingMismatch):
+    # 같은 모델이 CPU만 달라 생기는 오차(macOS arm ↔ Vercel Linux x86 실측 최대 4.30e-04)는 통과한다
+    embeddings.verify_probe(model, texts, vecs + 5e-4)
+    with pytest.raises(embeddings.EmbeddingMismatch, match="최대 차이 2.00e-03"):
+        embeddings.verify_probe(model, texts, vecs + 2e-3)
+    # 차이 크기를 보여야 CPU 오차와 모델 변경을 구분한다
+    with pytest.raises(embeddings.EmbeddingMismatch, match="최대 차이 1.00e"):
         embeddings.verify_probe(model, texts, vecs + 1.0)
     monkeypatch.setattr(fastembed, "__version__", "0.0.1")
     with pytest.raises(embeddings.EmbeddingMismatch, match="0.0.1"):

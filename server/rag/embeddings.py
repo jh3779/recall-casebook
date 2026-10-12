@@ -22,7 +22,9 @@ from scripts.defect_precedent.retrieval_compare import FASTEMBED_VERSION, card_t
 MODEL = "BAAI/bge-small-en-v1.5"
 SCHEMA = Path(__file__).with_name("embeddings.sql")
 PROBES = 16
-ATOL = 1e-4  # embed_cards의 캐시 대조와 같은 기준
+# 탐침 허용 차이 — 같은 모델이 CPU만 달라도 소수점 오차가 난다(macOS arm에서 만든 벡터를 Vercel Linux x86에서
+# 다시 계산하면 최대 4.30e-04, 2026-10-12 실측). 모델 파일·판본이 바뀌면 0.1 단위로 달라지므로 1e-3으로 잡는다(DEC-051)
+ATOL = 1e-3
 
 
 class EmbeddingMismatch(RuntimeError):
@@ -54,8 +56,10 @@ def verify_probe(model, texts: list[str], vecs) -> None:
     idx = probe_indices(len(texts))
     probe = np.array(list(model.passage_embed([texts[i] for i in idx])), dtype="float32")
     if not np.allclose(vecs[idx], probe, atol=ATOL):
+        diff = float(np.max(np.abs(vecs[idx] - probe)))
         raise EmbeddingMismatch(
-            "저장된 카드 벡터가 지금 모델로 다시 계산한 값과 다르다 — 모델 파일·판본이 바뀌었으면 build를 새로 만들어 다시 올린다"
+            f"저장된 카드 벡터가 지금 모델로 다시 계산한 값과 다르다(최대 차이 {diff:.2e}, 허용 {ATOL:g}) — "
+            "모델 파일·판본이 바뀌었으면 build를 새로 만들어 다시 올린다"
         )
 
 

@@ -49,3 +49,6 @@ RETROSPECTIVE.md
 
 # 전역 ~/.gitignore가 .agent/를 제외하지만, 이 저장소에서는 인계 문서를 팀과 공유한다
 !.agent/
+
+# Vercel CLI 연결 정보(vercel link) — 프로젝트·팀 ID
+.vercel
