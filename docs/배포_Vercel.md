@@ -13,6 +13,8 @@ ALLOW_ADMIN_DB_FOR_SERVER=1 uv run --env-file .env uvicorn server.api:app --port
 cd frontend && npm ci && npm run dev    # http://localhost:5173
 ```
 
+관리자 연결(`DATABASE_URL`, RLS 우회·쓰기 가능)은 적재를 맡은 사람의 컴퓨터에서만 쓴다 — 다른 사람의 노트북으로 시연하면 시연 전에 조회 전용 계정 `rag_reader`를 만들어 `.env.server`(`SERVER_DATABASE_URL`만)로 띄운다(`server/README.md` 3단계).
+
 시연 전 점검: `curl localhost:8000/health`가 `build_id`를 돌려주는지, `/docs`에서 `POST /search` 한 건이 원인 출처(리콜 번호·PDF)와 함께 나오는지, 화면이 데모 스냅샷인지 API 연결 화면인지(아래 첫 항목).
 
 - **지금 화면은 API를 부르지 않는다.** #60 화면은 `public/data/recalls.json` 데모 스냅샷을 읽는다 — 화면↔API 연결(#60 뒤 작업, HANDOFF 할 일 50)이 끝나기 전의 시연 화면은 우리 검색 결과(카드 30,350장)가 아니다. API 결과를 보여 주려면 연결을 먼저 하거나, API 응답(`curl`·`/docs`)을 따로 보여 준다.
