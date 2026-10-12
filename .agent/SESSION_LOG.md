@@ -146,3 +146,4 @@
 - 2026-10-12: 서빙 묶음 Supabase Storage 업로드·verify·로컬 묶음 경로 시작 확인 — 새 형식 Secret 키는 apikey 머리글이 필요해 업로드 코드 수정(PR #101)
 - 2026-10-12: API Vercel 첫 배포 — rag_reader 생성, Production lg-cns-rag.vercel.app(#63 전 공개는 사용자 결정), 탐침 허용 1e-3(Linux 차이 4.30e-04)·UV_NO_CONFIG, 749문항 shown_any Vercel 0.545·로컬 0.543, 첫 요청 13.2초 (DEC-051)
 - 2026-10-12: 체크포인트 — PR C(feat/vercel-deploy) push까지, PR 생성 전 사용자 요청으로 중단
+- 2026-10-12: PR #102 리뷰 반영 — 탐침 1e-3은 묶음 경로만(같은 기계 1e-4), 통과 때 차이·시작 최대 RSS(Vercel 901MB) 로그, maxDuration 60, Vercel 통과 기준을 shown_any 차이·세 갈래 기록(706·28·15)으로 대체(사용자 결정)

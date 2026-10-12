@@ -7,6 +7,7 @@ DB·모델 없이 도는 테스트가 기본이다 — 가짜 임베딩 모델�
 
 import hashlib
 import json
+import re
 
 import numpy as np
 import pytest
@@ -348,12 +349,16 @@ def test_verify_probe_and_fastembed_version_refuse_mismatched_vectors(monkeypatc
     texts = [c["defect"] for c in CARDS]
     vecs = np.array(model.passage_embed(texts))
     embeddings.verify_probe(model, texts, vecs)
-    # 같은 모델이 CPU만 달라 생기는 오차(macOS arm ↔ Vercel Linux x86 실측 최대 4.30e-04)는 통과한다
-    assert abs(embeddings.verify_probe(model, texts, vecs + 5e-4) - 5e-4) < 1e-6
+    # 같은 기계(벡터를 만든 곳)에서는 1e-4 그대로 — 5e-4도 거부한다
+    with pytest.raises(embeddings.EmbeddingMismatch, match="최대 차이 5.00e-04, 허용 0.0001"):
+        embeddings.verify_probe(model, texts, vecs + 5e-4)
+    # 다른 기계(묶음 경로 — macOS arm 벡터 ↔ Vercel Linux x86 실측 최대 4.30e-04)는 1e-3까지 통과한다
+    cross = embeddings.CROSS_MACHINE_ATOL
+    assert abs(embeddings.verify_probe(model, texts, vecs + 5e-4, atol=cross) - 5e-4) < 1e-6
     # 통과해도 차이를 남긴다 — 여러 시작에서 분포를 보고 허용 차이를 다시 판단한다(DEC-051)
-    assert "탐침 최대 차이 5.00e-04" in capsys.readouterr().err
+    assert "탐침 최대 차이 5.00e-04 (허용 0.001)" in capsys.readouterr().err
     with pytest.raises(embeddings.EmbeddingMismatch, match="최대 차이 2.00e-03"):
-        embeddings.verify_probe(model, texts, vecs + 2e-3)
+        embeddings.verify_probe(model, texts, vecs + 2e-3, atol=cross)
     # 차이 크기를 보여야 CPU 오차와 모델 변경을 구분한다
     with pytest.raises(embeddings.EmbeddingMismatch, match="최대 차이 1.00e"):
         embeddings.verify_probe(model, texts, vecs + 1.0)
@@ -914,3 +919,14 @@ def test_parity_cli_needs_exactly_one_mode_and_stops_when_cards_fail_the_model(
     monkeypatch.setattr(parity, "card_stats", lambda *a: {"model_failed": 2})
     with pytest.raises(SystemExit, match="2장"):
         parity.main(["--stats"])
+
+
+def test_startup_reports_peak_memory(capsys):
+    from fastapi.testclient import TestClient
+
+    from server.api import create_app
+
+    # Vercel 로그에는 메모리 항목이 없어 시작이 끝날 때 최대 RSS를 남긴다(Hobby 2GB 여유 확인, DEC-051)
+    with TestClient(create_app(lambda: object())):
+        pass
+    assert re.search(r"시작 최대 RSS \d+MB", capsys.readouterr().err)

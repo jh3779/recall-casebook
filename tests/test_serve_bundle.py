@@ -139,12 +139,13 @@ def test_load_state_from_bundle_checks_db_spec_vectors_sample_then_probe(monkeyp
 
     b = load_build(full_data_dir(tmp_path / "d", CARDS, [cause("24V001", pdfs=PDFS)]))
     loaded = bundle.Loaded(b, INV, np.zeros((len(b.cards), 384)), tmp_path / "m", {}, "ab" * 32)
-    calls, args = [], {}
+    calls, args, kwargs = [], {}, {}
 
     def rec(name, result=None):
         def f(*a, **k):
             calls.append((name, k) if name == "TextEmbedding" else name)
             args[name] = a
+            kwargs[name] = k
             return result
 
         return f
@@ -189,6 +190,8 @@ def test_load_state_from_bundle_checks_db_spec_vectors_sample_then_probe(monkeyp
     assert args["sample_matches"][1:3] == (b.build_id, campnos)
     assert args["sample_matches"][3] is loaded.vectors
     assert args["verify_probe"][1] == texts and args["verify_probe"][2] is loaded.vectors
+    # 묶음은 다른 기계에서 만든 벡터라 CPU 오차를 허용하는 기준을 쓴다(DEC-051)
+    assert kwargs["verify_probe"] == {"atol": embeddings.CROSS_MACHINE_ATOL}
     assert args["Searcher"][0] is b.cards and args["Searcher"][1] is loaded.vectors
 
     for step, mod in (
