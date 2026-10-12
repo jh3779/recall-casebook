@@ -98,21 +98,22 @@ def main(argv: list[str] | None = None) -> None:
     embeddings.check_fastembed()
     model_path = None
     if a.vectors == "bundle":
+        import atexit
+        import shutil
         import tempfile
         from pathlib import Path
 
-        from server.rag.bundle import load_bundle, sha256_file
+        from server.rag.bundle import check_identity, load_bundle, sha256_file
 
         bundle_path = Path(
             a.bundle
         )  # 로컬에서 만든 묶음을 재는 것이라 그 파일 자신의 sha256으로 연다(기록 대조는 서버 경로)
-        loaded = load_bundle(
-            bundle_path, Path(tempfile.mkdtemp(prefix="parity_bundle_")), sha256_file(bundle_path)
-        )
-        if loaded.build.build_id != build.build_id:
-            sys.exit(
-                f"묶음 build {loaded.build.build_id} ≠ 로컬 build {build.build_id} — 입력 대조는 로컬 파일로 하므로 같은 build여야 한다"
-            )
+        work = Path(tempfile.mkdtemp(prefix="parity_bundle_"))
+        atexit.register(shutil.rmtree, work, True)  # 풀어 쓴 모델 폴더(약 67MB)를 끝날 때 지운다
+        loaded = load_bundle(bundle_path, work, sha256_file(bundle_path))
+        check_identity(
+            loaded, build
+        )  # 카드·원인·명세 전체와 모델·fastembed 판본이 로컬 입력과 같을 때만 '재현'
         build, model_path = loaded.build, str(loaded.model_dir)
     model = TextEmbedding(embeddings.MODEL, specific_model_path=model_path)
     texts = [card_text(c) for c in build.cards]

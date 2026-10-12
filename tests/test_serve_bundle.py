@@ -79,10 +79,14 @@ def test_load_from_bundle_refuses_a_bundle_of_another_build(tmp_path, monkeypatc
         bundle.load_from_bundle(FakeConn(row), "other-build", "https://x", tmp_path / "s")
 
 
-def test_load_from_bundle_refuses_other_fastembed_version(tmp_path, monkeypatch):
+@pytest.mark.parametrize("what", ["fastembed", "model"])
+def test_load_from_bundle_refuses_other_fastembed_version_or_model(tmp_path, monkeypatch, what):
     b, _, tar, row = _served(tmp_path)
     monkeypatch.setattr(bundle, "_download", _fake_download(tar, []))
-    monkeypatch.setattr(bundle, "FASTEMBED_VERSION", "0.0.0")
+    if what == "fastembed":
+        monkeypatch.setattr(bundle, "FASTEMBED_VERSION", "0.0.0")
+    else:  # 서버가 기대하는 모델 이름이 묶음 meta의 모델과 다르다
+        monkeypatch.setattr(bundle.embeddings, "MODEL", "BAAI/other-model")
     with pytest.raises(bundle.BundleMismatch, match="fastembed"):
         bundle.load_from_bundle(FakeConn(row), b.build_id, "https://x", tmp_path / "s")
 
@@ -118,6 +122,10 @@ def test_load_state_refuses_unknown_source_and_bundle_without_build_id(monkeypat
     )
     with pytest.raises(RuntimeError, match="SERVING_BUILD_ID"):
         api_mod.load_state()
+    monkeypatch.setenv("SERVING_BUILD_ID", "b")
+    monkeypatch.delenv("SUPABASE_URL")
+    with pytest.raises(RuntimeError, match="SUPABASE_URL"):
+        api_mod.load_state()
 
 
 def test_load_state_from_bundle_checks_db_spec_vectors_sample_then_probe(monkeypatch, tmp_path):
@@ -131,11 +139,12 @@ def test_load_state_from_bundle_checks_db_spec_vectors_sample_then_probe(monkeyp
 
     b = load_build(full_data_dir(tmp_path / "d", CARDS, [cause("24V001", pdfs=PDFS)]))
     loaded = bundle.Loaded(b, INV, np.zeros((len(b.cards), 384)), tmp_path / "m", {}, "ab" * 32)
-    calls = []
+    calls, args = [], {}
 
     def rec(name, result=None):
         def f(*a, **k):
             calls.append((name, k) if name == "TextEmbedding" else name)
+            args[name] = a
             return result
 
         return f
@@ -170,6 +179,17 @@ def test_load_state_from_bundle_checks_db_spec_vectors_sample_then_probe(monkeyp
         "verify_probe", "Searcher",
     ]  # fmt: skip
     assert state.build is b and state.investigations == INV and state.bundle_sha256 == "ab" * 32
+    # 대조에 넘기는 값이 묶음의 카드·벡터 그대로인지 — 순서만 맞고 엉뚱한 값을 대조하는 변경을 막는다
+    from scripts.defect_precedent.retrieval_compare import card_text
+
+    campnos, texts = [c["campno"] for c in b.cards], [card_text(c) for c in b.cards]
+    assert args["load_from_bundle"][1:] == (b.build_id, "https://x")
+    assert args["check_against_db"][1] is b
+    assert args["check_set"][1:] == (b.build_id, campnos, texts)
+    assert args["sample_matches"][1:3] == (b.build_id, campnos)
+    assert args["sample_matches"][3] is loaded.vectors
+    assert args["verify_probe"][1] == texts and args["verify_probe"][2] is loaded.vectors
+    assert args["Searcher"][0] is b.cards and args["Searcher"][1] is loaded.vectors
 
     for step, mod in (
         ("load_from_bundle", bundle),
@@ -264,3 +284,65 @@ def test_health_and_search_carry_bundle_sha256_only_when_served_from_a_bundle(tm
         with TestClient(api_mod.create_app(lambda s=state: s)) as c:
             assert c.get("/health").json()["bundle_sha256"] == sha
             assert c.post("/search", json={"question": "airbag"}).json()["bundle_sha256"] == sha
+
+
+def test_load_from_bundle_refuses_plain_http(tmp_path):
+    with pytest.raises(bundle.BundleMismatch, match="https"):
+        bundle.load_from_bundle(FakeConn(("ab" * 32, "x.tar")), "b", "http://x", tmp_path)
+
+
+def test_download_removes_the_partial_file_when_it_fails(tmp_path, monkeypatch):
+    class Broken:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self, n=-1):
+            raise OSError("연결 끊김")
+
+    monkeypatch.setattr(bundle.urllib.request, "urlopen", lambda *a, **k: Broken())
+    dst = tmp_path / "serving" / "x.tar"
+    with pytest.raises(OSError):
+        bundle._download("https://x/a", dst)
+    assert list(dst.parent.iterdir()) == []  # 조각 파일(.tmp)도, 완성본도 없다
+
+
+def test_parity_bundle_mode_scores_with_the_bundle_and_refuses_another_build(
+    tmp_path, monkeypatch, capsys
+):
+    import json
+
+    import fastembed
+
+    from scripts.defect_precedent.retrieval_compare import card_text
+    from server.rag import parity
+
+    b = load_build(full_data_dir(tmp_path / "d", CARDS, [cause("24V001", pdfs=PDFS)]))
+    model = FakeModel()
+    vecs = np.array(model.passage_embed([card_text(c) for c in b.cards]), dtype="float32")
+    _, _, model_dir = _inputs(tmp_path / "m")
+    tar = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
+    monkeypatch.setattr(parity, "load_build", lambda: b)
+    monkeypatch.setattr(parity, "provenance", lambda: {"recalls_sha256": "x", "eval_sha256": "y"})
+    monkeypatch.setattr(embeddings, "check_fastembed", lambda: None)
+    opened = []
+    monkeypatch.setattr(fastembed, "TextEmbedding", lambda *a, **k: opened.append(k) or model)
+    gold = b.cards[0]["campno"]
+    question = {"question": card_text(b.cards[0]), "gold_campnos": [gold], "_post": True}
+    monkeypatch.setattr(parity, "load", lambda: (None, [question]))
+    parity.main(["--vectors", "bundle", "--bundle", str(tar), "--allow-drift"])
+    out = json.loads(capsys.readouterr().out)
+    assert out["vectors"] == "bundle" and out["all"]["any@1"] == 1.0  # 묶음 벡터로 채점했다
+    assert opened[0]["specific_model_path"].endswith("model")  # 묶음 안 모델 파일로 열었다
+    other = load_build(
+        full_data_dir(
+            tmp_path / "o",
+            [dict(CARDS[0], defect="Another defect.")] + CARDS[1:],
+            [cause("24V001", pdfs=PDFS)],
+        )
+    )
+    other_tar = bundle.write_bundle(other, INV, vecs, model_dir, tmp_path / "other")
+    with pytest.raises(bundle.BundleMismatch, match="build"):
+        parity.main(["--vectors", "bundle", "--bundle", str(other_tar), "--allow-drift"])

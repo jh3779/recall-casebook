@@ -270,16 +270,24 @@ def _send(req: urllib.request.Request) -> None:
 
 
 def _download(url: str, dst: Path) -> None:
-    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.parent.mkdir(mode=0o700, parents=True, exist_ok=True)  # 받은 묶음 폴더는 이 사용자만
     tmp = dst.with_name(f"{dst.name}.{os.getpid()}.tmp")
-    with urllib.request.urlopen(url, timeout=600) as r, tmp.open("wb") as f:
-        shutil.copyfileobj(r, f, 1 << 20)
+    try:
+        with urllib.request.urlopen(url, timeout=600) as r, tmp.open("wb") as f:
+            shutil.copyfileobj(r, f, 1 << 20)
+    except BaseException:
+        tmp.unlink(missing_ok=True)  # 끊긴 조각 파일(최대 묶음 크기)을 /tmp에 남기지 않는다
+        raise
     tmp.replace(dst)  # 다 받은 뒤에만 이름을 바꾼다 — 중간에 끊겨도 반쯤 받은 파일을 쓰지 않는다
 
 
 def load_from_bundle(conn, build_id: str, supabase_url: str, work_dir: Path = SERVE_DIR) -> Loaded:
     """배포 서버의 시작 (RAG_SOURCE=bundle). DB `serving_bundles`에 기록된 sha256과 같은 묶음만 쓴다 —
     받은 파일이 다르면 지우고 멈춘다(다음 시작 때 다시 받는다). 묶음의 build·모델·fastembed 판본도 지금 서버와 같아야 한다."""
+    if not supabase_url.startswith("https://"):
+        raise BundleMismatch(
+            "SUPABASE_URL이 https://로 시작하지 않는다 — 묶음을 암호화 없이 받지 않는다"
+        )
     row = recorded(conn, build_id)
     if row is None:
         raise BundleMismatch(
