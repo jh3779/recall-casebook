@@ -122,7 +122,8 @@ def load_state_from_bundle() -> RagState:
                 "묶음의 벡터가 DB에서 뽑은 줄과 다르다 — 섞인 판본으로 검색하지 않는다"
             )
     model = TextEmbedding(embeddings.MODEL, specific_model_path=str(loaded.model_dir))
-    embeddings.verify_probe(model, texts, loaded.vectors)
+    # 묶음은 다른 기계에서 만든 벡터 — CPU에 따른 소수점 오차를 허용한다(DEC-051)
+    embeddings.verify_probe(model, texts, loaded.vectors, atol=embeddings.CROSS_MACHINE_ATOL)
     return RagState(
         build,
         Searcher(build.cards, loaded.vectors, model),
@@ -357,10 +358,21 @@ def answer(state: RagState, question: str) -> dict:
     }
 
 
+def peak_rss_mb() -> int:
+    """이 프로세스의 최대 RSS(MB). ru_maxrss 단위는 Linux KB, macOS 바이트."""
+    import resource
+
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return peak // (1024 * 1024) if sys.platform == "darwin" else peak // 1024
+
+
 def create_app(loader: Callable[[], RagState] = load_state) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.rag = loader()
+        print(
+            f"시작 최대 RSS {peak_rss_mb()}MB", file=sys.stderr
+        )  # Vercel 로그에 메모리 항목이 없다(DEC-051)
         yield
 
     app = FastAPI(title="결함 선례 찾기 도우미", lifespan=lifespan)

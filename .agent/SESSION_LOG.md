@@ -144,3 +144,6 @@
 - 2026-10-12: 연구용 LLM 시험 기본 모델을 gpt-6-luna(추론 none)로 지정(사용자) — --model 없으면 Luna, 정확도는 사람 표시 뒤 채점
 - 2026-10-12: 체크포인트 4 — #96 병합(main 8a0d9c7), #97 세션 밖 선병합 기록, #98 후속 이슈, worktree 정리, 학습 ⑧ ①·② 진행(다른 세션 조사를 위해 잠시 멈춤)
 - 2026-10-12: 서빙 묶음 Supabase Storage 업로드·verify·로컬 묶음 경로 시작 확인 — 새 형식 Secret 키는 apikey 머리글이 필요해 업로드 코드 수정(PR #101)
+- 2026-10-12: API Vercel 첫 배포 — rag_reader 생성, Production lg-cns-rag.vercel.app(#63 전 공개는 사용자 결정), 탐침 허용 1e-3(Linux 차이 4.30e-04)·UV_NO_CONFIG, 749문항 shown_any Vercel 0.545·로컬 0.543, 첫 요청 13.2초 (DEC-051)
+- 2026-10-12: 체크포인트 — PR C(feat/vercel-deploy) push까지, PR 생성 전 사용자 요청으로 중단
+- 2026-10-12: PR #102 리뷰 반영 — 탐침 1e-3은 묶음 경로만(같은 기계 1e-4), 통과 때 차이·시작 최대 RSS(Vercel 901MB) 로그, maxDuration 60, Vercel 통과 기준을 shown_any 차이·세 갈래 기록(706·28·15)으로 대체(사용자 결정)

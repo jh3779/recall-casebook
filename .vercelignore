@@ -1,0 +1,11 @@
+# CLI 배포는 로컬 폴더를 올린다 — 기본 무시 목록에 .env·.env.server·data/가 없으므로 필요한 것만 허용한다
+/*
+!app.py
+!vercel.json
+!pyproject.toml
+!uv.lock
+!.python-version
+!server
+!scripts
+scripts/*
+!scripts/defect_precedent
