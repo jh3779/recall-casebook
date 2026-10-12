@@ -50,6 +50,9 @@ class RagState:
     investigations: dict[str, list[dict]] = field(
         default_factory=dict
     )  # 리콜 번호 → 조사 요약 (색인에는 없음)
+    bundle_sha256: str | None = (
+        None  # 서빙 묶음으로 띄웠을 때 그 묶음 sha256 — 로컬 경로는 없음(AGENTS.md 2-4)
+    )
 
     def __post_init__(self):
         self.by_id = {c["campno"]: c for c in self.build.cards}
@@ -119,7 +122,11 @@ def load_state_from_bundle() -> RagState:
     model = TextEmbedding(embeddings.MODEL, specific_model_path=str(loaded.model_dir))
     embeddings.verify_probe(model, texts, loaded.vectors)
     return RagState(
-        build, Searcher(build.cards, loaded.vectors, model), embeddings.MODEL, loaded.investigations
+        build,
+        Searcher(build.cards, loaded.vectors, model),
+        embeddings.MODEL,
+        loaded.investigations,
+        loaded.sha256,
     )
 
 
@@ -269,6 +276,9 @@ class Card(Strict):
 
 class SearchResponse(Strict):
     build_id: str
+    bundle_sha256: (
+        str | None
+    )  # 서빙 묶음으로 띄운 서버만 — build_id만으로는 구별되지 않는 묶음(형식 판본)까지 되짚는다
     snapshot_date: str
     model: str
     question: str
@@ -278,6 +288,7 @@ class SearchResponse(Strict):
 
 class HealthResponse(Strict):
     build_id: str
+    bundle_sha256: str | None
     snapshot_date: str
     cards: int
     model: str
@@ -335,6 +346,7 @@ def answer(state: RagState, question: str) -> dict:
         add_checklist(state, card)
     return {
         "build_id": state.build.build_id,
+        "bundle_sha256": state.bundle_sha256,
         "snapshot_date": state.build.snapshot_date,
         "model": state.model_name,
         "question": question,
@@ -362,6 +374,7 @@ def create_app(loader: Callable[[], RagState] = load_state) -> FastAPI:
         s: RagState = app.state.rag
         return {
             "build_id": s.build.build_id,
+            "bundle_sha256": s.bundle_sha256,
             "snapshot_date": s.build.snapshot_date,
             "cards": len(s.build.cards),
             "model": s.model_name,

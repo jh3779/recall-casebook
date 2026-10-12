@@ -24,7 +24,7 @@ import sys
 import tarfile
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from scripts.defect_precedent.load_db import PROCESSED, connect
@@ -52,6 +52,7 @@ class Loaded:
     vectors: "object"  # numpy float32 (카드 수, 384), 정규화 전
     model_dir: Path
     meta: dict
+    sha256: str = ""  # 배포 서버가 DB 기록과 대조한 묶음 파일 sha256 (load_from_bundle만 채운다)
 
 
 def _jsonl(rows) -> bytes:
@@ -251,7 +252,7 @@ def load_from_bundle(conn, build_id: str, supabase_url: str, work_dir: Path = SE
         raise BundleMismatch(
             f"묶음의 build·모델·fastembed 판본 {got}이 지금 서버({build_id}, {embeddings.MODEL}, {FASTEMBED_VERSION})와 다르다"
         )
-    return loaded
+    return replace(loaded, sha256=sha)
 
 
 def _env(name: str) -> str:

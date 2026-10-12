@@ -60,13 +60,26 @@ uv run --env-file .env python -m server.rag.bundle verify   # 공개 주소에�
 - 버킷 `serving-bundles`는 **공개 읽기**로 만든다(Supabase 대시보드 — 사용자 계정 작업). 들어 있는 것은 공개 NHTSA 자료에서 만든 값이고, 무결성은 DB `serving_bundles.bundle_sha256` 대조로 지킨다. 쓰기는 로컬의 `SUPABASE_SERVICE_ROLE_KEY`로만 한다.
 - `serving_bundles` 기록은 (build, 모델, 묶음 형식 판본)마다 하나이고 한 번 쓰면 바꾸지 않는다 — 같은 조합의 다른 묶음을 올리려 하면 멈춘다. 묶음 형식(`bundle.py` `FORMAT`)을 바꾸면 새 기록이 된다.
 - 실측(2026-10-12, build `f1fe1843ed0f2c66`): 묶음 155.4MB(그중 모델 약 67MB·벡터 약 47MB), 만들기 13초, 되살리기 0.2초 — 되살린 build는 로컬 `load_build()` 결과와 같다.
-- 서버가 묶음에서 시작하는 경로(`RAG_SOURCE=bundle`)는 다음 PR에서 더한다. 지금은 묶음을 만들고 올리고 확인하는 도구까지다.
+### 서버를 묶음에서 띄우기 (`RAG_SOURCE=bundle`, DEC-050)
+
+```bash
+RAG_SOURCE=bundle SERVING_BUILD_ID=<build_id> SUPABASE_URL=<프로젝트 주소> \
+  uv run --env-file .env.server uvicorn server.api:app --port 8000
+```
+
+- `RAG_SOURCE`가 없거나 `local`이면 지금까지처럼 로컬 build 파일로 뜬다(시연). `bundle`이면 로컬 데이터 파일을 읽지 않는다. 그 밖의 값이면 시작하지 않는다.
+- 시작 순서: fastembed 판본 → DB `serving_bundles`에서 (build, 모델, 묶음 형식) 기록 → 공개 주소에서 `/tmp/serving/<sha256>.tar`로 받기(이미 있으면 다시 받지 않음) → 기록 sha256과 대조(다르면 파일을 지우고 멈춤) → `meta.json` 파일별 해시·카드 글 해시 → 묶음의 build·모델·fastembed 판본이 지금 서버와 같은지 → DB 원인 명세(`check_against_db`) → DB 벡터 기록(`check_set`) → DB에서 뽑은 64줄+마지막 줄이 묶음 벡터와 글자 그대로 같은지 → 묶음 안 모델 파일로 모델 열기(`specific_model_path`) → 탐침 16장. 하나라도 어긋나면 서버를 띄우지 않는다.
+- `SERVING_BUILD_ID`·`SUPABASE_URL`이 없으면 시작하지 않는다 — 어느 build로 띄울지 짐작하지 않는다. 관리자 키는 필요 없다(공개 읽기 버킷 + 조회 전용 계정).
+- `/health`와 `/search` 응답의 `bundle_sha256`에 쓴 묶음의 sha256이 실린다(로컬 경로는 `null`).
+- 실측(2026-10-12, build `f1fe1843ed0f2c66`, Storage 대신 로컬 묶음 파일·운영 DB 조회): 시작 6.7초(로컬 경로 9.3초), 최대 RSS 1.07GB(로컬 경로 1.43GB, macOS), 749문항 `parity --vectors bundle` = 0.311·0.411·0.462·0.542·shown_any 0.543(로컬 경로와 같음), 질문 40개의 `/search` 응답이 `bundle_sha256` 칸을 빼고 로컬 경로와 글자 그대로 같음.
+- CORS 허용 주소는 환경변수 `ALLOWED_ORIGINS`(쉼표로 구분)로 바꾼다. 없으면 `http://localhost:5173`.
 
 ## 응답 (`POST /search`)
 
 | 칸 | 뜻 |
 |---|---|
 | `build_id`·`snapshot_date`·`model` | 이 답이 쓴 데이터 판본과 임베딩 모델 — 되짚기용 |
+| `bundle_sha256` | 서빙 묶음으로 띄운 서버가 쓴 묶음 파일의 sha256(DB `serving_bundles`와 같은 값). 로컬 파일 경로는 `null` |
 | `customer_precedents[]` | 고객사(`maker_group` ∈ Hyundai Motor America·Kia) 카드, 합친 순위 상위 100 안에서 최대 5건 |
 | `precedents[]` | 그 밖의 회사 카드 상위 10건 |
 | 카드: `rank` | 합친 순위(1부터) — 두 구역이 같은 순위를 나눠 쓴다 |
@@ -85,10 +98,11 @@ uv run --env-file .env python -m server.rag.bundle verify   # 공개 주소에�
 
 - `uv run pytest tests/test_rag_server.py` — DB·모델 없이 도는 테스트 + `TEST_DATABASE_URL`이 있으면 pgvector 왕복 테스트.
 - 대리 평가 재현: `uv run --env-file .env python -m server.rag.parity --vectors db` → 749문항 Hit@1·3·5·10 = 0.311·0.411·0.462·0.542 (보고서 v2와 3자리 점수가 같음 — 입력 sha256이 보고서와 다르거나 점수가 다르면 종료 코드 1). 화면 구성(고객사 최대 5건 + 그 밖 10건)에 정답 리콜이 하나라도 보이는 비율은 0.543(`shown_any`, 보고서에 없는 새 값 — 최대 15건을 보여 주므로 상위 10과 같은 조건이 아니다).
+- 배포 경로 재현: `uv run --env-file .env python -m server.rag.parity --vectors bundle --bundle data/processed/defect/serving/serving_<build_id>.tar` — 묶음의 카드·벡터·모델 파일로 같은 점수가 나와야 한다(묶음 build가 로컬 build와 같아야 실행된다).
 - 카드 전체 점검: `uv run python -m server.rag.parity --stats`(벡터·DB 불필요) — 전체 카드를 응답과 같은 경로(카드 → 원문 대조 → 확인 항목 → 응답 모델)로 만들어 모델 통과 수·원인 상태 분포·꼬리표 수(상태별)·조사 연결 수를 낸다. build `f1fe1843ed0f2c66`: 30,350장 모두 통과, 조사 연결 1,870장·917건·2건 이상 35장, 꼬리표 `filled` 226·541(DEC-044 수치와 같음) + `stated_unknown` 75·1(DEC-047 뒤 새로 생김).
 - 서버와 연구 스크립트가 함께 쓰는 판별 규칙(원인 미확인 표현 `UNKNOWN_RE`, 원문 대조 `check`, 조사 요약 자리표시)은 `scripts/defect_precedent/rules.py` 한 곳에 둔다 — 실험을 고치다 서버 동작이 말없이 바뀌지 않게. `tests/test_rules.py`가 정규식을 글자 그대로 고정한다.
 - 서버는 질문마다, 연구 코드는 749문항을 한 번에 곱해서 유사도 값이 같은(동점) 카드의 순서가 다를 수 있다. 그래서 "같은 계산"의 보장은 동점 없는 벡터 단위 테스트 + 실제 데이터 3자리 점수 재현이다.
 
 ## 아직 없는 것
 
-배포 주소·CORS·호출 상한(#63), 화면 문구(박성호 님, PR #60). 생산 기간 확인 항목은 카드에 연식·생산일 칸이 없어 뺐다. 부품 범위 좁히기는 시험 뒤 기각했다(DEC-045).
+배포 주소의 CORS 값·호출 상한(#63 — 허용 주소는 `ALLOWED_ORIGINS`로 바꿀 수 있다), 화면 문구(박성호 님, PR #60). 생산 기간 확인 항목은 카드에 연식·생산일 칸이 없어 뺐다. 부품 범위 좁히기는 시험 뒤 기각했다(DEC-045).

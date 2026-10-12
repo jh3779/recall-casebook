@@ -47,6 +47,7 @@ def test_load_from_bundle_downloads_the_recorded_bundle_once_and_restores_the_bu
     monkeypatch.setattr(bundle, "_download", _fake_download(tar, calls))
     work = tmp_path / "serve"
     got = bundle.load_from_bundle(FakeConn(row), b.build_id, "https://x.supabase.co/", work)
+    assert got.sha256 == row[0]  # 서버가 응답·/health에 싣는 값
     assert got.build == b and np.array_equal(got.vectors, vecs) and got.investigations == INV
     assert calls == [f"https://x.supabase.co/storage/v1/object/public/serving-bundles/{row[1]}"]
     bundle.load_from_bundle(FakeConn(row), b.build_id, "https://x.supabase.co", work)
@@ -129,7 +130,7 @@ def test_load_state_from_bundle_checks_db_spec_vectors_sample_then_probe(monkeyp
     from server.rag import investigations as inv_mod
 
     b = load_build(full_data_dir(tmp_path / "d", CARDS, [cause("24V001", pdfs=PDFS)]))
-    loaded = bundle.Loaded(b, INV, np.zeros((len(b.cards), 384)), tmp_path / "m", {})
+    loaded = bundle.Loaded(b, INV, np.zeros((len(b.cards), 384)), tmp_path / "m", {}, "ab" * 32)
     calls = []
 
     def rec(name, result=None):
@@ -168,7 +169,7 @@ def test_load_state_from_bundle_checks_db_spec_vectors_sample_then_probe(monkeyp
         "sample_matches", ("TextEmbedding", {"specific_model_path": str(tmp_path / "m")}),
         "verify_probe", "Searcher",
     ]  # fmt: skip
-    assert state.build is b and state.investigations == INV
+    assert state.build is b and state.investigations == INV and state.bundle_sha256 == "ab" * 32
 
     for step, mod in (
         ("load_from_bundle", bundle),
@@ -247,3 +248,19 @@ def test_parity_bundle_mode_needs_a_bundle_file_and_only_with_it():
     for argv in (["--vectors", "bundle"], ["--vectors", "db", "--bundle", "x.tar"]):
         with pytest.raises(SystemExit):
             parity.main(argv)
+
+
+def test_health_and_search_carry_bundle_sha256_only_when_served_from_a_bundle(tmp_path):
+    from fastapi.testclient import TestClient
+
+    import server.api as api_mod
+    from server.rag.search import Searcher
+
+    b = load_build(full_data_dir(tmp_path / "d", CARDS, [cause("24V001", pdfs=PDFS)]))
+    model = FakeModel()
+    vecs = np.array(model.passage_embed([c["defect"] for c in b.cards]), dtype="float32")
+    for sha in (None, "ab" * 32):
+        state = api_mod.RagState(b, Searcher(b.cards, vecs, model), "fake", {}, sha)
+        with TestClient(api_mod.create_app(lambda s=state: s)) as c:
+            assert c.get("/health").json()["bundle_sha256"] == sha
+            assert c.post("/search", json={"question": "airbag"}).json()["bundle_sha256"] == sha
