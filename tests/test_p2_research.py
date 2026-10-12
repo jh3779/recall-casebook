@@ -347,3 +347,44 @@ def test_trial_clis_accept_reasoning_effort():
         assert a.reasoning_effort == "none"
         with pytest.raises(SystemExit):
             p.parse_args((["unknown"] if mod is ct else []) + ["--reasoning-effort", "minimal"])
+
+
+def test_trials_default_to_luna_with_no_reasoning_but_keep_explicit_models(monkeypatch, tmp_path):
+    from scripts.defect_precedent import cause_trials as ct
+
+    assert ct.model_and_effort(None, None) == ("gpt-6-luna", "none")  # 사용자 지정 2026-10-12
+    assert ct.model_and_effort(None, "low") == ("gpt-6-luna", "low")
+    assert ct.model_and_effort("gpt-4o-mini", None) == (
+        "gpt-4o-mini",
+        None,
+    )  # 추론 설정을 보내지 않는다
+    got = []
+    monkeypatch.setattr(ct, "run", lambda *a: got.append(a))
+    ct.main(["unknown", "--out", str(tmp_path / "r.jsonl")])
+    assert got[0][1] == "gpt-6-luna" and got[0][-1] == "none"
+
+
+def test_engine2_cli_defaults_to_luna(monkeypatch, tmp_path):
+    from scripts.defect_precedent import cause_trials as ct
+    from scripts.defect_precedent import engine2_trial as e2
+
+    seen = []
+    real = ct.model_and_effort
+
+    def spy(model, effort):
+        seen.append(real(model, effort))
+        return seen[-1]
+
+    monkeypatch.setattr(ct, "model_and_effort", spy)
+    _fake_openai(monkeypatch, [])
+
+    class Stop(Exception):
+        pass
+
+    def stop():
+        raise Stop
+
+    monkeypatch.setattr(e2, "provenance", stop)  # 모델을 고른 뒤 데이터를 읽기 전에 멈춘다
+    with pytest.raises(Stop):
+        e2.main(["--n", "1", "--out", str(tmp_path / "r.jsonl")])
+    assert seen == [("gpt-6-luna", "none")]

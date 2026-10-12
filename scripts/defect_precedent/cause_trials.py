@@ -2,9 +2,9 @@
 
 사용법:
     # A. 573 원인 칸이 없는 리콜: 카드의 결함 설명(`defect`)에서 원인 문장 고르기
-    uv run --with openai --env-file .env python -m scripts.defect_precedent.cause_trials defect --model gpt-4o-mini --n 30 --out <결과.jsonl>
+    uv run --with openai --env-file .env python -m scripts.defect_precedent.cause_trials defect [--model gpt-6-luna] [--reasoning-effort none] --n 30 --out <결과.jsonl>
     # B. "원인 미확인" 걸러내기: 원인 칸 무작위 표본에 규칙과 LLM을 같이 돌리고, 사람이 표시할 시트를 만든다
-    uv run --with openai --env-file .env python -m scripts.defect_precedent.cause_trials unknown --model gpt-4o-mini --n 150 --out <결과.jsonl> --sheet <표시용.csv>
+    uv run --with openai --env-file .env python -m scripts.defect_precedent.cause_trials unknown [--model gpt-6-luna] [--reasoning-effort none] --n 150 --out <결과.jsonl> --sheet <표시용.csv>
     # B 채점: 사람이 표시한 시트로 정확도를 잰다 (API 호출 없음)
     uv run python -m scripts.defect_precedent.cause_trials score --sheet <표시한.csv> <결과.jsonl> [<결과.jsonl> ...]
 
@@ -36,6 +36,18 @@ from scripts.defect_precedent.rules import UNKNOWN_RE, check
 SEED = 20261008
 # 추론 모델(gpt-6-luna 등)의 reasoning.effort 허용 값 — OpenAI 모델 문서(developers.openai.com/api/docs/models/gpt-6-luna, 2026-10-12 확인)
 REASONING_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
+# 기본 모델 — 사용자 지정 2026-10-12(docs/실험_LLM_Luna비교.md: 같은 입력 210회에서 더 싸고 원문 글자를 바꾼 건이 없었다).
+# 정확도는 사람 표시 뒤 채점으로 다시 확인한다.
+DEFAULT_MODEL, DEFAULT_EFFORT = "gpt-6-luna", "none"
+
+
+def model_and_effort(model: str | None, effort: str | None) -> tuple[str, str | None]:
+    """--model을 주지 않으면 기본 모델과 그 추론 강도. 주면 준 값 그대로 — 추론 강도는 줄 때만 보낸다(4o-mini 등)."""
+    if model is None:
+        return DEFAULT_MODEL, effort or DEFAULT_EFFORT
+    return model, effort
+
+
 DEFECT_INSTRUCTIONS = (
     "You copy text. From the manufacturer's defect description of a vehicle recall, return the sentence(s) that state "
     "WHY the defect happens (its cause, e.g. a design, material, manufacturing or supplier reason), copied EXACTLY "
@@ -288,7 +300,7 @@ def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("mode", choices=["defect", "unknown", "score"])
     p.add_argument("results", nargs="*", type=Path)
-    p.add_argument("--model")
+    p.add_argument("--model", help=f"기본 {DEFAULT_MODEL}(추론 강도 {DEFAULT_EFFORT})")
     p.add_argument(
         "--reasoning-effort",
         choices=REASONING_EFFORTS,
@@ -307,8 +319,9 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit("score에는 --sheet와 결과 파일이 필요하다")
         score(a.sheet, a.results)
         return
-    if not (a.model and a.out):
-        sys.exit("--model과 --out이 필요하다")
+    if not a.out:
+        sys.exit("--out이 필요하다")
+    a.model, a.reasoning_effort = model_and_effort(a.model, a.reasoning_effort)
     run(a.mode, a.model, a.n, a.out, a.sheet, a.reasoning_effort)
 
 

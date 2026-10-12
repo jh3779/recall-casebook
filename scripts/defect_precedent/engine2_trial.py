@@ -1,6 +1,6 @@
 """P2 엔진 2(원인 문장 옮기기) 소량 시험 — 연구용. LLM이 573 원인 칸에서 원인 문장을 **한 글자도 바꾸지 않고** 고르는지 본다.
 
-사용법: uv run --with openai --env-file .env python -m scripts.defect_precedent.engine2_trial --model gpt-5.4-mini [--n 30] --out <결과.jsonl>
+사용법: uv run --with openai --env-file .env python -m scripts.defect_precedent.engine2_trial [--model gpt-6-luna] [--reasoning-effort none] [--n 30] --out <결과.jsonl>
       다시 검사만(API 호출 없음, `<결과>.recheck.jsonl`에 씀): uv run python -m scripts.defect_precedent.engine2_trial --recheck <결과.jsonl>
 
 - 대상: 시험 질문마다 BM25(v0) 1위 리콜을 고르고, 그 리콜에 573 원인 칸(`cause_text`)이 있는 경우만 앞에서부터 n건
@@ -56,10 +56,14 @@ def summarize(model: str, rows: list[dict]) -> dict:
 
 
 def parser() -> argparse.ArgumentParser:
-    from scripts.defect_precedent.cause_trials import REASONING_EFFORTS
+    from scripts.defect_precedent.cause_trials import (
+        DEFAULT_EFFORT,
+        DEFAULT_MODEL,
+        REASONING_EFFORTS,
+    )
 
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--model")
+    p.add_argument("--model", help=f"기본 {DEFAULT_MODEL}(추론 강도 {DEFAULT_EFFORT})")
     p.add_argument(
         "--reasoning-effort",
         choices=REASONING_EFFORTS,
@@ -100,8 +104,11 @@ def main(argv: list[str] | None = None) -> None:
         )
         print(json.dumps(summarize(a.recheck.stem, rows), ensure_ascii=False, indent=1))
         return
-    if not (a.model and a.out):
-        sys.exit("--model과 --out이 필요하다 (또는 --recheck)")
+    if not a.out:
+        sys.exit("--out이 필요하다 (또는 --recheck)")
+    from scripts.defect_precedent.cause_trials import model_and_effort
+
+    a.model, a.reasoning_effort = model_and_effort(a.model, a.reasoning_effort)
     from openai import OpenAI
     from pydantic import BaseModel
 
