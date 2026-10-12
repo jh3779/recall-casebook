@@ -121,6 +121,18 @@ def fetch(conn, build_id: str, campnos: list[str], texts: list[str], model: str 
     return vecs
 
 
+def sample_matches(conn, build_id: str, campnos: list[str], vecs) -> bool:
+    """DB에서 고르게 뽑은 64줄(마지막 줄 포함)이 vecs와 글자 그대로 같은지 — DB 밖에서 가져온 벡터(로컬 사본·서빙 묶음)를 쓰기 전에 본다."""
+    import numpy as np
+
+    if vecs.shape != (len(campnos), 384):
+        return False
+    step = max(1, len(campnos) // SAMPLE_ROWS)
+    idx = sorted(set(range(0, len(campnos), step)[:SAMPLE_ROWS]) | {len(campnos) - 1})
+    sample = dict(_read_rows(conn, build_id, MODEL, [campnos[i] for i in idx]))
+    return len(sample) == len(idx) and all(np.array_equal(vecs[i], sample[campnos[i]]) for i in idx)
+
+
 def _file_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -144,14 +156,8 @@ def load_vectors(
                 cached = np.load(path)
         except (OSError, ValueError, EOFError):  # 잘리거나 깨진 사본 — 버리고 다시 받는다
             cached = None
-    if cached is not None and cached.shape == (len(campnos), 384):
-        step = max(1, len(campnos) // SAMPLE_ROWS)
-        idx = sorted(set(range(0, len(campnos), step)[:SAMPLE_ROWS]) | {len(campnos) - 1})
-        sample = dict(_read_rows(conn, build_id, MODEL, [campnos[i] for i in idx]))
-        if len(sample) == len(idx) and all(
-            np.array_equal(cached[i], sample[campnos[i]]) for i in idx
-        ):
-            return cached
+    if cached is not None and sample_matches(conn, build_id, campnos, cached):
+        return cached
     vecs = fetch(conn, build_id, campnos, texts)
     cache_dir.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(

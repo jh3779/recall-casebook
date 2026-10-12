@@ -24,7 +24,7 @@ import sys
 import tarfile
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 
 from scripts.defect_precedent.load_db import PROCESSED, connect
@@ -36,6 +36,9 @@ FORMAT = 1
 BUCKET = "serving-bundles"
 SCHEMA = Path(__file__).with_name("bundle.sql")
 OUT_DIR = PROCESSED / "serving"  # gitignore된 data/ 아래
+SERVE_DIR = Path(
+    "/tmp/serving"
+)  # 배포 서버가 묶음을 받는 곳 — Vercel에서 실행 중 쓸 수 있는 곳은 /tmp뿐
 DATA_FILES = (
     "cards.jsonl",
     "causes.jsonl",
@@ -57,6 +60,7 @@ class Loaded:
     vectors: "object"  # numpy float32 (카드 수, 384), 정규화 전
     model_dir: Path
     meta: dict
+    sha256: str = ""  # 배포 서버가 DB 기록과 대조한 묶음 파일 sha256 (load_from_bundle만 채운다)
 
 
 def _jsonl(rows) -> bytes:
@@ -267,10 +271,47 @@ def _send(req: urllib.request.Request) -> None:
 
 def _download(url: str, dst: Path) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(
+        dst.parent, 0o700
+    )  # 받은 묶음 폴더는 이 사용자만 — 이미 있던 폴더도(남의 폴더면 여기서 멈춘다)
     tmp = dst.with_name(f"{dst.name}.{os.getpid()}.tmp")
-    with urllib.request.urlopen(url, timeout=600) as r, tmp.open("wb") as f:
-        shutil.copyfileobj(r, f, 1 << 20)
+    try:
+        with urllib.request.urlopen(url, timeout=600) as r, tmp.open("wb") as f:
+            shutil.copyfileobj(r, f, 1 << 20)
+    except BaseException:
+        tmp.unlink(missing_ok=True)  # 끊긴 조각 파일(최대 묶음 크기)을 /tmp에 남기지 않는다
+        raise
     tmp.replace(dst)  # 다 받은 뒤에만 이름을 바꾼다 — 중간에 끊겨도 반쯤 받은 파일을 쓰지 않는다
+
+
+def load_from_bundle(conn, build_id: str, supabase_url: str, work_dir: Path = SERVE_DIR) -> Loaded:
+    """배포 서버의 시작 (RAG_SOURCE=bundle). DB `serving_bundles`에 기록된 sha256과 같은 묶음만 쓴다 —
+    받은 파일이 다르면 지우고 멈춘다(다음 시작 때 다시 받는다). 묶음의 build·모델·fastembed 판본도 지금 서버와 같아야 한다."""
+    if not supabase_url.startswith("https://"):
+        raise BundleMismatch(
+            "SUPABASE_URL이 https://로 시작하지 않는다 — 묶음을 암호화 없이 받지 않는다"
+        )
+    row = recorded(conn, build_id)
+    if row is None:
+        raise BundleMismatch(
+            f"build {build_id}의 묶음 기록(serving_bundles)이 없다 — 로컬에서 `bundle upload`를 먼저 한다"
+        )
+    sha, storage_path = row
+    path = work_dir / f"{sha}.tar"
+    if not path.exists():
+        _download(public_url(supabase_url, storage_path), path)
+    try:
+        check_sha(path, sha)
+    except BundleMismatch:
+        path.unlink(missing_ok=True)
+        raise
+    loaded = load_bundle(path, work_dir / sha, sha)
+    got = (loaded.build.build_id, loaded.meta["model"], loaded.meta["fastembed_version"])
+    if got != (build_id, embeddings.MODEL, FASTEMBED_VERSION):
+        raise BundleMismatch(
+            f"묶음의 build·모델·fastembed 판본 {got}이 지금 서버({build_id}, {embeddings.MODEL}, {FASTEMBED_VERSION})와 다르다"
+        )
+    return replace(loaded, sha256=sha)
 
 
 def check_identity(loaded: Loaded, build: Build) -> None:
