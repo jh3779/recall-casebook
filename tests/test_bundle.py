@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import tarfile
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -135,3 +136,79 @@ def test_pg_serving_bundles_record_is_written_once(pgconn, tmp_path):  # noqa: F
     bundle.register(pgconn, b.build_id, "cc" * 32, "x/v2.tar", fmt=bundle.FORMAT + 1)
     assert bundle.recorded(pgconn, b.build_id, fmt=bundle.FORMAT + 1) == ("cc" * 32, "x/v2.tar")
     assert bundle.recorded(pgconn, b.build_id) == ("aa" * 32, "x/serving.tar")
+
+
+class RecordingConn:
+    """serving_bundles 조회는 없음으로, 기록(insert)은 모아 두는 가짜 연결."""
+
+    def __init__(self):
+        self.inserts = []
+
+    def execute(self, sql, params=None):
+        if sql.lstrip().startswith("insert"):
+            self.inserts.append(params)
+        return SimpleNamespace(fetchone=lambda: None)
+
+
+def _other_build_bundle(tmp_path):
+    """카드 하나가 다른 build의 정상 묶음."""
+    cards = [dict(CARDS[0], defect="A different defect text.")] + CARDS[1:]
+    other = load_build(full_data_dir(tmp_path / "o", cards, [cause("24V001", pdfs=PDFS)]))
+    vecs = np.zeros((len(other.cards), 384), dtype="float32")
+    _, _, model_dir = _inputs(tmp_path / "m")
+    return other, bundle.write_bundle(other, INV, vecs, model_dir, tmp_path / "other")
+
+
+def test_check_identity_refuses_a_bundle_of_another_build_renamed_as_this_one(tmp_path):
+    b, vecs, model_dir = _inputs(tmp_path)
+    own = bundle.load_bundle(
+        bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "own"), tmp_path / "x"
+    )
+    bundle.check_identity(own, b)
+    other, tar = _other_build_bundle(tmp_path)
+    assert other.build_id != b.build_id
+    renamed = tmp_path / f"serving_{b.build_id}.tar"
+    renamed.write_bytes(tar.read_bytes())  # 이름만 이 build로 바꾼 다른 build의 묶음
+    with pytest.raises(bundle.BundleMismatch, match="build"):
+        bundle.check_identity(bundle.load_bundle(renamed, tmp_path / "y"), b)
+
+
+def test_confirm_and_register_writes_db_only_after_the_public_file_matches(tmp_path, monkeypatch):
+    b, vecs, model_dir = _inputs(tmp_path)
+    tar = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
+    sha = _sha(tar)
+    _, other_tar = _other_build_bundle(tmp_path)
+
+    def serve(src):
+        def f(url, dst):
+            if src is None:
+                raise OSError("404 — 공개 주소에 파일이 없다")
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(src.read_bytes())
+
+        return f
+
+    other_sha = _sha(other_tar)
+    for src, want, err, why in (
+        (None, sha, OSError, "공개 주소에 파일이 없다"),
+        (tar, "ab" * 32, bundle.BundleMismatch, "sha256"),
+        (
+            other_tar,
+            other_sha,
+            bundle.BundleMismatch,
+            "build",
+        ),  # 이름만 바꿔 올린 다른 build — sha256은 그 파일 것
+    ):
+        conn = RecordingConn()
+        monkeypatch.setattr(bundle, "_download", serve(src))
+        with pytest.raises(err, match=why):
+            bundle.confirm_and_register(
+                conn, b, want, f"{b.build_id}/{want}.tar", "https://x", tmp_path / "c"
+            )
+        assert conn.inserts == []  # 공개 파일이 없거나 다르면 DB에 쓰지 않는다
+    conn = RecordingConn()
+    monkeypatch.setattr(bundle, "_download", serve(tar))
+    bundle.confirm_and_register(
+        conn, b, sha, f"{b.build_id}/{sha}.tar", "https://x", tmp_path / "c"
+    )
+    assert len(conn.inserts) == 1 and conn.inserts[0][2] == sha

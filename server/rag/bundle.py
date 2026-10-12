@@ -217,6 +217,38 @@ def public_url(supabase_url: str, storage_path: str) -> str:
     return f"{supabase_url.rstrip('/')}/storage/v1/object/public/{BUCKET}/{storage_path}"
 
 
+def _download(url: str, dst: Path) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name(f"{dst.name}.{os.getpid()}.tmp")
+    with urllib.request.urlopen(url, timeout=600) as r, tmp.open("wb") as f:
+        shutil.copyfileobj(r, f, 1 << 20)
+    tmp.replace(dst)  # 다 받은 뒤에만 이름을 바꾼다 — 중간에 끊겨도 반쯤 받은 파일을 쓰지 않는다
+
+
+def check_identity(loaded: Loaded, build: Build) -> None:
+    """묶음 안의 build가 이 build와 같은지 — 파일 이름만 이 build로 바꾼 다른 build의 묶음을 막는다."""
+    if loaded.build != build:
+        raise BundleMismatch(
+            f"묶음 안의 build {loaded.build.build_id}가 이 build {build.build_id}와 다르다(카드·원인·명세 중 하나 이상)"
+        )
+    got = (loaded.meta["model"], loaded.meta["fastembed_version"])
+    if got != (embeddings.MODEL, FASTEMBED_VERSION):
+        raise BundleMismatch(
+            f"묶음의 모델·fastembed 판본 {got} ≠ ({embeddings.MODEL}, {FASTEMBED_VERSION})"
+        )
+
+
+def confirm_and_register(
+    conn, build: Build, sha: str, storage_path: str, supabase_url: str, work_dir: Path
+) -> None:
+    """공개 주소에서 실제로 받은 파일이 올린 묶음(sha256)이고 이 build의 묶음일 때만 DB에 기록한다."""
+    dst = work_dir / "confirm.tar"
+    _download(public_url(supabase_url, storage_path), dst)
+    check_sha(dst, sha)
+    check_identity(load_bundle(dst, work_dir / "confirm"), build)
+    register(conn, build.build_id, sha, storage_path)
+
+
 def _env(name: str) -> str:
     v = os.environ.get(name, "").strip()
     if not v:
@@ -257,6 +289,9 @@ def cmd_upload(_a) -> None:
     path = OUT_DIR / f"serving_{build.build_id}.tar"
     if not path.exists():
         sys.exit(f"{path.name}이 없다 — 먼저 build")
+    check_identity(
+        load_bundle(path, OUT_DIR / "check"), build
+    )  # 이름만 바꾼 다른 build의 묶음을 올리지 않는다
     sha = sha256_file(path)
     storage_path = (
         f"{build.build_id}/{sha}.tar"  # 내용 해시가 이름이라 같은 이름으로 다른 묶음을 올릴 수 없다
@@ -281,11 +316,17 @@ def cmd_upload(_a) -> None:
     try:
         urllib.request.urlopen(req, timeout=600).read()
     except urllib.error.HTTPError as e:
-        if e.code not in (400, 409):  # 이미 있음(내용 해시 이름이라 같은 파일) — 그 외는 멈춘다
+        # Supabase는 같은 이름이 이미 있으면 400·409로 거부한다. 다른 이유의 400일 수도 있으므로 여기서 성공으로 보지 않고,
+        # 아래에서 공개 주소의 실제 파일을 받아 sha256·build를 대조한 뒤에만 기록한다(없거나 다르면 기록하지 않고 멈춘다)
+        if e.code not in (400, 409):
             sys.exit(f"Storage 업로드 실패: HTTP {e.code}")
-        print("Storage에 같은 이름의 묶음이 이미 있다 — 기록 단계에서 공개 주소로 대조한다")
+        print(
+            f"Storage가 HTTP {e.code}로 거부했다(같은 이름이 이미 있을 수 있음) — 공개 주소의 파일로 확인한다"
+        )
     with connect() as conn:
-        register(conn, build.build_id, sha, storage_path)
+        confirm_and_register(
+            conn, build, sha, storage_path, _env("SUPABASE_URL"), OUT_DIR / "confirm"
+        )
     print(f"올림: {BUCKET}/{storage_path} — serving_bundles에 sha256 {sha[:12]}… 기록")
 
 
@@ -298,11 +339,10 @@ def cmd_verify(_a) -> None:
     if row is None:
         sys.exit(f"build {build.build_id}의 묶음 기록이 없다 — 먼저 upload")
     dst = OUT_DIR / "verify.tar"
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(public_url(_env("SUPABASE_URL"), row[1]), timeout=600) as r:
-        dst.write_bytes(r.read())
+    _download(public_url(_env("SUPABASE_URL"), row[1]), dst)
     check_sha(dst, row[0])
     loaded = load_bundle(dst, OUT_DIR / "verify")
+    check_identity(loaded, build)
     print(
         f"확인: 공개 주소의 묶음 sha256 {row[0][:12]}…이 기록과 같고 build {loaded.build.build_id}로 되살아난다"
     )
