@@ -131,3 +131,7 @@ def test_pg_serving_bundles_record_is_written_once(pgconn, tmp_path):  # noqa: F
         bundle.register(pgconn, b.build_id, "bb" * 32, "x/serving.tar")
     assert bundle.recorded(pgconn, b.build_id) == ("aa" * 32, "x/serving.tar")
     assert bundle.recorded(pgconn, "nope") is None
+    # 데이터가 같아도 묶음 형식이 바뀌면 새 기록 — 옛 형식 기록은 그대로 남는다
+    bundle.register(pgconn, b.build_id, "cc" * 32, "x/v2.tar", fmt=bundle.FORMAT + 1)
+    assert bundle.recorded(pgconn, b.build_id, fmt=bundle.FORMAT + 1) == ("cc" * 32, "x/v2.tar")
+    assert bundle.recorded(pgconn, b.build_id) == ("aa" * 32, "x/serving.tar")

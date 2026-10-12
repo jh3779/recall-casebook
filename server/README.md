@@ -58,7 +58,7 @@ uv run --env-file .env python -m server.rag.bundle verify   # 공개 주소에�
 ```
 
 - 버킷 `serving-bundles`는 **공개 읽기**로 만든다(Supabase 대시보드 — 사용자 계정 작업). 들어 있는 것은 공개 NHTSA 자료에서 만든 값이고, 무결성은 DB `serving_bundles.bundle_sha256` 대조로 지킨다. 쓰기는 로컬의 `SUPABASE_SERVICE_ROLE_KEY`로만 한다.
-- `serving_bundles` 기록은 한 번 쓰면 바꾸지 않는다 — 같은 build의 다른 묶음을 올리려 하면 멈춘다.
+- `serving_bundles` 기록은 (build, 모델, 묶음 형식 판본)마다 하나이고 한 번 쓰면 바꾸지 않는다 — 같은 조합의 다른 묶음을 올리려 하면 멈춘다. 묶음 형식(`bundle.py` `FORMAT`)을 바꾸면 새 기록이 된다.
 - 실측(2026-10-12, build `f1fe1843ed0f2c66`): 묶음 155.4MB(그중 모델 약 67MB·벡터 약 47MB), 만들기 13초, 되살리기 0.2초 — 되살린 build는 로컬 `load_build()` 결과와 같다.
 - 서버가 묶음에서 시작하는 경로(`RAG_SOURCE=bundle`)는 다음 PR에서 더한다. 지금은 묶음을 만들고 올리고 확인하는 도구까지다.
 
