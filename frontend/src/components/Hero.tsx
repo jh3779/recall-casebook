@@ -14,7 +14,7 @@ export function Hero({ model, recalls }: { model: ModelKey; recalls: Recall[] })
       <div className="hero-stats">
         <Stat num={s.total} label="NHTSA 리콜" />
         <Stat num={s.in3d} label="3D로 보이는 부품" />
-        <Stat num={`${s.unitsM}M`} label="리콜 대상 대수(합계)" />
+        <Stat num={s.receivedRange} label="접수일 범위" />
       </div>
     </section>
   );

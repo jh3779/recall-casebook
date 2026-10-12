@@ -1,66 +1,76 @@
-# frontend — 결함 선례 쇼룸
+# frontend — 결함 선례 찾기
 
-Silverado 1500·Ram 1500 3D 모델에서 NHTSA 리콜이 기록된 부품을 고르면, 그 리콜의 번호·결함·결과·조치를 NHTSA 원문 그대로 보여 주는 화면이다.
-claude.ai artifact "결함 선례 쇼룸"(판본 `1791386571-be6b`)을 React로 옮겼다. 스택은 Vite + React + TypeScript + three.js다([DEC-041](../.agent/DECISIONS.md)).
-
-아직 Python API 서버(DEC-038)와 연결하지 않았다. 리콜은 `public/data/`의 데모 스냅샷을 읽는다.
+영어 결함 서술을 공개 검색 API로 보내 고객사 선례·다른 회사 선례와 원문·출처를 보여 준다. 설계 정본은 [`docs/design-system/`](../docs/design-system/README.md) v1.0이다. 상단에서 검색(`#search`, 기본)과 3D 쇼룸(`#showroom`)을 전환한다.
 
 ## 실행
 
-Node 버전은 `.nvmrc`(24)를 따른다.
+Node **24** (`.nvmrc`), npm을 사용한다.
 
 ```bash
 cd frontend
 npm ci
-# 3D 모델 파일 2개를 public/models/에 넣는다 (아래 "3D 모델 파일")
-npm run dev        # http://localhost:5173
+npm run dev       # http://localhost:5173
 ```
 
-| 할 일 | 명령 |
-|---|---|
-| 린트 (oxlint) | `npm run lint` |
-| 타입 검사 + 빌드 | `npm run build` |
-| 테스트 (vitest) | `npm test` |
+`npm run lint`는 oxlint, `npm run build`는 TypeScript 검사와 Vite 빌드, `npm test`는 vitest다. 기본 포트 5173을 이미 쓰면 자동으로 다른 포트로 넘어가지 않고 안내한다.
+
+## 검색과 API
+
+- 기본 API: `https://lg-cns-rag.vercel.app`. 요청은 `POST /search`의 `{ "question": "..." }`, 판본은 `GET /health`다. 서버 계약은 `server/api.py`를 따른다.
+- 다른 API를 쓰려면 `frontend/.env.development.local`에 `VITE_API_BASE=http://localhost:8000`을 지정한 뒤 개발 서버를 다시 시작한다. `.env.example`에는 키 이름만 있다. `VITE_*`는 브라우저에 공개되므로 비밀값을 넣지 않는다.
+- 공개 API의 CORS 허용 주소는 `http://localhost:5173`이다. `127.0.0.1`이나 다른 포트·배포 주소에서는 연결이 거부될 수 있다. 화면 배포·CORS 설정은 별도 작업 F다.
+- 원문은 React 텍스트 노드로만 그린다. 원인 상태 9종과 모르는 값을 모두 알리며, 문구의 잠정 정본은 [`cause-status.md`](../docs/design-system/copy/cause-status.md)다. 이슈 #53 게시·합의는 별도다.
+- 원인 꼬리표는 Python 코드포인트 좌표와 원문을 대조한 구간만 감싼다. 목록·확인 항목의 긴 글은 CSS로만 접고 문자열을 자르지 않는다. 573 파일의 주소는 추측하지 않으며 파일명·SHA-256·제출일·글 정리 방식을 펼쳐 볼 수 있다.
+- 3초 뒤 서버 시작 안내, 60초 뒤 취소, 입력/연결/시간 초과/서버/응답 형식 오류를 구분한다. 실패해도 질문은 유지한다. 화면 전환 시 검색 상태도 유지한다. 쇼룸의 분류 검색은 질문만 채우며 자동 전송하지 않는다.
+- 768px 이상은 목록·상세 2단, 767px 이하는 목록 → 상세 → 목록이다. three.js는 쇼룸을 열 때 받으므로 모델 파일이나 WebGL이 없어도 검색이 동작한다.
 
 ## 3D 모델 파일 — 커밋하지 않는다
 
-커밋 훅이 1MB 넘는 파일을 막아서(`scripts/check-staged.sh`) `public/models/`는 `.gitignore`에 넣었다. 팀 드라이브에서 받아 아래 경로에 둔다. 파일이 없으면 화면이 "3D 모델을 불러오지 못했습니다"에서 멈춘다.
+쇼룸은 PR #60의 커밋 `5be42cb577237f3050f3123fb0d744756727acb1`에서 가져왔다. CCSA(George Mason University)의 FHWA/NHTSA 유한요소 차량 모델을 단순화한 화면이다. 재배포는 **2026-10-13 사용자 결정**으로 허용됐다(DEC-052). `public/models/`는 gitignore이며 커밋 훅의 1MB 제한도 지킨다.
 
-| 경로 | 크기(바이트) | sha256 |
+우지훈 소유 [결함 선례 쇼룸 (Copy)](https://claude.ai/artifact/5022cf20-2f08-4389-b13f-5adde11b78d4)의 `models/silverado.gltf.json`·`models/ram.gltf.json`을 받는다. 비공개 artifact이므로 공유받아야 열린다. 아래 명령은 `frontend/`에서 실행한다.
+
+```bash
+mkdir -p public/models
+node scripts/gltf-json-to-glb.mjs /받은/경로/silverado.gltf.json public/models/silverado.glb
+node scripts/gltf-json-to-glb.mjs /받은/경로/ram.gltf.json public/models/ram.glb
+shasum -a 256 public/models/*.glb
+```
+
+| 파일 | 크기(바이트) | SHA-256 |
+|---|---:|---|
+| `silverado.glb` | 10,524,576 | `d608c0bca5b7639cb5f735e758287c91b5bc927b5baeafb2ab22898a7b301612` |
+| `ram.glb` | 8,446,292 | `f8532a1d34e906bd6817d01175eb185040e4598dfa4bc107052a23214552f512` |
+
+원본 SHA-256: `silverado.gltf.json` = `2bb27ed2fb5482dd9b2b0d7f62b8c6de389fcb619456cbba731cb181fd9e10b0`, `ram.gltf.json` = `08e4d6eb162092c4e46d021275643222193b203d9a3ca4e0f7862e3b8eda8e30`. 변환은 포장만 바꾼다. 2026-10-13 로컬 보관 GLB 두 파일도 위 지문과 일치했다. 모델이 없으면 쇼룸에 실패 안내·검색 복귀 버튼이 뜬다. 화면 배포는 아직 하지 않았다.
+
+## 쇼룸 데모 데이터
+
+`public/data/`는 artifact 판본 `1791386571-be6b`에서 받은 스냅샷이다. **검색 결과가 아니다.** 전체 재생성 스크립트는 아직 없고, 부품 대응표의 생성 과정도 후속 일이다(HANDOFF 55).
+
+| 파일 | 내용 | SHA-256 |
 |---|---|---|
-| `public/models/silverado.glb` | 10,524,576 | `d608c0bca5b7639cb5f735e758287c91b5bc927b5baeafb2ab22898a7b301612` |
-| `public/models/ram.glb` | 8,446,292 | `f8532a1d34e906bd6817d01175eb185040e4598dfa4bc107052a23214552f512` |
-
-- 출처: CCSA(George Mason University)의 FHWA/NHTSA 유한요소 차량 모델을 단순화한 것이다. 실차를 역설계했다.
-- 만든 방법: artifact의 `models/*.gltf.json`(버퍼를 base64로 품은 glTF)을 `node scripts/gltf-json-to-glb.mjs <in> <out>`으로 `.glb`로 묶었다. 내용은 같고 포장만 바뀐다.
-  - 원본 sha256: `silverado.gltf.json` `2bb27ed2fb5482dd9b2b0d7f62b8c6de389fcb619456cbba731cb181fd9e10b0`, `ram.gltf.json` `08e4d6eb162092c4e46d021275643222193b203d9a3ca4e0f7862e3b8eda8e30`
-
-## 데이터 — `public/data/`
-
-artifact 판본 `1791386571-be6b`에서 받은 데모 스냅샷이다. 저장소 스크립트(`scripts/defect_precedent/`)로 만든 파일이 아니다. 리콜 카드에서 다시 만드는 스크립트는 남은 일이다(`.agent/HANDOFF.md`).
-
-| 파일 | 내용 | sha256 |
-|---|---|---|
-| `recalls.json` | 차종별 NHTSA 리콜(Silverado 38건, Ram 39건, 접수일 최신 2026-09-24). 결함·결과·조치는 원문 그대로 | `ce849c25ec5586c16528aa7c6fef2aaa429e4e5e84769d868aab0e280d7b1069` |
-| `silverado_parts.json` | 3D 메시 이름 → 부품 분류(`defect`)·재질(`look`) | `31ea3c52d2344ed1d3fed31cb26387a3da30efa13b9223faaa3c3b25b469748f` |
+| `recalls.json` | Silverado 36건 + Ram 39건, 최신 접수일 2026-09-24 | `7a74f48ddde6dd1119de05c23a6e0f0173fadf544e8a77564eddd7b6f093270d` |
+| `silverado_parts.json` | 메시 이름 → 부품 분류·재질 | `31ea3c52d2344ed1d3fed31cb26387a3da30efa13b9223faaa3c3b25b469748f` |
 | `ram_parts.json` | 위와 같음 | `21be2ec38293b12bf6f76b6eefca6d15a19d83b8ad17342d1e3f61f3be83e87b` |
 
-`src/recalls.test.ts`의 "public/data 약속" 테스트가 화면이 기대하는 모양을 확인한다. 리콜 번호 형식, 번호 중복 없음, 분류가 `CATEGORIES` 안에 있는지를 본다.
+2026-10-13 정리(작업 D): 원래 77건의 파일 SHA-256은 `ce849c25ec5586c16528aa7c6fef2aaa429e4e5e84769d868aab0e280d7b1069`다. `14V614000` remedy의 `GMÂ\u0092s`에서 잘못 끼어든 U+00C2만 빼 `GM\u0092s`로 복원했고, 그 단계에서 77/77건의 원문·회사명이 카드와 같았다. 이어 Silverado HD만 언급하는 아래 두 객체를 Silverado 1500 탭에서 제외했다. 그 외 바이트·순서는 보존했다.
 
-## 구조
+- `13V544000`: 결함 원문에 “Chevrolet Silverado HD, Chevrolet Express, and GMC Sierra HD vehicles”를 명시한다.
+- `14V614000`: 결함 원문에 “Silverado HD, Traverse, GMC Acadia, Savana, and Sierra HD vehicles”를 명시한다.
 
-| 경로 | 하는 일 |
-|---|---|
-| `src/App.tsx` | 화면 상태(차종·외관/결함 투시·고른 부품·도장색)와 동작 |
-| `src/showroom/Showroom.ts` | three.js 무대. 모델 로드, 외관 부품 판정, 핫스팟 좌표, 카메라 이동, 재질 전환 |
-| `src/components/` | 상단 바·소개·패널(부품 목록·리콜 카드)·하단 도구·핫스팟·로딩 |
-| `src/recalls.ts` | 리콜 고르기·집계·표시 형식 (순수 함수, 테스트 있음) |
-| `src/config.ts` | 차종·부품 분류·도장색 |
+`campno`가 `/^\d{2}E/`인 `13E073000`(Silverado)·`16E041000`(Ram)은 남기고 **장비 리콜** 배지를 붙인다. 리콜별 신고 대상 대수는 전체 리콜 범위이고 다른 차종도 포함한다. 차종 통계는 합산 대수 대신 접수일 범위를 표시한다.
 
-- 상태는 React가 갖고 `Showroom`은 받은 상태대로 그리기만 한다. 핫스팟 위치는 매 프레임 바뀌므로 React 상태에 두지 않는다. `Showroom`이 요소를 직접 옮긴다.
-- 폰트는 Pretendard(npm `pretendard`, OFL-1.1)를 번들에 넣는다. 외부 CDN은 쓰지 않는다.
+```bash
+# 저장소 루트에서. 카드 파일은 gitignore라 로컬에 준비되어 있어야 한다.
+node frontend/scripts/check-demo-against-cards.mjs data/processed/defect/recalls.jsonl
+# 총 75건 · 일치 75건 (2026-10-13)
+```
 
-## 서비스 원칙 (AGENTS.md 2절)
+## 구조·검증 근거
 
-- 리콜 카드마다 리콜 번호(`campno`)를 단다. 결함·결과·조치는 NHTSA 영어 원문을 바꾸지 않고 보여 준다.
-- 판정 필드와 판정 문구는 넣지 않는다.
+`App.tsx`는 해시 전환과 공통 판본 조회, `search/`는 검색·표시, `api.ts`는 요청·응답 형식 검사, `showroom/ShowroomView.tsx`는 기존 쇼룸 상태, `showroom/Showroom.ts`는 3D 렌더링을 맡는다. `styles.css`의 쇼룸 스타일·주황색 변수는 `.view-showroom` 안에 한정했고 검색·상단은 정본 토큰의 남색을 쓴다.
+
+Pretendard, Source Serif 4(400·600), JetBrains Mono(400·600)는 npm 패키지에서 번들한다. 외부 글꼴 CDN 호출은 없다. [`React lazy`](https://react.dev/reference/react/lazy)·[`Vite 환경변수`](https://vite.dev/guide/env-and-mode) 공식 문서를 확인했다.
+
+실제 응답 픽스처와 갱신 규칙은 [`src/search/__fixtures__/README.md`](src/search/__fixtures__/README.md), 구현·검증 결과와 남은 확인은 [`docs/프런트_구현_검증.md`](../docs/프런트_구현_검증.md)에 기록한다.

@@ -10,17 +10,19 @@ interface Props {
   cats3d: ReadonlySet<CategoryKey>;
   onSelect: (cat: CategoryKey | null) => void;
   /** 같은 부품을 다른 차종에서 보기 */
+  onSearch: (question: string) => void;
   onCross: (model: ModelKey, cat: CategoryKey) => void;
 }
 
-export function Panel({ recalls, model, category, cats3d, onSelect, onCross }: Props) {
+export function Panel({ recalls, model, category, cats3d, onSelect, onCross, onSearch }: Props) {
   const list = category && recallsFor(recalls, model, category);
-  const title = category && list ? `${CATEGORIES[category].name} · ${list.length}건` : "결함이 기록된 부품";
+  const title = category && list ? `${CATEGORIES[category].name} · ${list.length}건` : "리콜이 기록된 부품 분류";
   return (
     <aside className="panel">
       <div className="panel-head">
-        <div className="panel-eyebrow">결함 부품</div>
+        <div className="panel-eyebrow">리콜이 기록된 부품 분류</div>
         <div className="panel-title">{title}</div>
+        {category && <button className="search-category" onClick={() => onSearch(CATEGORIES[category].en)}>이 분류로 선례 검색</button>}
       </div>
       {/* 목록이 바뀌면 스크롤·펼침 상태를 처음으로 */}
       <div className="panel-body" key={`${model}-${category}`}>
@@ -86,7 +88,7 @@ function RecallList({
       </button>
       {crossN > 0 && (
         <button type="button" className="cross" onClick={() => onCross(o, category)}>
-          같은 부품, 다른 회사 선례 → {MODELS[o].label} {crossN}건
+          같은 분류({c.name})의 {MODELS[o].label} 리콜 {crossN}건 보기
           <small>
             {MODELS[o].maker} · {MODELS[o].gen}
           </small>
@@ -112,21 +114,23 @@ function RecallCard({ r }: { r: Recall }) {
         <span className="recall-date">{fmtDate(r.received)}</span>
       </div>
       <div className="recall-meta">
-        {r.maker} · {yearLabel(r.years)}년식 · {r.potaff.toLocaleString()}대{r.mfr_part && ` · 부품명: ${r.mfr_part}`}
+        {r.maker} · {yearLabel(r.years)}년식 · 신고 대상 대수 {r.potaff.toLocaleString()} (이 리콜 전체, 다른 차종 포함){r.mfr_part && ` · 부품명: ${r.mfr_part}`}
       </div>
       <div className="recall-comp">
         {r.components.map((comp, i) => (
           <div key={i}>{comp}</div>
         ))}
       </div>
-      <div className="recall-label">결함 (원문)</div>
-      <div className={"recall-text" + (open ? "" : " clamp")}>{r.defect}</div>
+      {/^\d{2}E/.test(r.campno) && <span className="equipment-badge">장비 리콜</span>}
+      <div className="recall-meta">NHTSA 원문</div>
+      <div className="recall-label">결함</div>
+      <div lang="en" className={"recall-text" + (open ? "" : " clamp")}>{r.defect}</div>
       {open && (
         <>
           <div className="recall-label">결과</div>
-          <div className="recall-text">{r.consequence}</div>
-          <div className="recall-label">조치</div>
-          <div className="recall-text">{r.remedy}</div>
+          <div lang="en" className="recall-text">{r.consequence}</div>
+          <div className="recall-label">시정</div>
+          <div lang="en" className="recall-text">{r.remedy}</div>
         </>
       )}
       <button type="button" className="more" onClick={() => setOpen(!open)}>

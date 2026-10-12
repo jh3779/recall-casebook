@@ -32,11 +32,12 @@ export function categoryRows(
 }
 
 export function heroStats(list: Recall[]) {
-  const units = list.reduce((s, r) => s + r.potaff, 0);
+  const dates = list.map((r) => r.received).filter(Boolean).sort();
+  const month = (date: string) => `${date.slice(0, 4)}.${date.slice(4, 6)}`;
   return {
     total: list.length,
     in3d: list.filter((r) => r.categories.length).length,
-    unitsM: (units / 1e6).toFixed(1),
+    receivedRange: dates.length ? `${month(dates[0])}–${month(dates.at(-1)!)}` : "기록 없음",
   };
 }
 

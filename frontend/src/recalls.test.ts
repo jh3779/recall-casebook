@@ -60,8 +60,8 @@ describe("categoryRows", () => {
 });
 
 describe("heroStats", () => {
-  it("리콜 건수 · 3D로 보이는 리콜 건수 · 대상 대수 합계(백만)", () => {
-    expect(heroStats(sample.silverado)).toEqual({ total: 4, in3d: 3, unitsM: "1.6" });
+  it("리콜 건수 · 3D로 보이는 리콜 건수 · 접수일 범위", () => {
+    expect(heroStats(sample.silverado)).toEqual({ total: 4, in3d: 3, receivedRange: "2026.09–2026.09" });
   });
 });
 

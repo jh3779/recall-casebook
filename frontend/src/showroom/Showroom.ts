@@ -75,11 +75,15 @@ export class Showroom {
   private fly: { p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number; ms: number } | null = null;
   private raf = 0;
   private disposed = false;
+  private readonly reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  private readonly container: HTMLElement;
 
   constructor(container: HTMLElement) {
+    this.container = container;
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(innerWidth, innerHeight);
+    renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
     renderer.shadowMap.enabled = true;
@@ -188,7 +192,7 @@ export class Showroom {
 
   /** 부품 쪽으로 카메라를 옮긴다. null이면 처음 시점으로 돌아가 자동 회전 */
   focus(cat: CategoryKey | null) {
-    this.controls.autoRotate = !cat;
+    this.controls.autoRotate = !cat && !this.reducedMotion;
     if (!cat) {
       this.flyTo(HOME.pos.clone(), HOME.target.clone());
       return;
@@ -203,7 +207,7 @@ export class Showroom {
   }
 
   setAutoRotate(on: boolean) {
-    this.controls.autoRotate = on;
+    this.controls.autoRotate = on && !this.reducedMotion;
   }
 
   setPaint(color: string) {
@@ -325,16 +329,24 @@ export class Showroom {
   // ------------------------------------------------------------ 카메라 · 그리기
 
   private flyTo(pos: THREE.Vector3, target: THREE.Vector3, ms = 1100) {
+    if (this.reducedMotion) {
+      this.camera.position.copy(pos);
+      this.controls.target.copy(target);
+      this.fly = null;
+      return;
+    }
     this.fly = { p0: this.camera.position.clone(), t0: this.controls.target.clone(), p1: pos, t1: target, start: performance.now(), ms };
   }
 
   // 넓은 화면에서는 오른쪽 패널(380px)만큼 차를 왼쪽으로
   private fitView = () => {
-    this.camera.aspect = innerWidth / innerHeight;
-    const dx = innerWidth > 900 ? 200 : 0;
-    this.camera.setViewOffset(innerWidth, innerHeight, dx, 0, innerWidth, innerHeight);
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    this.camera.aspect = width / height;
+    const dx = width > 900 ? 200 : 0;
+    this.camera.setViewOffset(width, height, dx, 0, width, height);
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(innerWidth, innerHeight);
+    this.renderer.setSize(width, height);
   };
 
   private tick = (now: number) => {
@@ -345,7 +357,7 @@ export class Showroom {
       controls.target.lerpVectors(fly.t0, fly.t1, ease(t));
       if (t === 1) this.fly = null;
     }
-    this.mat.hot.emissiveIntensity = 0.7 + 0.35 * Math.sin(now / 260);
+    this.mat.hot.emissiveIntensity = this.reducedMotion ? 0.7 : 0.7 + 0.35 * Math.sin(now / 260);
     controls.update();
     this.renderer.render(this.scene, camera);
     this.updateHotspots();
@@ -359,8 +371,8 @@ export class Showroom {
       if (!h) continue;
       v.copy(h.point).project(this.camera);
       el.toggleAttribute("data-behind", v.z > 1);
-      el.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`;
-      el.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+      el.style.left = `${(v.x * 0.5 + 0.5) * this.container.clientWidth}px`;
+      el.style.top = `${(-v.y * 0.5 + 0.5) * this.container.clientHeight}px`;
     }
   }
 }

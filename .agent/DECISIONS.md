@@ -363,3 +363,19 @@
 - **영향 / 알려진 한계**: **공개 주소에 인증·호출 상한이 없다** — 누구나 `/search`를 부를 수 있다(DB는 `rag_reader` 조회 전용, 관리자 키는 Vercel에 없음). Hobby 플랜 한도를 넘거나 새 인스턴스마다 받는 묶음(155.4MB)으로 Supabase Storage 전송량이 빨리 줄면 서비스가 멈출 수 있다 — 발표 시연 중에도. #63(인증·호출 상한·CORS)을 빨리 한다. 같은 질문이라도 Vercel과 로컬(macOS)의 화면 목록이 다를 수 있다(위 15문항 구성 다름) — 시연·인용 때 어느 환경의 결과인지 밝힌다. 함수 크기는 근사치뿐이다(위 약 210MB — Vercel 번들 최적화 뒤 실제 값은 모름). `UV_NO_CONFIG=1`이라 Vercel 빌드에서는 `[tool.uv]`의 `package = false` 등도 읽지 않는다(빌드 통과 확인).
 - **Status**: Accepted (사용자 결정 ①·②·③, 2026-10-12)
 - **Date**: 2026-10-12
+
+## DEC-052: 3D 모델 재배포 허용과 받는 방법 · 데모 데이터 원문 정정과 범위
+- **Decision**: 디자인 시스템 v1.0 작업 D에 기록된 2026-10-13 사용자 결정을 구현한다. ① 3D 모델 재배포를 허용하되 `public/models/`는 gitignore로 둔다. ② 우지훈 소유 비공개 artifact [결함 선례 쇼룸 (Copy)](https://claude.ai/artifact/5022cf20-2f08-4389-b13f-5adde11b78d4)의 `models/*.gltf.json`을 공유받아 기존 `gltf-json-to-glb.mjs`로 만든다. 원본·결과 전체 SHA-256과 크기는 `frontend/README.md`에 기록한다. ③ 데모 `14V614000` remedy의 `GMÂ\u0092s`를 카드 원문 `GM\u0092s`로 복원한다. U+0092를 보기 좋은 따옴표로 바꾸지 않는다(원칙 2). ④ Silverado HD만 명시한 `13V544000`·`14V614000`은 1500 탭에서 제외하고, 장비 리콜 `13E073000`(Silverado)·`16E041000`(Ram)은 배지로 구분한다. ⑤ 쇼룸의 보조 글자 `--ink-3`를 `#636b78`로, 원문은 Source Serif 4로 맞춘다. 합산 대수 대신 접수일 범위를 표시한다.
+- **Reason**: `docs/design-system/codex/task-D-pr60-cleanup.md`·`open-questions.md`에 확정된 모델 공유·원문 보존·차종 범위·대비 결정. 정적 쇼룸 자료를 실제 검색 결과처럼 보이게 하지 않는다.
+- **검증**: 복원 직후 원문·회사명 77/77건 카드와 일치. HD 제외 뒤 75/75건 일치(`check-demo-against-cards.mjs`), Silverado 36 + Ram 39. 최종 recalls.json sha256 `7a74f48ddde6dd1119de05c23a6e0f0173fadf544e8a77564eddd7b6f093270d`. 로컬 GLB가 README 지문과 일치하고 gitignore인 것을 확인했다.
+- **한계**: artifact 판본의 데모 스냅샷이다. 데이터·부품 대응표 재생성 스크립트는 없고(HANDOFF 55), 비공개 모델 공유 접근 확인은 54에 남긴다. 이 작업은 재배포 허용 결정의 구현이며 실제 배포는 하지 않았다.
+- **Status**: Accepted (2026-10-13 확정 설계의 로컬 구현, PR·병합 전)
+- **Date**: 2026-10-13
+
+## DEC-053: 검색 전용 화면과 API 연결 · 쇼룸 지연 로딩 · 원문 표시
+- **Decision**: 확정 설계 v1.0 작업 E를 구현한다. ① `#search`를 기본으로 두고 `#showroom`과 전환한다. 쇼룸은 `React.lazy`로 열 때 받아 모델·WebGL 실패가 검색을 막지 않게 한다. 검색 상태는 탭 전환 때 유지하며 쇼룸 분류는 영어 질문만 채우고 자동 전송하지 않는다. ② `VITE_API_BASE` 기본값은 `https://lg-cns-rag.vercel.app`, 로컬 포트는 CORS에 맞춰 5173으로 고정한다. 키·토큰은 화면에 두지 않는다. ③ 원인 상태 9종·모르는 값 문구는 `docs/design-system/copy/cause-status.md` 잠정안 그대로다(#53 합의는 별도). 원문은 텍스트 노드로 보존하고 꼬리표는 Python 코드포인트·원문 대조를 통과한 구간만 감싼다. ④ Pretendard·Source Serif 4·JetBrains Mono를 npm으로 번들한다. ⑤ 검색·공통 상단은 정본 남색 토큰, 기존 쇼룸 주황색은 `.view-showroom` 안으로 한정한다. 서버 응답 계약은 바꾸지 않는다.
+- **Reason**: 질문 → 선례·원인 원문·출처 확인이라는 P2 흐름을 연결하면서 기존 3D 데모의 목적과 데이터 범위를 드러내기 위해서다. 근거는 `docs/design-system/`와 `server/api.py`다.
+- **검증**: Node 24에서 npm ci·lint·build, vitest 74개 통과. 원문·출처 렌더링, 상태 문구, Unicode 꼬리표, API 실패·응답 검사, 판정 패턴을 시험했다. Safari에서 공개 API 예시 검색·모바일 복귀·한글만 입력 시 안내·쇼룸 분류 전달·3D 렌더링을 확인했다. `docs/프런트_구현_검증.md`에 실행 결과와 미확인 범위를 구분했다.
+- **한계 / 후속**: 프런트 배포·배포 주소 CORS는 F에서 한다. 3D 청크는 약 653KB로 Vite 크기 경고가 남지만 검색 첫 청크와 분리됐다. DB 통합 시험 16개는 전용 시험 DB가 없어 건너뛰었다. D와 E는 이번 로컬 작업본에 함께 있으며 커밋·PR·병합은 아직 하지 않았다.
+- **Status**: Accepted (2026-10-13 확정 설계의 로컬 구현, PR·병합 전)
+- **Date**: 2026-10-13

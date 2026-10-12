@@ -466,23 +466,6 @@
    "mfr_part": ""
   },
   {
-   "campno": "13V544000",
-   "maker": "General Motors LLC",
-   "received": "20151030",
-   "potaff": 1808,
-   "defect": "General Motors (GM) is recalling certain model year 2013-2014 Chevrolet Silverado HD, Chevrolet Express, and GMC Sierra HD vehicles, and model year 2013 GMC Savana compressed natural gas (CNG) vehicles that fail to comply with Federal Motor Vehicle Safety Standard No. 303 \"Fuel System Integrity of Compressed Natural Gas Vehicles.\"  In the affected vehicles, the text of the CNG fuel-only label is smaller than the required size, and as a result, may be less noticeable.",
-   "consequence": "Text that does not conform to the required labeling size could inhibit fuel tank inspection practices and safe refueling, increasing the risk of a fire.",
-   "remedy": "GM will notify owners and will send them a replacement label, free of charge.  The recall began December 3, 2015.  Owners may contact Chevrolet customer service at 1-800-222-1020 or GMC customer service at 1-800-462-8782.  GM's number for this recall is 13365.",
-   "years": [
-    2014
-   ],
-   "components": [
-    "EQUIPMENT:OTHER:LABELS"
-   ],
-   "categories": [],
-   "mfr_part": ""
-  },
-  {
    "campno": "15V640000",
    "maker": "General Motors LLC",
    "received": "20151009",
@@ -536,23 +519,6 @@
    "categories": [
     "steering"
    ],
-   "mfr_part": ""
-  },
-  {
-   "campno": "14V614000",
-   "maker": "General Motors LLC",
-   "received": "20141001",
-   "potaff": 106307,
-   "defect": "General Motors LLC (GM) is recalling certain model year 2013-2014 Cadillac CTS, Escalade, Escalade ESV, Chevrolet Suburban, Tahoe, GMC Yukon, and Yukon XL, and 2014 Buick Enclave, Chevrolet Express, Impala, Silverado HD, Traverse, GMC Acadia, Savana, and Sierra HD vehicles.  In the affected vehicles, the chassis electronic module may be internally contaminated, resulting in an electrical short.",
-   "consequence": "If the module experiences an electrical short, the vehicle could stall, increasing the risk of a crash.",
-   "remedy": "GM will notify owners, and dealers will replace the chassis electronic module, free of charge.  The recall began on December 26, 2014.  Owners may contact GM customer service at 1-800-521-7300 (Buick), 1-800-458-006 (Cadillac), 1-800-222-1020 (Chevrolet), and 1-800-462-8782 (GMC).  GMÂs number for this recall is 14515.",
-   "years": [
-    2014
-   ],
-   "components": [
-    "ELECTRICAL SYSTEM"
-   ],
-   "categories": [],
    "mfr_part": ""
   },
   {
