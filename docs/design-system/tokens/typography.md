@@ -5,7 +5,7 @@
 | 토큰 | 글꼴 | 쓰는 곳 | 이유 |
 |---|---|---|---|
 | `--font-ui` | Pretendard Variable (쇼룸이 npm `pretendard`로 번들) → 대체 Noto Sans KR → 시스템 | 화면 글 전부(라벨·안내·버튼·한국어 문구) | 쇼룸과 같은 글꼴로 한 제품처럼 보이게 |
-| `--font-source` | Source Serif 4 → Georgia → Times New Roman | **원문**(결함·결과·시정·원인·조사 요약), 검색 입력, 예시 질문 | 인용한 1차 자료를 화면 글과 한눈에 구별(제안 — [열린 질문 4](../open-questions.md)) |
+| `--font-source` | Source Serif 4 → Georgia → Times New Roman | **원문**(결함·결과·시정·원인·조사 요약), 검색 입력, 예시 질문 — **검색 화면과 쇼룸 리콜 카드 모두**(결정 2026-10-13) | 인용한 1차 자료를 화면 글과 한눈에 구별 |
 | `--font-id` | JetBrains Mono → ui-monospace → Consolas | 리콜 번호·조사 번호·캠페인·build_id·sha256·부품 칩·출처 값 | 번호를 정확히 읽고 비교 |
 
 구현에서는 Pretendard를 지금처럼 번들하고, Source Serif 4·JetBrains Mono는 npm(`@fontsource/*`) 번들 또는 시스템 대체 중 하나를 PR E에서 정한다(외부 글꼴 서버 호출을 늘리지 않는 쪽 권장). `mockup.html`은 Pretendard를 불러올 수 없어 Noto Sans KR로 보인다.

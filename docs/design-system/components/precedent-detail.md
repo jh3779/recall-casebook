@@ -1,6 +1,6 @@
 # 선례 상세 (오른쪽 패널)
 
-순서(제안 — [열린 질문 3](../open-questions.md)): **머리 → 결함·결과·시정 원문 → [원인(Part 573)](cause.md) → [NHTSA 조사](investigation.md) → [확인 항목](checklist.md) → 출처 꼬리**. 블록 사이 18px, 패널 안쪽 22~26px, 바탕 `--bg-1`.
+순서(결정 2026-10-13 — 원문 먼저): **머리 → 결함·결과·시정 원문 → [원인(Part 573)](cause.md) → [NHTSA 조사](investigation.md) → [확인 항목](checklist.md) → 출처 꼬리**. 블록 사이 18px, 패널 안쪽 22~26px, 바탕 `--bg-1`.
 
 ## 머리
 

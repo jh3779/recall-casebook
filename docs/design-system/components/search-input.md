@@ -25,10 +25,13 @@
 
 알약 버튼(`--radius-pill`, `--font-source`, 흰 바탕·`--line-strong` 테두리). 누르면 칸에 채우고 바로 검색한다.
 
-제안 문구(시험지 749문항의 질문은 쓰지 않음 — 구현 때 기계로 겹침 확인):
-- `brake fluid leaking from front caliper`
-- `airbag inflator rupture during deployment`
-- `steering column lock fails to release`
-- `fuel pump stops while driving`
+**결정(2026-10-13)** — 고객사(현대·기아) 선례가 나오는 질문 4개. 기준: 고객사 선례 1건 이상 · 고객사 선례 중 원인 원문(`filled`) 카드 포함 · 부품 분야가 겹치지 않게 · 시험지 749문항과 겹치지 않게([실행 기록](../open-questions.md#예시-질문-후보-실행-기록-2026-10-13-공개-api-build-f1fe1843ed0f2c66)).
 
-확정은 [열린 질문 2](../open-questions.md).
+| 순서 | 질문 | 분야 |
+|---|---|---|
+| 1 | `electric power steering assist loss` | 조향 |
+| 2 | `engine connecting rod bearing failure` | 엔진 |
+| 3 | `electrical short in the ABS module may cause fire` | 브레이크·전기 |
+| 4 | `airbag inflator rupture during deployment` | 에어백 |
+
+예비: `seat belt pretensioner does not activate`(안전벨트). 서버 판본이 바뀌면 같은 기준으로 다시 확인한다.

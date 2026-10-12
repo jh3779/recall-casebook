@@ -1,4 +1,4 @@
-/* 결함 선례 찾기 도우미 — 디자인 토큰 v0.1 (2026-10-13)
+/* 결함 선례 찾기 도우미 — 디자인 토큰 v1.0 (2026-10-13)
    정본 설명: docs/design-system/tokens/*.md. 이름은 쇼룸 frontend/src/styles.css와 맞췄다.
    검색 화면은 밝은 테마 하나. 쇼룸의 결함 투시(body.xray)는 쇼룸 styles.css가 따로 정의한다. */
 :root {

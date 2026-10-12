@@ -1,8 +1,8 @@
-# 디자인 시스템 — 결함 선례 찾기 도우미 화면 (v0.1, 2026-10-13)
+# 디자인 시스템 — 결함 선례 찾기 도우미 화면 (v1.0, 2026-10-13)
 
 > **검색 전용 화면**(질문 → 선례·원인 원문)과 3D 쇼룸(PR #60)이 함께 쓰는 디자인 기준이다. 구현 PR(검색 화면 + API 연동)은 이 폴더를 기준으로 만든다.
 > 동작하는 목업은 [`mockup.html`](mockup.html) — 내려받아 브라우저로 연다. 목업의 영어 원문과 번호는 공개 API(`https://lg-cns-rag.vercel.app`)가 2026-10-13에 돌려준 응답(`POST /search` "airbag inflator rupture during deployment", `GET /health` build `f1fe1843ed0f2c66`)을 그대로 그렸다.
-> 상태: **초안** — [열린 질문](open-questions.md) 6개를 정하면 v1.0으로 확정한다.
+> 상태: **v1.0 확정** — 열린 질문 6개와 이어진 질문 2개를 인터뷰로 정했다([결정 기록](open-questions.md)). 바꿀 때는 결정 기록에 날짜·이유를 남기고 판을 올린다.
 
 ## 폴더 구성
 
@@ -24,7 +24,7 @@
 | [patterns/screens.md](patterns/screens.md) | 화면 구성 — 첫 화면·결과(데스크톱)·모바일·쇼룸 연결 |
 | [copy/cause-status.md](copy/cause-status.md) | 원인 상태 문구(잠정 — 이슈 #53에 올릴 안) |
 | [copy/ui-text.md](copy/ui-text.md) | 라벨·안내·버튼 문구 모음 |
-| [open-questions.md](open-questions.md) | 다음 검토에서 정할 것 |
+| [open-questions.md](open-questions.md) | 결정 기록(열린 질문 8개) · 예시 질문 후보 실행 기록 |
 | [mockup.html](mockup.html) | 토큰 견본·컴포넌트·화면 목업(실제 API 응답) |
 
 ## 인터뷰로 정한 것 (우지훈, 2026-10-13)
