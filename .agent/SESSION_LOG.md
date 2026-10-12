@@ -137,5 +137,7 @@
 - 2026-10-12: 체크포인트 — 감사 후속 ①~⑤ 병합 완료(#74·#70·#71·#72·#81·#73·#82·#86·#85), HANDOFF 현재 상태 다시 씀(main c287816, 운영 build f1fe1843ed0f2c66), 새 할 일 44~47(#83·#84·#87·꼬리표 구간 끊김 복구), #79 처리
 - 2026-10-12: 체크포인트 2 — 시점 평가 시트 전달됐다는 사용자 확인(전달 날짜·경로·판본과 표시 시작 여부는 미확인 — HANDOFF Next Action 3), 서버용 데이터 묶음(DEC-047 원인 파일) 바탕화면 압축본 — 드라이브 업로드는 사용자, worktree 67 정리(요청) + 로컬 브랜치 86 삭제(요청보다 넓음 — 제목 대조 뒤 SHA 재대조: 도달 불가 397 중 377 PR 커밋, 20은 stash·리뷰 병합·amend 옛 판, 잃은 작업 없음), #90 D 파트 재배정 제안, Notion ⑦·회고 페이지
 - 2026-10-12: 배포 결정(DEC-048) — 시연은 로컬 포트, 배포는 일단 Vercel 서버리스(화면 먼저, API는 서빙 묶음·Supabase Storage로 발표 전), `docs/배포_Vercel.md`, 할 일 50(화면↔API 연결)
+- 2026-10-12: 서빙 묶음 도구(DEC-049) — server/rag/bundle.py build·upload·verify, serving_bundles 테이블, 실데이터 묶음 155.4MB·되살린 build가 로컬과 같음
+- 2026-10-12: 서버 묶음 경로(RAG_SOURCE=bundle, DEC-050) — 시작 순서·응답 bundle_sha256·CORS 환경변수·rag_reader에 serving_bundles, parity 묶음 모드 749문항 0.542 재현, /search 40문항 응답 동일
 - 2026-10-12: gpt-6-luna(none) vs gpt-4o-mini 같은 입력 210회 재측정 — Luna 0.0086달러·4o-mini 0.0114달러, 원문 글자 바꿈 Luna 0·4o-mini 8, Luna 빈 목록 많음(정확도는 사람 표시 뒤), 시험 스크립트에 --reasoning-effort, docs/실험_LLM_Luna비교.md
 - 2026-10-12: 연구용 LLM 시험 기본 모델을 gpt-6-luna(추론 none)로 지정(사용자) — --model 없으면 Luna, 정확도는 사람 표시 뒤 채점

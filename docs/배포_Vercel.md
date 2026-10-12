@@ -20,7 +20,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
 - **지금 화면은 API를 부르지 않는다.** #60 화면은 `public/data/recalls.json` 데모 스냅샷을 읽는다 — 화면↔API 연결(#60 뒤 작업, HANDOFF 할 일 50)이 끝나기 전의 시연 화면은 우리 검색 결과(카드 30,350장)가 아니다. API 결과를 보여 주려면 연결을 먼저 하거나, API 응답(`curl`·`/docs`)을 따로 보여 준다.
 - 서버가 시작할 때 읽는 로컬 파일: `data/processed/defect/`의 `build.json`·`recalls.jsonl`·`eval.jsonl`·`causes.jsonl`·`causes.manifest.json`, `data/raw/nhtsa/`의 `manifest.json`·`FLAT_INV.zip`. **드라이브의 `data.zip`·`defect_data_2026-10-08` 사본으로는 서버가 뜨지 않는다**(`docs/환경셋팅.md` 4절 주의) — 서버용 묶음 `defect_data_2026-10-12_dec047`(드라이브 업로드 뒤 위치를 `docs/환경셋팅.md` 4절에 적는다)을 쓴다.
 - 시작할 때 **Supabase 접속(인터넷)**이 필요하고(DB 명세·벡터 대조), 임베딩 모델 캐시가 없으면 모델(약 67MB)도 내려받는다 — **발표 전에 시연 장소 네트워크에서 한 번 띄워 둔다.**
-- CORS는 `server/api.py`의 `ALLOWED_ORIGINS`(`http://localhost:5173`)만 허용한다.
+- CORS는 기본으로 `http://localhost:5173`만 허용한다(환경변수 `ALLOWED_ORIGINS`로 바꿈, DEC-050).
 
 ## 2. 화면 배포 — Vercel (먼저)
 
@@ -56,6 +56,8 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 
 조사 요약 원본은 `FLAT_INV.zip`(압축 4.3MB, 풀면 391MB·154,401줄)이다.
 
-**방식 — 서빙 묶음(DEC-048 ⑤)**: build마다 로컬에서 지금과 같은 검사를 통과한 결과(순서 있는 카드·원인·연결된 조사 요약 1,870장·벡터·임베딩 모델)를 파일 하나로 만들어 Supabase Storage에 올리고, 서버는 `RAG_SOURCE=bundle`일 때 `/tmp`로 받아 sha256을 DB 기록과 대조한 뒤 쓴다. DB에서 직접 읽지 않는 이유: 카드 순서가 DB에 없고, `FLAT_INV`가 DB에 없고, 날짜 형식이 다르다(DEC-048 Reason). 로컬 시연 경로(1절)는 그대로 둔다.
+**방식 — 서빙 묶음(DEC-048 ⑤)**: build마다 로컬에서 지금과 같은 검사를 통과한 결과(순서 있는 카드·원인·연결된 조사 요약 1,870장·벡터·임베딩 모델)를 파일 하나로 만들어 Supabase Storage에 올리고, 서버는 `RAG_SOURCE=bundle`일 때 `/tmp`로 받아 sha256을 DB 기록과 대조한 뒤 쓴다. DB에서 직접 읽지 않는 이유: 카드 순서가 DB에 없고, `FLAT_INV`가 DB에 없고, 날짜 형식이 다르다(DEC-048 Reason). 로컬 시연 경로(1절)는 데이터를 읽는 방식 그대로 두고, 응답에는 `bundle_sha256` 칸이 `null`로 더해진다(DEC-048 ⑤ⅳ·DEC-050).
 
-공개 전 필수: 이슈 #63 — 조회 전용 계정 `rag_reader`(묶음 기록 `serving_bundles` 조회 권한 포함)와 Vercel 환경변수 `SERVER_DATABASE_URL`(관리자 키는 Vercel에 두지 않음), Storage 읽기 자격(DEC-048 ⑤ — 다음 DEC에서 정함), 인증 또는 호출 상한, 배포 주소 CORS. 통과 기준: 749문항 H@10 0.542 재현, `/search` 응답이 묶음 sha256 칸(로컬 경로는 `null`)을 빼고 로컬 경로와 바이트까지 같음, Vercel에서 함수 크기·최대 메모리·첫 요청 시간 실측.
+배포 서버 환경변수(DEC-050, `.env.example`): `RAG_SOURCE=bundle`·`SERVING_BUILD_ID`(띄울 build)·`SUPABASE_URL`(공개 주소용)·`SERVER_DATABASE_URL`(`rag_reader`)·`ALLOWED_ORIGINS`(배포 화면 주소). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
+
+공개 전 필수: 이슈 #63 — 조회 전용 계정 `rag_reader`(묶음 기록 `serving_bundles` 조회 권한 포함)와 Vercel 환경변수 `SERVER_DATABASE_URL`(관리자 키는 Vercel에 두지 않음), Storage 읽기 자격(공개 읽기 버킷 — DEC-049 ③, 무결성은 `serving_bundles` 기록 sha256 대조), 인증 또는 호출 상한, 배포 주소 CORS. 통과 기준: 749문항 H@10 0.542 재현, `/search` 응답이 묶음 sha256 칸(로컬 경로는 `null`)을 빼고 로컬 경로와 바이트까지 같음, Vercel에서 함수 크기·최대 메모리·첫 요청 시간 실측.
