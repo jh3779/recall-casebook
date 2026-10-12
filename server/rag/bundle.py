@@ -414,10 +414,12 @@ def cmd_upload(_a) -> None:
     except urllib.error.HTTPError as e:
         # Supabase는 같은 이름이 이미 있으면 400·409로 거부한다. 다른 이유의 400일 수도 있으므로 여기서 성공으로 보지 않고,
         # 아래에서 공개 주소의 실제 파일을 받아 sha256·build를 대조한 뒤에만 기록한다(없거나 다르면 기록하지 않고 멈춘다)
+        # Storage의 응답 본문(키 값은 들어 있지 않다)
+        reason = e.read()[:300].decode("utf-8", "replace")
         if e.code not in (400, 409):
-            sys.exit(f"Storage 업로드 실패: HTTP {e.code}")
+            sys.exit(f"Storage 업로드 실패: HTTP {e.code} {reason}")
         print(
-            f"Storage가 HTTP {e.code}로 거부했다(같은 이름이 이미 있을 수 있음) — 공개 주소의 파일로 확인한다"
+            f"Storage가 HTTP {e.code}로 거부했다({reason}) — 같은 이름이 이미 있을 수 있어 공개 주소의 파일로 확인한다"
         )
     with connect() as conn:
         confirm_and_register(

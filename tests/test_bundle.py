@@ -441,6 +441,21 @@ def test_cmd_upload_sends_the_key_as_apikey_too(tmp_path, monkeypatch):
     assert req.get_header("Authorization") == "Bearer test-only-not-a-key"
 
 
+def test_cmd_upload_shows_the_storage_reason_when_rejected(tmp_path, monkeypatch, capsys):
+    # 400 이유가 키 형식("Invalid Compact JWS")이어도 "이미 있을 수 있음"만 보이면 원인을 놓친다 — 응답 본문을 함께 보인다
+    import io
+
+    def reject(req):
+        raise bundle.urllib.error.HTTPError(
+            req.full_url, 400, "Bad Request", {}, io.BytesIO(b'{"message":"Invalid Compact JWS"}')
+        )
+
+    s = FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co", send=reject)
+    bundle.main(["upload"])  # 공개 주소의 파일이 같으면 그대로 기록까지 간다
+    assert "Invalid Compact JWS" in capsys.readouterr().out
+    assert len(s.inserts) == 1
+
+
 def test_cmd_upload_checks_the_local_bundle_before_sending(tmp_path, monkeypatch):
     s = FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co")
     _, other = _other_build_bundle(tmp_path / "o")
