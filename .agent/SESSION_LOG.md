@@ -140,3 +140,5 @@
 - 2026-10-12: 서빙 묶음 도구(DEC-049) — server/rag/bundle.py build·upload·verify, serving_bundles 테이블, 실데이터 묶음 155.4MB·되살린 build가 로컬과 같음
 - 2026-10-12: 서버 묶음 경로(RAG_SOURCE=bundle, DEC-050) — 시작 순서·응답 bundle_sha256·CORS 환경변수·rag_reader에 serving_bundles, parity 묶음 모드 749문항 0.542 재현, /search 40문항 응답 동일
 - 2026-10-12: 체크포인트 3 — 배포 1~3단계(#91·#92·#94, DEC-048~050) 병합, Luna 비교 PR #96, Supabase Pro·전역 파일 크기 한도, worktree 15개 정리, HANDOFF 할 일 51 갱신·52·53 추가
+- 2026-10-12: gpt-6-luna(none) vs gpt-4o-mini 같은 입력 210회 재측정 — Luna 0.0086달러·4o-mini 0.0114달러, A·B 원문 글자 바꿈 Luna 0·4o-mini 3(1회), 모델별 판정 분포·정확도는 사람 표시 뒤, 시험 스크립트에 --reasoning-effort, docs/실험_LLM_Luna비교.md
+- 2026-10-12: 연구용 LLM 시험 기본 모델을 gpt-6-luna(추론 none)로 지정(사용자) — --model 없으면 Luna, 정확도는 사람 표시 뒤 채점

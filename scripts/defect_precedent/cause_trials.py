@@ -2,9 +2,9 @@
 
 사용법:
     # A. 573 원인 칸이 없는 리콜: 카드의 결함 설명(`defect`)에서 원인 문장 고르기
-    uv run --with openai --env-file .env python -m scripts.defect_precedent.cause_trials defect --model gpt-4o-mini --n 30 --out <결과.jsonl>
+    uv run --with openai --env-file .env python -m scripts.defect_precedent.cause_trials defect [--model gpt-6-luna] [--reasoning-effort none] --n 30 --out <결과.jsonl>
     # B. "원인 미확인" 걸러내기: 원인 칸 무작위 표본에 규칙과 LLM을 같이 돌리고, 사람이 표시할 시트를 만든다
-    uv run --with openai --env-file .env python -m scripts.defect_precedent.cause_trials unknown --model gpt-4o-mini --n 150 --out <결과.jsonl> --sheet <표시용.csv>
+    uv run --with openai --env-file .env python -m scripts.defect_precedent.cause_trials unknown [--model gpt-6-luna] [--reasoning-effort none] --n 150 --out <결과.jsonl> --sheet <표시용.csv>
     # B 채점: 사람이 표시한 시트로 정확도를 잰다 (API 호출 없음)
     uv run python -m scripts.defect_precedent.cause_trials score --sheet <표시한.csv> <결과.jsonl> [<결과.jsonl> ...]
 
@@ -34,6 +34,21 @@ from scripts.defect_precedent.retrieval_compare import card_text, provenance, re
 from scripts.defect_precedent.rules import UNKNOWN_RE, check
 
 SEED = 20261008
+# 추론 모델(gpt-6-luna 등)의 reasoning.effort 허용 값 — OpenAI 모델 문서(developers.openai.com/api/docs/models/gpt-6-luna, 2026-10-12 확인)
+REASONING_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
+# 기본 모델 — 사용자 지정 2026-10-12(운영 선택, 품질 우위 근거 아님 — docs/실험_LLM_Luna비교.md 4절).
+# 정확도는 사람 표시 뒤 채점으로 확인한다.
+DEFAULT_MODEL, DEFAULT_EFFORT = "gpt-6-luna", "none"
+
+
+def model_and_effort(model: str | None, effort: str | None) -> tuple[str, str | None]:
+    """기본 모델(--model 없음 또는 같은 이름)이면 추론 강도를 주지 않았을 때 기본 강도로 — `--model gpt-6-luna`만 적어도
+    문서 기본값(medium)이 아니라 비교한 조건(none)으로 돈다. 다른 모델은 준 값 그대로, 추론 강도는 줄 때만 보낸다(4o-mini 등)."""
+    if model in (None, DEFAULT_MODEL):
+        return DEFAULT_MODEL, effort or DEFAULT_EFFORT
+    return model, effort
+
+
 DEFECT_INSTRUCTIONS = (
     "You copy text. From the manufacturer's defect description of a vehicle recall, return the sentence(s) that state "
     "WHY the defect happens (its cause, e.g. a design, material, manufacturing or supplier reason), copied EXACTLY "
@@ -55,7 +70,9 @@ def rule_unknown(text: str) -> bool:
     return bool(UNKNOWN_RE.search(text))
 
 
-def llm(model: str, instructions: str, text: str) -> tuple[list[str] | None, float, int, int]:
+def llm(
+    model: str, instructions: str, text: str, reasoning_effort: str | None = None
+) -> tuple[list[str] | None, float, int, int, str | None]:
     from openai import OpenAI
     from pydantic import BaseModel
 
@@ -64,10 +81,17 @@ def llm(model: str, instructions: str, text: str) -> tuple[list[str] | None, flo
 
     t = time.perf_counter()
     rsp = OpenAI().responses.parse(
-        model=model, instructions=instructions, input=text, text_format=Extraction
+        model=model,
+        instructions=instructions,
+        input=text,
+        text_format=Extraction,
+        **({"reasoning": {"effort": reasoning_effort}} if reasoning_effort else {}),
     )
     got = rsp.output_parsed.cause_sentences if rsp.output_parsed else None  # None = 거부·해석 실패
-    return got, time.perf_counter() - t, rsp.usage.input_tokens, rsp.usage.output_tokens
+    used = getattr(
+        rsp, "model", None
+    )  # 응답이 알려 주는 실제 판본 — 요청 이름(별칭)과 다를 수 있다
+    return got, time.perf_counter() - t, rsp.usage.input_tokens, rsp.usage.output_tokens, used
 
 
 def pick_defect(n: int) -> list[dict]:
@@ -98,16 +122,24 @@ def pick_unknown(n: int) -> list[dict]:
     ]
 
 
-def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
+def run(
+    mode: str,
+    model: str,
+    n: int,
+    out: Path,
+    sheet: Path | None,
+    reasoning_effort: str | None = None,
+) -> None:
     if sheet and sheet_meta_path(sheet) == out.with_suffix(".meta.json"):
         sys.exit("결과와 시트의 메타 파일 이름이 겹친다 — --out·--sheet 이름을 다르게")
     data = provenance()
     items = pick_defect(n) if mode == "defect" else pick_unknown(n)
     instructions = DEFECT_INSTRUCTIONS if mode == "defect" else UNKNOWN_INSTRUCTIONS
-    rows, tin, tout = [], 0, 0
+    rows, tin, tout, used_models = [], 0, 0, set()
     for it in items:
-        got, sec, i, o = llm(model, instructions, it["text"])
+        got, sec, i, o, used = llm(model, instructions, it["text"], reasoning_effort)
         tin, tout = tin + i, tout + o
+        used_models.add(used)
         failed, got = got is None, got or []
         rows.append(
             {
@@ -124,6 +156,8 @@ def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
         "data": data,
         "mode": mode,
         "model": model,
+        "reasoning_effort": reasoning_effort,
+        "response_models": sorted(m for m in used_models if m),
         "n": n,
         "seed": SEED,
         "instructions": instructions,
@@ -268,23 +302,33 @@ def score(sheet: Path, results: list[Path]) -> None:
     print(json.dumps(out, ensure_ascii=False, indent=1))
 
 
-def main(argv: list[str] | None = None) -> None:
+def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("mode", choices=["defect", "unknown", "score"])
     p.add_argument("results", nargs="*", type=Path)
-    p.add_argument("--model")
+    p.add_argument("--model", help=f"기본 {DEFAULT_MODEL}(추론 강도 {DEFAULT_EFFORT})")
+    p.add_argument(
+        "--reasoning-effort",
+        choices=REASONING_EFFORTS,
+        help="추론 모델에만 — 주지 않으면 요청에 넣지 않는다(4o-mini 등)",
+    )
     p.add_argument("--n", type=int, default=30)
     p.add_argument("--out", type=Path)
     p.add_argument("--sheet", type=Path)
-    a = p.parse_args(argv)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    a = parser().parse_args(argv)
     if a.mode == "score":
         if not (a.sheet and a.results):
             sys.exit("score에는 --sheet와 결과 파일이 필요하다")
         score(a.sheet, a.results)
         return
-    if not (a.model and a.out):
-        sys.exit("--model과 --out이 필요하다")
-    run(a.mode, a.model, a.n, a.out, a.sheet)
+    if not a.out:
+        sys.exit("--out이 필요하다")
+    a.model, a.reasoning_effort = model_and_effort(a.model, a.reasoning_effort)
+    run(a.mode, a.model, a.n, a.out, a.sheet, a.reasoning_effort)
 
 
 if __name__ == "__main__":

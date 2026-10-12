@@ -1,6 +1,6 @@
 """P2 엔진 2(원인 문장 옮기기) 소량 시험 — 연구용. LLM이 573 원인 칸에서 원인 문장을 **한 글자도 바꾸지 않고** 고르는지 본다.
 
-사용법: uv run --with openai --env-file .env python -m scripts.defect_precedent.engine2_trial --model gpt-5.4-mini [--n 30] --out <결과.jsonl>
+사용법: uv run --with openai --env-file .env python -m scripts.defect_precedent.engine2_trial [--model gpt-6-luna] [--reasoning-effort none] [--n 30] --out <결과.jsonl>
       다시 검사만(API 호출 없음, `<결과>.recheck.jsonl`에 씀): uv run python -m scripts.defect_precedent.engine2_trial --recheck <결과.jsonl>
 
 - 대상: 시험 질문마다 BM25(v0) 1위 리콜을 고르고, 그 리콜에 573 원인 칸(`cause_text`)이 있는 경우만 앞에서부터 n건
@@ -55,13 +55,28 @@ def summarize(model: str, rows: list[dict]) -> dict:
     }
 
 
-def main(argv: list[str] | None = None) -> None:
+def parser() -> argparse.ArgumentParser:
+    from scripts.defect_precedent.cause_trials import (
+        DEFAULT_EFFORT,
+        DEFAULT_MODEL,
+        REASONING_EFFORTS,
+    )
+
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--model")
+    p.add_argument("--model", help=f"기본 {DEFAULT_MODEL}(추론 강도 {DEFAULT_EFFORT})")
+    p.add_argument(
+        "--reasoning-effort",
+        choices=REASONING_EFFORTS,
+        help="추론 모델에만 — 주지 않으면 요청에 넣지 않는다(4o-mini 등)",
+    )
     p.add_argument("--n", type=int, default=30)
     p.add_argument("--out", type=Path)
     p.add_argument("--recheck", type=Path, help="저장된 결과를 API 호출 없이 다시 검사")
-    a = p.parse_args(argv)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    a = parser().parse_args(argv)
     if a.recheck:
         rows = [
             json.loads(line)
@@ -89,8 +104,11 @@ def main(argv: list[str] | None = None) -> None:
         )
         print(json.dumps(summarize(a.recheck.stem, rows), ensure_ascii=False, indent=1))
         return
-    if not (a.model and a.out):
-        sys.exit("--model과 --out이 필요하다 (또는 --recheck)")
+    if not a.out:
+        sys.exit("--out이 필요하다 (또는 --recheck)")
+    from scripts.defect_precedent.cause_trials import model_and_effort
+
+    a.model, a.reasoning_effort = model_and_effort(a.model, a.reasoning_effort)
     from openai import OpenAI
     from pydantic import BaseModel
 
@@ -119,7 +137,7 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(f"대상이 {len(picked)}건뿐이다")
 
     client = OpenAI()
-    rows, tokens_in, tokens_out = [], 0, 0
+    rows, tokens_in, tokens_out, used_models = [], 0, 0, set()
     for q, card, c in picked:
         t = time.perf_counter()
         rsp = client.responses.parse(
@@ -127,10 +145,12 @@ def main(argv: list[str] | None = None) -> None:
             instructions=INSTRUCTIONS,
             input=f"Defect description:\n{card['defect']}\n\nDescription of the Cause:\n{c['cause_text']}",
             text_format=Extraction,
+            **({"reasoning": {"effort": a.reasoning_effort}} if a.reasoning_effort else {}),
         )
         secs = time.perf_counter() - t
         tokens_in += rsp.usage.input_tokens
         tokens_out += rsp.usage.output_tokens
+        used_models.add(getattr(rsp, "model", None))  # 응답이 알려 주는 실제 판본
         failed = rsp.output_parsed is None  # 거부·해석 실패 — "원인 없음"(빈 목록)과 따로 센다
         got = [] if failed else rsp.output_parsed.cause_sentences
         rows.append(
@@ -147,7 +167,14 @@ def main(argv: list[str] | None = None) -> None:
     a.out.write_text(
         "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8"
     )
-    meta = {"data": data, "model": a.model, "n": a.n, "instructions": INSTRUCTIONS}
+    meta = {
+        "data": data,
+        "model": a.model,
+        "reasoning_effort": a.reasoning_effort,
+        "response_models": sorted(m for m in used_models if m),
+        "n": a.n,
+        "instructions": INSTRUCTIONS,
+    }
     a.out.with_suffix(".meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8"
     )
