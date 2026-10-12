@@ -474,3 +474,17 @@ def test_cmd_verify_refuses_a_public_file_other_than_the_record(tmp_path, monkey
         )  # 기록까지 그 파일이라도 build가 다르면 거부
     with pytest.raises(bundle.BundleMismatch, match="sha256" if case == "other_sha" else "build"):
         bundle.main(["verify"])
+
+
+def test_send_uses_an_opener_that_does_not_follow_redirects(monkeypatch):
+    """관리자 키가 든 요청은 리디렉션을 따라가지 않는 열기 도구로만 보낸다 — 기본 urlopen은 따라가며 키를 넘긴다."""
+    used = []
+
+    def build_opener(*handlers):
+        used.extend(handlers)
+        return SimpleNamespace(open=lambda req, timeout: SimpleNamespace(read=lambda: b""))
+
+    monkeypatch.setattr(bundle.urllib.request, "build_opener", build_opener)
+    monkeypatch.setattr(bundle.urllib.request, "urlopen", lambda *a, **k: pytest.fail("urlopen"))
+    bundle._send(bundle.urllib.request.Request("https://x.supabase.co/a"))
+    assert bundle._NoRedirect in used
