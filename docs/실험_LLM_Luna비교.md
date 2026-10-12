@@ -42,13 +42,13 @@
 3. **빈 목록이 많다**: Luna는 A에서 2건, B에서 19건을 "원인을 말하지 않음"으로 돌려줬다(4o-mini 0·10건). B는 결함 설명이 "무엇이 고장 나는지"만 말하는 경우가 많아 빈 목록이 맞을 수 있고(10/8 관찰: 4o-mini가 "왜"가 아니라 "무엇"을 고른 경우가 여럿), 원인을 놓친 것일 수도 있다. **어느 쪽이 맞는지는 사람 확인 전이라 정확도로 말하지 않는다.**
 4. **속도**: Luna가 질문당 0.4~0.9초 느렸다.
 
-## 4. 권장과 결정
+## 4. 결정과 남은 확인
 
-**결정(사용자 지정 2026-10-12)**: 연구용 시험 스크립트의 기본 모델을 `gpt-6-luna`(추론 강도 `none`)로 한다 — `--model`을 주지 않거나 `--model gpt-6-luna`만 적으면 이 조합(추론 강도 `none` — 문서 기본값 `medium`이 아님)으로 돈다(`cause_trials.py` `DEFAULT_MODEL`·`model_and_effort`, `engine2_trial.py`도 같은 함수). 다른 모델은 `--model`로 지정하고, 추론 강도는 `--reasoning-effort`를 줄 때만 보낸다. 아래 정확도 확인은 그대로 남는다.
+**결정 — 사용자 지정에 따른 운영 선택(2026-10-12, "그럼 luna로 지정해서 해보자")**: 연구용 시험 스크립트의 기본 모델을 `gpt-6-luna`(추론 강도 `none`)로 한다 — `--model`을 주지 않거나 `--model gpt-6-luna`만 적으면 이 조합(추론 강도 `none` — 문서 기본값 `medium`이 아님)으로 돈다(`cause_trials.py` `DEFAULT_MODEL`·`model_and_effort`, `engine2_trial.py`도 같은 함수). 다른 모델은 `--model`로 지정하고, 추론 강도는 `--reasoning-effort`를 줄 때만 보낸다.
 
+**이 결정은 품질 우위를 근거로 한 것이 아니다.** 이번 수치가 보여 주는 것은 ① 같은 210회에서 Luna가 더 쌌다(차이는 1센트 미만) ② 이번 1회 실행에서 Luna는 원문 글자를 바꾼 건이 없었다 — 다만 답을 낸 건 자체가 적어(B 11 대 20) 바꿀 기회도 적었다 — 뿐이고, "원인을 맞게 골랐는가"(A·B)·"미확인을 맞게 걸렀는가"(C)는 아직 모른다.
 
-- 연구용 LLM 시험의 기본 모델을 **`gpt-6-luna --reasoning-effort none`**으로 바꿔도 된다 — 가격이 더 싸고(차이는 작음) 이번 1회 실행에서 원문을 고쳐 쓴 건이 없었다(답을 낸 건이 적었던 점은 3절).
-- 단, "원인을 맞게 골랐는가"(A·B)와 "미확인을 맞게 걸렀는가"(C)는 사람 표시 뒤에 정한다. C의 사람 표시가 끝나면 두 결과를 함께 채점해, Luna의 정확도가 4o-mini보다 기준 폭(0.03) 넘게 낮지 않을 때 확정한다(AGENTS.md 5-1·5-3).
+- **남은 확인**: 사람 표시 뒤 같은 판본에서 두 모델을 채점해, Luna의 정확도가 4o-mini보다 기준 폭(0.03) 넘게 낮으면 기본값을 다시 정한다(AGENTS.md 5-1·5-3). C는 표시 시트가 있고(채점 판본 주의는 5절), A·B는 사람 정답 표시를 따로 해야 한다(AI가 표시하지 않는다, AGENTS.md 5-2 — 질문을 만든 세션이 아닌 다른 세션에서).
 - 서비스 경로는 바뀌지 않는다(LLM 없음).
 
 ## 5. 재현
@@ -56,6 +56,7 @@
 ```bash
 # 추론 모델에는 --reasoning-effort를 준다(주지 않으면 요청에 넣지 않는다 — 4o-mini 등)
 O=data/processed/defect/llm_trials_20261012
+mkdir -p "$O"
 uv run --with openai --env-file .env python -m scripts.defect_precedent.engine2_trial --model gpt-6-luna --reasoning-effort none --n 30 --out $O/e2_luna.jsonl
 uv run --with openai --env-file .env python -m scripts.defect_precedent.engine2_trial --model gpt-4o-mini --n 30 --out $O/e2_4omini.jsonl
 uv run --with openai --env-file .env python -m scripts.defect_precedent.cause_trials defect --model gpt-6-luna --reasoning-effort none --n 30 --out $O/def_luna.jsonl
