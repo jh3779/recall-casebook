@@ -456,6 +456,21 @@ def test_cmd_upload_shows_the_storage_reason_when_rejected(tmp_path, monkeypatch
     assert len(s.inserts) == 1
 
 
+def test_cmd_upload_does_not_print_the_key_if_storage_echoes_it(tmp_path, monkeypatch, capsys):
+    import io
+
+    def reject(req):
+        raise bundle.urllib.error.HTTPError(
+            req.full_url, 500, "Error", {}, io.BytesIO(b"bad apikey test-only-not-a-key")
+        )
+
+    FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co", send=reject)
+    with pytest.raises(SystemExit) as e:
+        bundle.main(["upload"])
+    assert "test-only-not-a-key" not in str(e.value) + capsys.readouterr().out
+    assert "***" in str(e.value)
+
+
 def test_cmd_upload_checks_the_local_bundle_before_sending(tmp_path, monkeypatch):
     s = FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co")
     _, other = _other_build_bundle(tmp_path / "o")
