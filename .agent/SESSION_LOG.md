@@ -143,3 +143,4 @@
 - 2026-10-12: gpt-6-luna(none) vs gpt-4o-mini 같은 입력 210회 재측정 — Luna 0.0086달러·4o-mini 0.0114달러, A·B 원문 글자 바꿈 Luna 0·4o-mini 3(1회), 모델별 판정 분포·정확도는 사람 표시 뒤, 시험 스크립트에 --reasoning-effort, docs/실험_LLM_Luna비교.md
 - 2026-10-12: 연구용 LLM 시험 기본 모델을 gpt-6-luna(추론 none)로 지정(사용자) — --model 없으면 Luna, 정확도는 사람 표시 뒤 채점
 - 2026-10-12: 체크포인트 4 — #96 병합(main 8a0d9c7), #97 세션 밖 선병합 기록, #98 후속 이슈, worktree 정리, 학습 ⑧ ①·② 진행(다른 세션 조사를 위해 잠시 멈춤)
+- 2026-10-12: 서빙 묶음 Supabase Storage 업로드·verify·로컬 묶음 경로 시작 확인 — 새 형식 Secret 키는 apikey 머리글이 필요해 업로드 코드 수정(PR #101)

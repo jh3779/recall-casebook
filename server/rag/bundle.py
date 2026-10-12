@@ -396,12 +396,15 @@ def cmd_upload(_a) -> None:
             "SUPABASE_URL이 https://로 시작하지 않는다 — 관리자 키를 암호화 없이 보내지 않는다"
         )
     url = f"{base}/storage/v1/object/{BUCKET}/{storage_path}"
+    key = _env("SUPABASE_SERVICE_ROLE_KEY")
     req = urllib.request.Request(
         url,
         data=path.read_bytes(),
         method="POST",
         headers={
-            "Authorization": f"Bearer {_env('SUPABASE_SERVICE_ROLE_KEY')}",
+            # 새 형식 Secret 키(sb_secret_…)는 JWT가 아니라 apikey 머리글이 있어야 받아 준다(Authorization만이면 400)
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
             "Content-Type": "application/x-tar",
             "x-upsert": "false",
         },
@@ -411,10 +414,12 @@ def cmd_upload(_a) -> None:
     except urllib.error.HTTPError as e:
         # Supabase는 같은 이름이 이미 있으면 400·409로 거부한다. 다른 이유의 400일 수도 있으므로 여기서 성공으로 보지 않고,
         # 아래에서 공개 주소의 실제 파일을 받아 sha256·build를 대조한 뒤에만 기록한다(없거나 다르면 기록하지 않고 멈춘다)
+        # 거부 이유를 보이려고 Storage 응답 본문을 출력한다 — 본문에 키가 되돌아와도 찍히지 않게 지운 뒤에 자른다
+        reason = e.read(65536).decode("utf-8", "replace").replace(key, "***")[:300]
         if e.code not in (400, 409):
-            sys.exit(f"Storage 업로드 실패: HTTP {e.code}")
+            sys.exit(f"Storage 업로드 실패: HTTP {e.code} {reason}")
         print(
-            f"Storage가 HTTP {e.code}로 거부했다(같은 이름이 이미 있을 수 있음) — 공개 주소의 파일로 확인한다"
+            f"Storage가 HTTP {e.code}로 거부했다({reason}) — 같은 이름이 이미 있을 수 있어 공개 주소의 파일로 확인한다"
         )
     with connect() as conn:
         confirm_and_register(
