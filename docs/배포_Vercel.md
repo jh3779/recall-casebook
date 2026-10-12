@@ -62,7 +62,7 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 
 공개 전 필수: 이슈 #63 — 조회 전용 계정 `rag_reader`(묶음 기록 `serving_bundles` 조회 권한 포함)와 Vercel 환경변수 `SERVER_DATABASE_URL`(관리자 키는 Vercel에 두지 않음), Storage 읽기 자격(공개 읽기 버킷 — DEC-049 ③, 무결성은 `serving_bundles` 기록 sha256 대조), 인증 또는 호출 상한, 배포 주소 CORS. 통과 기준: 749문항 H@10 0.542 재현, `/search` 응답이 묶음 sha256 칸(로컬 경로는 `null`)을 빼고 로컬 경로와 바이트까지 같음, Vercel에서 함수 크기·최대 메모리·첫 요청 시간 실측.
 
-> (2026-10-12) 위 "공개 전 필수"는 사용자 결정으로 바뀌어 #63 전에 Production에 먼저 올렸다(아래 3-1, DEC-051 ①). 통과 기준 중 "응답 바이트까지 같음"은 Vercel에서 **충족하지 못했고**, 사용자 결정으로 **CPU가 다른 환경에서는** "같은 749문항의 화면 기준 점수 `shown_any` 차이가 0.03 안 + 완전 같음/순서만 다름/구성 다름 기록"으로 대체했다(DEC-051 ③) — 실측 Vercel 0.545·로컬 0.543, 706·28·15. 같은 기계 안의 비교는 바이트 동일 기준 그대로다. 최대 메모리는 서버가 시작 끝에 로그로 남긴다(3-1).
+> (2026-10-12) 위 "공개 전 필수"는 사용자 결정으로 바뀌어 #63 전에 Production에 먼저 올렸다(아래 3-1, DEC-051 ①). 통과 기준 중 "응답 바이트까지 같음"은 Vercel에서 **충족하지 못했고**, 사용자 결정으로 **CPU가 다른 환경에서는** "같은 749문항의 화면 기준 점수 `shown_any` 차이가 0.03 안 + 완전 같음/순서만 다름/구성 다름 기록"으로 대체했다(DEC-051 ③) — 실측 Vercel 0.545·로컬 0.543, 706·28·15. 같은 기계 안의 비교는 바이트 동일 기준 그대로다. 최대 메모리는 서버가 시작 끝에 로그로 남긴다(3-1). 함수 크기는 Vercel이 출력하지 않아 Linux x86 컨테이너 설치 크기로 근사했다(3-1, 약 210MB).
 
 ### 3-1. 실제 배포 (2026-10-12, DEC-051)
 
@@ -74,7 +74,7 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 | `vercel.json` | `framework: fastapi`(CLI로 만든 프로젝트는 프리셋이 비어 `app.py`를 함수로 못 찾는다), `regions: ["syd1"]`(운영 Supabase ap-southeast-2와 같은 지역), `maxDuration` 60(첫 요청 실측 13.2초 — 공개 상태에서 요청 하나가 함수를 오래 붙잡지 않게 실측에 맞춤) |
 | `.vercelignore` | CLI 배포는 로컬 폴더를 올린다. Vercel 기본 무시 목록에 `.env`·`.env.server`·`data/`가 없으므로 **필요한 것만 허용**한다(진입점·설정·`pyproject.toml`·`uv.lock`·`.python-version`·`server/`·`scripts/defect_precedent/`) |
 
-Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BUILD_ID=f1fe1843ed0f2c66` · `SUPABASE_URL` · `SERVER_DATABASE_URL`(`rag_reader`, Sensitive) · `UV_NO_CONFIG=1`(빌더 uv 0.10.11이 `required-version >=0.12.5`에 걸려서 — DEC-051 ③). `ALLOWED_ORIGINS`는 배포 화면이 생기면 넣는다(없으면 `http://localhost:5173`). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
+Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BUILD_ID=f1fe1843ed0f2c66` · `SUPABASE_URL` · `SERVER_DATABASE_URL`(`rag_reader`, Sensitive) · `UV_NO_CONFIG=1`(빌더 uv 0.10.11이 `required-version >=0.12.5`에 걸려서 — DEC-051 ④). `ALLOWED_ORIGINS`는 배포 화면이 생기면 넣는다(없으면 `http://localhost:5173`). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
 
 다시 배포: 저장소 루트에서 `vercel deploy --prod`(먼저 `vercel link --project lg-cns-rag` — `.vercel/`은 gitignore). 값 확인은 `vercel env ls production`(값은 숨김). 로그는 `vercel logs <배포 주소>`.
 
@@ -83,9 +83,9 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 | 항목 | 값 |
 |---|---|
 | 749문항 화면 기준 점수 `shown_any` | Vercel 공개 주소 **0.545** · 같은 묶음·`rag_reader` 로컬 서버 0.543(기존 기록과 같음) — 차이 0.002, 기준 폭 0.03 안. 문항별 화면 목록: 완전 같음 706 · 순서만 다름 28 · 구성 다름 15(정답 포함 여부가 갈린 문항 1). 원인은 질문 임베딩의 CPU 오차로 **추정**(직접 비교는 안 함) |
-| 첫 요청(새 배포 직후 — 묶음 155.4MB 다운로드·검사·모델 로드) | 13.2초 · 12.8초 · 16.1초(세 번), 이후 0.2~0.5초 |
+| 첫 요청(새 배포 직후 — 묶음 155.4MB 다운로드·검사·모델 로드) | 13.2초 · 12.8초 · 16.1초 · 16.0초(네 번), 이후 0.2~0.5초 |
 | 빌드 | 38초, Python 3.12(`.python-version`), uv 0.10.11 |
 | CLI 업로드 | 1.7MB |
-| 탐침 차이(macOS arm 벡터 ↔ Vercel Linux x86 재계산) | 최대 4.30e-04(콜드 스타트 세 번 모두 같음) → 묶음 경로만 허용 차이 1e-3(`CROSS_MACHINE_ATOL`, DEC-051 ②), 같은 기계는 1e-4. 서버는 통과해도 `탐침 최대 차이 …`를 로그에 남긴다 — `vercel logs <배포 주소> --json`으로 분포를 모아 다시 판단 |
+| 탐침 차이(macOS arm 벡터 ↔ Vercel Linux x86 재계산) | 최대 4.30e-04(콜드 스타트 네 번 모두 같음) → 묶음 경로만 허용 차이 1e-3(`CROSS_MACHINE_ATOL`, DEC-051 ②), 같은 기계는 1e-4. 서버는 통과해도 `탐침 최대 차이 …`를 로그에 남긴다 — `vercel logs <배포 주소> --json`으로 분포를 모아 다시 판단 |
 | 시작 최대 RSS | **901MB**(Hobby 2GB 안) — 서버가 시작 끝에 `시작 최대 RSS …MB`를 로그로 남긴다 |
-| 함수 크기 | 미측정 — 로그·`vercel inspect`에 없음(배포 통과 = 500MB 안) |
+| 함수 크기 | Vercel이 출력하지 않아 **근사로 잼**: Linux x86 컨테이너(`python:3.12-slim`, uv 0.10.11)에 `uv.lock`대로 개발 의존성 없이 설치한 site-packages **약 208MB**(onnxruntime 63·numpy 57·pillow 14·tokenizers 12·psycopg 11MB 등) + 코드 약 2MB ≈ **210MB**(한도 500MB의 약 42%, Vercel 번들 최적화 전 값) |

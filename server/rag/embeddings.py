@@ -27,7 +27,7 @@ PROBES = 16
 # (연구용 캐시 대조 scripts/defect_precedent/retrieval_compare.py와 같은 값).
 ATOL = 1e-4
 # 다른 기계(묶음 경로 — Vercel 등)는 같은 모델이라도 CPU에 따라 소수점 오차가 난다: macOS arm에서 만든 벡터를
-# Vercel Linux x86에서 다시 계산하면 최대 4.30e-04(2026-10-12, 콜드 스타트 세 번 모두 같은 값) → 1e-3(DEC-051).
+# Vercel Linux x86에서 다시 계산하면 최대 4.30e-04(2026-10-12, 콜드 스타트 네 번 모두 같은 값) → 1e-3(DEC-051).
 # 통과해도 차이를 로그에 남겨 여러 시작의 분포로 다시 판단한다.
 CROSS_MACHINE_ATOL = 1e-3
 
