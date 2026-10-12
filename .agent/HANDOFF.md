@@ -1,6 +1,6 @@
 # Agent Handoff
 
-_갱신: 2026-10-12 체크포인트 2 (시트 전달 확인·서버용 데이터 묶음·worktree 정리·Notion 학습·회고) · 체크포인트 1 (감사 후속 ①~⑤ 모두 병합 — #74·#70·#71·#72·#81·#73·#82·#86·#85, DEC-046·047 · 운영 build `f1fe1843ed0f2c66` · 남은 것은 화면 연결·원인 표시 문구·시점 평가 채점·원인 품질 표본)_
+_갱신: 2026-10-12 배포 작업 중 (#91 배포 결정 병합, #92 서빙 묶음 리뷰 중 — Current State·Next Action 5만 갱신, 나머지는 체크포인트 2 그대로) · 체크포인트 2 (시트 전달 확인·서버용 데이터 묶음·worktree 정리·Notion 학습·회고) · 체크포인트 1 (감사 후속 ①~⑤ 모두 병합 — #74·#70·#71·#72·#81·#73·#82·#86·#85, DEC-046·047 · 운영 build `f1fe1843ed0f2c66` · 남은 것은 화면 연결·원인 표시 문구·시점 평가 채점·원인 품질 표본)_
 
 ## Current Objective
 
@@ -39,7 +39,7 @@ _갱신: 2026-10-12 체크포인트 2 (시트 전달 확인·서버용 데이터
 ## Current State
 
 (2026-10-12, `git log`·`gh pr list`·`gh issue list`·`docker ps`로 확인)
-- main = `66393f5` (#88 체크포인트 1까지). **열린 PR**: #60(박성호, 프런트 쇼룸 — 응답 칸 회신 대기, main과 충돌 상태)과 이 체크포인트 PR. 이후 상태는 `gh pr list`로 확인한다.
+- main = `61f7c7a` (#91 배포 결정 병합까지, 2026-10-12). **열린 PR**: #60(박성호, 프런트 쇼룸 — 응답 칸 회신 대기, main과 충돌 상태), #92(서빙 묶음 도구 — 이 PR). 서버 묶음 경로는 브랜치 `feat/serve-from-bundle`(PR 전, #92 병합 뒤 올림), Luna 비교는 브랜치 `research/luna-vs-4o-mini`(로컬 커밋, PR 전). 이후 상태는 `gh pr list`로 확인한다.
 - **열린 이슈**: #90(D 파트 이승노 님 재배정 제안 — 결정 대기, 10/15 중간 확인) · #83(미보고 판별 경계) · #84(PR #82·#86 리뷰 후속 — 서버 쪽 도달 불가 `text_basis` 검사, 순위 계산 모듈 위치, 다음 재수집 때 `recalls_sha256` 확인) · #87(작성 주체·규칙 위치·옛 v4 재현 백업·부품 범위 기각 범위 표기) · #80(작업 현황 공유) · #75·#76·#77·#78(감사 PR 후속) · #63 · #61(박예원, 10/14) · #53 · #54 · #36 · #38 · #24.
 - **Actions: 꺼져 있음**(DEC-040). 룰셋 필수 체크 해제 — 되돌리기는 MERGE_PROTOCOL 7절 5단계(백업 `~/lgcns_ruleset_backup.json`). 병합 근거는 엄격 로컬 검사(`LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=… bash scripts/local_ci.sh`, 스크립트가 PR에 직접 기록)·로컬 `merge_gate.py`·리뷰 원문·Codex(DEC-046). Codex 리뷰는 PR을 하나씩 처리해 push 뒤 몇 분~30분 넘게 걸린다(2026-10-10~12 관측) — 결과 코멘트는 시간이 아니라 **현재 head의 Codex 코멘트가 올라온 것을 확인한 뒤** 쓴다.
 - **운영 Supabase**: latest build `f1fe1843ed0f2c66`(DEC-047 원인 파일, 옛 build `c6872ae8e9743c56`·`6edfafc92572c6d9`·`ef5ca2ad4b79d755`·`f5cb2f944f36125d`·`3c15c6bcf7dc7c3a` 등은 보관) + 카드 벡터. 서버용 조회 전용 계정 `rag_reader`는 아직 없음(#63) — 로컬은 `ALLOW_ADMIN_DB_FOR_SERVER=1 uv run --env-file .env uvicorn server.api:app`. 서버는 `data/raw/nhtsa/`(manifest·FLAT_INV)도 있어야 뜬다. 적재 때 원인 명세에 `recalls_sha256`이 없다는 경고 한 줄이 나오는 것은 정상(2026-10-12 이전 수집분).
@@ -180,7 +180,7 @@ _갱신: 2026-10-12 체크포인트 2 (시트 전달 확인·서버용 데이터
 3. **시점 평가** — 시트가 표시자에게 전달됐다는 사용자 확인만 있다(2026-10-12). 전달 날짜·경로·판본 확인과 채점 전 원본 열 대조는 **할 일 48**. 표시는 2026-10-12 시작 예상(사용자 추측) — 마감 10/16 전에 진행 상황을 확인한다. 표시는 늦어도 10/16(안내서 1절 합의값 적는 법, #81), 10/17 채점·보고(`time_eval_score.py`, DEC-037 ⑦ 두 점수·정확 McNemar).
 3-1. **원인 품질 표본 30건(P3 완료 조건, 기획 6절 "원인 품질")** — `cause_quality.py`(PR #73)로 만든 시트 `data/processed/defect/cause_quality_20261011/cause_quality_573.csv`(30건 — 6절 값)와 참고용 `cause_quality_inv.csv`(조사 요약 30건, **합치지 않음**)를 **사람이** 표시하고(AI 표시 안 함) 시트마다 `cause_quality score`로 비율만 보고. 표본은 `filled`만 뽑는다 — `stated_unknown` 3,132장은 이 수치 밖. 담당 우지훈(D 대행), P3 종료(10/17) 전 — #90 결정에 따라 이승노 님께 넘어갈 수 있다.
 4. **미보고 판별 경계(#83)** — 바꾸면 "왜" 집계 재보고.
-5. **배포(DEC-048, `docs/배포_Vercel.md`)** — 시연은 로컬 포트(화면↔API 연결은 할 일 50). 외부 배포는 일단 Vercel: 화면은 #60 병합·3D 모델 처리 뒤 먼저, API는 서빙 묶음(Supabase Storage, `RAG_SOURCE=bundle`)으로 발표 전(10/14까지) — PR A(묶음 만들기·`serving_bundles`)·PR B(서버 묶음 경로·parity)·사용자 계정 작업(버킷·`rag_reader`·Vercel)·PR C(진입점·`vercel.json`·첫 배포). API 공개 전에 #63. Vercel 플랜은 미정.
+5. **배포(DEC-048, `docs/배포_Vercel.md`)** — 시연은 로컬 포트(화면↔API 연결은 할 일 50). 외부 배포는 일단 Vercel: 화면은 #60 병합·3D 모델 처리 뒤 먼저, API는 서빙 묶음(Supabase Storage, `RAG_SOURCE=bundle`)으로 발표 전(10/14까지) — 순서: PR #92(묶음 만들기·`serving_bundles`, 리뷰 중) 병합 → 사용자 계정 작업(Storage 전역 파일 크기 한도 200MB 이상·버킷 `serving-bundles` 공개 읽기 — 할 일 51) → 운영 DB `bundle schema` → `bundle upload` → `bundle verify` → PR B(서버 묶음 경로 `RAG_SOURCE=bundle`·parity 묶음 모드·응답 `bundle_sha256`, 브랜치 `feat/serve-from-bundle`, DEC-050) → `rag_reader`·Vercel 계정 작업 → PR C(진입점·`vercel.json`·첫 배포). API 공개 전에 #63. Vercel 플랜은 미정.
 6. 사용자 몫: 시연 컴퓨터 정하기 — 우지훈 님 컴퓨터가 아니면 시연 전에 `rag_reader`를 만들어 발표자 노트북은 `.env.server`로 띄운다(관리자 연결을 다른 컴퓨터에 두지 않음, `docs/배포_Vercel.md` 1절·#63). 서버용 데이터 묶음 드라이브 업로드(할 일 49), 시트 전달 날짜·경로 알려 주기(할 일 48), 원인 미확인 150건 표시(#90 결정에 따라 담당이 바뀔 수 있음), 디스코드 공지(#80), #90 재배정 결정과 이승노 님 연락. 대기: #61(박예원, 10/14).
 7. 후속 이슈: #84·#87·#75~#78, 할 일 22·25·34·36·38·41·43·47. #53 제목이 원인 표시 미결을 드러내지 않으니 이슈를 나누거나 제목을 고친다.
 
