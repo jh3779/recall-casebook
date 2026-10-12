@@ -145,3 +145,4 @@
 - 2026-10-12: 체크포인트 4 — #96 병합(main 8a0d9c7), #97 세션 밖 선병합 기록, #98 후속 이슈, worktree 정리, 학습 ⑧ ①·② 진행(다른 세션 조사를 위해 잠시 멈춤)
 - 2026-10-12: 서빙 묶음 Supabase Storage 업로드·verify·로컬 묶음 경로 시작 확인 — 새 형식 Secret 키는 apikey 머리글이 필요해 업로드 코드 수정(PR #101)
 - 2026-10-12: API Vercel 첫 배포 — rag_reader 생성, Production lg-cns-rag.vercel.app(#63 전 공개는 사용자 결정), 탐침 허용 1e-3(Linux 차이 4.30e-04)·UV_NO_CONFIG, 749문항 shown_any Vercel 0.545·로컬 0.543, 첫 요청 13.2초 (DEC-051)
+- 2026-10-12: 체크포인트 — PR C(feat/vercel-deploy) push까지, PR 생성 전 사용자 요청으로 중단
