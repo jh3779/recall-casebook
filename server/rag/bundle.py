@@ -414,8 +414,8 @@ def cmd_upload(_a) -> None:
     except urllib.error.HTTPError as e:
         # Supabase는 같은 이름이 이미 있으면 400·409로 거부한다. 다른 이유의 400일 수도 있으므로 여기서 성공으로 보지 않고,
         # 아래에서 공개 주소의 실제 파일을 받아 sha256·build를 대조한 뒤에만 기록한다(없거나 다르면 기록하지 않고 멈춘다)
-        # 거부 이유를 보이려고 Storage 응답 본문을 출력한다 — 본문에 키가 되돌아와도 찍히지 않게 지운다
-        reason = e.read()[:300].decode("utf-8", "replace").replace(key, "***")
+        # 거부 이유를 보이려고 Storage 응답 본문을 출력한다 — 본문에 키가 되돌아와도 찍히지 않게 지운 뒤에 자른다
+        reason = e.read(65536).decode("utf-8", "replace").replace(key, "***")[:300]
         if e.code not in (400, 409):
             sys.exit(f"Storage 업로드 실패: HTTP {e.code} {reason}")
         print(

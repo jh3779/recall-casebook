@@ -471,6 +471,20 @@ def test_cmd_upload_does_not_print_the_key_if_storage_echoes_it(tmp_path, monkey
     assert "***" in str(e.value)
 
 
+def test_cmd_upload_does_not_print_part_of_the_key_at_the_cut(tmp_path, monkeypatch):
+    # 300자로 자르는 자리에 키가 걸쳐도 앞부분이 남지 않는다 — 지운 뒤에 자른다
+    import io
+
+    def reject(req):
+        body = b"x" * 285 + b"test-only-not-a-key"
+        raise bundle.urllib.error.HTTPError(req.full_url, 500, "Error", {}, io.BytesIO(body))
+
+    FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co", send=reject)
+    with pytest.raises(SystemExit) as e:
+        bundle.main(["upload"])
+    assert "test-only" not in str(e.value)
+
+
 def test_cmd_upload_checks_the_local_bundle_before_sending(tmp_path, monkeypatch):
     s = FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co")
     _, other = _other_build_bundle(tmp_path / "o")
