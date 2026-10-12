@@ -15,16 +15,17 @@
    uv run --env-file .env python -m server.rag.embeddings schema
    uv run --env-file .env python -m server.rag.embeddings load    # 카드 30,350장 임베딩(CPU 약 9분, RETRIEVAL_CACHE 캐시가 있으면 바로)
    ```
-3. 서버용 조회 전용 계정 (배포 전 필수, DEC-042) — 서버는 시작할 때 `data_builds`·`embedding_sets`·`recall_embeddings`를 읽기만 한다.
+3. 서버용 조회 전용 계정 (배포 전 필수, DEC-042) — 서버는 시작할 때 `data_builds`·`embedding_sets`·`recall_embeddings`·`serving_bundles`(배포 경로의 묶음 기록, DEC-049)를 읽기만 한다. `serving_bundles`는 `python -m server.rag.bundle schema`로 먼저 만든다.
    적재용 관리자 연결(`DATABASE_URL`, RLS 우회)을 서버에 두지 않도록, Supabase SQL 편집기에서 조회 전용 계정을 만들어 `.env`의
    `SERVER_DATABASE_URL`에 넣는다(비밀번호는 직접 정하고 저장소에 남기지 않는다). 테이블에 RLS가 켜져 있어 SELECT 권한과 함께 정책이 필요하다:
    ```sql
    create role rag_reader login password '<직접 정한 비밀번호>';
    grant usage on schema public to rag_reader;
-   grant select on data_builds, embedding_sets, recall_embeddings to rag_reader;
+   grant select on data_builds, embedding_sets, recall_embeddings, serving_bundles to rag_reader;
    create policy rag_reader_select on data_builds       for select to rag_reader using (true);
    create policy rag_reader_select on embedding_sets    for select to rag_reader using (true);
    create policy rag_reader_select on recall_embeddings for select to rag_reader using (true);
+   create policy rag_reader_select on serving_bundles   for select to rag_reader using (true);
    ```
    일회용 `pgvector/pgvector:pg17`에서 확인: 이 계정으로 서버 시작 성공, 삭제·추가·다른 테이블 조회는 권한 오류(2026-10-10). Supabase 풀러 주소를 쓰면
    사용자 이름이 `rag_reader.<프로젝트 ref>` 형식이 된다. 이 SQL은 `tests/test_rag_server.py`의 pg 테스트가 그대로 실행해 조회 성공·쓰기 거부를 확인한다.

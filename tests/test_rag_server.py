@@ -472,6 +472,11 @@ def test_pg_spec_check_and_readme_reader_role(pgconn, tmp_path, monkeypatch):  #
 
     load_db.main(["load", "--causes", "full", "--data-dir", str(d)])
     embeddings.main(["schema"])
+    from server.rag import bundle
+
+    pgconn.execute(
+        bundle.SCHEMA.read_text(encoding="utf-8")
+    )  # README SQL이 serving_bundles에도 권한을 준다
     b = load_build(d)
     check_against_db(pgconn, b)  # jsonb로 저장·조회한 명세가 로컬 명세와 같게 읽힌다
 
@@ -488,10 +493,12 @@ def test_pg_spec_check_and_readme_reader_role(pgconn, tmp_path, monkeypatch):  #
         with server_connection() as conn:
             check_against_db(conn, b)
             assert conn.execute("select count(*) from embedding_sets").fetchone()[0] == 0
+            assert conn.execute("select count(*) from serving_bundles").fetchone()[0] == 0
             for sql in (
                 "delete from data_builds",
                 "select count(*) from recalls",
                 "insert into embedding_sets (build_id) values ('x')",
+                "insert into serving_bundles (build_id) values ('x')",
             ):
                 with pytest.raises(psycopg.errors.InsufficientPrivilege):
                     conn.execute(sql)

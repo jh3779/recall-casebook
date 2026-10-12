@@ -33,8 +33,8 @@ from server.rag.investigations import SPEAKER_INV
 from server.rag.search import Searcher
 from server.rag.verify import verify
 
-# 프런트 개발 서버(Vite 기본 주소). 배포 주소는 배포를 정할 때 더한다
-ALLOWED_ORIGINS = ["http://localhost:5173"]
+# 프런트 개발 서버(Vite 기본 주소). 배포 주소는 환경변수 ALLOWED_ORIGINS(쉼표로 구분)로 바꾼다
+DEFAULT_ORIGINS = ["http://localhost:5173"]
 CARD_TEXT_SPEAKER = "NHTSA 리콜 기록 요약(FLAT_RCL 결함·결과·시정 칸) — 원본에 작성 주체 표시 없음"
 CARD_FIELDS = (
     "campno", "maker", "maker_group", "received_date", "components",
@@ -74,7 +74,56 @@ def server_connection():
     return psycopg.connect(url)
 
 
+def allowed_origins() -> list[str]:
+    raw = os.environ.get("ALLOWED_ORIGINS", "")
+    return [o.strip() for o in raw.split(",") if o.strip()] or DEFAULT_ORIGINS
+
+
 def load_state() -> RagState:
+    """시작 경로는 RAG_SOURCE로 고른다: 없거나 `local`이면 로컬 build 파일(시연), `bundle`이면 서빙 묶음(배포, DEC-049)."""
+    source = os.environ.get("RAG_SOURCE", "local")
+    if source == "bundle":
+        return load_state_from_bundle()
+    if source != "local":
+        raise RuntimeError(f"RAG_SOURCE={source!r} — local 또는 bundle만 쓴다")
+    return load_state_from_files()
+
+
+def load_state_from_bundle() -> RagState:
+    """배포 경로: DB 기록과 sha256이 같은 묶음을 /tmp로 받아, 로컬 경로와 같은 대조(DB 명세·벡터 기록·벡터 표본·탐침)를 한 뒤 쓴다.
+    로컬 파일·조사 원본은 읽지 않는다 — 그 검사는 묶음을 만들 때 마쳤다(server/rag/bundle.py)."""
+    from fastembed import TextEmbedding
+
+    from scripts.defect_precedent.retrieval_compare import card_text
+    from server.rag import bundle, embeddings
+    from server.rag.build import check_against_db
+
+    build_id = os.environ.get("SERVING_BUILD_ID", "").strip()
+    supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+    if not build_id or not supabase_url:
+        raise RuntimeError(
+            "RAG_SOURCE=bundle에는 SERVING_BUILD_ID와 SUPABASE_URL이 필요하다 — 어느 build로 띄울지 짐작하지 않는다"
+        )
+    embeddings.check_fastembed()
+    with server_connection() as conn:
+        loaded = bundle.load_from_bundle(conn, build_id, supabase_url)
+        build = loaded.build
+        campnos = [c["campno"] for c in build.cards]
+        texts = [card_text(c) for c in build.cards]
+        check_against_db(conn, build)
+        embeddings.check_set(conn, build.build_id, campnos, texts)
+        if not embeddings.sample_matches(conn, build.build_id, campnos, loaded.vectors):
+            raise embeddings.EmbeddingMismatch(
+                "묶음의 벡터가 DB에서 뽑은 줄과 다르다 — 섞인 판본으로 검색하지 않는다"
+            )
+    model = TextEmbedding(embeddings.MODEL, specific_model_path=str(loaded.model_dir))
+    embeddings.verify_probe(model, texts, loaded.vectors)
+    return RagState(
+        build, Searcher(build.cards, loaded.vectors, model), embeddings.MODEL, loaded.investigations
+    )
+
+
+def load_state_from_files() -> RagState:
     from fastembed import TextEmbedding
 
     from scripts.defect_precedent.retrieval_compare import card_text
@@ -303,7 +352,7 @@ def create_app(loader: Callable[[], RagState] = load_state) -> FastAPI:
     app = FastAPI(title="결함 선례 찾기 도우미", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=ALLOWED_ORIGINS,
+        allow_origins=allowed_origins(),
         allow_methods=["GET", "POST"],
         allow_headers=["content-type"],
     )

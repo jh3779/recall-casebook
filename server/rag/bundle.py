@@ -36,6 +36,9 @@ FORMAT = 1
 BUCKET = "serving-bundles"
 SCHEMA = Path(__file__).with_name("bundle.sql")
 OUT_DIR = PROCESSED / "serving"  # gitignore된 data/ 아래
+SERVE_DIR = Path(
+    "/tmp/serving"
+)  # 배포 서버가 묶음을 받는 곳 — Vercel에서 실행 중 쓸 수 있는 곳은 /tmp뿐
 
 
 class BundleMismatch(RuntimeError):
@@ -207,6 +210,40 @@ def recorded(conn, build_id: str, model: str = embeddings.MODEL) -> tuple[str, s
 
 def public_url(supabase_url: str, storage_path: str) -> str:
     return f"{supabase_url.rstrip('/')}/storage/v1/object/public/{BUCKET}/{storage_path}"
+
+
+def _download(url: str, dst: Path) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name(f"{dst.name}.{os.getpid()}.tmp")
+    with urllib.request.urlopen(url, timeout=600) as r, tmp.open("wb") as f:
+        shutil.copyfileobj(r, f, 1 << 20)
+    tmp.replace(dst)  # 다 받은 뒤에만 이름을 바꾼다 — 중간에 끊겨도 반쯤 받은 파일을 쓰지 않는다
+
+
+def load_from_bundle(conn, build_id: str, supabase_url: str, work_dir: Path = SERVE_DIR) -> Loaded:
+    """배포 서버의 시작 (RAG_SOURCE=bundle). DB `serving_bundles`에 기록된 sha256과 같은 묶음만 쓴다 —
+    받은 파일이 다르면 지우고 멈춘다(다음 시작 때 다시 받는다). 묶음의 build·모델·fastembed 판본도 지금 서버와 같아야 한다."""
+    row = recorded(conn, build_id)
+    if row is None:
+        raise BundleMismatch(
+            f"build {build_id}의 묶음 기록(serving_bundles)이 없다 — 로컬에서 `bundle upload`를 먼저 한다"
+        )
+    sha, storage_path = row
+    path = work_dir / f"{sha}.tar"
+    if not path.exists():
+        _download(public_url(supabase_url, storage_path), path)
+    try:
+        check_sha(path, sha)
+    except BundleMismatch:
+        path.unlink(missing_ok=True)
+        raise
+    loaded = load_bundle(path, work_dir / sha)
+    got = (loaded.build.build_id, loaded.meta["model"], loaded.meta["fastembed_version"])
+    if got != (build_id, embeddings.MODEL, FASTEMBED_VERSION):
+        raise BundleMismatch(
+            f"묶음의 build·모델·fastembed 판본 {got}이 지금 서버({build_id}, {embeddings.MODEL}, {FASTEMBED_VERSION})와 다르다"
+        )
+    return loaded
 
 
 def _env(name: str) -> str:

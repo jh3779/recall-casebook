@@ -6,6 +6,7 @@
 사용법:
     uv run --env-file .env python -m server.rag.parity --vectors db      # 서버와 같이 Supabase 벡터로
     RETRIEVAL_CACHE=<캐시 폴더> uv run python -m server.rag.parity --vectors local   # 연구 캐시 벡터로 (DB 적재 전)
+    uv run python -m server.rag.parity --vectors bundle --bundle <serving_….tar>   # 서빙 묶음의 카드·벡터·모델로 (배포 경로, DEC-049)
     uv run python -m server.rag.parity --stats   # 벡터 없이: 전체 카드의 응답 모델 통과·조사 연결·꼬리표 수 (DEC-044 검증 수치)
 """
 
@@ -58,12 +59,13 @@ def card_stats(build, investigations: dict[str, list[dict]]) -> dict:
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     mode = p.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--vectors", choices=["db", "local"])
+    mode.add_argument("--vectors", choices=["db", "local", "bundle"])
     mode.add_argument(
         "--stats",
         action="store_true",
         help="검색 점수 대신 전체 카드의 응답 모델 통과·조사 연결·꼬리표 수를 낸다(벡터·DB 불필요)",
     )
+    p.add_argument("--bundle", help="--vectors bundle일 때 읽을 서빙 묶음 파일")
     p.add_argument(
         "--allow-drift",
         action="store_true",
@@ -72,6 +74,8 @@ def main(argv: list[str] | None = None) -> None:
     a = p.parse_args(argv)
     if a.stats and a.allow_drift:
         p.error("--allow-drift는 검색 점수(--vectors)에만 쓴다")
+    if (a.vectors == "bundle") != bool(a.bundle):
+        p.error("--bundle은 --vectors bundle과 함께만 쓴다")
     if a.stats:
         from server.rag.investigations import load_investigations
 
@@ -92,9 +96,24 @@ def main(argv: list[str] | None = None) -> None:
         )
     build = load_build()
     embeddings.check_fastembed()
-    model = TextEmbedding(embeddings.MODEL)
+    model_path = None
+    if a.vectors == "bundle":
+        import tempfile
+        from pathlib import Path
+
+        from server.rag.bundle import load_bundle
+
+        loaded = load_bundle(Path(a.bundle), Path(tempfile.mkdtemp(prefix="parity_bundle_")))
+        if loaded.build.build_id != build.build_id:
+            sys.exit(
+                f"묶음 build {loaded.build.build_id} ≠ 로컬 build {build.build_id} — 입력 대조는 로컬 파일로 하므로 같은 build여야 한다"
+            )
+        build, model_path = loaded.build, str(loaded.model_dir)
+    model = TextEmbedding(embeddings.MODEL, specific_model_path=model_path)
     texts = [card_text(c) for c in build.cards]
-    if a.vectors == "db":
+    if a.vectors == "bundle":
+        vecs = loaded.vectors
+    elif a.vectors == "db":
         from scripts.defect_precedent.load_db import connect
 
         with connect() as conn:
