@@ -270,7 +270,10 @@ def _send(req: urllib.request.Request) -> None:
 
 
 def _download(url: str, dst: Path) -> None:
-    dst.parent.mkdir(mode=0o700, parents=True, exist_ok=True)  # 받은 묶음 폴더는 이 사용자만
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(
+        dst.parent, 0o700
+    )  # 받은 묶음 폴더는 이 사용자만 — 이미 있던 폴더도(남의 폴더면 여기서 멈춘다)
     tmp = dst.with_name(f"{dst.name}.{os.getpid()}.tmp")
     try:
         with urllib.request.urlopen(url, timeout=600) as r, tmp.open("wb") as f:

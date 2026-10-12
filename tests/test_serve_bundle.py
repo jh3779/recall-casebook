@@ -346,3 +346,64 @@ def test_parity_bundle_mode_scores_with_the_bundle_and_refuses_another_build(
     other_tar = bundle.write_bundle(other, INV, vecs, model_dir, tmp_path / "other")
     with pytest.raises(bundle.BundleMismatch, match="build"):
         parity.main(["--vectors", "bundle", "--bundle", str(other_tar), "--allow-drift"])
+
+
+def test_empty_rag_source_from_env_example_means_local(monkeypatch):
+    import server.api as api_mod
+
+    used = []
+    monkeypatch.setattr(api_mod, "load_state_from_files", lambda: used.append("local") or "state")
+    monkeypatch.setattr(api_mod, "load_state_from_bundle", lambda: pytest.fail("bundle"))
+    for value in ("", "  ", "local"):
+        monkeypatch.setenv("RAG_SOURCE", value)
+        assert api_mod.load_state() == "state"
+    assert used == ["local"] * 3
+
+
+def test_download_keeps_the_bundle_folder_private(tmp_path, monkeypatch):
+    import io
+
+    class Body(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(bundle.urllib.request, "urlopen", lambda *a, **k: Body(b"tar"))
+    folder = tmp_path / "serving"
+    folder.mkdir(mode=0o755)  # 이미 있던 폴더도 좁힌다
+    bundle._download("https://x/a", folder / "x.tar")
+    assert (folder / "x.tar").read_bytes() == b"tar"
+    assert folder.stat().st_mode & 0o777 == 0o700
+
+
+def test_parity_bundle_mode_removes_its_temporary_model_folder(tmp_path, monkeypatch, capsys):
+    import atexit
+    from pathlib import Path
+
+    import fastembed
+
+    from scripts.defect_precedent.retrieval_compare import card_text
+    from server.rag import parity
+
+    b = load_build(full_data_dir(tmp_path / "d", CARDS, [cause("24V001", pdfs=PDFS)]))
+    model = FakeModel()
+    vecs = np.array(model.passage_embed([card_text(c) for c in b.cards]), dtype="float32")
+    _, _, model_dir = _inputs(tmp_path / "m")
+    tar = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
+    monkeypatch.setattr(parity, "load_build", lambda: b)
+    monkeypatch.setattr(parity, "provenance", lambda: {"recalls_sha256": "x", "eval_sha256": "y"})
+    monkeypatch.setattr(embeddings, "check_fastembed", lambda: None)
+    opened = []
+    monkeypatch.setattr(fastembed, "TextEmbedding", lambda *a, **k: opened.append(k) or model)
+    q = {"question": card_text(b.cards[0]), "gold_campnos": [b.cards[0]["campno"]], "_post": True}
+    monkeypatch.setattr(parity, "load", lambda: (None, [q]))
+    at_exit = []
+    monkeypatch.setattr(atexit, "register", lambda f, *a: at_exit.append((f, a)))
+    parity.main(["--vectors", "bundle", "--bundle", str(tar), "--allow-drift"])
+    work = Path(opened[0]["specific_model_path"]).parent
+    assert work.exists() and len(at_exit) == 1
+    f, a = at_exit[0]
+    f(*a)  # 프로세스가 끝날 때 도는 정리
+    assert not work.exists()
