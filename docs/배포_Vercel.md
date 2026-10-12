@@ -58,4 +58,4 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 
 **방식 — 서빙 묶음(DEC-048 ⑤)**: build마다 로컬에서 지금과 같은 검사를 통과한 결과(순서 있는 카드·원인·연결된 조사 요약 1,870장·벡터·임베딩 모델)를 파일 하나로 만들어 Supabase Storage에 올리고, 서버는 `RAG_SOURCE=bundle`일 때 `/tmp`로 받아 sha256을 DB 기록과 대조한 뒤 쓴다. DB에서 직접 읽지 않는 이유: 카드 순서가 DB에 없고, `FLAT_INV`가 DB에 없고, 날짜 형식이 다르다(DEC-048 Reason). 로컬 시연 경로(1절)는 그대로 둔다.
 
-공개 전 필수: 이슈 #63 — 조회 전용 계정 `rag_reader`(묶음 기록 `serving_bundles` 조회 권한 포함)와 Vercel 환경변수 `SERVER_DATABASE_URL`(관리자 키는 Vercel에 두지 않음), Storage 읽기 자격(DEC-048 ⑤ — 다음 DEC에서 정함), 인증 또는 호출 상한, 배포 주소 CORS. 통과 기준: 749문항 H@10 0.542 재현, `/search` 응답이 묶음 sha256 칸(로컬 경로는 `null`)을 빼고 로컬 경로와 바이트까지 같음, Vercel에서 함수 크기·최대 메모리·첫 요청 시간 실측.
+공개 전 필수: 이슈 #63 — 조회 전용 계정 `rag_reader`(묶음 기록 `serving_bundles` 조회 권한 포함)와 Vercel 환경변수 `SERVER_DATABASE_URL`(관리자 키는 Vercel에 두지 않음), Storage 읽기 자격(공개 읽기 버킷 — DEC-049 ③, 무결성은 `serving_bundles` 기록 sha256 대조), 인증 또는 호출 상한, 배포 주소 CORS. 통과 기준: 749문항 H@10 0.542 재현, `/search` 응답이 묶음 sha256 칸(로컬 경로는 `null`)을 빼고 로컬 경로와 바이트까지 같음, Vercel에서 함수 크기·최대 메모리·첫 요청 시간 실측.

@@ -305,3 +305,85 @@ def test_bundle_tar_headers_are_fixed_and_members_sorted(tmp_path):
     assert names[0] == "meta.json" and names[1:] == sorted(names[1:])
     for m in members:  # 시각·소유자·권한이 실행 환경에 따라 달라지면 같은 입력의 sha256이 달라진다
         assert (m.mtime, m.uid, m.gid, m.uname, m.gname, m.mode) == (0, 0, 0, "", "", 0o644)
+
+
+@pytest.mark.parametrize(
+    "field, value", [("fastembed_version", "0.0.0"), ("model", "BAAI/other-model")]
+)
+def test_check_identity_refuses_other_model_or_fastembed_version(tmp_path, field, value):
+    b, vecs, model_dir = _inputs(tmp_path)
+    out = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
+    bad = _with_members(out, tmp_path / "bad.tar", meta_edit=lambda m: m.update({field: value}))
+    with pytest.raises(bundle.BundleMismatch, match="fastembed"):
+        bundle.check_identity(bundle.load_bundle(bad, tmp_path / "x", _sha(bad)), b)
+
+
+def test_load_bundle_refuses_duplicate_names_and_names_outside_model(tmp_path):
+    b, vecs, model_dir = _inputs(tmp_path)
+    out = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
+    dup = tarfile.TarInfo("cards.jsonl")
+    with tarfile.open(out) as t:
+        cards = t.extractfile("cards.jsonl").read()
+    twice = _with_members(out, tmp_path / "dup.tar", add=[("cards.jsonl", dup, cards)])
+    with pytest.raises(bundle.BundleMismatch, match="같은 이름"):
+        bundle.load_bundle(twice, tmp_path / "x", _sha(twice))
+    other = tarfile.TarInfo("other/x.bin")
+    side = _with_members(out, tmp_path / "side.tar", add=[("other/x.bin", other, b"x")])
+    with pytest.raises(bundle.BundleMismatch, match="허용하지 않는"):
+        bundle.load_bundle(side, tmp_path / "x", _sha(side))
+
+
+def test_bundle_needs_the_model_file_when_writing_and_reading(tmp_path):
+    b, vecs, model_dir = _inputs(tmp_path)
+    with pytest.raises(bundle.BundleMismatch, match="model_optimized.onnx"):
+        bundle.write_bundle(b, INV, vecs, tmp_path / "no-such-dir", tmp_path / "o1")
+    out = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
+    gone = _with_members(out, tmp_path / "gone.tar", drop=["model/model_optimized.onnx"])
+    with pytest.raises(bundle.BundleMismatch, match="model_optimized.onnx"):
+        bundle.load_bundle(gone, tmp_path / "x", _sha(gone))
+
+
+def test_bundle_bytes_do_not_depend_on_dict_key_order(tmp_path):
+    b, vecs, model_dir = _inputs(tmp_path)
+    a = {"24V001000": INV["24V001000"], "24V002000": []}
+    z = {"24V002000": [], "24V001000": INV["24V001000"]}
+    one = bundle.write_bundle(b, a, vecs, model_dir, tmp_path / "a")
+    two = bundle.write_bundle(b, z, vecs, model_dir, tmp_path / "z")
+    assert _sha(one) == _sha(two)
+
+
+def _upload_env(tmp_path, monkeypatch, row, url):
+    """cmd_upload를 네트워크·DB 없이 부른다 — 묶음 파일·build는 진짜, 연결과 urlopen은 가짜."""
+    import contextlib
+
+    from server.rag import build as build_mod
+
+    b, vecs, model_dir = _inputs(tmp_path)
+    monkeypatch.setattr(bundle, "OUT_DIR", tmp_path / "serving")
+    bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "serving")
+    monkeypatch.setattr(build_mod, "load_build", lambda: b)
+
+    @contextlib.contextmanager
+    def conn():
+        yield SimpleNamespace(execute=lambda *a, **k: SimpleNamespace(fetchone=lambda: row))
+
+    monkeypatch.setattr(bundle, "connect", conn)
+    monkeypatch.setenv("SUPABASE_URL", url)
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test-only-not-a-key")
+    opened = []
+    monkeypatch.setattr(bundle.urllib.request, "urlopen", lambda *a, **k: opened.append(a))
+    return opened
+
+
+def test_cmd_upload_refuses_plain_http_before_sending_the_key(tmp_path, monkeypatch):
+    opened = _upload_env(tmp_path, monkeypatch, None, "http://x.supabase.co")
+    with pytest.raises(SystemExit, match="https"):
+        bundle.main(["upload"])
+    assert opened == []
+
+
+def test_cmd_upload_refuses_when_a_different_record_exists(tmp_path, monkeypatch):
+    opened = _upload_env(tmp_path, monkeypatch, ("ab" * 32, "x/other.tar"), "https://x.supabase.co")
+    with pytest.raises(SystemExit, match="덮어쓰지 않는다"):
+        bundle.main(["upload"])
+    assert opened == []

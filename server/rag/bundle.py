@@ -43,6 +43,7 @@ DATA_FILES = (
     "investigations.json",
     "vectors.npy",
 )  # 묶음에 반드시 있는 파일 — 그 밖에는 meta.json과 model/ 아래 파일만 허용한다
+MODEL_FILE = "model/model_optimized.onnx"  # fastembed가 Qdrant/bge-small-en-v1.5-onnx-Q에서 여는 파일 — 없으면 모델 없는 묶음
 
 
 class BundleMismatch(RuntimeError):
@@ -97,6 +98,8 @@ def write_bundle(build: Build, investigations: dict, vecs, model_dir: Path, out_
     for p in sorted(model_dir.rglob("*")):
         if p.is_file():
             members[f"model/{p.relative_to(model_dir).as_posix()}"] = p.read_bytes()
+    if MODEL_FILE not in members:  # 모델 폴더를 못 찾거나 비었으면 rglob은 조용히 빈 결과를 낸다
+        raise BundleMismatch(f"모델 폴더 {model_dir}에 {MODEL_FILE[len('model/') :]}이 없다")
     meta = {
         "format": FORMAT,
         "build_id": build.build_id,
@@ -177,7 +180,7 @@ def load_bundle(path: Path, work_dir: Path, expected_sha256: str) -> Loaded:
         raise BundleMismatch(
             f"묶음 파일 목록이 meta.json과 다르다: {sorted(set(body) ^ set(meta['files']))[:3]}"
         )
-    missing = [n for n in DATA_FILES if n not in body]
+    missing = [n for n in (*DATA_FILES, MODEL_FILE) if n not in body]
     if missing:
         raise BundleMismatch(f"묶음에 {missing}이 없다")
     for name, data in body.items():
