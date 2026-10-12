@@ -33,7 +33,7 @@ _갱신: 2026-10-12 체크포인트 3 (배포 1~3단계 병합 — #91 배포 �
 - **배포 결정(#91, DEC-048)**: 사용자 결정 — 시연은 로컬 포트, 외부 배포는 **일단**(잠정) Vercel 서버리스, 데이터는 Supabase Storage, 발표 전. "화면 먼저"와 서빙 묶음 방식은 에이전트 제안을 계획 승인으로 채택(선택지 원문을 DEC에 인용). Vercel 플랜은 미정.
 - **서빙 묶음(#92, DEC-049)**: 로컬 검사를 통과한 build 한 벌(카드 원래 순서·원인 행·실패 사유·연결된 조사 요약·벡터·임베딩 모델 파일 + `meta.json`)을 결정적인 tar로 만들어 Storage 공개 읽기 버킷 `serving-bundles/<build_id>/<sha256>.tar`에 올리고 `serving_bundles`에 (build·모델·형식)마다 sha256을 한 번 기록. 묶음은 기록 sha256을 먼저 대조해야 열리고(tar 항목 이름·종류 검사로 경로 탈출 차단), 업로드는 공개 주소의 실제 파일을 대조한 뒤에만 기록하며 리디렉션을 따라가지 않는다(관리자 키 보호). 실측 묶음 155.4MB·sha256 `dd0efac0…`. Supabase **Free 플랜은 파일 하나 최대 50MB** — 사용자 답 "Pro"(2026-10-12), 그래도 전역 파일 크기 한도를 올려야 한다.
 - **서버 묶음 경로(#94, DEC-050)**: `RAG_SOURCE=bundle`이면 기록 sha256과 같은 묶음만 `/tmp/serving`에 받아 로컬 경로와 같은 대조(DB 원인 명세·벡터 기록·표본 64줄+마지막·탐침)를 한 뒤 묶음 안 모델 파일로 시작. 없거나 **비어 있거나**(`.env.example` 복사본) `local`이면 로컬 시연 경로. 응답·`/health`에 `bundle_sha256`(로컬 `null`) — 화면에 알릴 계약 변경. `rag_reader` SQL에 `serving_bundles` 조회 정책. 실측: 749문항 운영 DB·묶음 경로 모두 0.542, 질문 40개 응답이 새 칸만 빼고 글자 그대로 같음, 시작 6.7~7.7초·최대 RSS 1.07GB(macOS, 로컬 경로 1.43GB). 실제 Storage 다운로드·Vercel 실행은 아직.
-- **Luna 비교(PR #96, 리뷰 중)**: 연구용 LLM 시험 3종을 gpt-6-luna(추론 `none`)와 gpt-4o-mini로 같은 날 같은 입력 210회씩 — 비용 0.0086 vs 0.0114달러, 원문 글자를 바꾼 건 0 vs 8, Luna는 "원인 없음" 답이 많음(정확도는 사람 표시 뒤). 사용자 지정으로 기본 모델을 Luna로. 원인 미확인 150건의 모델별 판단 건수는 표시자(우지훈)의 눈가림을 위해 문서·보고에 싣지 않았다.
+- **Luna 비교(PR #96, 리뷰 중)**: 연구용 LLM 시험 3종을 gpt-6-luna(추론 `none`)와 gpt-4o-mini로 같은 날 같은 입력 210회씩 — 비용 0.0086 vs 0.0114달러, 원문 글자를 바꾼 건 0 vs 8(1회 실행). 모델별 판정 분포와 정확도는 사람 표시 뒤에 본다 — **표시자는 C 표시를 끝내기 전에 `docs/실험_LLM_Luna비교.md` 2·3절을 읽지 않는다**(A·B 집계는 2026-10-12 대화로 이미 표시자에게 전해졌다 — C 채점 보고 때 이 사실을 함께 적는다). 사용자 지정으로 기본 모델을 Luna로 바꾸는 것은 #96에서(병합 전에는 main 스크립트가 `--model`을 요구한다). 원인 미확인 150건의 모델별 판단 건수는 표시자(우지훈)의 눈가림을 위해 문서·보고에 싣지 않았다.
 - 바탕화면 학습 문서 `~/Desktop/573_원인_데이터_설명.md`(573 수집·정리·`stated_unknown`·숫자, 확인 질문 5개). Supabase Storage 설정 요청 초안은 대화로 전달했다 — 핵심은 Next Action 5-①에 옮겨 적음.
 
 **2026-10-11~12 (우지훈 세션 — 감사 후속)**:
@@ -122,7 +122,7 @@ _갱신: 2026-10-12 체크포인트 3 (배포 1~3단계 병합 — #91 배포 �
   49. **서버용 데이터 묶음 드라이브 업로드 — 사용자**: `~/Desktop/defect_data_2026-10-12_dec047.zip`(sha256 `4afde25cf2474b054d233a66326dd3afcd9b7fe1cf465124e75a63da95ce44a2`, 안에 `SHA256SUMS.txt`). 올리면 위치와 압축본 sha256을 `docs/환경셋팅.md` 4절에 기록한다.
   50. **화면↔API 연결 — 시연 전 확인**: 지금 화면(#60)은 API를 부르지 않고 `public/data/recalls.json` 데모 스냅샷을 읽는다(DEC-048 영향). #60 병합 뒤 화면이 `POST /search`를 부르게 연결하기 전에는 시연 화면이 우리 검색 결과가 아니다 — 박성호 님과 연결 시점·담당을 정한다. 화면 배포 전에는 3D 모델 `public/models/*.glb`(gitignore)를 배포본에 넣는 방법도 정한다. 응답 계약에 묶음 sha256 칸(`bundle_sha256`, 로컬 경로는 `null`)이 더해지므로(DEC-048 ⑤ⅳ·DEC-050) 그 칸도 화면에 알린다.
   51. **서빙 묶음 올리기(PR #92 후속, DEC-049)**: 사용자 계정 작업 — Supabase Storage 전역 파일 크기 한도를 200MB 이상으로(Pro 플랜, 기본 50MB), 버킷 `serving-bundles`(공개 읽기) 생성 → 운영 DB에 `bundle schema` → `bundle upload`(관리자 키는 로컬 `.env`) → `bundle verify`. 끝나기 전에는 서버 묶음 경로(#94, 병합됨)를 실제 Storage로 시험하지 못한다. 끝나면 `RAG_SOURCE=bundle`로 로컬에서 실제 다운로드 시작을 한 번 확인하고 PR C(Vercel 진입점 `app.py`·`vercel.json`·첫 배포·측정 — 화면/API Vercel 프로젝트 구성은 #93)로 간다.
-  52. **Luna 정확도 확인 (PR #96 후속)**: 연구용 LLM 시험의 기본 모델은 gpt-6-luna(추론 `none`, 사용자 지정 2026-10-12). 원인 미확인 150건 사람 표시가 끝나면 `cause_trials score`로 Luna·4o-mini 결과를 함께 채점해, Luna가 4o-mini보다 기준 폭(0.03) 넘게 낮지 않을 때 확정(`docs/실험_LLM_Luna비교.md` 4절). **채점 전 정할 것**: 이번 결과는 시트와 표본·원문이 같지만 원인 파일 판본 해시가 달라(`06b0fe44…` vs 시트 `d215ff58…`) `score`가 거부한다(`cause_trials.py` 판본 대조) — 시트 판본으로 다시 재거나, 원문 해시가 모두 같을 때 판본 차이를 허용하도록 바꾸는 것 중 하나.
+  52. **Luna 정확도 확인 (PR #96 후속)**: #96이 병합되면 연구용 LLM 시험의 기본 모델이 gpt-6-luna(추론 `none`, 사용자 지정 2026-10-12 — 품질 근거가 아닌 운영 선택)가 된다(병합 전 main은 `--model` 필수). 원인 미확인 150건 사람 표시가 끝나면 `cause_trials score`로 Luna·4o-mini 결과를 함께 채점해, 두 모델의 정확도 차이가 기준 폭 0.03 **미만**이면 Luna를 유지하고, 4o-mini보다 0.03 이상 낮으면 기본값을 다시 정한다(같다고 보는 기준 — 기획 6절·AGENTS.md 5-3)(`docs/실험_LLM_Luna비교.md` 4절). **채점 전 정할 것**: 이번 결과는 시트와 표본·원문이 같지만 원인 파일 판본 해시가 달라(`06b0fe44…` vs 시트 `d215ff58…`) `score`가 거부한다(`cause_trials.py` 판본 대조) — 시트 판본으로 다시 재거나, 원문 해시가 모두 같을 때 판본 차이를 허용하도록 바꾸는 것 중 하나(시트 판본 원인 파일 `causes.20261007.jsonl` `d215ff58…`는 로컬에 있다). 판본 차이를 허용해 채점하면 "재현"이 아니라 두 판본 해시와 같은 표본 해시를 남긴 **재평가**로 보고한다(AGENTS.md 5-1).
   53. **배포 PR 리뷰 후속 (이슈 #93·#95)**: Vercel 프로젝트 구성(화면 Root `frontend`, API Root 저장소 루트) 명시 — PR C 때, 폴더 권한 시험의 umask 의존, "없거나 비어 있거나 `local`이면" 문구 4곳.
 - 역할(이슈 #24): A 박예원 · B 우지훈 · C 박성호(발표) · D 이승노 → **2026-10-07부터 D는 임시 제외, D 일은 우지훈**.
 - **주의(재발 방지)**: `.gitignore`에 핸드북 데이터 무시 줄(`docs/handbook/`, 옛 브랜치는 `docs/handbook/*`)이 없는 브랜치에서 `uv run ruff format .` 금지. 결과 코멘트는 수정하지 말고 새로 올린다.
@@ -186,7 +186,7 @@ _갱신: 2026-10-12 체크포인트 3 (배포 1~3단계 병합 — #91 배포 �
 - `server/`(API 서버 — `api.py` 응답 모델, `rag/{search,causes,flags,checks,verify,investigations,parity}.py`, `README.md` 응답 칸), `scripts/defect_precedent/rules.py`(서버·연구 공용 규칙)
 - `scripts/defect_precedent/{time_eval_score,cause_quality}.py` — 시점 평가 채점(#72)·원인 품질 표본(#73)
 - 배포: `docs/배포_Vercel.md`, `server/rag/bundle.py`·`bundle.sql`(서빙 묶음), `server/api.py` `load_state_from_bundle`, `server/README.md` "서빙 묶음"·"서버를 묶음에서 띄우기" 절, `.env.example`(배포 서버 환경변수)
-- `docs/실험_LLM_Luna비교.md`(PR #96) — 연구용 LLM 시험 모델 비교
+- `docs/실험_LLM_Luna비교.md`(PR #96 브랜치 `research/luna-vs-4o-mini` — 병합 전에는 main에 없음) — 연구용 LLM 시험 모델 비교
 
 ## Next Action
 
