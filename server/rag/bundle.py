@@ -25,7 +25,7 @@ import tarfile
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from scripts.defect_precedent.load_db import PROCESSED, connect
 from scripts.defect_precedent.retrieval_compare import FASTEMBED_VERSION, card_text
@@ -36,6 +36,13 @@ FORMAT = 1
 BUCKET = "serving-bundles"
 SCHEMA = Path(__file__).with_name("bundle.sql")
 OUT_DIR = PROCESSED / "serving"  # gitignore된 data/ 아래
+DATA_FILES = (
+    "cards.jsonl",
+    "causes.jsonl",
+    "unreadable.json",
+    "investigations.json",
+    "vectors.npy",
+)  # 묶음에 반드시 있는 파일 — 그 밖에는 meta.json과 model/ 아래 파일만 허용한다
 
 
 class BundleMismatch(RuntimeError):
@@ -128,12 +135,38 @@ def check_sha(path: Path, expected: str) -> None:
         )
 
 
-def load_bundle(path: Path, work_dir: Path) -> Loaded:
-    """묶음을 풀어 자기 명세(meta.json)와 대조한 뒤 서버가 쓰는 모양으로 되살린다."""
+def _lines(data: bytes) -> list[str]:
+    """줄바꿈(\\n)으로만 나눈다 — str.splitlines는 글 안의 U+2028·U+0085도 줄 끝으로 쳐서 JSON 줄을 깨뜨린다."""
+    return [line for line in data.decode("utf-8").split("\n") if line]
+
+
+def _check_member(m: tarfile.TarInfo) -> None:
+    """일반 파일이고, 정해진 이름이거나 model/ 아래의 상대 경로(.. 없음)일 때만 받는다 — 작업 폴더 밖에 쓰지 않게."""
+    parts = PurePosixPath(m.name).parts
+    ok_name = m.name in ("meta.json", *DATA_FILES) or (
+        len(parts) >= 2
+        and parts[0] == "model"
+        and not PurePosixPath(m.name).is_absolute()
+        and ".." not in parts
+        and "" not in parts
+    )
+    if not m.isreg() or not ok_name:
+        raise BundleMismatch(f"묶음에 허용하지 않는 항목이 있다: {m.name!r}")
+
+
+def load_bundle(path: Path, work_dir: Path, expected_sha256: str) -> Loaded:
+    """기록된 sha256과 같은 묶음만 열고, 풀어서 자기 명세(meta.json)와 대조한 뒤 서버가 쓰는 모양으로 되살린다.
+    sha256을 인자로 받는 이유: 대조 없이 묶음을 여는 경로를 두지 않는다(meta.json 자체는 어떤 해시에도 묶여 있지 않다)."""
     import numpy as np
 
+    check_sha(path, expected_sha256)
     with tarfile.open(path) as tar:
-        names = [m.name for m in tar.getmembers()]
+        members = tar.getmembers()
+        for m in members:
+            _check_member(m)
+        names = [m.name for m in members]
+        if len(set(names)) != len(names):
+            raise BundleMismatch("묶음에 같은 이름의 항목이 둘 이상 있다")
         if "meta.json" not in names:
             raise BundleMismatch("묶음에 meta.json이 없다")
         meta = json.loads(tar.extractfile("meta.json").read())
@@ -144,18 +177,18 @@ def load_bundle(path: Path, work_dir: Path) -> Loaded:
         raise BundleMismatch(
             f"묶음 파일 목록이 meta.json과 다르다: {sorted(set(body) ^ set(meta['files']))[:3]}"
         )
+    missing = [n for n in DATA_FILES if n not in body]
+    if missing:
+        raise BundleMismatch(f"묶음에 {missing}이 없다")
     for name, data in body.items():
         if hashlib.sha256(data).hexdigest() != meta["files"][name]:
             raise BundleMismatch(f"묶음의 {name}이 meta.json의 sha256과 다르다")
-    cards = [json.loads(line) for line in body["cards.jsonl"].decode("utf-8").splitlines()]
+    cards = [json.loads(line) for line in _lines(body["cards.jsonl"])]
     if embeddings.texts_sha256([card_text(c) for c in cards]) != meta["texts_sha256"]:
         raise BundleMismatch(
             "카드 글 해시(texts_sha256)가 meta.json과 다르다 — 카드 순서나 글이 바뀌었다"
         )
-    causes = {
-        r["campaign"]: r
-        for r in (json.loads(line) for line in body["causes.jsonl"].decode("utf-8").splitlines())
-    }
+    causes = {r["campaign"]: r for r in (json.loads(line) for line in _lines(body["causes.jsonl"]))}
     model_dir = work_dir / "model"
     if model_dir.exists():
         shutil.rmtree(model_dir)
@@ -244,8 +277,7 @@ def confirm_and_register(
     """공개 주소에서 실제로 받은 파일이 올린 묶음(sha256)이고 이 build의 묶음일 때만 DB에 기록한다."""
     dst = work_dir / "confirm.tar"
     _download(public_url(supabase_url, storage_path), dst)
-    check_sha(dst, sha)
-    check_identity(load_bundle(dst, work_dir / "confirm"), build)
+    check_identity(load_bundle(dst, work_dir / "confirm", sha), build)
     register(conn, build.build_id, sha, storage_path)
 
 
@@ -289,10 +321,10 @@ def cmd_upload(_a) -> None:
     path = OUT_DIR / f"serving_{build.build_id}.tar"
     if not path.exists():
         sys.exit(f"{path.name}이 없다 — 먼저 build")
-    check_identity(
-        load_bundle(path, OUT_DIR / "check"), build
-    )  # 이름만 바꾼 다른 build의 묶음을 올리지 않는다
     sha = sha256_file(path)
+    check_identity(
+        load_bundle(path, OUT_DIR / "check", sha), build
+    )  # 이름만 바꾼 다른 build의 묶음·옛 형식 묶음을 올리지 않는다
     storage_path = (
         f"{build.build_id}/{sha}.tar"  # 내용 해시가 이름이라 같은 이름으로 다른 묶음을 올릴 수 없다
     )
@@ -302,7 +334,12 @@ def cmd_upload(_a) -> None:
         sys.exit(
             f"build {build.build_id}의 묶음 기록이 이미 있고 다르다(기록 {row[0][:12]}…) — 덮어쓰지 않는다"
         )
-    url = f"{_env('SUPABASE_URL').rstrip('/')}/storage/v1/object/{BUCKET}/{storage_path}"
+    base = _env("SUPABASE_URL").rstrip("/")
+    if not base.startswith("https://"):
+        sys.exit(
+            "SUPABASE_URL이 https://로 시작하지 않는다 — 관리자 키를 암호화 없이 보내지 않는다"
+        )
+    url = f"{base}/storage/v1/object/{BUCKET}/{storage_path}"
     req = urllib.request.Request(
         url,
         data=path.read_bytes(),
@@ -340,8 +377,7 @@ def cmd_verify(_a) -> None:
         sys.exit(f"build {build.build_id}의 묶음 기록이 없다 — 먼저 upload")
     dst = OUT_DIR / "verify.tar"
     _download(public_url(_env("SUPABASE_URL"), row[1]), dst)
-    check_sha(dst, row[0])
-    loaded = load_bundle(dst, OUT_DIR / "verify")
+    loaded = load_bundle(dst, OUT_DIR / "verify", row[0])
     check_identity(loaded, build)
     print(
         f"확인: 공개 주소의 묶음 sha256 {row[0][:12]}…이 기록과 같고 build {loaded.build.build_id}로 되살아난다"

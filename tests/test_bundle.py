@@ -47,7 +47,7 @@ def test_bundle_round_trip_keeps_card_order_causes_investigations_vectors_and_mo
     b, vecs, model_dir = _inputs(tmp_path)
     out = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
     assert out.name == f"serving_{b.build_id}.tar"
-    got = bundle.load_bundle(out, tmp_path / "x")
+    got = bundle.load_bundle(out, tmp_path / "x", _sha(out))
     assert (
         got.build == b
     )  # 카드 순서·원인 행(text_basis 포함)·실패 사유·명세·원본 명세 해시까지 같다
@@ -81,7 +81,9 @@ def test_load_bundle_refuses_a_member_that_differs_from_meta(tmp_path, member):
     bad = tmp_path / "bad.tar"
     _rewrite(out, bad, member, b"changed")
     with pytest.raises(bundle.BundleMismatch, match=member):
-        bundle.load_bundle(bad, tmp_path / "x")
+        bundle.load_bundle(
+            bad, tmp_path / "x", _sha(bad)
+        )  # 기록이 이 파일이라 해도 내용 대조에서 막힌다
 
 
 def test_load_bundle_refuses_cards_whose_order_changed(tmp_path):
@@ -98,7 +100,9 @@ def test_load_bundle_refuses_cards_whose_order_changed(tmp_path):
     bad = tmp_path / "bad.tar"
     _rewrite(tmp, bad, "meta.json", json.dumps(meta).encode())
     with pytest.raises(bundle.BundleMismatch, match="texts_sha256"):
-        bundle.load_bundle(bad, tmp_path / "x")
+        bundle.load_bundle(
+            bad, tmp_path / "x", _sha(bad)
+        )  # 기록이 이 파일이라 해도 내용 대조에서 막힌다
 
 
 def test_check_sha_refuses_a_bundle_other_than_the_recorded_one(tmp_path):
@@ -161,16 +165,15 @@ def _other_build_bundle(tmp_path):
 
 def test_check_identity_refuses_a_bundle_of_another_build_renamed_as_this_one(tmp_path):
     b, vecs, model_dir = _inputs(tmp_path)
-    own = bundle.load_bundle(
-        bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "own"), tmp_path / "x"
-    )
+    own_tar = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "own")
+    own = bundle.load_bundle(own_tar, tmp_path / "x", _sha(own_tar))
     bundle.check_identity(own, b)
     other, tar = _other_build_bundle(tmp_path)
     assert other.build_id != b.build_id
     renamed = tmp_path / f"serving_{b.build_id}.tar"
     renamed.write_bytes(tar.read_bytes())  # 이름만 이 build로 바꾼 다른 build의 묶음
     with pytest.raises(bundle.BundleMismatch, match="build"):
-        bundle.check_identity(bundle.load_bundle(renamed, tmp_path / "y"), b)
+        bundle.check_identity(bundle.load_bundle(renamed, tmp_path / "y", _sha(renamed)), b)
 
 
 def test_confirm_and_register_writes_db_only_after_the_public_file_matches(tmp_path, monkeypatch):
@@ -212,3 +215,93 @@ def test_confirm_and_register_writes_db_only_after_the_public_file_matches(tmp_p
         conn, b, sha, f"{b.build_id}/{sha}.tar", "https://x", tmp_path / "c"
     )
     assert len(conn.inserts) == 1 and conn.inserts[0][2] == sha
+
+
+def _with_members(src, dst, add=(), drop=(), meta_edit=None):
+    """묶음에 항목을 더하거나 빼고, meta.json도 그에 맞게 고친 사본 — 내용 해시 대조는 통과하게 만든다."""
+    with tarfile.open(src) as tin:
+        items = [(m, tin.extractfile(m).read()) for m in tin.getmembers()]
+    meta = json.loads(dict((m.name, d) for m, d in items)["meta.json"])
+    for name, info, data in add:
+        if info.isreg():
+            meta["files"][name] = hashlib.sha256(data).hexdigest()
+    for name in drop:
+        meta["files"].pop(name, None)
+    if meta_edit:
+        meta_edit(meta)
+    with tarfile.open(dst, "w") as tout:
+        for m, d in items:
+            if m.name in drop:
+                continue
+            if m.name == "meta.json":
+                d = json.dumps(meta).encode()
+                m.size = len(d)
+            tout.addfile(m, io.BytesIO(d))
+        for _, info, data in add:
+            info.size = len(data) if info.isreg() else 0
+            tout.addfile(info, io.BytesIO(data) if info.isreg() else None)
+    return dst
+
+
+def test_load_bundle_refuses_members_outside_model_dir_or_not_regular_files(tmp_path):
+    b, vecs, model_dir = _inputs(tmp_path)
+    out = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
+    work = tmp_path / "w" / "x"
+    escape = tarfile.TarInfo("model/../../escaped.txt")
+    folder = tarfile.TarInfo("model/sub2")
+    folder.type = tarfile.DIRTYPE
+    link = tarfile.TarInfo("model/link")
+    link.type, link.linkname = tarfile.SYMTYPE, "/etc/passwd"
+    stray = tarfile.TarInfo("notes.txt")
+    for i, info in enumerate((escape, folder, link, stray)):
+        bad = _with_members(out, tmp_path / f"bad{i}.tar", add=[(info.name, info, b"x")])
+        with pytest.raises(bundle.BundleMismatch, match="허용하지 않는"):
+            bundle.load_bundle(bad, work, _sha(bad))
+    assert not (tmp_path / "w" / "escaped.txt").exists() and not (tmp_path / "escaped.txt").exists()
+
+
+def test_load_bundle_refuses_missing_files_other_format_and_other_sha(tmp_path):
+    b, vecs, model_dir = _inputs(tmp_path)
+    out = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
+    with pytest.raises(bundle.BundleMismatch, match="sha256"):
+        bundle.load_bundle(out, tmp_path / "x", "ab" * 32)
+    gone = _with_members(out, tmp_path / "gone.tar", drop=["investigations.json"])
+    with pytest.raises(bundle.BundleMismatch, match="investigations.json"):
+        bundle.load_bundle(gone, tmp_path / "x", _sha(gone))
+    extra = tarfile.TarInfo("model/extra.bin")
+    unlisted = _with_members(
+        out,
+        tmp_path / "unlisted.tar",
+        add=[("model/extra.bin", extra, b"x")],
+        meta_edit=lambda m: m["files"].pop("model/extra.bin"),
+    )
+    with pytest.raises(bundle.BundleMismatch, match="파일 목록"):
+        bundle.load_bundle(unlisted, tmp_path / "x", _sha(unlisted))
+    old = _with_members(
+        out, tmp_path / "old.tar", meta_edit=lambda m: m.update(format=bundle.FORMAT + 1)
+    )
+    with pytest.raises(bundle.BundleMismatch, match="형식"):
+        bundle.load_bundle(old, tmp_path / "x", _sha(old))
+    narrow = bundle.write_bundle(b, INV, vecs[:, :383], model_dir, tmp_path / "narrow")
+    with pytest.raises(bundle.BundleMismatch, match="벡터 모양"):
+        bundle.load_bundle(narrow, tmp_path / "x", _sha(narrow))
+
+
+def test_bundle_round_trips_text_with_unicode_line_separators(tmp_path):
+    cards = [dict(CARDS[0], defect="Line one line two\u0085end.")] + CARDS[1:]
+    b = load_build(full_data_dir(tmp_path / "d", cards, [cause("24V001", pdfs=PDFS)]))
+    _, _, model_dir = _inputs(tmp_path / "m")
+    vecs = np.zeros((len(b.cards), 384), dtype="float32")
+    out = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
+    assert bundle.load_bundle(out, tmp_path / "x", _sha(out)).build == b
+
+
+def test_bundle_tar_headers_are_fixed_and_members_sorted(tmp_path):
+    b, vecs, model_dir = _inputs(tmp_path)
+    out = bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "out")
+    with tarfile.open(out) as t:
+        members = t.getmembers()
+    names = [m.name for m in members]
+    assert names[0] == "meta.json" and names[1:] == sorted(names[1:])
+    for m in members:  # 시각·소유자·권한이 실행 환경에 따라 달라지면 같은 입력의 sha256이 달라진다
+        assert (m.mtime, m.uid, m.gid, m.uname, m.gname, m.mode) == (0, 0, 0, "", "", 0o644)
