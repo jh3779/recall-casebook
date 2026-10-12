@@ -34,6 +34,8 @@ from scripts.defect_precedent.retrieval_compare import card_text, provenance, re
 from scripts.defect_precedent.rules import UNKNOWN_RE, check
 
 SEED = 20261008
+# 추론 모델(gpt-6-luna 등)의 reasoning.effort 허용 값 — OpenAI 모델 문서(developers.openai.com/api/docs/models/gpt-6-luna, 2026-10-12 확인)
+REASONING_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
 DEFECT_INSTRUCTIONS = (
     "You copy text. From the manufacturer's defect description of a vehicle recall, return the sentence(s) that state "
     "WHY the defect happens (its cause, e.g. a design, material, manufacturing or supplier reason), copied EXACTLY "
@@ -55,7 +57,9 @@ def rule_unknown(text: str) -> bool:
     return bool(UNKNOWN_RE.search(text))
 
 
-def llm(model: str, instructions: str, text: str) -> tuple[list[str] | None, float, int, int]:
+def llm(
+    model: str, instructions: str, text: str, reasoning_effort: str | None = None
+) -> tuple[list[str] | None, float, int, int]:
     from openai import OpenAI
     from pydantic import BaseModel
 
@@ -64,7 +68,11 @@ def llm(model: str, instructions: str, text: str) -> tuple[list[str] | None, flo
 
     t = time.perf_counter()
     rsp = OpenAI().responses.parse(
-        model=model, instructions=instructions, input=text, text_format=Extraction
+        model=model,
+        instructions=instructions,
+        input=text,
+        text_format=Extraction,
+        **({"reasoning": {"effort": reasoning_effort}} if reasoning_effort else {}),
     )
     got = rsp.output_parsed.cause_sentences if rsp.output_parsed else None  # None = 거부·해석 실패
     return got, time.perf_counter() - t, rsp.usage.input_tokens, rsp.usage.output_tokens
@@ -98,7 +106,14 @@ def pick_unknown(n: int) -> list[dict]:
     ]
 
 
-def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
+def run(
+    mode: str,
+    model: str,
+    n: int,
+    out: Path,
+    sheet: Path | None,
+    reasoning_effort: str | None = None,
+) -> None:
     if sheet and sheet_meta_path(sheet) == out.with_suffix(".meta.json"):
         sys.exit("결과와 시트의 메타 파일 이름이 겹친다 — --out·--sheet 이름을 다르게")
     data = provenance()
@@ -106,7 +121,7 @@ def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
     instructions = DEFECT_INSTRUCTIONS if mode == "defect" else UNKNOWN_INSTRUCTIONS
     rows, tin, tout = [], 0, 0
     for it in items:
-        got, sec, i, o = llm(model, instructions, it["text"])
+        got, sec, i, o = llm(model, instructions, it["text"], reasoning_effort)
         tin, tout = tin + i, tout + o
         failed, got = got is None, got or []
         rows.append(
@@ -124,6 +139,7 @@ def run(mode: str, model: str, n: int, out: Path, sheet: Path | None) -> None:
         "data": data,
         "mode": mode,
         "model": model,
+        "reasoning_effort": reasoning_effort,
         "n": n,
         "seed": SEED,
         "instructions": instructions,
@@ -268,15 +284,24 @@ def score(sheet: Path, results: list[Path]) -> None:
     print(json.dumps(out, ensure_ascii=False, indent=1))
 
 
-def main(argv: list[str] | None = None) -> None:
+def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("mode", choices=["defect", "unknown", "score"])
     p.add_argument("results", nargs="*", type=Path)
     p.add_argument("--model")
+    p.add_argument(
+        "--reasoning-effort",
+        choices=REASONING_EFFORTS,
+        help="추론 모델에만 — 주지 않으면 요청에 넣지 않는다(4o-mini 등)",
+    )
     p.add_argument("--n", type=int, default=30)
     p.add_argument("--out", type=Path)
     p.add_argument("--sheet", type=Path)
-    a = p.parse_args(argv)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    a = parser().parse_args(argv)
     if a.mode == "score":
         if not (a.sheet and a.results):
             sys.exit("score에는 --sheet와 결과 파일이 필요하다")
@@ -284,7 +309,7 @@ def main(argv: list[str] | None = None) -> None:
         return
     if not (a.model and a.out):
         sys.exit("--model과 --out이 필요하다")
-    run(a.mode, a.model, a.n, a.out, a.sheet)
+    run(a.mode, a.model, a.n, a.out, a.sheet, a.reasoning_effort)
 
 
 if __name__ == "__main__":

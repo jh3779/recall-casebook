@@ -55,13 +55,24 @@ def summarize(model: str, rows: list[dict]) -> dict:
     }
 
 
-def main(argv: list[str] | None = None) -> None:
+def parser() -> argparse.ArgumentParser:
+    from scripts.defect_precedent.cause_trials import REASONING_EFFORTS
+
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--model")
+    p.add_argument(
+        "--reasoning-effort",
+        choices=REASONING_EFFORTS,
+        help="추론 모델에만 — 주지 않으면 요청에 넣지 않는다(4o-mini 등)",
+    )
     p.add_argument("--n", type=int, default=30)
     p.add_argument("--out", type=Path)
     p.add_argument("--recheck", type=Path, help="저장된 결과를 API 호출 없이 다시 검사")
-    a = p.parse_args(argv)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    a = parser().parse_args(argv)
     if a.recheck:
         rows = [
             json.loads(line)
@@ -127,6 +138,7 @@ def main(argv: list[str] | None = None) -> None:
             instructions=INSTRUCTIONS,
             input=f"Defect description:\n{card['defect']}\n\nDescription of the Cause:\n{c['cause_text']}",
             text_format=Extraction,
+            **({"reasoning": {"effort": a.reasoning_effort}} if a.reasoning_effort else {}),
         )
         secs = time.perf_counter() - t
         tokens_in += rsp.usage.input_tokens
@@ -147,7 +159,13 @@ def main(argv: list[str] | None = None) -> None:
     a.out.write_text(
         "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8"
     )
-    meta = {"data": data, "model": a.model, "n": a.n, "instructions": INSTRUCTIONS}
+    meta = {
+        "data": data,
+        "model": a.model,
+        "reasoning_effort": a.reasoning_effort,
+        "n": a.n,
+        "instructions": INSTRUCTIONS,
+    }
     a.out.with_suffix(".meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8"
     )

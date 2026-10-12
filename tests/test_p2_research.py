@@ -305,3 +305,45 @@ def test_time_eval_code_provenance_stops_when_git_fails(monkeypatch, kind):
     monkeypatch.setattr(subprocess, "run", fake)
     with pytest.raises(SystemExit, match="코드 판본을 기록할 수 없어"):
         tec.code_provenance(allow_dirty=True)
+
+
+def _fake_openai(monkeypatch, calls):
+    """openai는 `uv run --with openai`로만 쓰는 연구 의존성이라, 호출 인자만 확인하는 가짜 모듈을 끼운다."""
+    import sys
+    from types import SimpleNamespace
+
+    def parse(**kw):
+        calls.append(kw)
+        parsed = kw["text_format"](cause_sentences=["x"])
+        return SimpleNamespace(
+            output_parsed=parsed, usage=SimpleNamespace(input_tokens=3, output_tokens=1)
+        )
+
+    client = SimpleNamespace(responses=SimpleNamespace(parse=parse))
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=lambda: client))
+
+
+def test_cause_trials_llm_passes_reasoning_effort_only_when_given(monkeypatch):
+    from scripts.defect_precedent import cause_trials as ct
+
+    calls = []
+    _fake_openai(monkeypatch, calls)
+    ct.llm("gpt-4o-mini", "i", "t")
+    ct.llm("gpt-6-luna", "i", "t", reasoning_effort="none")
+    assert (
+        "reasoning" not in calls[0]
+    )  # 추론 모델이 아닌 4o-mini에는 보내지 않는다(10/8 시험과 같은 요청)
+    assert calls[1]["reasoning"] == {"effort": "none"} and calls[1]["model"] == "gpt-6-luna"
+
+
+def test_trial_clis_accept_reasoning_effort():
+    from scripts.defect_precedent import cause_trials as ct
+    from scripts.defect_precedent import engine2_trial as e2
+
+    for mod in (ct, e2):
+        p = mod.parser()
+        args = ["--model", "gpt-6-luna", "--reasoning-effort", "none"]
+        a = p.parse_args((["unknown"] if mod is ct else []) + args)
+        assert a.reasoning_effort == "none"
+        with pytest.raises(SystemExit):
+            p.parse_args((["unknown"] if mod is ct else []) + ["--reasoning-effort", "minimal"])
