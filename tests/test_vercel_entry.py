@@ -31,7 +31,12 @@ def test_vercelignore_allows_only_what_the_server_needs():
         "scripts",
         "scripts/defect_precedent",
     }
-    assert "scripts/*" in lines  # scripts는 서버가 import하는 defect_precedent만
+    # 뒤 줄이 앞 줄을 덮는다 — scripts를 열고, 그 아래를 다시 닫고, 서버가 import하는 defect_precedent만 연다
+    assert (
+        lines.index("!scripts")
+        < lines.index("scripts/*")
+        < lines.index("!scripts/defect_precedent")
+    )
     assert not any(a.startswith((".env", "data", ".agent", "tests", "docs")) for a in allowed)
 
 
@@ -40,5 +45,5 @@ def test_function_settings():
     assert (
         conf["framework"] == "fastapi"
     )  # CLI로 만든 프로젝트는 프리셋이 비어 app.py를 함수로 못 찾는다
-    assert conf["functions"] == {"app.py": {"maxDuration": 300}}
+    assert conf["functions"] == {"app.py": {"maxDuration": 60}}
     assert conf["regions"] == ["syd1"]  # 운영 Supabase(ap-southeast-2)와 같은 지역

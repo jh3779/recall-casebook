@@ -62,6 +62,8 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 
 공개 전 필수: 이슈 #63 — 조회 전용 계정 `rag_reader`(묶음 기록 `serving_bundles` 조회 권한 포함)와 Vercel 환경변수 `SERVER_DATABASE_URL`(관리자 키는 Vercel에 두지 않음), Storage 읽기 자격(공개 읽기 버킷 — DEC-049 ③, 무결성은 `serving_bundles` 기록 sha256 대조), 인증 또는 호출 상한, 배포 주소 CORS. 통과 기준: 749문항 H@10 0.542 재현, `/search` 응답이 묶음 sha256 칸(로컬 경로는 `null`)을 빼고 로컬 경로와 바이트까지 같음, Vercel에서 함수 크기·최대 메모리·첫 요청 시간 실측.
 
+> (2026-10-12) 위 "공개 전 필수"는 사용자 결정으로 바뀌어 #63 전에 Production에 먼저 올렸다(아래 3-1, DEC-051 ①). 통과 기준 중 "응답 바이트까지 같음"은 Vercel에서 **충족하지 못했다** — CPU가 달라 질문 임베딩에 소수점 오차가 생겨 749문항 중 15문항의 화면 목록 구성이 다르다. 대신 같은 749문항의 화면 기준 점수 `shown_any` 차이(Vercel 0.545 · 로컬 0.543, 기준 폭 0.03 안)로 판단했다(DEC-051 ②). 로컬 경로끼리·묶음 경로끼리(같은 기계)는 바이트 동일 기준 그대로다.
+
 ### 3-1. 실제 배포 (2026-10-12, DEC-051)
 
 **지금 공개 주소: `https://lg-cns-rag.vercel.app`** (Vercel 프로젝트 `lg-cns-rag`, Hobby, 함수 지역 `syd1`). **인증·호출 상한이 아직 없다** — 사용자 결정으로 #63보다 먼저 Production에 올렸다(DEC-051 ①). 누구나 `/search`를 부를 수 있으므로 #63을 서두른다.
@@ -69,7 +71,7 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 | 파일 | 하는 일 |
 |---|---|
 | `app.py` | 진입점 — `server/api.py`의 `app`을 그대로 내보낸다 |
-| `vercel.json` | `framework: fastapi`(CLI로 만든 프로젝트는 프리셋이 비어 `app.py`를 함수로 못 찾는다), `regions: ["syd1"]`(운영 Supabase ap-southeast-2와 같은 지역), `maxDuration` 300 |
+| `vercel.json` | `framework: fastapi`(CLI로 만든 프로젝트는 프리셋이 비어 `app.py`를 함수로 못 찾는다), `regions: ["syd1"]`(운영 Supabase ap-southeast-2와 같은 지역), `maxDuration` 60(첫 요청 실측 13.2초 — 공개 상태에서 요청 하나가 함수를 오래 붙잡지 않게 실측에 맞춤) |
 | `.vercelignore` | CLI 배포는 로컬 폴더를 올린다. Vercel 기본 무시 목록에 `.env`·`.env.server`·`data/`가 없으므로 **필요한 것만 허용**한다(진입점·설정·`pyproject.toml`·`uv.lock`·`.python-version`·`server/`·`scripts/defect_precedent/`) |
 
 Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BUILD_ID=f1fe1843ed0f2c66` · `SUPABASE_URL` · `SERVER_DATABASE_URL`(`rag_reader`, Sensitive) · `UV_NO_CONFIG=1`(빌더 uv 0.10.11이 `required-version >=0.12.5`에 걸려서 — DEC-051 ③). `ALLOWED_ORIGINS`는 배포 화면이 생기면 넣는다(없으면 `http://localhost:5173`). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
@@ -84,5 +86,5 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 | 첫 요청(새 배포 직후 — 묶음 155.4MB 다운로드·검사·모델 로드) | 약 13.2초, 이후 0.4~0.5초 |
 | 빌드 | 38초, Python 3.12(`.python-version`), uv 0.10.11 |
 | CLI 업로드 | 1.7MB |
-| 탐침 차이(macOS arm 벡터 ↔ Vercel Linux x86 재계산) | 최대 4.30e-04 → 허용 차이 1e-3(DEC-051 ②) |
+| 탐침 차이(macOS arm 벡터 ↔ Vercel Linux x86 재계산) | 최대 4.30e-04(한 번 실측) → 허용 차이 1e-3(DEC-051 ②). 서버는 통과해도 `탐침 최대 차이 …`를 로그에 남긴다 — `vercel logs`로 여러 시작의 분포를 모아 다시 판단 |
 | 최대 메모리·함수 크기 | 미측정 — 로그·`vercel inspect`에 없음(대시보드 Observability에서 확인) |

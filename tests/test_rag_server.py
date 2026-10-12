@@ -341,7 +341,7 @@ def test_api_returns_build_id_and_no_judgement_fields(tmp_path, monkeypatch):
     assert FORBIDDEN_KEYS.isdisjoint(set(_keys(body)))
 
 
-def test_verify_probe_and_fastembed_version_refuse_mismatched_vectors(monkeypatch):
+def test_verify_probe_and_fastembed_version_refuse_mismatched_vectors(monkeypatch, capsys):
     import fastembed
 
     model = FakeModel()
@@ -349,7 +349,9 @@ def test_verify_probe_and_fastembed_version_refuse_mismatched_vectors(monkeypatc
     vecs = np.array(model.passage_embed(texts))
     embeddings.verify_probe(model, texts, vecs)
     # 같은 모델이 CPU만 달라 생기는 오차(macOS arm ↔ Vercel Linux x86 실측 최대 4.30e-04)는 통과한다
-    embeddings.verify_probe(model, texts, vecs + 5e-4)
+    assert abs(embeddings.verify_probe(model, texts, vecs + 5e-4) - 5e-4) < 1e-6
+    # 통과해도 차이를 남긴다 — 여러 시작에서 분포를 보고 허용 차이를 다시 판단한다(DEC-051)
+    assert "탐침 최대 차이 5.00e-04" in capsys.readouterr().err
     with pytest.raises(embeddings.EmbeddingMismatch, match="최대 차이 2.00e-03"):
         embeddings.verify_probe(model, texts, vecs + 2e-3)
     # 차이 크기를 보여야 CPU 오차와 모델 변경을 구분한다

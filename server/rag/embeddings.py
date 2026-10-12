@@ -14,6 +14,7 @@
 import argparse
 import hashlib
 import os
+import sys
 from pathlib import Path
 
 from scripts.defect_precedent.load_db import connect
@@ -23,7 +24,8 @@ MODEL = "BAAI/bge-small-en-v1.5"
 SCHEMA = Path(__file__).with_name("embeddings.sql")
 PROBES = 16
 # 탐침 허용 차이 — 같은 모델이 CPU만 달라도 소수점 오차가 난다(macOS arm에서 만든 벡터를 Vercel Linux x86에서
-# 다시 계산하면 최대 4.30e-04, 2026-10-12 실측). 모델 파일·판본이 바뀌면 0.1 단위로 달라지므로 1e-3으로 잡는다(DEC-051)
+# 다시 계산하면 최대 4.30e-04, 2026-10-12 실측 한 번) → 1e-3(DEC-051). 통과해도 차이를 남겨 여러 시작의 분포로 다시 판단한다.
+# 같은 기계 안의 연구용 캐시 대조(scripts/defect_precedent/retrieval_compare.py)는 1e-4 그대로다.
 ATOL = 1e-3
 
 
@@ -49,18 +51,20 @@ def check_fastembed() -> None:
         )
 
 
-def verify_probe(model, texts: list[str], vecs) -> None:
-    """카드 몇 장을 지금 모델로 다시 임베딩해 저장된 벡터와 비교한다."""
+def verify_probe(model, texts: list[str], vecs) -> float:
+    """카드 몇 장을 지금 모델로 다시 임베딩해 저장된 벡터와 비교하고 최대 차이를 돌려준다."""
     import numpy as np
 
     idx = probe_indices(len(texts))
     probe = np.array(list(model.passage_embed([texts[i] for i in idx])), dtype="float32")
+    diff = float(np.max(np.abs(vecs[idx] - probe)))
+    print(f"탐침 최대 차이 {diff:.2e} (허용 {ATOL:g})", file=sys.stderr)
     if not np.allclose(vecs[idx], probe, atol=ATOL):
-        diff = float(np.max(np.abs(vecs[idx] - probe)))
         raise EmbeddingMismatch(
             f"저장된 카드 벡터가 지금 모델로 다시 계산한 값과 다르다(최대 차이 {diff:.2e}, 허용 {ATOL:g}) — "
             "모델 파일·판본이 바뀌었으면 build를 새로 만들어 다시 올린다"
         )
+    return diff
 
 
 def vec_literal(v) -> str:
