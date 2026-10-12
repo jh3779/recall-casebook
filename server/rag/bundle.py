@@ -253,6 +253,18 @@ def public_url(supabase_url: str, storage_path: str) -> str:
     return f"{supabase_url.rstrip('/')}/storage/v1/object/public/{BUCKET}/{storage_path}"
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """업로드는 리디렉션을 따라가지 않는다 — urllib은 따라가면서 Authorization(관리자 키)을 새 주소로 그대로 보낸다."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _send(req: urllib.request.Request) -> None:
+    """관리자 키가 든 요청을 보낸다. 3xx는 HTTPError로 올라와 멈춘다."""
+    urllib.request.build_opener(_NoRedirect).open(req, timeout=600).read()
+
+
 def _download(url: str, dst: Path) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
     tmp = dst.with_name(f"{dst.name}.{os.getpid()}.tmp")
@@ -354,7 +366,7 @@ def cmd_upload(_a) -> None:
         },
     )
     try:
-        urllib.request.urlopen(req, timeout=600).read()
+        _send(req)
     except urllib.error.HTTPError as e:
         # Supabase는 같은 이름이 이미 있으면 400·409로 거부한다. 다른 이유의 400일 수도 있으므로 여기서 성공으로 보지 않고,
         # 아래에서 공개 주소의 실제 파일을 받아 sha256·build를 대조한 뒤에만 기록한다(없거나 다르면 기록하지 않고 멈춘다)

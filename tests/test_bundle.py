@@ -352,27 +352,44 @@ def test_bundle_bytes_do_not_depend_on_dict_key_order(tmp_path):
     assert _sha(one) == _sha(two)
 
 
+class FakeStore:
+    """cmd_upload·cmd_verify를 네트워크·DB 없이 부른다 — 묶음 파일·build는 진짜, Storage·연결은 가짜."""
+
+    def __init__(self, tmp_path, monkeypatch, row, url, send=None):
+        import contextlib
+
+        from server.rag import build as build_mod
+
+        self.b, vecs, model_dir = _inputs(tmp_path)
+        monkeypatch.setattr(bundle, "OUT_DIR", tmp_path / "serving")
+        self.tar = bundle.write_bundle(self.b, INV, vecs, model_dir, tmp_path / "serving")
+        self.sha = _sha(self.tar)
+        monkeypatch.setattr(build_mod, "load_build", lambda: self.b)
+        self.row, self.inserts, self.sent, self.served = row, [], [], self.tar
+
+        def execute(sql, params=None):
+            if sql.lstrip().startswith("insert"):
+                self.inserts.append(params)
+            return SimpleNamespace(fetchone=lambda: self.row)
+
+        @contextlib.contextmanager
+        def conn():
+            yield SimpleNamespace(execute=execute)
+
+        def download(url, dst):
+            self.downloaded = url
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(self.served.read_bytes())
+
+        monkeypatch.setattr(bundle, "connect", conn)
+        monkeypatch.setattr(bundle, "_download", download)
+        monkeypatch.setattr(bundle, "_send", send or self.sent.append)
+        monkeypatch.setenv("SUPABASE_URL", url)
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test-only-not-a-key")
+
+
 def _upload_env(tmp_path, monkeypatch, row, url):
-    """cmd_upload를 네트워크·DB 없이 부른다 — 묶음 파일·build는 진짜, 연결과 urlopen은 가짜."""
-    import contextlib
-
-    from server.rag import build as build_mod
-
-    b, vecs, model_dir = _inputs(tmp_path)
-    monkeypatch.setattr(bundle, "OUT_DIR", tmp_path / "serving")
-    bundle.write_bundle(b, INV, vecs, model_dir, tmp_path / "serving")
-    monkeypatch.setattr(build_mod, "load_build", lambda: b)
-
-    @contextlib.contextmanager
-    def conn():
-        yield SimpleNamespace(execute=lambda *a, **k: SimpleNamespace(fetchone=lambda: row))
-
-    monkeypatch.setattr(bundle, "connect", conn)
-    monkeypatch.setenv("SUPABASE_URL", url)
-    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test-only-not-a-key")
-    opened = []
-    monkeypatch.setattr(bundle.urllib.request, "urlopen", lambda *a, **k: opened.append(a))
-    return opened
+    return FakeStore(tmp_path, monkeypatch, row, url).sent
 
 
 def test_cmd_upload_refuses_plain_http_before_sending_the_key(tmp_path, monkeypatch):
@@ -387,3 +404,73 @@ def test_cmd_upload_refuses_when_a_different_record_exists(tmp_path, monkeypatch
     with pytest.raises(SystemExit, match="덮어쓰지 않는다"):
         bundle.main(["upload"])
     assert opened == []
+
+
+def test_cmd_upload_records_only_after_the_public_file_matches(tmp_path, monkeypatch):
+    s = FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co")
+    bundle.main(["upload"])
+    (req,) = s.sent
+    want = f"{s.b.build_id}/{s.sha}.tar"  # 내용 해시가 저장 이름
+    assert req.full_url.endswith(f"/storage/v1/object/serving-bundles/{want}")
+    assert req.get_header("X-upsert") == "false"
+    assert s.downloaded.endswith(f"/object/public/serving-bundles/{want}")
+    assert [(p[0], p[2], p[3]) for p in s.inserts] == [(s.b.build_id, s.sha, want)]
+    # Storage가 거부했고(409) 공개 주소에 다른 build의 묶음이 있으면 기록하지 않는다
+    _, other = _other_build_bundle(tmp_path / "o")
+    s2 = FakeStore(
+        tmp_path / "2",
+        monkeypatch,
+        None,
+        "https://x.supabase.co",
+        send=lambda req: (_ for _ in ()).throw(
+            bundle.urllib.error.HTTPError(req.full_url, 409, "Duplicate", {}, None)
+        ),
+    )
+    s2.served = other
+    with pytest.raises(bundle.BundleMismatch):
+        bundle.main(["upload"])
+    assert s2.inserts == []
+
+
+def test_cmd_upload_checks_the_local_bundle_before_sending(tmp_path, monkeypatch):
+    s = FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co")
+    _, other = _other_build_bundle(tmp_path / "o")
+    s.tar.write_bytes(other.read_bytes())  # 다른 build의 묶음을 이 build 이름으로 복사해 둠
+    with pytest.raises(bundle.BundleMismatch, match="build"):
+        bundle.main(["upload"])
+    assert s.sent == [] and s.inserts == []
+
+
+def test_cmd_upload_stops_on_redirect_and_does_not_follow_it(tmp_path, monkeypatch):
+    def redirect(req):
+        raise bundle.urllib.error.HTTPError(
+            req.full_url, 301, "Moved", {"Location": "https://elsewhere"}, None
+        )
+
+    s = FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co", send=redirect)
+    with pytest.raises(SystemExit, match="301"):
+        bundle.main(["upload"])
+    assert s.inserts == []
+    req = bundle.urllib.request.Request(
+        "https://x.supabase.co/a", headers={"Authorization": "Bearer k"}
+    )
+    assert (
+        bundle._NoRedirect().redirect_request(req, None, 301, "Moved", {}, "https://elsewhere/a")
+        is None
+    )
+
+
+@pytest.mark.parametrize("case", ["other_sha", "other_build"])
+def test_cmd_verify_refuses_a_public_file_other_than_the_record(tmp_path, monkeypatch, case):
+    s = FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co")
+    s.row = (s.sha, f"{s.b.build_id}/{s.sha}.tar")
+    bundle.main(["verify"])  # 기록과 같은 파일이면 통과
+    _, other = _other_build_bundle(tmp_path / "o")
+    s.served = other
+    if case == "other_build":
+        s.row = (
+            _sha(other),
+            f"{s.b.build_id}/{_sha(other)}.tar",
+        )  # 기록까지 그 파일이라도 build가 다르면 거부
+    with pytest.raises(bundle.BundleMismatch, match="sha256" if case == "other_sha" else "build"):
+        bundle.main(["verify"])
