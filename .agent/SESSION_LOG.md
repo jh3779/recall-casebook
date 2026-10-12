@@ -139,3 +139,4 @@
 - 2026-10-12: 배포 결정(DEC-048) — 시연은 로컬 포트, 배포는 일단 Vercel 서버리스(화면 먼저, API는 서빙 묶음·Supabase Storage로 발표 전), `docs/배포_Vercel.md`, 할 일 50(화면↔API 연결)
 - 2026-10-12: 서빙 묶음 도구(DEC-049) — server/rag/bundle.py build·upload·verify, serving_bundles 테이블, 실데이터 묶음 155.4MB·되살린 build가 로컬과 같음
 - 2026-10-12: 서버 묶음 경로(RAG_SOURCE=bundle, DEC-050) — 시작 순서·응답 bundle_sha256·CORS 환경변수·rag_reader에 serving_bundles, parity 묶음 모드 749문항 0.542 재현, /search 40문항 응답 동일
+- 2026-10-12: 체크포인트 3 — 배포 1~3단계(#91·#92·#94, DEC-048~050) 병합, Luna 비교 PR #96, Supabase Pro·전역 파일 크기 한도, worktree 15개 정리, HANDOFF 할 일 51 갱신·52·53 추가
