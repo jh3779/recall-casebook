@@ -9,7 +9,7 @@ create table if not exists serving_bundles (
     storage_path  text not null,            -- Storage 버킷 안의 경로 (serving-bundles/<path>)
     format        integer not null,         -- 묶음 형식 판본 (server/rag/bundle.py FORMAT)
     created_at    timestamptz not null default now(),
-    primary key (build_id, model),
+    primary key (build_id, model, format),  -- 데이터가 같아도 묶음 형식이 바뀌면 새 기록(덮어쓰지 않는다)
     foreign key (build_id, model) references embedding_sets (build_id, model)
 );
 

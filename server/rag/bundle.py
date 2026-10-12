@@ -180,27 +180,35 @@ def load_bundle(path: Path, work_dir: Path) -> Loaded:
 
 
 def register(
-    conn, build_id: str, sha: str, storage_path: str, model: str = embeddings.MODEL
+    conn,
+    build_id: str,
+    sha: str,
+    storage_path: str,
+    model: str = embeddings.MODEL,
+    fmt: int = FORMAT,
 ) -> None:
-    """serving_bundles에 기록한다. 이미 있으면 같을 때만 그대로 두고, 다르면 덮어쓰지 않는다."""
-    row = recorded(conn, build_id, model)
+    """serving_bundles에 기록한다 — (build, 모델, 묶음 형식)마다 하나. 이미 있으면 같을 때만 그대로 두고, 다르면 덮어쓰지 않는다."""
+    row = recorded(conn, build_id, model, fmt)
     if row is not None:
         if row != (sha, storage_path):
             raise BundleMismatch(
-                f"build {build_id}·{model}의 묶음 기록이 이미 있고 다르다(기록 {row[0][:12]}…) — 덮어쓰지 않는다"
+                f"build {build_id}·{model}·형식 {fmt}의 묶음 기록이 이미 있고 다르다(기록 {row[0][:12]}…) — 덮어쓰지 않는다"
             )
         return
     conn.execute(
         "insert into serving_bundles (build_id, model, bundle_sha256, storage_path, format) "
         "values (%s, %s, %s, %s, %s)",
-        (build_id, model, sha, storage_path, FORMAT),
+        (build_id, model, sha, storage_path, fmt),
     )
 
 
-def recorded(conn, build_id: str, model: str = embeddings.MODEL) -> tuple[str, str] | None:
+def recorded(
+    conn, build_id: str, model: str = embeddings.MODEL, fmt: int = FORMAT
+) -> tuple[str, str] | None:
     row = conn.execute(
-        "select bundle_sha256, storage_path from serving_bundles where build_id = %s and model = %s",
-        (build_id, model),
+        "select bundle_sha256, storage_path from serving_bundles "
+        "where build_id = %s and model = %s and format = %s",
+        (build_id, model, fmt),
     ).fetchone()
     return None if row is None else (row[0], row[1])
 
