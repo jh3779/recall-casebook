@@ -322,3 +322,13 @@
 - **영향 / 알려진 한계**: 기준 파일 두 개의 `causes_full` 지문(원인 파일·명세)을 새 파일로 갱신했다(10/7 값은 note에 보존 — 옛 수치 재현이 필요하면 `causes.20261007.jsonl` 사본과 PR D 이전 커밋으로). `pdftotext`가 25.07.0 → 26.08.0으로 바뀌었고, 표본 비교에서 옛 규칙 그대로 읽은 257줄은 같았다. 화면(#60)은 새 상태·`text_basis`·카드 `speaker` 칸을 받아야 한다. 원인 품질 표본(`cause_quality.py`, #73)은 `filled` 글만 뽑으므로 "원인 품질" 수치는 `stated_unknown` 글을 재지 않는다.
 - **Status**: Accepted (사용자 결정 2026-10-11 — 빈칸 표시 방식·재수집·카드 주체)
 - **Date**: 2026-10-11
+
+## DEC-049: 배포 서버용 데이터는 build마다 "서빙 묶음" 파일로 만들어 Supabase Storage에 두고, sha256을 DB `serving_bundles`에 한 번만 기록한다
+- **Decision**: ① 로컬 서버 시작과 같은 검사(`load_build`·`check_against_db`·`load_vectors`·`verify_probe`·`load_investigations`)를 통과한 build를 `server/rag/bundle.py build`가 tar 하나로 만든다 — 카드(원래 순서)·원인 행(`text_basis` 포함)·실패 사유·원인 명세·연결된 조사 요약·벡터(정규화 전)·임베딩 모델 파일과 `meta.json`(형식 판본·build_id·원본 명세 해시·카드 글 해시·fastembed 판본·파일별 sha256). 파일 순서·시각·소유자를 고정해 같은 입력이면 바이트까지 같다. ② `upload`가 Storage 버킷 `serving-bundles/<build_id>/<sha256>.tar`에 올리고 새 테이블 `serving_bundles(build_id, model, bundle_sha256, storage_path, format)`에 기록한다 — 한 번 쓰면 바꾸지 않는다(다르면 멈춤), `embedding_sets`를 외래키로 가리킨다. ③ 버킷은 공개 읽기, 쓰기는 로컬 관리자 키(`SUPABASE_SERVICE_ROLE_KEY`)만 — 배포 서버에는 관리자 키를 두지 않고, 받은 묶음의 sha256을 DB 기록과 대조한다. ④ 묶음을 읽을 때 `meta.json`의 파일별 sha256과 카드 글 해시를 다시 계산해 하나라도 다르면 쓰지 않는다.
+- **Reason**: DEC-048 ⑤(서빙 묶음 방식, 계획 승인 2026-10-12)의 구현 결정. 카드 순서·`FLAT_INV`·날짜 형식이 DB와 맞지 않아 DB에서 직접 읽지 않는다(DEC-048 Reason). 공개 읽기로 둔 이유: 배포 서버에 Storage 키를 두면 그 키가 관리자 권한이라 노출 위험이 크고, 내용은 공개 자료 기반이라 비밀이 아니다 — 대신 무결성을 DB 기록(조회 전용 계정으로 읽음)으로 지킨다. 저장 경로에 sha256을 넣어 같은 이름으로 다른 내용을 올릴 수 없게 했다.
+- **검증**: 시험 `tests/test_bundle.py` — 왕복(카드 순서·원인·조사 요약·벡터·모델 파일 그대로), 같은 입력 같은 바이트, 파일 하나 바뀌면 거부, 카드 순서 바뀌면 거부, 기록 sha256과 다르면 거부, `serving_bundles` 한 번만 기록(DB 시험). 변이 확인 4가지(파일 해시 대조·카드 글 해시 대조·기록 덮어쓰기 거부·시각 고정을 빼면 실패). 실데이터(build `f1fe1843ed0f2c66`): 묶음 155.4MB, 만들기 13초, 되살리기 0.2초, 되살린 build = 로컬 `load_build()`, 다시 만들어도 sha256 `dd0efac0…` 그대로.
+- **Alternatives**: (가) Vercel Blob — 사용자가 Supabase Storage를 골랐다(2026-10-12). (나) 비공개 버킷 + 서명 URL — 서명에 관리자 키가 필요해 배포 서버에 키를 둬야 한다. (다) 묶음을 압축(gzip) — 벡터·ONNX가 대부분이라 이득이 작고 결정성 관리가 늘어 쓰지 않았다.
+- **영향 / 알려진 한계**: 서버가 묶음에서 시작하는 경로(`RAG_SOURCE=bundle`)와 parity `--source bundle`은 다음 PR. 버킷 생성·공개 설정, `rag_reader`에 `serving_bundles` SELECT·정책 추가는 사용자 계정 작업과 #63. 묶음은 공개 주소로 누구나 받을 수 있다(공개 자료 기반이라 허용). 임베딩 모델 파일을 묶음에 넣었으므로 모델 판본은 묶음 sha256에 묶인다.
+- **Status**: Accepted (DEC-048 ⑤ 계획 승인에 따른 구현, 2026-10-12)
+- **Date**: 2026-10-12
+

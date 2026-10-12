@@ -45,6 +45,22 @@
 
 요청은 `{"question": "<영어 결함 설명>"}` 하나만 받는다 — 모르는 칸이 있거나(예: `top_k`) 영어 단어가 없으면 422로 거부한다(2026-10-12, PR #86).
 
+## 서빙 묶음 (배포용, DEC-049)
+
+배포 환경(Vercel)에는 로컬 build 파일이 없으므로, 로컬에서 위 1·2단계 검사를 통과한 build를 파일 하나(`serving_<build_id>.tar`)로 묶어 Supabase Storage에 올린다. 묶음에는 카드(`recalls.jsonl` 순서 그대로)·원인 행(`text_basis` 포함)·실패 사유·원인 명세·카드에 연결된 조사 요약·벡터(정규화 전)·임베딩 모델 파일이 들어 있고, `meta.json`에 파일별 sha256과 카드 글 해시가 있다. 같은 입력이면 바이트까지 같다.
+
+```bash
+uv run --env-file .env python -m server.rag.bundle schema   # serving_bundles 테이블(embeddings.sql 뒤에)
+uv run --env-file .env python -m server.rag.bundle build    # data/processed/defect/serving/serving_<build_id>.tar
+uv run --env-file .env python -m server.rag.bundle upload   # Storage 버킷 serving-bundles/<build_id>/<sha256>.tar + serving_bundles 기록
+uv run --env-file .env python -m server.rag.bundle verify   # 공개 주소에서 받아 기록 sha256과 대조하고 되살려 본다
+```
+
+- 버킷 `serving-bundles`는 **공개 읽기**로 만든다(Supabase 대시보드 — 사용자 계정 작업). 들어 있는 것은 공개 NHTSA 자료에서 만든 값이고, 무결성은 DB `serving_bundles.bundle_sha256` 대조로 지킨다. 쓰기는 로컬의 `SUPABASE_SERVICE_ROLE_KEY`로만 한다.
+- `serving_bundles` 기록은 한 번 쓰면 바꾸지 않는다 — 같은 build의 다른 묶음을 올리려 하면 멈춘다.
+- 실측(2026-10-12, build `f1fe1843ed0f2c66`): 묶음 155.4MB(그중 모델 약 67MB·벡터 약 47MB), 만들기 13초, 되살리기 0.2초 — 되살린 build는 로컬 `load_build()` 결과와 같다.
+- 서버가 묶음에서 시작하는 경로(`RAG_SOURCE=bundle`)는 다음 PR에서 더한다. 지금은 묶음을 만들고 올리고 확인하는 도구까지다.
+
 ## 응답 (`POST /search`)
 
 | 칸 | 뜻 |
