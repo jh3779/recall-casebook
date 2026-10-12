@@ -72,7 +72,7 @@ def rule_unknown(text: str) -> bool:
 
 def llm(
     model: str, instructions: str, text: str, reasoning_effort: str | None = None
-) -> tuple[list[str] | None, float, int, int]:
+) -> tuple[list[str] | None, float, int, int, str | None]:
     from openai import OpenAI
     from pydantic import BaseModel
 
@@ -88,7 +88,10 @@ def llm(
         **({"reasoning": {"effort": reasoning_effort}} if reasoning_effort else {}),
     )
     got = rsp.output_parsed.cause_sentences if rsp.output_parsed else None  # None = 거부·해석 실패
-    return got, time.perf_counter() - t, rsp.usage.input_tokens, rsp.usage.output_tokens
+    used = getattr(
+        rsp, "model", None
+    )  # 응답이 알려 주는 실제 판본 — 요청 이름(별칭)과 다를 수 있다
+    return got, time.perf_counter() - t, rsp.usage.input_tokens, rsp.usage.output_tokens, used
 
 
 def pick_defect(n: int) -> list[dict]:
@@ -132,10 +135,11 @@ def run(
     data = provenance()
     items = pick_defect(n) if mode == "defect" else pick_unknown(n)
     instructions = DEFECT_INSTRUCTIONS if mode == "defect" else UNKNOWN_INSTRUCTIONS
-    rows, tin, tout = [], 0, 0
+    rows, tin, tout, used_models = [], 0, 0, set()
     for it in items:
-        got, sec, i, o = llm(model, instructions, it["text"], reasoning_effort)
+        got, sec, i, o, used = llm(model, instructions, it["text"], reasoning_effort)
         tin, tout = tin + i, tout + o
+        used_models.add(used)
         failed, got = got is None, got or []
         rows.append(
             {
@@ -153,6 +157,7 @@ def run(
         "mode": mode,
         "model": model,
         "reasoning_effort": reasoning_effort,
+        "response_models": sorted(m for m in used_models if m),
         "n": n,
         "seed": SEED,
         "instructions": instructions,

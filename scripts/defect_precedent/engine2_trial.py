@@ -137,7 +137,7 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(f"대상이 {len(picked)}건뿐이다")
 
     client = OpenAI()
-    rows, tokens_in, tokens_out = [], 0, 0
+    rows, tokens_in, tokens_out, used_models = [], 0, 0, set()
     for q, card, c in picked:
         t = time.perf_counter()
         rsp = client.responses.parse(
@@ -150,6 +150,7 @@ def main(argv: list[str] | None = None) -> None:
         secs = time.perf_counter() - t
         tokens_in += rsp.usage.input_tokens
         tokens_out += rsp.usage.output_tokens
+        used_models.add(getattr(rsp, "model", None))  # 응답이 알려 주는 실제 판본
         failed = rsp.output_parsed is None  # 거부·해석 실패 — "원인 없음"(빈 목록)과 따로 센다
         got = [] if failed else rsp.output_parsed.cause_sentences
         rows.append(
@@ -170,6 +171,7 @@ def main(argv: list[str] | None = None) -> None:
         "data": data,
         "model": a.model,
         "reasoning_effort": a.reasoning_effort,
+        "response_models": sorted(m for m in used_models if m),
         "n": a.n,
         "instructions": INSTRUCTIONS,
     }

@@ -316,7 +316,9 @@ def _fake_openai(monkeypatch, calls):
         calls.append(kw)
         parsed = kw["text_format"](cause_sentences=["x"])
         return SimpleNamespace(
-            output_parsed=parsed, usage=SimpleNamespace(input_tokens=3, output_tokens=1)
+            output_parsed=parsed,
+            usage=SimpleNamespace(input_tokens=3, output_tokens=1),
+            model="gpt-6-luna-2026-09-22",  # 응답이 알려 주는 실제 판본(요청 이름과 다를 수 있다)
         )
 
     client = SimpleNamespace(responses=SimpleNamespace(parse=parse))
@@ -413,6 +415,7 @@ def test_cause_trials_run_sends_the_effort_and_records_it(monkeypatch, tmp_path)
     assert calls[0]["model"] == "gpt-6-luna" and calls[0]["reasoning"] == {"effort": "none"}
     meta = json.loads(out.with_suffix(".meta.json").read_text())
     assert (meta["model"], meta["reasoning_effort"]) == ("gpt-6-luna", "none")
+    assert meta["response_models"] == ["gpt-6-luna-2026-09-22"]
 
 
 def test_engine2_run_sends_the_effort_and_records_it(monkeypatch, tmp_path):
@@ -438,3 +441,4 @@ def test_engine2_run_sends_the_effort_and_records_it(monkeypatch, tmp_path):
     assert calls[0]["model"] == "gpt-6-luna" and calls[0]["reasoning"] == {"effort": "none"}
     meta = json.loads(out.with_suffix(".meta.json").read_text())
     assert (meta["model"], meta["reasoning_effort"]) == ("gpt-6-luna", "none")
+    assert meta["response_models"] == ["gpt-6-luna-2026-09-22"]
