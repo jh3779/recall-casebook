@@ -432,6 +432,15 @@ def test_cmd_upload_records_only_after_the_public_file_matches(tmp_path, monkeyp
     assert s2.inserts == []
 
 
+def test_cmd_upload_sends_the_key_as_apikey_too(tmp_path, monkeypatch):
+    # 새 형식 Secret 키(sb_secret_…)는 JWT가 아니라 Authorization만 보내면 Storage가 400("Invalid Compact JWS")으로 거부한다
+    s = FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co")
+    bundle.main(["upload"])
+    (req,) = s.sent
+    assert req.get_header("Apikey") == "test-only-not-a-key"
+    assert req.get_header("Authorization") == "Bearer test-only-not-a-key"
+
+
 def test_cmd_upload_checks_the_local_bundle_before_sending(tmp_path, monkeypatch):
     s = FakeStore(tmp_path, monkeypatch, None, "https://x.supabase.co")
     _, other = _other_build_bundle(tmp_path / "o")

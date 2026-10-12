@@ -396,12 +396,15 @@ def cmd_upload(_a) -> None:
             "SUPABASE_URL이 https://로 시작하지 않는다 — 관리자 키를 암호화 없이 보내지 않는다"
         )
     url = f"{base}/storage/v1/object/{BUCKET}/{storage_path}"
+    key = _env("SUPABASE_SERVICE_ROLE_KEY")
     req = urllib.request.Request(
         url,
         data=path.read_bytes(),
         method="POST",
         headers={
-            "Authorization": f"Bearer {_env('SUPABASE_SERVICE_ROLE_KEY')}",
+            # 새 형식 Secret 키(sb_secret_…)는 JWT가 아니라 apikey 머리글이 있어야 받아 준다(Authorization만이면 400)
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
             "Content-Type": "application/x-tar",
             "x-upsert": "false",
         },
