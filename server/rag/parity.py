@@ -101,9 +101,14 @@ def main(argv: list[str] | None = None) -> None:
         import tempfile
         from pathlib import Path
 
-        from server.rag.bundle import load_bundle
+        from server.rag.bundle import load_bundle, sha256_file
 
-        loaded = load_bundle(Path(a.bundle), Path(tempfile.mkdtemp(prefix="parity_bundle_")))
+        bundle_path = Path(
+            a.bundle
+        )  # 로컬에서 만든 묶음을 재는 것이라 그 파일 자신의 sha256으로 연다(기록 대조는 서버 경로)
+        loaded = load_bundle(
+            bundle_path, Path(tempfile.mkdtemp(prefix="parity_bundle_")), sha256_file(bundle_path)
+        )
         if loaded.build.build_id != build.build_id:
             sys.exit(
                 f"묶음 build {loaded.build.build_id} ≠ 로컬 build {build.build_id} — 입력 대조는 로컬 파일로 하므로 같은 build여야 한다"

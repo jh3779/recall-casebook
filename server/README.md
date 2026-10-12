@@ -57,9 +57,12 @@ uv run --env-file .env python -m server.rag.bundle upload   # Storage 버킷 ser
 uv run --env-file .env python -m server.rag.bundle verify   # 공개 주소에서 받아 기록 sha256과 대조하고 되살려 본다
 ```
 
+- **Supabase Free 플랜은 파일 하나가 최대 50MB**(Pro 이상 500GB, 공식 문서 Storage › Limits) — 묶음(155.4MB)은 Free 플랜에서 올라가지 않는다. 우리 프로젝트는 Pro(사용자 답 2026-10-12) — 대시보드 Storage 설정의 **Global file size limit**를 묶음 크기(약 160MB) 이상으로 올린 뒤 `upload`를 실행한다.
 - 버킷 `serving-bundles`는 **공개 읽기**로 만든다(Supabase 대시보드 — 사용자 계정 작업). 들어 있는 것은 공개 NHTSA 자료에서 만든 값이고, 무결성은 DB `serving_bundles.bundle_sha256` 대조로 지킨다. 쓰기는 로컬의 `SUPABASE_SERVICE_ROLE_KEY`로만 한다.
+- 묶음을 여는 함수 `load_bundle`은 기록된 sha256을 인자로 받아 먼저 대조하고, tar 항목 이름·종류(일반 파일, `model/` 아래 상대 경로만), 필수 파일, 형식 판본, 파일별 해시, 카드 글 해시, 벡터 모양을 본다. `upload`는 로컬 묶음이 이 build와 같은지 본 뒤 올리고, 공개 주소의 실제 파일을 받아 sha256·build를 대조한 다음에만 DB에 기록한다. `SUPABASE_URL`이 `https://`가 아니면 멈춘다.
 - `serving_bundles` 기록은 (build, 모델, 묶음 형식 판본)마다 하나이고 한 번 쓰면 바꾸지 않는다 — 같은 조합의 다른 묶음을 올리려 하면 멈춘다. 묶음 형식(`bundle.py` `FORMAT`)을 바꾸면 새 기록이 된다. 같은 조합의 묶음을 고쳐 다시 만들어야 하면 `FORMAT`을 올린다 — 기록 행을 손으로 지우지 않는다.
 - 실측(2026-10-12, build `f1fe1843ed0f2c66`): 묶음 155.4MB(그중 모델 약 67MB·벡터 약 47MB), 만들기 13초, 되살리기 0.2초 — 되살린 build는 로컬 `load_build()` 결과와 같다.
+
 ### 서버를 묶음에서 띄우기 (`RAG_SOURCE=bundle`, DEC-050)
 
 ```bash
