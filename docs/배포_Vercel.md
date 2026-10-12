@@ -43,11 +43,11 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
 
 API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 로컬 파일을 읽는데 Git 연동 배포에는 그 데이터가 없고(원본 데이터는 저장소에 넣지 않는다 — AGENTS.md 7절), 벡터 사본을 저장소 경로에 쓰는데(`server/rag/embeddings.py:67-69`·`:155-165`) 실행 중 쓸 수 있는 곳은 `/tmp`뿐이다.
 
-시작(lifespan) 시간이 실행 시간 한도에 들어가는지는 문서에 없어 첫 배포에서 실측한다. 아래 "우리 서버" 열은 **지금 로컬 경로**를 잰 값이다 — 서빙 묶음 경로에서는 임베딩 모델·벡터·연결된 조사 요약이 `/tmp`로 받는 묶음(추정 약 150MB — 받은 파일과 풀어 쓴 모델 파일 약 67MB를 합쳐 약 220MB, `/tmp` 한도 500MB)에 들어가 함수 크기에서 빠지고, `FLAT_INV` 파싱도 없어진다. 묶음 경로 값은 첫 배포에서 다시 채운다.
+시작(lifespan) 시간이 실행 시간 한도에 들어가는지는 문서에 없어 첫 배포에서 실측한다. 아래 "우리 서버" 열은 **지금 로컬 경로**를 잰 값이다 — 서빙 묶음 경로에서는 임베딩 모델·벡터·연결된 조사 요약이 `/tmp`로 받는 묶음(추정 약 150MB — 받은 파일과 풀어 쓴 모델 파일 약 67MB를 합쳐 약 220MB, `/tmp` 한도 500MB)에 들어가 함수 크기에서 빠지고, `FLAT_INV` 파싱도 없어진다. 묶음 경로의 실측값은 3-1절에 채웠다(함수 크기 근사 약 210MB, 시작 최대 RSS 901MB, 첫 요청 12.8~16.1초).
 
 | 항목 | Vercel 제한(공식 문서, Fluid compute) | 우리 서버(로컬 측정, 2026-10-12) |
 |---|---|---|
-| 함수 크기 | Python 압축 전 500MB(큰 함수 Beta 5GB) | 의존성 약 194MB(macOS 휠 — Linux로 다시 잼) + 임베딩 모델 약 67MB |
+| 함수 크기 | Python 압축 전 500MB(큰 함수 Beta 5GB) | (로컬 경로, macOS) 의존성 약 194MB + 임베딩 모델 약 67MB — 묶음 경로 Vercel은 Linux 근사 약 210MB(모델은 묶음으로 `/tmp`에 받아 함수 크기에서 빠짐, 3-1절) |
 | 메모리 | Hobby 2GB·Pro 4GB | 시작 최대 RSS 약 0.9~1GB — 그중 `FLAT_INV` 파싱(`read_flat`)이 최대 약 665MB |
 | 실행 시간 | Hobby 300초 | 시작 8~10초(로컬 사본) / DB에서 벡터를 받으면 18~100초(`server/README.md` 기록)·24~100초(`server/rag/embeddings.py` 주석) — 같은 2026-10-10 집 회선 측정의 두 기록 |
 | 파일 쓰기 | `/tmp`만(최대 500MB) | 벡터 사본을 저장소 경로에 씀 → 바꿔야 함 |
@@ -88,4 +88,4 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 | CLI 업로드 | 1.7MB |
 | 탐침 차이(macOS arm 벡터 ↔ Vercel Linux x86 재계산) | 최대 4.30e-04(콜드 스타트 네 번 모두 같음) → 묶음 경로만 허용 차이 1e-3(`CROSS_MACHINE_ATOL`, DEC-051 ②), 같은 기계는 1e-4. 서버는 통과해도 `탐침 최대 차이 …`를 로그에 남긴다 — `vercel logs <배포 주소> --json`으로 분포를 모아 다시 판단 |
 | 시작 최대 RSS | **901MB**(Hobby 2GB 안) — 서버가 시작 끝에 `시작 최대 RSS …MB`를 로그로 남긴다 |
-| 함수 크기 | Vercel이 출력하지 않아 **근사로 잼**: Linux x86 컨테이너(`python:3.12-slim`, uv 0.10.11)에 `uv.lock`대로 개발 의존성 없이 설치한 site-packages **약 208MB**(onnxruntime 63·numpy 57·pillow 14·tokenizers 12·psycopg 11MB 등) + 코드 약 2MB ≈ **210MB**(한도 500MB의 약 42%, Vercel 번들 최적화 전 값) |
+| 함수 크기 | Vercel이 출력하지 않아 **근사로 잼**: Linux x86 컨테이너(`python:3.12-slim`, uv 0.10.11)에 `uv.lock`대로 개발 의존성 없이 설치한 site-packages **약 208MB**(onnxruntime 63·numpy 57·pillow 14·tokenizers 12·psycopg 11MB 등) + 코드 약 2MB ≈ **210MB**(한도 500MB의 약 42%, Vercel 번들 최적화 전 값 — 실제 Vercel 산출물 크기는 미측정). 잰 방법: `pyproject.toml`·`uv.lock`·`.python-version`을 임시 폴더에 복사해 `docker run --rm --platform linux/amd64 -v <폴더>:/src:ro python:3.12-slim sh -c 'pip install -q uv==0.10.11; cp -r /src /w && cd /w && UV_NO_CONFIG=1 uv sync --frozen --no-dev -q; du -sm .venv/lib/python3.12/site-packages'` + `du -sh server scripts/defect_precedent` |
