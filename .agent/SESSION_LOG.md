@@ -147,3 +147,4 @@
 - 2026-10-12: API Vercel 첫 배포 — rag_reader 생성, Production lg-cns-rag.vercel.app(#63 전 공개는 사용자 결정), 탐침 허용 1e-3(Linux 차이 4.30e-04)·UV_NO_CONFIG, 749문항 shown_any Vercel 0.545·로컬 0.543, 첫 요청 13.2초 (DEC-051)
 - 2026-10-12: 체크포인트 — PR C(feat/vercel-deploy) push까지, PR 생성 전 사용자 요청으로 중단
 - 2026-10-12: PR #102 리뷰 반영 — 탐침 1e-3은 묶음 경로만(같은 기계 1e-4), 통과 때 차이·시작 최대 RSS(Vercel 901MB) 로그, maxDuration 60, Vercel 통과 기준을 shown_any 차이·세 갈래 기록(706·28·15)으로 대체(사용자 결정)
+- 2026-10-13: #102 병합(main 1a43791), #60은 우지훈이 정리·API 연동 맡기로(사용자 결정), 디자인 인터뷰로 검색 전용 화면 설계 v0.1(docs/design-system/), 3D 모델 .glb를 우지훈 소유 쇼룸 artifact의 gltf.json에서 재현(sha256 일치)

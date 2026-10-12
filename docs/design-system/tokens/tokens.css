@@ -1,0 +1,66 @@
+/* 결함 선례 찾기 도우미 — 디자인 토큰 v0.1 (2026-10-13)
+   정본 설명: docs/design-system/tokens/*.md. 이름은 쇼룸 frontend/src/styles.css와 맞췄다.
+   검색 화면은 밝은 테마 하나. 쇼룸의 결함 투시(body.xray)는 쇼룸 styles.css가 따로 정의한다. */
+:root {
+  color-scheme: light;
+
+  /* 바탕·글자·선 (쇼룸과 같은 이름) */
+  --bg-1: #f5f6f8;
+  --bg-2: #d9dee5;
+  --ink: #15181d;          /* 17.79:1 */
+  --ink-2: #5b6370;        /* 6.06:1 */
+  --ink-3: #636b78;        /* 5.38:1 — 쇼룸 #8c94a1(3.06:1)보다 진하게 */
+  --line: rgba(21, 24, 29, 0.1);
+  --line-strong: rgba(21, 24, 29, 0.18);
+  --glass: rgba(255, 255, 255, 0.72);
+  --surface: #ffffff;
+  --surface-2: #f0f3f7;
+
+  /* 강조: 남색 */
+  --accent: #1f3a68;       /* 11.27:1 */
+  --accent-2: #2c5aa0;     /* 6.82:1 */
+  --accent-soft: #e9eef6;
+  --on-accent: #ffffff;
+
+  /* 원인 상태 3단계 — 글이 있는가만 (판정 색 없음) */
+  --cause-text-line: #1f3a68;
+  --cause-stated-bg: #eef0f3;
+  --cause-stated-line: #d5dae1;
+  --cause-none-line: #b7bec9;
+
+  /* 꼬리표 밑줄 (글자 색은 바꾸지 않음) */
+  --flag-line: #3d4f6e;
+
+  /* 쇼룸 전용 — 검색 화면에 쓰지 않음 */
+  --showroom-accent: #ff5a1f;
+
+  /* 글꼴 */
+  --font-ui: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-source: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-id: "JetBrains Mono", ui-monospace, Consolas, monospace;
+
+  /* 크기 */
+  --fs-xs: 12px;
+  --fs-s: 13px;
+  --fs-m: 14px;
+  --fs-l: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 28px;
+  --fs-source: 15px;
+
+  /* 간격 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* 모서리·그림자·초점 */
+  --radius: 18px;
+  --radius-s: 10px;
+  --radius-pill: 999px;
+  --shadow-panel: 0 1px 2px rgba(21, 24, 29, 0.06), 0 8px 24px rgba(21, 24, 29, 0.06);
+  --focus: 0 0 0 3px rgba(44, 90, 160, 0.35);
+}
