@@ -7,6 +7,8 @@
     uv run --with openai --env-file .env python -m scripts.defect_precedent.cause_trials unknown [--model gpt-6-luna] [--reasoning-effort none] --n 150 --out <결과.jsonl> --sheet <표시용.csv>
     # B 채점: 사람이 표시한 시트로 정확도를 잰다 (API 호출 없음)
     uv run python -m scripts.defect_precedent.cause_trials score --sheet <표시한.csv> <결과.jsonl> [<결과.jsonl> ...]
+    # B 규칙만 채점(DEC-056 — 모델 결과 없이 시트 원문에 지금의 UNKNOWN_RE를 적용)
+    uv run python -m scripts.defect_precedent.cause_trials score-rule --sheet <표시한.csv>
 
 - A 대상: 시험 질문마다 BM25(v0) 1위 리콜 중 573 원인 칸이 **없는**(`filled`가 아닌) 카드를 앞에서부터 n건 — engine2_trial과 같은 흐름.
   결함 설명은 리콜 flat 파일의 제조사 서술이다. 조사 요약(ODI)은 시험 질문의 출처라 쓰지 않는다(누수, AGENTS.md 5-2).
@@ -28,6 +30,7 @@ import sys
 import time
 from pathlib import Path
 
+from scripts.defect_precedent import rules
 from scripts.defect_precedent.bm25_baseline import BM25, tokenize
 from scripts.defect_precedent.nhtsa import OUT_DIR
 from scripts.defect_precedent.retrieval_compare import card_text, provenance, read_jsonl
@@ -37,7 +40,7 @@ SEED = 20261008
 # 추론 모델(gpt-6-luna 등)의 reasoning.effort 허용 값 — OpenAI 모델 문서(developers.openai.com/api/docs/models/gpt-6-luna, 2026-10-12 확인)
 REASONING_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
 # 기본 모델 — 사용자 지정 2026-10-12(운영 선택, 품질 우위 근거 아님 — docs/실험_LLM_Luna비교.md 4절).
-# 정확도는 사람 표시 뒤 채점으로 확인한다.
+# 모델 정확도의 사람 평가는 하지 않기로 했다(DEC-056) — 기본값은 품질 확인 없이 남은 운영 선택이다.
 DEFAULT_MODEL, DEFAULT_EFFORT = "gpt-6-luna", "none"
 
 
@@ -251,8 +254,8 @@ def text_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
-def score(sheet: Path, results: list[Path]) -> None:
-    """표시한 시트와 결과가 같은 원문·같은 판본인지 확인한 뒤 잰다(서비스 원칙 4)."""
+def read_sheet(sheet: Path) -> tuple[list[dict], dict[str, str], dict]:
+    """표시한 시트를 검사해 (행, campaign→label, 시트 메타)를 돌려준다 — score·score_rule이 함께 쓴다."""
     with sheet.open(encoding="utf-8-sig") as f:  # 엑셀이 BOM을 붙여 저장해도 읽는다
         sheet_rows = list(csv.DictReader(f))
     edited = [r["campaign"] for r in sheet_rows if text_sha(r["cause_text"]) != r["text_sha256"]]
@@ -262,7 +265,6 @@ def score(sheet: Path, results: list[Path]) -> None:
     if unnamed:
         sys.exit(f"labeler_id가 빈 행 {len(unnamed)}개 (AGENTS.md 5-2): {unnamed[:5]}")
     labels = {r["campaign"]: r["label"].strip() for r in sheet_rows}
-    shown = {r["campaign"]: r["text_sha256"] for r in sheet_rows}
     mpath = sheet_meta_path(sheet)
     if not mpath.exists():
         sys.exit(
@@ -276,15 +278,46 @@ def score(sheet: Path, results: list[Path]) -> None:
         sys.exit(
             "시트의 행·원문 해시가 시트를 만들 때와 다르다 — 표본이 바뀐 시트는 채점하지 않는다"
         )
-    now = sheet_meta[
-        "causes_sha256"
-    ]  # 시트를 만든 판본 — 로컬 파일이 바뀌어도 그 시트·결과끼리 채점한다
     bad = {k: v for k, v in labels.items() if v not in ("stated", "unknown", "mixed")}
     if bad:
         sys.exit(f"label이 stated/unknown/mixed가 아닌 행 {len(bad)}개: {list(bad)[:5]}")
-    out = {"n": len(labels)} | {
+    return sheet_rows, labels, sheet_meta
+
+
+def label_counts(labels: dict[str, str]) -> dict:
+    return {"n": len(labels)} | {
         v: sum(x == v for x in labels.values()) for v in ("unknown", "mixed")
     }
+
+
+def score_rule(sheet: Path) -> None:
+    """서비스 규칙만 잰다(DEC-056) — 시트 원문에 지금의 `UNKNOWN_RE`를 적용하고, 모델 결과는 읽지도 계산하지도 않는다."""
+    sheet_rows, labels, sheet_meta = read_sheet(sheet)
+    pred = [rule_unknown(r["cause_text"]) for r in sheet_rows]
+    gold = [labels[r["campaign"]] == "unknown" for r in sheet_rows]
+    gold_any = [labels[r["campaign"]] in ("unknown", "mixed") for r in sheet_rows]
+    out = label_counts(labels) | {
+        "rule": confusion(pred, gold),
+        "rule_vs_unknown_or_mixed": confusion(pred, gold_any),
+        "verified": sheet_meta,
+        # 어느 규칙으로 쟀는지 — 표시 전 지문(DEC-056)과 다르면 재평가로 보고한다
+        "rule_basis": {
+            "rules_py_sha256": hashlib.sha256(Path(rules.__file__).read_bytes()).hexdigest(),
+            "unknown_re": UNKNOWN_RE.pattern,
+            "flags": UNKNOWN_RE.flags,
+        },
+    }
+    print(json.dumps(out, ensure_ascii=False, indent=1))
+
+
+def score(sheet: Path, results: list[Path]) -> None:
+    """표시한 시트와 결과가 같은 원문·같은 판본인지 확인한 뒤 잰다(서비스 원칙 4)."""
+    sheet_rows, labels, sheet_meta = read_sheet(sheet)
+    shown = {r["campaign"]: r["text_sha256"] for r in sheet_rows}
+    now = sheet_meta[
+        "causes_sha256"
+    ]  # 시트를 만든 판본 — 로컬 파일이 바뀌어도 그 시트·결과끼리 채점한다
+    out = label_counts(labels)
     for path in results:
         rows = [json.loads(line) for line in path.read_text("utf-8").splitlines() if line.strip()]
         if {r["campaign"] for r in rows} != set(labels):
@@ -304,7 +337,7 @@ def score(sheet: Path, results: list[Path]) -> None:
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("mode", choices=["defect", "unknown", "score"])
+    p.add_argument("mode", choices=["defect", "unknown", "score", "score-rule"])
     p.add_argument("results", nargs="*", type=Path)
     p.add_argument("--model", help=f"기본 {DEFAULT_MODEL}(추론 강도 {DEFAULT_EFFORT})")
     p.add_argument(
@@ -320,6 +353,13 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     a = parser().parse_args(argv)
+    if a.mode == "score-rule":
+        if not a.sheet or a.results:
+            sys.exit(
+                "score-rule에는 --sheet만 준다 — 결과 파일을 주면 모델을 채점하게 된다(DEC-056)"
+            )
+        score_rule(a.sheet)
+        return
     if a.mode == "score":
         if not (a.sheet and a.results):
             sys.exit("score에는 --sheet와 결과 파일이 필요하다")

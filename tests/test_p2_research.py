@@ -442,3 +442,55 @@ def test_engine2_run_sends_the_effort_and_records_it(monkeypatch, tmp_path):
     meta = json.loads(out.with_suffix(".meta.json").read_text())
     assert (meta["model"], meta["reasoning_effort"]) == ("gpt-6-luna", "none")
     assert meta["response_models"] == ["gpt-6-luna-2026-09-22"]
+
+
+def test_cause_trials_score_rule_needs_no_result_file_and_prints_rule_only(tmp_path, capsys):
+    import csv
+    import json
+
+    from scripts.defect_precedent import cause_trials as ct
+
+    rows = [
+        ("A", "The root cause has not been determined.", "unknown"),
+        ("B", "Manufacturing error.", "stated"),
+        ("C", "Supplier continues to investigate; likely a weld defect.", "mixed"),
+    ]
+    sheet = tmp_path / "u.csv"
+    with sheet.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["campaign", "cause_text", "text_sha256", "label", "labeler_id", "note"])
+        for c, t, lab in rows:
+            w.writerow([c, t, ct.text_sha(t), lab, "L1", ""])
+    meta = {
+        "causes_sha256": "c1",
+        "sample_sha256": ct.sample_sha([(c, ct.text_sha(t)) for c, t, _ in rows]),
+    }
+    ct.sheet_meta_path(sheet).write_text(json.dumps(meta), encoding="utf-8")
+
+    # 결과 파일 없이 시트 원문에 지금 규칙을 적용한다(DEC-056)
+    ct.main(["score-rule", "--sheet", str(sheet)])
+    out = json.loads(capsys.readouterr().out)
+    assert set(out) == {
+        "n",
+        "unknown",
+        "mixed",
+        "rule",
+        "rule_vs_unknown_or_mixed",
+        "verified",
+        "rule_basis",
+    }
+    assert out["rule_basis"]["unknown_re"] == ct.UNKNOWN_RE.pattern  # 어느 규칙으로 쟀는지 남긴다
+    assert len(out["rule_basis"]["rules_py_sha256"]) == 64
+    assert out["rule"] == ct.confusion([True, False, True], [True, False, False])
+    assert out["rule_vs_unknown_or_mixed"] == ct.confusion([True, False, True], [True, False, True])
+    assert out["verified"] == meta
+
+    # 결과 파일을 함께 주면 모델을 채점하게 되므로 거부한다
+    with pytest.raises(SystemExit, match="결과 파일"):
+        ct.main(["score-rule", "--sheet", str(sheet), str(tmp_path / "r.jsonl")])
+    # 시트 검사는 score와 같다 — 원문 셀이 바뀌면 멈춘다
+    sheet.write_text(
+        sheet.read_text("utf-8").replace("Manufacturing error.", "Manufacturing"), "utf-8"
+    )
+    with pytest.raises(SystemExit, match="cause_text"):
+        ct.main(["score-rule", "--sheet", str(sheet)])
