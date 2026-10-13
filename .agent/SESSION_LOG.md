@@ -191,3 +191,4 @@
 - 2026-10-13: PR #117에 main(#113 병합 018860f) 합침 — DECISIONS·HANDOFF·SESSION_LOG 충돌 해결(DEC-056 뒤 DEC-057), 작업 F 번호 DEC-058로(codex 2곳·HANDOFF), DEC-048 ① Superseded by DEC-057 표시
 - 2026-10-13: PR #117 Codex(f3051ad3·79c2ad9a)·review-agent(79c2ad9) 반영 — WAF 규칙을 모든 경로로(/health·없는 주소 폭주), WAF 429 CORS 실측을 Production 임시 한도(10초·5회)·첫 429 검사·429 없으면 실패로, 시연 날 순서(재배포는 전날, 워밍업은 마지막), 로컬 시연을 대체 수단으로 표시, create_app 기본 경로의 환경변수 상한 시험 추가
 - 2026-10-13: PR #117 review-agent(0dbb97a) 반영 — 배포 뒤 앱 상한 확인 절차(61번째 429·다른 네트워크 200)와 VERCEL 시스템 환경변수 노출 의존 기록, WAF 실측 스크립트 파일 이름 자릿수·이전 파일 삭제·시연 날 금지와 원복 확인
+- 2026-10-13: PR #117 Codex(0dbb97a7) 반영 — WAF 확인에 /health·없는 주소 차단 검사(429 없으면 실패), 첫 429의 본문으로 앱/WAF 구분, 결과 파일은 임시 폴더, WAF는 평소·시연 모두 Default(429)(시연 직전 Log 전환 삭제)

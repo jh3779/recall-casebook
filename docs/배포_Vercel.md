@@ -110,31 +110,35 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 1. 프로젝트 `lg-cns-rag` → Firewall → Configure → New Rule.
 2. 이름 `api-rate-limit`, 조건: Request Path가 `/`로 시작한다(모든 경로 — 규칙이 1개뿐이라 `/search`만 걸면 `/health`·없는 주소 폭주를 못 막는다).
 3. Then: Rate Limit, Fixed Window, 창 60초, 한도 120, 키 IP, 응답 기본(429) → Save → Review Changes → Publish.
-4. 처음 며칠은 Action을 **Log**로 두고 트래픽을 본 뒤 Default(429)로 바꿔도 된다.
+4. **평소·시연 상태는 Action Default(429)**다. Log는 요청을 기록만 하고 막지 않아 안전망이 꺼진다 — 처음 트래픽을 보려고 Log로 둘 수는 있지만 시연 전날까지 Default(429)로 되돌리고, 최종 설정이 "모든 경로·고정 창 60초·한도 120·키 IP·Default(429)"인지 대시보드에서 다시 확인한다.
 
 **앱 상한 확인 (배포 뒤 한 번, WAF는 평소 설정 그대로)** — 앱 상한이 Vercel 위에서 실제로 켜졌고 IP별로 갈리는지 본다(시험은 `VERCEL=1`을 가정하므로 배포에서만 확인된다).
-1. 같은 네트워크에서 `POST /search`를 61번 연달아 보낸다(WAF 한도 120 안):
+1. 같은 네트워크에서 `POST /search`를 61번 연달아 보낸다(WAF 한도 120 안). 결과 파일은 임시 폴더에 둔다:
    ```bash
-   rm -f a??.txt; for i in $(seq -w 1 61); do curl -s -o /dev/null -D a$i.txt -w "$i %{http_code}\n" -X POST -H "content-type: application/json" -d '{"question":"brake fluid leak"}' https://lg-cns-rag.vercel.app/search; done
+   T=$(mktemp -d); for i in $(seq -w 1 61); do curl -s -o "$T/a$i.body" -D "$T/a$i.head" -w "$i %{http_code}\n" -X POST -H "content-type: application/json" -d '{"question":"brake fluid leak"}' https://lg-cns-rag.vercel.app/search; done
+   grep -iE "^HTTP/[0-9.]+ 429|^retry-after" "$T/a61.head"; cat "$T/a61.body"; echo; rm -rf "$T"
    ```
-   61번째(`a61.txt`)가 429이고 `retry-after`가 있어야 한다. 60번째까지 모두 200이 아니면(더 일찍 429) 여러 사람이 한 주소로 묶였을 수 있다 — 시스템 환경변수 노출을 확인한다. 61번째도 200이면 앱 상한이 꺼져 있다(경로가 `/search`로 잡히지 않는 등) — 배포 로그를 본다.
+   61번째가 429이고 `retry-after`와 한국어 `detail`("호출이 너무 잦습니다…")이 있어야 한다. 60번째까지 중 429가 있으면 여러 사람이 한 주소로 묶였을 수 있다 — 시스템 환경변수 노출을 확인한다. 61번째도 200이면 앱 상한이 꺼져 있다(경로가 `/search`로 잡히지 않는 등) — 배포 로그를 본다.
 2. 바로 다른 네트워크(휴대폰 핫스팟)에서 1번 보내 200인지 본다 — IP별로 갈린다는 뜻이다.
 3. 결과(날짜·61번째 코드·다른 네트워크 코드)를 DEC-057에 적는다. 1분 기다리면 풀린다.
 
-**WAF 429의 CORS 머리글 확인 (배포 뒤 한 번, Production에서)** — **시연 날이나 다른 사람이 쓰는 시간에는 하지 않는다. 3번 원복을 확인하기 전에는 끝내지 않는다**(공개 API가 막힌 채 남는다). — Preview는 Production 환경변수가 없고(위 환경변수 표는 Production만) 배포 보호에 걸릴 수 있으며 WAF 규칙 적용 여부도 문서로 확인되지 않아, 재배포 없이 Production에서 잰다.
+**WAF 확인 — 모든 경로 차단과 WAF 429의 CORS 머리글 (배포 뒤 한 번, Production에서)** — **시연 날이나 다른 사람이 쓰는 시간에는 하지 않는다. 4번 원복을 확인하기 전에는 끝내지 않는다**(공개 API가 막힌 채 남는다). Preview는 Production 환경변수가 없고(위 환경변수 표는 Production만) 배포 보호에 걸릴 수 있으며 WAF 규칙 적용 여부도 문서로 확인되지 않아, 재배포 없이 Production에서 잰다.
 1. WAF 규칙을 임시로 **창 10초·한도 5**, Action **Default(429)**로 바꿔 Publish한다(앱 상한 60보다 작아야 WAF가 먼저 막는다).
-2. 같은 IP에서 짧게 연달아 보내 **처음 나온 429**를 저장한다 — 마지막 응답이 아니라 첫 429를 본다:
+2. 앱이 세지 않는 `/health`와 없는 주소에서도 WAF가 막는지 본다 — 둘 중 하나라도 429가 없으면 실패(종료 코드 1)다. 규칙 조건이 `/search`만으로 잘못 남았으면 여기서 걸린다:
    ```bash
-   rm -f h??.txt; for i in $(seq -w 1 15); do curl -s -o /dev/null -D h$i.txt -w "%{http_code}\n" -X POST -H "Origin: http://localhost:5173" -H "content-type: application/json" -d '{"question":"brake fluid leak"}' https://lg-cns-rag.vercel.app/search; done
-   first=$(grep -lE "^HTTP/[0-9.]+ 429" h??.txt | head -1)
-   if [ -z "$first" ]; then echo "실패 — 429가 한 번도 안 나옴(규칙 Action·한도·Publish 확인)"; else echo "첫 429: $first"; grep -i "access-control-allow-origin" "$first" || echo "WAF 429에 CORS 머리글 없음"; fi
+   bad=0; for p in /health "/no-such-path-$(date +%s)"; do got=$(for i in $(seq 1 12); do curl -s -o /dev/null -w "%{http_code}\n" "https://lg-cns-rag.vercel.app$p"; done | grep -c '^429$'); echo "$p: 429 $got회"; [ "$got" -gt 0 ] || bad=1; done; [ "$bad" -eq 0 ] || { echo "실패 — 모든 경로 조건 확인"; false; }
    ```
-   앱의 429는 본문이 한국어 `detail`("호출이 너무 잦습니다…")이라 구분된다 — 위 설정에서는 WAF가 먼저 막는다.
-3. 규칙을 원래대로(창 60초·한도 120) 되돌리고 Publish한다.
-4. 결과(머리글 있음/없음, 날짜)를 이 절과 DEC-057에 적는다. 없으면 화면이 WAF 429를 '연결 실패(CORS)'로 안내하므로 작업 F에서 그 경우를 따로 안내한다.
+3. `/search`에서 **처음 나온 429**의 머리글과 본문을 함께 저장해, 한국어 `detail`이 없는(앱이 아닌) WAF 429인지 확인하고 CORS 머리글을 본다:
+   ```bash
+   sleep 11; T=$(mktemp -d); for i in $(seq -w 1 15); do curl -s -o "$T/h$i.body" -D "$T/h$i.head" -w "%{http_code}\n" -X POST -H "Origin: http://localhost:5173" -H "content-type: application/json" -d '{"question":"brake fluid leak"}' https://lg-cns-rag.vercel.app/search; done
+   first=$(grep -lE "^HTTP/[0-9.]+ 429" "$T"/h??.head | head -1)
+   if [ -z "$first" ]; then echo "실패 — 429가 한 번도 안 나옴(규칙 Action·한도·Publish 확인)"; else b="${first%.head}.body"; grep -q "호출이 너무 잦습니다" "$b" && echo "앱 429임 — WAF 한도가 앱보다 작은지 확인" || { echo "첫 WAF 429: $first"; grep -i "access-control-allow-origin" "$first" || echo "WAF 429에 CORS 머리글 없음"; }; fi; rm -rf "$T"
+   ```
+4. 규칙을 원래대로(모든 경로·창 60초·한도 120·Default(429)) 되돌리고 Publish한 뒤 대시보드에서 값을 다시 확인한다.
+5. 결과(모든 경로 차단 여부, WAF 429의 CORS 머리글 있음/없음, 날짜)를 이 절과 DEC-057에 적는다. 머리글이 없으면 화면이 WAF 429를 '연결 실패(CORS)'로 안내하므로 작업 F에서 그 경우를 따로 안내한다.
 
 **공개 주소로 시연하는 날 (DEC-057 ④)**
 1. **시연 전날까지**: 앱 상한을 올려야 하면 `RATE_LIMIT_PER_MINUTE`를 바꿔 다시 배포한다 — 환경변수 변경은 재배포가 필요하고 재배포는 새 인스턴스라 워밍업이 사라지므로 시연 당일에 하지 않는다. 화면(Vercel)에서 배포 주소가 CORS에 들어 있는지도 한 번 호출해 본다(작업 F 6단계에서 `ALLOWED_ORIGINS`에 추가).
-2. 시연 직전(필요할 때만): WAF 규칙을 Log로 바꾼다 — 재배포가 필요 없다.
+2. 시연 날 WAF는 **Default(429) 그대로** 둔다 — Log로 바꾸면 폭주 안전망이 꺼진다. 시연장이 공유 IP라 상한이 걱정되면 전날까지 한도를 조정하거나, 공개 주소가 막히면 1절의 로컬 포트를 대체 수단으로 쓴다.
 3. **마지막 단계 — 시연 5분 전**: `curl -s https://lg-cns-rag.vercel.app/health`와 예시 검색 1회를 부른다 — 새 인스턴스가 서빙 묶음을 받아 시작하는 시간을 미리 쓴다. 중간에 인스턴스가 내려가면 첫 요청이 다시 느릴 수 있다(화면은 3초 뒤 '서버 시작 중' 안내, 60초 뒤 취소).
 4. 429 화면 처리(안내 문구와 `Retry-After` 동안 [다시 시도] 비활성)는 작업 F에서 한다 — 그 전에는 "서버 오류 (429)"로 보인다.
