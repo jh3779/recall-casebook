@@ -103,7 +103,7 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 
 - 앱 60 < WAF 120인 이유: WAF가 막은 429에 CORS 머리글이 붙는지 Vercel 문서에 없다. 정상 사용은 앱의 429(머리글 있음)가 먼저 나가게 한다. WAF는 모든 경로를 세므로 검색 60회에 CORS 사전 요청(OPTIONS)·`/health`가 더해진다 — 사전 요청은 브라우저가 `Access-Control-Max-Age`(Starlette 기본 600초) 동안 재사용해 검색마다 붙지 않는다.
 - 앱 카운터는 인스턴스별 메모리라 인스턴스 수만큼 느슨하다. 새 인스턴스마다 서빙 묶음(약 155MB)을 받으므로 폭주하면 Supabase 전송량이 늘 수 있다. WAF 카운터는 지역별로 센다(Vercel 문서).
-- 클라이언트 IP는 Vercel 위에서만 `x-forwarded-for`의 첫 값을 쓴다(Vercel이 외부에서 온 값을 덮어써 위조할 수 없다). 그 밖의 환경은 소켓 주소를 쓴다.
+- 클라이언트 IP는 Vercel 위에서만 `x-forwarded-for`의 첫 값을 쓴다(Vercel이 외부에서 온 값을 덮어써 위조할 수 없다). 그 밖의 환경은 소켓 주소를 쓴다. "Vercel 위"는 환경변수 `VERCEL`로 안다 — 이 값은 프로젝트 설정의 **시스템 환경변수 노출(Automatically expose System Environment Variables)**이 켜져 있어야 생긴다(Vercel 문서). 꺼져 있으면 모든 방문자가 한 주소로 묶여 함께 1분 60회에서 막히므로 아래 "앱 상한 확인"으로 배포 뒤 확인한다.
 - 시연장이 공유 IP면 호출이 합산된다.
 
 **WAF 규칙 설정 (사용자 계정 작업, 대시보드 문구는 달라질 수 있다)**
@@ -112,12 +112,21 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 3. Then: Rate Limit, Fixed Window, 창 60초, 한도 120, 키 IP, 응답 기본(429) → Save → Review Changes → Publish.
 4. 처음 며칠은 Action을 **Log**로 두고 트래픽을 본 뒤 Default(429)로 바꿔도 된다.
 
-**WAF 429의 CORS 머리글 확인 (배포 뒤 한 번, Production에서)** — Preview는 Production 환경변수가 없고(위 환경변수 표는 Production만) 배포 보호에 걸릴 수 있으며 WAF 규칙 적용 여부도 문서로 확인되지 않아, 재배포 없이 Production에서 잰다.
+**앱 상한 확인 (배포 뒤 한 번, WAF는 평소 설정 그대로)** — 앱 상한이 Vercel 위에서 실제로 켜졌고 IP별로 갈리는지 본다(시험은 `VERCEL=1`을 가정하므로 배포에서만 확인된다).
+1. 같은 네트워크에서 `POST /search`를 61번 연달아 보낸다(WAF 한도 120 안):
+   ```bash
+   rm -f a??.txt; for i in $(seq -w 1 61); do curl -s -o /dev/null -D a$i.txt -w "$i %{http_code}\n" -X POST -H "content-type: application/json" -d '{"question":"brake fluid leak"}' https://lg-cns-rag.vercel.app/search; done
+   ```
+   61번째(`a61.txt`)가 429이고 `retry-after`가 있어야 한다. 60번째까지 모두 200이 아니면(더 일찍 429) 여러 사람이 한 주소로 묶였을 수 있다 — 시스템 환경변수 노출을 확인한다. 61번째도 200이면 앱 상한이 꺼져 있다(경로가 `/search`로 잡히지 않는 등) — 배포 로그를 본다.
+2. 바로 다른 네트워크(휴대폰 핫스팟)에서 1번 보내 200인지 본다 — IP별로 갈린다는 뜻이다.
+3. 결과(날짜·61번째 코드·다른 네트워크 코드)를 DEC-057에 적는다. 1분 기다리면 풀린다.
+
+**WAF 429의 CORS 머리글 확인 (배포 뒤 한 번, Production에서)** — **시연 날이나 다른 사람이 쓰는 시간에는 하지 않는다. 3번 원복을 확인하기 전에는 끝내지 않는다**(공개 API가 막힌 채 남는다). — Preview는 Production 환경변수가 없고(위 환경변수 표는 Production만) 배포 보호에 걸릴 수 있으며 WAF 규칙 적용 여부도 문서로 확인되지 않아, 재배포 없이 Production에서 잰다.
 1. WAF 규칙을 임시로 **창 10초·한도 5**, Action **Default(429)**로 바꿔 Publish한다(앱 상한 60보다 작아야 WAF가 먼저 막는다).
 2. 같은 IP에서 짧게 연달아 보내 **처음 나온 429**를 저장한다 — 마지막 응답이 아니라 첫 429를 본다:
    ```bash
-   for i in $(seq 1 15); do curl -s -o /dev/null -D h$i.txt -w "%{http_code}\n" -X POST -H "Origin: http://localhost:5173" -H "content-type: application/json" -d '{"question":"brake fluid leak"}' https://lg-cns-rag.vercel.app/search; done
-   first=$(grep -lE "^HTTP/[0-9.]+ 429" h*.txt | head -1)
+   rm -f h??.txt; for i in $(seq -w 1 15); do curl -s -o /dev/null -D h$i.txt -w "%{http_code}\n" -X POST -H "Origin: http://localhost:5173" -H "content-type: application/json" -d '{"question":"brake fluid leak"}' https://lg-cns-rag.vercel.app/search; done
+   first=$(grep -lE "^HTTP/[0-9.]+ 429" h??.txt | head -1)
    if [ -z "$first" ]; then echo "실패 — 429가 한 번도 안 나옴(규칙 Action·한도·Publish 확인)"; else echo "첫 429: $first"; grep -i "access-control-allow-origin" "$first" || echo "WAF 429에 CORS 머리글 없음"; fi
    ```
    앱의 429는 본문이 한국어 `detail`("호출이 너무 잦습니다…")이라 구분된다 — 위 설정에서는 WAF가 먼저 막는다.
