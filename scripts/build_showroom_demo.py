@@ -62,7 +62,7 @@ def sha256(path: Path) -> str:
 
 def verify_inputs(raw_dir: Path, card_file: Path, build_file: Path) -> dict:
     """build.json이 가리키는 판본과 실제 입력 파일이 같은지 확인하고 판본 정보를 돌려준다."""
-    build = json.loads(build_file.read_text())
+    build = json.loads(build_file.read_text(encoding="utf-8"))
     manifest_file = raw_dir / "manifest.json"
     checks = [
         ("원본 manifest", sha256(manifest_file), build["raw_manifest_sha256"]),
@@ -70,7 +70,11 @@ def verify_inputs(raw_dir: Path, card_file: Path, build_file: Path) -> dict:
     ]
     flat_sha = sha256(raw_dir / FLAT)
     checks.append(
-        ("flat ZIP", flat_sha, json.loads(manifest_file.read_text())["files"][FLAT]["sha256"])
+        (
+            "flat ZIP",
+            flat_sha,
+            json.loads(manifest_file.read_text(encoding="utf-8"))["files"][FLAT]["sha256"],
+        )
     )
     for name, actual, expected in checks:
         if actual != expected:
@@ -91,7 +95,8 @@ def build(raw_dir: Path, card_file: Path, build_file: Path) -> dict[str, bytes]:
     version = verify_inputs(raw_dir, card_file, build_file)
     rows = read_flat(raw_dir / FLAT, RCL_COLS)
     cards = {
-        c["campno"]: c for c in map(json.loads, card_file.read_text().rstrip("\n").split("\n"))
+        c["campno"]: c
+        for c in map(json.loads, card_file.read_text(encoding="utf-8").rstrip("\n").split("\n"))
     }
     output, evidence = {}, {}
     for key, (make, model, first, last) in SCOPES.items():

@@ -12,7 +12,7 @@ _갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105가 main�
 
 ## Completed
 
-- 디자인 시스템 v1.0 검색 화면·API 연결·쇼룸 분리(D·E)는 `feat/search-view`에 커밋돼 있다(`a4963e2`, DEC-052·053). 원격(2026-10-13 조회): #104 OPEN `3f27861`(Codex 지시문에 "D·E를 #105 하나로" 한 줄 추가), #105 OPEN·초안 `5f258f1`(리터치분은 아직 커밋 전), #60 CLOSED(#105로 대체 안내 코멘트 게시, 브랜치 `feat/frontend-showroom`은 남김).
+- 디자인 시스템 v1.0 검색 화면·API 연결·쇼룸 분리(D·E)는 `feat/search-view`에 커밋돼 있다(`a4963e2`, DEC-052·053). 리터치(`afa8538`·`b1562e0`), main 합치기(`3390dbb`), 설계 최종본 맞춤(`49230e3`), 쇼룸 판본 검증(`ab18c14`), 리뷰 반영(`4ec3e9e` 이후)도 모두 커밋돼 있다. 원격(2026-10-13): #104 **병합**(`ecc2c4a`), #105 OPEN·초안(병합 게이트 진행 중), #60 CLOSED(#105로 대체, 브랜치 `feat/frontend-showroom`은 남김).
 - 쇼룸은 **쏘나타 YF 2014 모델 + 쏘렌토 2022 모델**로 교체했다. 회전 중심 수직축 고정, 원본 재질·법선 보존, 쏘렌토 바퀴 복원, 쏘나타 유리·바닥 정렬을 반영했다.
 - 실제 NHTSA 차량 리콜은 **SONATA 2011–2014 18건 + SORENTO 2021–2023 8건 = 26건**이다(2026-10-06 사본, 차종·연식 일치 및 CAMPNO 중복 제거). 원문 대조 26/26 일치. 재생성 도구와 입력·모델 지문을 기록했다.
 - 사용자가 허용한 **추정 부품은 설명용 3D 도형·위치에만 적용**했다. 투시·범례·포인트·패널에서 추정을 밝힌다. 리콜 번호·원인·공급사는 추정하지 않는다. 검색 API·RAG·평가셋 변경은 없다.
@@ -33,7 +33,7 @@ _갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105가 main�
 
 2026-10-13 `git status --short`·`git diff --stat`·`git log -10`으로 확인:
 
-- 브랜치 **`feat/search-view`**(PR #105, 초안). D·E(`a4963e2`)와 리터치(`afa8538`·`b1562e0`), main 합치기(`3390dbb`), 설계 최종본 맞춤(`49230e3`), 쇼룸 데모 판본 검증(이 커밋)이 모두 커밋돼 있다. 병합·배포는 하지 않았다.
+- 브랜치 **`feat/search-view`**(PR #105, 초안). D·E(`a4963e2`)와 리터치(`afa8538`·`b1562e0`), main 합치기(`3390dbb`), 설계 최종본 맞춤(`49230e3`), 쇼룸 데모 판본 검증(`ab18c14`), 리뷰 반영(`4ec3e9e`·그 뒤)이 모두 커밋돼 있다. 병합·배포는 하지 않았다.
 - 주요 수정: `frontend/src/showroom/`, 컴포넌트·설정·스타일·리콜 처리, README·검사 도구·`.gitignore`. 새 파일: `estimatedParts.ts`·`vehicle.ts`·`geometry.ts`와 관련 시험, 현대·기아 JSON/manifest, `scripts/build_showroom_demo.py`, 모델·후보·회전축·표면 검증 문서.
 - 사용자 미추적 파일은 **`docs/계획_P3_리랭커시험.md`**다. 수정하지 않았다. 이전 인계의 `기획_P3_리랭커시험.md` 표기는 실제 파일명에 맞춰 정정했다. SHA-256 `edbb4d9e5201fc36b1824ceff84f05ccf98e9d4592d3003d88aacc5d9332693a` 유지.
 - 실행: `cd frontend && npm run dev`, 쇼룸 `http://localhost:5173/#showroom`. Node는 `frontend/.nvmrc` 정본(24). 현재 PC의 사용 가능한 Node 24 경로는 `/Users/jihun/.npm/_npx/387698761821791d/node_modules/node/bin`이며 환경에 따라 달라진다. Python 검사 시 샌드박스 캐시 권한 문제는 `UV_CACHE_DIR=/private/tmp/lgcns-uv-cache`로 해결했다.

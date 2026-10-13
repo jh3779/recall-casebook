@@ -169,3 +169,4 @@
 - 2026-10-13: #105 설계 v1.0 최종본 맞춤(#109) — 첫 화면 관련 리콜 후보 문구, 목록·근거 pre-wrap, 판본 자세히(복사·실패 안내), 응답 검사 시험 전 필수 칸(144개 통과), task-D 줄 끝 공백
 - 2026-10-13: #105 Codex(5f258f1·b1562e0) 반영 — 쇼룸 데모 생성기가 build.json 판본(원본 manifest·flat·카드 sha256) 검증·스냅샷 날짜를 build.json에서·--check 바이트 대조, manifest에 원본 manifest·결과 JSON sha256, 화면 날짜는 manifest에서, HANDOFF·DEC-053·054 현재 상태
 - 2026-10-13: #105 review-agent(49230e3) 반영 — 상태별 원인·꼬리표 안쪽 칸 응답 검사 시험(약화 5가지 모두 잡음, 178개 통과), 검색 CSS 목업 전용 규칙 삭제·.campno 범위 한정, 검증 기록·DEC-053 시점 표시, 옛 데이터 배포 제외는 #108
+- 2026-10-13: #105 review-agent(4ec3e9e)·Codex(ab18c14) 반영 — 쇼룸 데모 JSON 줄바꿈 LF 고정(.gitattributes, Windows 해시 시험 보호), 생성기 utf-8 읽기, HANDOFF 15·36행 현재 상태
