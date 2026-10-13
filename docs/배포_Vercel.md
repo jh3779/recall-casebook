@@ -115,21 +115,22 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 **앱 상한 확인 (배포 뒤 한 번, WAF는 평소 설정 그대로)** — 앱 상한이 Vercel 위에서 실제로 켜졌고 IP별로 갈리는지 본다(시험은 `VERCEL=1`을 가정하므로 배포에서만 확인된다).
 1. **60초 동안 이 네트워크에서 API를 부르지 않은 뒤** 시작한다(앞선 호출이 창에 남아 있으면 일찍 429가 나온다). 검색 계산을 하지 않아 빨리 끝나는 잘못된 요청(빈 본문 → 422)도 상한에 세므로(`tests/test_rate_limit.py`의 `test_rejected_requests_count_too`) 그것으로 60초 안에 보낸다:
    ```bash
-   T=$(mktemp -d); for i in $(seq -w 1 119); do code=$(curl -s -o "$T/b" -D "$T/h" -w "%{http_code}" -X POST -H "content-type: application/json" -d '{}' https://lg-cns-rag.vercel.app/search); if [ "$code" = 429 ]; then echo "$i번째에 429"; grep -i "^retry-after" "$T/h"; cat "$T/b"; echo; break; fi; done; [ "$code" = 429 ] || echo "119번째까지 429 없음"; rm -rf "$T"
+   T=$(mktemp -d); for i in $(seq -w 1 119); do code=$(curl -s -o "$T/b" -D "$T/h" -w "%{http_code}" -X POST -H "content-type: application/json" -d '{}' https://lg-cns-rag.vercel.app/search); if [ "$code" = 429 ]; then echo "${i}번째에 429"; grep -i "^retry-after" "$T/h"; cat "$T/b"; echo; break; fi; done; [ "$code" = 429 ] || echo "119번째까지 429 없음"; rm -rf "$T"
    ```
 2. 읽는 법:
    - **61번째에 429**(본문이 한국어 `detail` "호출이 너무 잦습니다…", `retry-after` 있음): 앱 상한이 켜져 있다.
    - **62~119번째에 처음 429**: 앱 상한은 켜져 있고 요청이 여러 인스턴스로 나뉜 것이다(인스턴스별 카운터) — 실패가 아니다.
    - **119번째까지 429 없음**: 앱 상한이 꺼졌을 수 있다(경로가 `/search`로 잡히지 않는 등) — 배포 로그를 본다. 120번째부터는 WAF가 막으므로 그 전에 멈춘다.
    - **60번째 이전에 429**: 60초를 쉬지 않았거나, 다른 사람의 호출과 한 주소로 묶였을 수 있다 — 60초 쉰 뒤 다시 해 보고, 그래도 같으면 시스템 환경변수 노출을 확인한다.
-3. 1번에서 429를 받은 직후 다른 네트워크(휴대폰 핫스팟)에서 1번 보내 422(빈 본문)이면 IP별로 갈린다는 뜻이다. 429면 모두 한 주소로 묶인 것이다 — 시스템 환경변수 노출을 확인한다.
-4. 결과(날짜·처음 429가 나온 번째·다른 네트워크 코드)를 DEC-057에 적는다. 1분 기다리면 풀린다.
+3. 1번에서 429를 받은 직후 다른 네트워크(휴대폰 핫스팟)에서 1번 보낸다. 429면 모두 한 주소로 묶인 것이다 — 시스템 환경변수 노출을 확인한다. 422(빈 본문)는 IP별로 갈린다는 **약한 증거**다 — 요청이 상한이 안 찬 다른 인스턴스로 갔어도 422가 나오기 때문이다. 그래서 대시보드에서 시스템 환경변수 노출이 켜져 있는지도 함께 확인해 기록한다.
+   (명령에서 한글을 변수 바로 뒤에 붙일 때는 `${i}`처럼 중괄호로 감싼다 — macOS zsh·bash가 한글까지 변수 이름으로 읽어 값이 사라진다.)
+4. 결과(날짜·처음 429가 나온 번째·다른 네트워크 코드·시스템 환경변수 노출 설정 상태)를 DEC-057에 적는다. 1분 기다리면 풀린다.
 
 **WAF 확인 — 모든 경로 차단과 WAF 429의 CORS 머리글 (배포 뒤 한 번, Production에서)** — **시연 날이나 다른 사람이 쓰는 시간에는 하지 않는다. 4번 원복을 확인하기 전에는 끝내지 않는다**(공개 API가 막힌 채 남는다). Preview는 Production 환경변수가 없고(위 환경변수 표는 Production만) 배포 보호에 걸릴 수 있으며 WAF 규칙 적용 여부도 문서로 확인되지 않아, 재배포 없이 Production에서 잰다.
 1. WAF 규칙을 임시로 **창 10초·한도 5**, Action **Default(429)**로 바꿔 Publish한다(앱 상한 60보다 작아야 WAF가 먼저 막는다).
 2. 앱이 세지 않는 `/health`와 없는 주소에서도 WAF가 막는지 본다 — 둘 중 하나라도 429가 없으면 실패(종료 코드 1)다. 규칙 조건이 `/search`만으로 잘못 남았으면 여기서 걸린다:
    ```bash
-   bad=0; for p in /health "/no-such-path-$(date +%s)"; do got=$(for i in $(seq 1 12); do curl -s -o /dev/null -w "%{http_code}\n" "https://lg-cns-rag.vercel.app$p"; done | grep -c '^429$'); echo "$p: 429 $got회"; [ "$got" -gt 0 ] || bad=1; done; [ "$bad" -eq 0 ] || { echo "실패 — 모든 경로 조건 확인"; false; }
+   bad=0; for p in /health "/no-such-path-$(date +%s)"; do got=$(for i in $(seq 1 12); do curl -s -o /dev/null -w "%{http_code}\n" "https://lg-cns-rag.vercel.app$p"; done | grep -c '^429$'); echo "${p}: 429 ${got}회"; [ "$got" -gt 0 ] || bad=1; done; [ "$bad" -eq 0 ] || { echo "실패 — 모든 경로 조건 확인"; false; }
    ```
 3. `/search`에서 **처음 나온 429**의 머리글과 본문을 함께 저장해, 한국어 `detail`이 없는(앱이 아닌) WAF 429인지 확인하고 CORS 머리글을 본다:
    ```bash
