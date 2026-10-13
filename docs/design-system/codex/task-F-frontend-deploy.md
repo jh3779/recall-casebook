@@ -27,7 +27,7 @@
 3. **환경변수**: `printf 'https://lg-cns-rag.vercel.app' | vercel env add VITE_API_BASE production` (빌드 때 화면에 들어가는 공개값 — 비밀값 금지).
 4. **미리보기 배포로 실측**: `vercel deploy` → 업로드 크기(약 135MB, 대부분 `.glb`)·빌드 로그 확인. 화면이 부르는 **두 모델 모두** 받아 지문을 대조한다: `vercel curl /models/sonata.glb --deployment <주소> -- -s -o /tmp/sonata.glb && shasum -a 256 /tmp/sonata.glb`, 같은 방법으로 `/models/sorento.glb`. 둘 다 1단계 값과 같아야 통과다. **하위 폴더의 `.vercelignore`가 기대대로 읽혔는지**(업로드 목록에 `node_modules` 없음) 확인 — 안 되면 대안 `vercel build --prod && vercel deploy --prebuilt --prod`(로컬 빌드 결과 `dist`만 올림)로 바꾸고 문서를 고친다.
 5. **Production**: `vercel deploy --prod` → 주소 기록(예: `https://lg-cns-rag-web.vercel.app`).
-6. **API CORS 열기**(저장소 루트, API 프로젝트): `printf 'https://lg-cns-rag-web.vercel.app,http://localhost:5173' | vercel env add ALLOWED_ORIGINS production` → `vercel deploy --prod`(같은 `SERVING_BUILD_ID`) → 확인:
+6. **API CORS 열기**(저장소 루트, API 프로젝트) — 2단계에서 `frontend/`로 들어왔으므로 **먼저 루트로 나와 API 프로젝트에 연결**한다: `cd .. && vercel link --yes --project lg-cns-rag && cat .vercel/project.json`(`projectName`이 `lg-cns-rag`인지 확인 — `lg-cns-rag-web`이면 멈춘다). 그다음 `printf 'https://lg-cns-rag-web.vercel.app,http://localhost:5173' | vercel env add ALLOWED_ORIGINS production` → `vercel deploy --prod`(같은 `SERVING_BUILD_ID`) → 확인:
    ```bash
    curl -si -X OPTIONS https://lg-cns-rag.vercel.app/search \
      -H "Origin: https://lg-cns-rag-web.vercel.app" \
