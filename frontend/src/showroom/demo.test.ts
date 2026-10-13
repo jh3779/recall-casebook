@@ -1,8 +1,15 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { MODELS, MODEL_KEYS } from "../config";
 
 describe("현대·기아 쇼룸 데이터 범위", () => {
+  it("manifest가 커밋된 리콜 JSON과 입력 판본을 가리킨다", () => {
+    const recalls = readFileSync(new URL("../../public/data/hyundai-kia-recalls.json", import.meta.url));
+    const manifest = JSON.parse(readFileSync(new URL("../../public/data/hyundai-kia-manifest.json", import.meta.url), "utf8"));
+    expect(manifest.recalls_json_sha256).toBe(createHash("sha256").update(recalls).digest("hex"));
+    for (const key of ["snapshot_date", "raw_manifest_sha256", "flat_sha256", "cards_sha256"]) expect(manifest[key]).toEqual(expect.any(String));
+  });
   it("쏘나타·쏘렌토 모델과 출처를 연결한다", () => {
     expect(MODEL_KEYS).toEqual(["sonata", "sorento"]);
     for (const key of MODEL_KEYS) {

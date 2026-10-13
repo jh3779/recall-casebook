@@ -24,6 +24,7 @@ const loadFailed = (key: ModelKey): LoaderState => ({
 interface Ready {
   showroom: Showroom;
   recalls: RecallsByModel;
+  snapshotDate: string;
   firstCats: ReadonlySet<CategoryKey>;
 }
 
@@ -41,17 +42,19 @@ export default function ShowroomView({ onSearch }: { onSearch: (question: string
       if (!alive) return;
       const scene = new Showroom(stageRef.current!);
       showroom = scene;
-      const [firstCats, recalls] = await Promise.all([
+      const getJson = <T,>(path: string) => fetch(path, { signal: controller.signal }).then((r) => {
+        if (!r.ok) throw new Error("데모 데이터를 받지 못했습니다");
+        return r.json() as Promise<T>;
+      });
+      const [firstCats, recalls, manifest] = await Promise.all([
         scene.load(FIRST),
-        fetch("data/hyundai-kia-recalls.json", { signal: controller.signal }).then((r) => {
-          if (!r.ok) throw new Error("데모 데이터를 받지 못했습니다");
-          return r.json() as Promise<RecallsByModel>;
-        }),
+        getJson<RecallsByModel>("data/hyundai-kia-recalls.json"),
+        getJson<{ snapshot_date: string }>("data/hyundai-kia-manifest.json"),
       ]);
       if (!alive) return;
       scene.show(FIRST);
       scene.focus(null);
-      setReady({ showroom: scene, recalls, firstCats });
+      setReady({ showroom: scene, recalls, snapshotDate: manifest.snapshot_date, firstCats });
       setLoader((l) => ({ ...l, active: false }));
       scene.load(otherModel(FIRST)).catch(() => {});
     }).catch(() => {
@@ -74,7 +77,7 @@ export default function ShowroomView({ onSearch }: { onSearch: (question: string
   );
 }
 
-function Explorer({ showroom, recalls, firstCats, setLoader, onSearch }: Ready & { setLoader: (s: LoaderState) => void; onSearch: (question: string) => void }) {
+function Explorer({ showroom, recalls, snapshotDate, firstCats, setLoader, onSearch }: Ready & { setLoader: (s: LoaderState) => void; onSearch: (question: string) => void }) {
   const [model, setModel] = useState(FIRST);
   /** 지금 차종에서 3D 위치가 있는 부품 분류 */
   const [cats3d, setCats3d] = useState(firstCats);
@@ -165,7 +168,7 @@ function Explorer({ showroom, recalls, firstCats, setLoader, onSearch }: Ready &
       <div className="model-legend">{mode === "xray" ? "● " : "+ "}부품 형상·위치는 설명용 추정 · 리콜은 실제 기록</div>
       <div className="credit">
         3D: <a href={MODELS[model].source} target="_blank" rel="noreferrer">{MODELS[model].credit}</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a> · 크기·재질 조정{model === "sorento" ? " · 바퀴 복제" : ""} · 추정 도형 추가<br />
-        리콜: NHTSA · 2026-10-06 스냅샷 {recalls.sonata.length + recalls.sorento.length}건 (검색 결과 아님)
+        리콜: NHTSA · {snapshotDate} 스냅샷 {recalls.sonata.length + recalls.sorento.length}건 (검색 결과 아님)
       </div>
     </>
   );

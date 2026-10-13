@@ -33,7 +33,7 @@ _갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105가 main�
 
 2026-10-13 `git status --short`·`git diff --stat`·`git log -10`으로 확인:
 
-- 브랜치 **`feat/search-view`**, HEAD **`5f258f1`**. 앞선 D·E는 커밋돼 있고, 이번 모델 교체·추정 부품·회전 포인트 수정 및 데이터·테스트·문서는 **미커밋**이다. `.agent`는 이 체크포인트의 변경을 포함한다.
+- 브랜치 **`feat/search-view`**(PR #105, 초안). D·E(`a4963e2`)와 리터치(`afa8538`·`b1562e0`), main 합치기(`3390dbb`), 설계 최종본 맞춤(`49230e3`), 쇼룸 데모 판본 검증(이 커밋)이 모두 커밋돼 있다. 병합·배포는 하지 않았다.
 - 주요 수정: `frontend/src/showroom/`, 컴포넌트·설정·스타일·리콜 처리, README·검사 도구·`.gitignore`. 새 파일: `estimatedParts.ts`·`vehicle.ts`·`geometry.ts`와 관련 시험, 현대·기아 JSON/manifest, `scripts/build_showroom_demo.py`, 모델·후보·회전축·표면 검증 문서.
 - 사용자 미추적 파일은 **`docs/계획_P3_리랭커시험.md`**다. 수정하지 않았다. 이전 인계의 `기획_P3_리랭커시험.md` 표기는 실제 파일명에 맞춰 정정했다. SHA-256 `edbb4d9e5201fc36b1824ceff84f05ccf98e9d4592d3003d88aacc5d9332693a` 유지.
 - 실행: `cd frontend && npm run dev`, 쇼룸 `http://localhost:5173/#showroom`. Node는 `frontend/.nvmrc` 정본(24). 현재 PC의 사용 가능한 Node 24 경로는 `/Users/jihun/.npm/_npx/387698761821791d/node_modules/node/bin`이며 환경에 따라 달라진다. Python 검사 시 샌드박스 캐시 권한 문제는 `UV_CACHE_DIR=/private/tmp/lgcns-uv-cache`로 해결했다.
@@ -138,6 +138,6 @@ _갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105가 main�
 
 ## Definition of Done
 
-이번 요청: 리터치 완료 상태·실측 검증·모델 설치 경로·미커밋 범위·남은 작업을 인계하고 기존 할 일 1~55를 보존한다. 사용자 기획 파일과 프런트 구현을 추가 변경하지 않는다. 체크포인트는 git 커밋·배포를 뜻하지 않는다.
+이번 작업(#105): 리뷰 지적을 모두 처리하고 병합 전 검증(`docs/MERGE_PROTOCOL.md`)을 통과한 뒤 PR 번호를 든 사용자 지시로 병합한다. 기존 할 일 1~55를 보존한다. 사용자 기획 파일(`docs/계획_P3_리랭커시험.md` 등)은 건드리지 않는다.
 
 프로젝트 전체: `docs/기획_결함선례.md` 1~7절과 발표 전 점검이 실제 근거로 채워지고, 모든 수치가 원본 사본 조건을 밝혀 재현되며, 기준선 Hit@10 0.510 대비 before/after와 시점 평가(정답 있는 34문항 이상)의 후보 묶음 한정 Hit@k·하한을 따로 보고한다. 34문항 미만이면 미측정으로 표시한다(DEC-037). 원인 품질 표본과 함께 10/20 발표에서 보여 줄 수 있어야 한다.

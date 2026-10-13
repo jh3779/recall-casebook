@@ -1,7 +1,9 @@
 {
   "snapshot_date": "2026-10-06",
+  "raw_manifest_sha256": "532a390eacb6f239a997ac8416f25095f58254dd0a88f0313fe79e5676247123",
   "flat_sha256": "3200bf8d930c9f3cf03d153b48f1860085fced581fa02ca111fc23753b0c95cf",
   "cards_sha256": "3f996182fe2efb37b3ac0fde0863ac85a1356dc3495a542e6e0bf697c127b32b",
+  "recalls_json_sha256": "8cfa23295ffa634bb9eebc46185a72bc4d4523098fb7179b9fc70f90582d4b86",
   "scopes": {
     "sonata": {
       "make": "HYUNDAI",

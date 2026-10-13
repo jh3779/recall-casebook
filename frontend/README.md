@@ -50,13 +50,14 @@ node scripts/prepare-vehicle-parts.mjs
 `public/data/hyundai-kia-recalls.json`: 2026-10-06 보관 NHTSA 스냅샷에서 **SONATA 2011–2014년식 18건, SORENTO 2021–2023년식 8건**을 추렸다. 쏘나타·쏘렌토 하이브리드는 포함하지 않는다. 검색 결과가 아니며 차종의 전체 연식·최신 리콜 목록을 뜻하지 않는다. 한 리콜에 여러 분류가 있으면 분류별 건수의 합이 총 리콜 수보다 클 수 있다.
 
 ```bash
-# 저장소 루트에서. 원본 flat ZIP과 카드 JSONL은 로컬에 준비되어 있어야 한다.
-uv run python -m scripts.build_showroom_demo
-node frontend/scripts/check-demo-against-cards.mjs data/processed/defect/recalls.jsonl
+# 저장소 루트에서. 원본 flat ZIP·manifest와 카드 JSONL·build.json이 로컬에 있어야 한다.
+uv run python -m scripts.build_showroom_demo --check   # 다시 만들어 커밋된 두 파일과 바이트 대조 → "일치"
+uv run python -m scripts.build_showroom_demo           # 판본을 바꿀 때만: 다시 만들어 씀
+node frontend/scripts/check-demo-against-cards.mjs data/processed/defect/recalls.jsonl   # 보조: 원문 세 칸·회사명 대조
 # 쏘나타 18건 + 쏘렌토 8건 · 원문 대조 26/26 일치
 ```
 
-원본 파일 SHA-256·정확한 차종·연식·RECORD_ID는 `hyundai-kia-manifest.json`에 남긴다. 결함·위험·시정 문장과 회사명은 카드 원문 그대로다. 각 카드에서 NHTSA 원문을 열 수 있으며 대상 대수는 해당 리콜 전체(다른 차종 포함)임을 표시한다. 검색 API·평가셋·색인은 바꾸지 않았다.
+생성기는 `data/processed/defect/build.json`이 가리키는 판본만 받는다 — 원본 `manifest.json`·flat ZIP·카드 파일의 sha256이 하나라도 다르면 만들지 않는다. 스냅샷 날짜도 build.json에서 읽고, 화면의 날짜는 manifest에서 읽는다. `--check`는 연식·분류·대상 대수·출처·RECORD_ID까지 포함한 결과 전체를 바이트로 대조한다. 원본 manifest·flat·카드·결과 JSON의 SHA-256과 정확한 차종·연식·RECORD_ID는 `hyundai-kia-manifest.json`에 남긴다. 결함·위험·시정 문장과 회사명은 카드 원문 그대로다. 각 카드에서 NHTSA 원문을 열 수 있으며 대상 대수는 해당 리콜 전체(다른 차종 포함)임을 표시한다. 검색 API·평가셋·색인은 바꾸지 않았다.
 
 ## 이전 트럭 모델·데이터 — 보관 기록
 
