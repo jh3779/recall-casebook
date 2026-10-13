@@ -40,6 +40,6 @@
 표시한 시트를 받은 경로(드라이브·디스코드)로 돌려주세요. 우지훈이 전달본 지문과 원본 칸을 줄·칸 단위로 대조한 뒤 채점합니다.
 
 - ① `uv run python -m scripts.defect_precedent.cause_quality score --sheet <시트>` — 시트마다 따로, yes 비율(분모 yes+no)과 신뢰구간
-- ② `uv run python -m scripts.defect_precedent.cause_trials score --sheet <시트> <결과 파일들>` — 꼬리표 정확도와 두 모델 비교
+- ② `uv run python -m scripts.defect_precedent.cause_trials score --sheet <시트> <결과 파일들>` — 꼬리표 정확도와 두 모델 비교 *(2026-10-13 저장소 판 주: "두 모델 비교"는 DEC-056으로 폐기 — 채점 명령·보고 범위는 `.agent/DECISIONS.md` DEC-056 영향 항목을 따른다. 전달본 zip은 고치지 않았다)*
 
 궁금한 점은 시트를 받은 채널로 주세요. ②를 끝낸 뒤에는 이슈 #90에 "표시 전에 저장소 기록이나 GitHub 알림 메일을 본 적이 있는지"만 한 줄 남겨 주세요.
