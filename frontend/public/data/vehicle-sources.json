@@ -1,0 +1,18 @@
+{
+  "sonata": {
+    "bytes": 116543736,
+    "sha256": "e3a9bf1e821ba553e23c51da3d7ac668a9a0e5678a9ba304fd329b4ae0355470",
+    "author": "DR1KING100K (https://sketchfab.com/DR1KING100K)",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "source": "https://sketchfab.com/3d-models/hyundai-sonata-2014-7a0e4fa5122e4cc1b57d8b9149916558",
+    "title": "Hyundai Sonata 2014"
+  },
+  "sorento": {
+    "bytes": 18780960,
+    "sha256": "fd39a70b9e34b1ce4a153ed890b5a2acfc10092bd84559e03c74ef59962c6470",
+    "author": "MattDoesBlender (https://sketchfab.com/MattDoesBlender)",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "source": "https://sketchfab.com/3d-models/kia-sorento-47a0016ba8b842c780d79ded8fa0a891",
+    "title": "Kia Sorento"
+  }
+}

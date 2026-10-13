@@ -1,0 +1,8 @@
+[
+  { "status": "report_status_unknown", "campaign": "SYNTHETIC" },
+  { "status": "version_unresolved", "campaign": "SYNTHETIC" },
+  { "status": "cause_empty", "campaign": "SYNTHETIC" },
+  { "status": "cause_no_field", "campaign": "SYNTHETIC" },
+  { "status": "verify_failed", "campaign": "SYNTHETIC" },
+  { "status": "future_status" }
+]

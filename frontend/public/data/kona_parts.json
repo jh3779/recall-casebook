@@ -1,0 +1,117 @@
+{
+  "Material2": {
+    "title": "2019_Hyundai_Encino_Kona_EV_ChromeBadges",
+    "defect": null,
+    "look": null
+  },
+  "Material2_2": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Tailights_Glass",
+    "defect": null,
+    "look": null
+  },
+  "Material2_3": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Interior",
+    "defect": null,
+    "look": null
+  },
+  "Material2_4": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Windows",
+    "defect": null,
+    "look": null
+  },
+  "Material2_5": {
+    "title": "2019_Hyundai_Encino_Kona_EV_BlackTrims",
+    "defect": null,
+    "look": null
+  },
+  "Material2_6": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Rims1",
+    "defect": null,
+    "look": null
+  },
+  "Material2_7": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Doors",
+    "defect": null,
+    "look": null
+  },
+  "Material2_8": {
+    "title": "2019_Hyundai_Encino_Kona_EV_CeramicBlue",
+    "defect": null,
+    "look": "paint"
+  },
+  "Material2_9": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Mirrors",
+    "defect": null,
+    "look": null
+  },
+  "Material2_10": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Seats",
+    "defect": "seat",
+    "look": null
+  },
+  "Material2_11": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Rims2",
+    "defect": null,
+    "look": null
+  },
+  "Material2_12": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Misc1",
+    "defect": null,
+    "look": null
+  },
+  "Material2_13": {
+    "title": "2019_Hyundai_Encino_Kona_EV_lambert2",
+    "defect": null,
+    "look": null
+  },
+  "Material3_2": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Interior_0",
+    "defect": null,
+    "look": null
+  },
+  "Material3_3": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Interior_1",
+    "defect": null,
+    "look": null
+  },
+  "Material3_4": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Interior_2",
+    "defect": null,
+    "look": null
+  },
+  "Material2_14": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Tires",
+    "defect": null,
+    "look": null
+  },
+  "Material2_15": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Brakes",
+    "defect": "brakes",
+    "look": null
+  },
+  "Material2_16": {
+    "title": "2019_Hyundai_Encino_Kona_EV_FrontSkid",
+    "defect": null,
+    "look": null
+  },
+  "Material2_17": {
+    "title": "2019_Hyundai_Encino_Kona_EV_BlackTrims1",
+    "defect": null,
+    "look": null
+  },
+  "Material2_18": {
+    "title": "2019_Hyundai_Encino_Kona_EV_HeadLightsGlass",
+    "defect": null,
+    "look": null
+  },
+  "Material2_19": {
+    "title": "2019_Hyundai_Encino_Kona_EV_Chrome2",
+    "defect": null,
+    "look": null
+  },
+  "Material2_20": {
+    "title": "material",
+    "defect": null,
+    "look": null
+  }
+}

@@ -1,0 +1,1 @@
+export const EXAMPLES = ["electric power steering assist loss", "engine connecting rod bearing failure", "electrical short in the ABS module may cause fire", "airbag inflator rupture during deployment"];

@@ -6,6 +6,9 @@
 *.bash      text eol=lf
 *.py        text eol=lf
 
+# sha256을 걸어 둔 쇼룸 데모 데이터 — Windows(core.autocrlf)에서 CRLF로 바뀌면 해시 시험·--check가 깨진다(PR #105)
+frontend/public/data/hyundai-kia-*.json text eol=lf
+
 # 일반 텍스트 파일은 OS 기본값 사용
 *.md        text
 *.txt       text

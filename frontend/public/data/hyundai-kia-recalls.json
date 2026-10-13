@@ -1,0 +1,561 @@
+{
+  "sonata": [
+    {
+      "campno": "22V312000",
+      "maker": "Hyundai Motor America",
+      "received": "20220506",
+      "potaff": 215171,
+      "defect": "Hyundai Motor America (Hyundai) is recalling certain 2013-2014 Sonata vehicles.  The low pressure fuel hose that connects the low pressure fuel pump to the direct injection fuel pump may crack over time, due to heat generated within the engine compartment.",
+      "consequence": "A cracked fuel hose may leak fuel, which can increase the risk of a fire.",
+      "remedy": "Dealers will replace the low pressure fuel hose, free of charge.  Owner notification letters were mailed October 10, 2022.  Owners may contact Hyundai customer service at 1-855-371-9460.  Hyundai's number for this recall is 227.  This recall replaces NHTSA recall number 20V-121.  Vehicles previously repaired under recall 20V-121 that did not receive a replacement fuel hose will need to have this new recall remedy performed.",
+      "years": [
+        2013,
+        2014
+      ],
+      "components": [
+        "FUEL SYSTEM, GASOLINE:DELIVERY:HOSES, LINES/PIPING, AND FITTINGS"
+      ],
+      "categories": [
+        "fuel"
+      ],
+      "mfr_part": "Fuel Feed Tube Assembly",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=22V312000"
+    },
+    {
+      "campno": "20V121000",
+      "maker": "Hyundai Motor America",
+      "received": "20200228",
+      "potaff": 216799,
+      "defect": "Hyundai Motor America (Hyundai) is recalling certain 2013-2014 Sonata vehicles.  The low pressure fuel hose that connects the low pressure fuel pump to the direct injection fuel pump may crack over time due to heat generated within the engine compartment.",
+      "consequence": "If the fuel line cracks, a fuel leak can occur, increasing the risk of a fire.",
+      "remedy": "Hyundai will notify owners, and dealers will inspect the low-pressure fuel hose for damage or leaking, replacing it as necessary.  If no damage or leaking is found, heat-protective tape will be installed.  Repairs will be performed free of charge.  The recall began August 10, 2020.  Owners may contact Hyundai customer service at 1-855-371-9460.  Hyundai's number for this recall is 189.  This recall has been replaced by NHTSA recall number 22V-314.",
+      "years": [
+        2013,
+        2014
+      ],
+      "components": [
+        "FUEL SYSTEM, GASOLINE:DELIVERY:HOSES, LINES/PIPING, AND FITTINGS"
+      ],
+      "categories": [
+        "fuel"
+      ],
+      "mfr_part": "Fuel Feed Tube Assembly",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=20V121000"
+    },
+    {
+      "campno": "18V934000",
+      "maker": "Hyundai Motor America",
+      "received": "20181228",
+      "potaff": 150730,
+      "defect": "Hyundai Motor America (Hyundai) is recalling certain 2011-2014 Sonata and 2013-2014 Santa Fe Sport vehicles previously repaired under recall numbers 15V-568 and 17V-226.  The high pressure fuel pipe that connects to the fuel pump outlet  may have been damaged, misaligned, or improperly torqued during the engine replacement procedure, allowing fuel to leak from the pipe.",
+      "consequence": "A fuel leak in the presence of an ignition source can increase the risk of a fire.",
+      "remedy": "Hyundai will notify owners, and dealers will inspect and replace the fuel pipe, as necessary, free of charge. The recall began March 1, 2019.  Owners may contact Hyundai customer service at 1-855-371-9460.  Hyundai's recall number for this recall is 180.",
+      "years": [
+        2011,
+        2012,
+        2013,
+        2014
+      ],
+      "components": [
+        "ENGINE",
+        "FUEL SYSTEM, GASOLINE:DELIVERY:HOSES, LINES/PIPING, AND FITTINGS"
+      ],
+      "categories": [
+        "engine",
+        "fuel"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=18V934000"
+    },
+    {
+      "campno": "18V137000",
+      "maker": "Hyundai Motor America",
+      "received": "20180227",
+      "potaff": 580058,
+      "defect": "Hyundai Motor America (Hyundai) is recalling certain 2011-2013 Sonata and 2011-2012 Sonata Hybrid vehicles.    On February 27, 2018, Hyundai Motor Company (Hyundai) notified NHTSA that they were recalling 154,753 model year 2011 Sonata vehicles.  On April 18, 2018, Hyundai expanded the recall to include an additional 425,305 model year 2012-2013 Sonata and 2011-2012 Sonata Hybrid vehicles.    In the event of a crash, the air bag control unit (ACU) may short circuit, preventing the frontal air bags, seat belt pretensioners, and side air bags from deploying.",
+      "consequence": "If the frontal air bags, seat belt pretensioners, and side air bags are disabled, there is an increased risk of injury to the vehicle occupants in the event of a vehicle crash that necessitates deployment of these safety systems.",
+      "remedy": "Hyundai will notify owners, and dealers will install an external wire filter kit, free of charge.  The recall began October 15, 2018.  Owners may contact Hyundai customer service at 1-855-371-9460.  Hyundai's number for this recall is 174.",
+      "years": [
+        2011,
+        2012,
+        2013
+      ],
+      "components": [
+        "AIR BAGS",
+        "AIR BAGS: AIR BAG/RESTRAINT CONTROL MODULE",
+        "AIR BAGS:SIDE/WINDOW",
+        "SEAT BELTS:PRETENSIONER"
+      ],
+      "categories": [
+        "airbag",
+        "seat"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=18V137000"
+    },
+    {
+      "campno": "17V617000",
+      "maker": "Hyundai Motor America",
+      "received": "20171004",
+      "potaff": 443545,
+      "defect": "Hyundai Motor America (Hyundai) is recalling certain 2011-2014 Sonata and 2011-2015 Sonata Hybrid vehicles previously repaired under recall campaign 17V-152.  The seat belt linkages for both front seat belts may detach from the seat belt anchor pretensioners.",
+      "consequence": "If the seat belt linkage detaches from the seat belt anchorage, it can not properly restrain the occupant in the event of a crash, increasing the risk of injury.",
+      "remedy": "Hyundai will notify owners, and dealers will again verify the connection between the seat belt linkage and the pretensioner and additionally install a warning label to prevent future seat belt linkage detachment, free of charge.  The recall began November 6, 2017.  Owners may contact Hyundai customer service at 1-855-371-9460.  Hyundai's number for this recall is 169.",
+      "years": [
+        2011,
+        2012,
+        2013,
+        2014
+      ],
+      "components": [
+        "SEAT BELTS:FRONT:ANCHORAGE",
+        "SEAT BELTS:PRETENSIONER"
+      ],
+      "categories": [
+        "seat"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=17V617000"
+    },
+    {
+      "campno": "17V226000",
+      "maker": "Hyundai Motor America",
+      "received": "20170331",
+      "potaff": 572000,
+      "defect": "Hyundai Motor America (Hyundai) is recalling certain 2013-2014 Sonata and Santa Fe Sport vehicles.  Machining errors during the engine manufacturing process may cause premature bearing wear within the engine.",
+      "consequence": "Bearing wear may result in the engine seizing, increasing the risk of a crash.",
+      "remedy": "Hyundai will notify owners, and dealers will inspect the engine, replacing the engine short block, as necessary, free of charge.  The recall began June 2017.  Owners may contact Hyundai customer service at 1-800-633-5151.  Hyundai's number for this recall is 162.",
+      "years": [
+        2013,
+        2014
+      ],
+      "components": [
+        "ENGINE AND ENGINE COOLING:ENGINE"
+      ],
+      "categories": [
+        "engine"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=17V226000"
+    },
+    {
+      "campno": "17V152000",
+      "maker": "Hyundai Motor America",
+      "received": "20170308",
+      "potaff": 977778,
+      "defect": "Hyundai Motor America (Hyundai) is recalling certain 2011-2014 Sonata and 2011-2015 Sonata Hybrid vehicles.  In the affected vehicles, the seat belt linkages for both front seat belts may detach from the seat belt anchor pretensioners.",
+      "consequence": "In the event of a crash, if the seat belts detach from the anchor pretensioners, it can increase the risk of injury.",
+      "remedy": "Hyundai will notify owners and dealers will inspect the connection between the seat belt linkages and the seat belt anchor pretensioners, repairing them as necessary, free of charge.  The recall is expected to begin April 7, 2017.  Owner's may contact Hyundai customer service at 1-855-371-9460.  Hyundai's number for the recall is 160.",
+      "years": [
+        2011,
+        2012,
+        2013,
+        2014
+      ],
+      "components": [
+        "SEAT BELTS:FRONT:ANCHORAGE"
+      ],
+      "categories": [
+        "seat"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=17V152000"
+    },
+    {
+      "campno": "16V190000",
+      "maker": "Hyundai Motor America",
+      "received": "20160405",
+      "potaff": 173000,
+      "defect": "Hyundai Motor Company (Hyundai) is recalling certain model year 2011 Sonata vehicles manufactured December 11, 2009, to October 31, 2010.  In the affected vehicles, the Electronic Power Steering (EPS) circuit board may be damaged and result in a loss of power steering assist.",
+      "consequence": "With a loss of power steering assist, extra steering effort will be required, especially at lower speeds, increasing the risk of a crash.",
+      "remedy": "Hyundai will notify owners, and dealers will replace the EPS control unit, free of charge.  The recall began May 30, 2016.  Owners may contact Hyundai customer service at 1-855-371-9640.  Hyundai's number for this recall is 143.",
+      "years": [
+        2011
+      ],
+      "components": [
+        "STEERING:ELECTRIC POWER ASSIST SYSTEM"
+      ],
+      "categories": [
+        "steering"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=16V190000"
+    },
+    {
+      "campno": "15V759000",
+      "maker": "Hyundai Motor America",
+      "received": "20151116",
+      "potaff": 304900,
+      "defect": "Hyundai Motor America (Hyundai) is recalling certain model 2011-2012 Sonata vehicles.  The brake pedal stopper pad can deteriorate allowing the brake light switch plunger to remain extended when the brake pedal is released.",
+      "consequence": "If the brake light switch plunger does not retract as it should when the brake pedal is not being pressed, the brake lights may stay illuminated preventing accurate communication to rearward following vehicles that the vehicle is slowing or stopping. Additionally, if the brake switch plunger is not retracted, then the transmission can be shifted out of PARK without depressing the brake pedal. Either condition increases the risk of a crash.",
+      "remedy": "Hyundai will notify owners, and dealers will replace the brake pedal stopper pad with an improved part, free of charge.  The recall began on January 6, 2016.  Owners may contact Hyundai customer service at 1-855-671-3059.  Hyundai's number for this recall is 136.",
+      "years": [
+        2011,
+        2012
+      ],
+      "components": [
+        "EXTERIOR LIGHTING:BRAKE LIGHTS:SWITCH"
+      ],
+      "categories": [
+        "lighting"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=15V759000"
+    },
+    {
+      "campno": "15V629000",
+      "maker": "Hyundai Motor America",
+      "received": "20151007",
+      "potaff": 28157,
+      "defect": "Hyundai Motor America (Hyundai) is recalling certain model year 2011 Elantra vehicles manufactured November 12, 2010, to March 31, 2011, and Sonata vehicles manufactured December 11, 2009, to February 28, 2010, originally sold in, or currently registered in, Connecticut, Delaware, Illinois, Indiana, Iowa, Maine, Maryland, Massachusetts, Michigan, Minnesota, Missouri, New Hampshire, New Jersey, New York, Ohio, Pennsylvania, Rhode Island, Vermont, West Virginia, Wisconsin and the District of Columbia.  Road salt may corrode the front coil springs, possibly resulting in the coil springs fracturing.",
+      "consequence": "If a front coil spring fractures, it may contact the tire, possibly puncturing it, increasing the risk of a crash.",
+      "remedy": "Hyundai will notify owners, and dealers will replace the front coil springs, free of charge.  Interim notifications were mailed on November 17, 2015.  The recall began on January 6, 2016.  Owners may contact Hyundai customer service at 1-855-671-3059.  Hyundai's number for this recall is 133.  Note: Vehicles that were previously registered in salt belt states but are currently registered elsewhere are eligible to be inspected and repaired.",
+      "years": [
+        2011
+      ],
+      "components": [
+        "SUSPENSION:FRONT:SPRINGS:COIL SPRINGS"
+      ],
+      "categories": [
+        "suspension"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=15V629000"
+    },
+    {
+      "campno": "15V568000",
+      "maker": "Hyundai Motor America",
+      "received": "20150910",
+      "potaff": 470000,
+      "defect": "Hyundai Motor America (Hyundai) is recalling certain model year 2011-2012 Sonata vehicles manufactured December 11, 2009, to April 12, 2012 at Hyundai Motor Manufacturing Alabama and equipped with either a 2.0 liter or 2.4 liter Gasoline Direct injection engine. In the affected vehicles, metallic debris may not have been fully removed during manufacturing of the engine crankshaft. If the debris was not completely removed, oil flow may be restricted through the connecting rod bearings, causing connecting rod damage.  A worn connecting rod bearing will produce a metallic, cyclic knocking noise from the engine and possible engine failure.",
+      "consequence": "Engine failure would result in a vehicle stall, increasing the risk of a crash.",
+      "remedy": "Hyundai will notify owners, and dealers will inspect the vehicles and replace the engine assembly, as necessary, free of charge.  Additionally, Hyundai Motor America will increase the warranty for the engine sub-assembly (short block) to 10 years/120,000 miles for both original and subsequent owners of 2011 and 2012 Sonatas manufactured at Hyundai Motor Manufacturing Alabama equipped with 2.0 liter and 2.4 liter Gasoline Direct injection engines.  Interim notifications were mailed to owners starting on October 8, 2015.  A second notification will be mailed when parts are available.  Owners may contact Hyundai customer service at 1-855-671-3059 or by visiting www.HyundaiUSA.com/Campaign132.  Hyundai's number for this recall is 132.",
+      "years": [
+        2011,
+        2012
+      ],
+      "components": [
+        "ENGINE"
+      ],
+      "categories": [
+        "engine"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=15V568000"
+    },
+    {
+      "campno": "14V434000",
+      "maker": "Hyundai Motor Company",
+      "received": "20140718",
+      "potaff": 883000,
+      "defect": "Hyundai Motor Company (Hyundai) is recalling certain model year 2011-2014 Sonata vehicles manufactured December 11, 2009, through May 29, 2014.  In the affected vehicles, the transmission shift cable may detach from from the shift lever pin.",
+      "consequence": "If the transmission shift cable detaches, the transmission gear selection may not match the indicated gear and the vehicle may move in an unintended or unexpected direction, increasing the risk of a crash.  Furthermore, when the driver parks the vehicle, despite selecting the 'PARK' position, the transmission may not be in 'PARK.'  If the vehicle is not in the 'PARK' position and the parking brake is not applied, there is a risk the vehicle will roll away as the driver and other occupants exit the vehicle or anytime thereafter.  A vehicle rollaway increases the risk of injury to exiting occupants and bystanders.",
+      "remedy": "Hyundai will notify owners, and dealers will inspect and, as necessary, repair the connection between the shift cable and shift lever, free of charge.  The recall began in September 2014.  Owners may contact Hyundai customer service at 1-800-633-5151.  Hyundai's number for this recall is 123.",
+      "years": [
+        2011,
+        2012,
+        2013,
+        2014
+      ],
+      "components": [
+        "POWER TRAIN:AUTOMATIC TRANSMISSION"
+      ],
+      "categories": [
+        "transmission"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=14V434000"
+    },
+    {
+      "campno": "14V433000",
+      "maker": "Hyundai Motor Company",
+      "received": "20140718",
+      "potaff": 133075,
+      "defect": "Hyundai Motor Company (Hyundai) is recalling certain model year 2011 Sonata vehicles manufactured from December 11, 2009, through September 1, 2010.  The affected vehicles may experience a brake fluid leak from the two brake lines that connect the brake system's master cylinder to the Hydraulic Electronic Control Unit (HECU) due to insufficient seal between the inner brake hose and metal brake line fitting.",
+      "consequence": "If the brake lines leak brake sufficient fluid, the brake warning lamp in the instrument cluster will illuminate and longer stopping distance will be required, increasing the risk of a vehicle crash.",
+      "remedy": "Hyundai will notify owners, and dealers will replace the brake hoses with a revised service part, free of charge.  The recall began in September 2014.  Owners may contact Hyundai customer service at 1-800-633-5151.  Hyundai's number for this recall is 122.",
+      "years": [
+        2011
+      ],
+      "components": [
+        "SERVICE BRAKES, HYDRAULIC"
+      ],
+      "categories": [
+        "brakes"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=14V433000"
+    },
+    {
+      "campno": "13V113000",
+      "maker": "Hyundai Motor Company",
+      "received": "20130401",
+      "potaff": 1712336,
+      "defect": "Hyundai Motor Company (Hyundai) is recalling certain model year 2006-2009 Accent, model year 2007-2011 Azera, Sonata and Sante Fe,2006-2011 Tucson, 2009-2011 Elantra Touring, 2007-2010 Elantra, 2008-2011 Veracruz, 2009-2011 Genesis, 2010-2011 Genesis Coupe, 2007-2008 Entourage, and  2006-2008 Tiburon vehicles.  Originally, in April 2013, Hyundai recalled 1,059,824 model year 2007-2009 Accent and Tucson, model year 2007-2010 Elantra, model year 2007-2011 Santa Fe, model year 2008-2009 Veracruz, model year 2010-2011 Genesis Coupe, and model year 2011 Sonata vehicles.   In September 2013, Hyundai informed the agency that it was adding more vehicles to this campaign, representing an additional 652,512 units.  The total number of vehicles being recalled is now 1,712,336.  In the affected vehicles, the stop lamp switch may malfunction.  A malfunctioning stop lamp switch may cause the brake lights to not illuminate when the brake pedal is depressed or may cause an inability to deactivate the cruise control by depressing the brake pedal.  Additionally, a malfunctioning stop lamp switch may also result in intermittent operation of the push-button start feature, affect the operation of the brake transmission shift interlock feature, preventing the shifter from being moved out of the PARK position and cause the Electronic Stability Control (ESC) malfunction light to illuminate.",
+      "consequence": "Failure to illuminate the stop lamps during braking or inability to disengage the cruise control could increase the risk of a crash.  Additionally, when the ignition is in the 'ON' position, the transmission shifter may be able to be moved out of Park without first applying the brake.  This may lead to unintentional movement of the car which may increase the risk of a crash.",
+      "remedy": "Hyundai will notify owners, and dealers will replace the stop lamp switch, free of charge.  The safety recall began on April 22, 2013.  Owners may contact Hyundai at 1-800-633-5151.  Hyundai's recall campaign number is 110.",
+      "years": [
+        2011
+      ],
+      "components": [
+        "EXTERIOR LIGHTING:BRAKE LIGHTS:SWITCH"
+      ],
+      "categories": [
+        "lighting"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=13V113000"
+    },
+    {
+      "campno": "12V352000",
+      "maker": "Hyundai Motor Company",
+      "received": "20120724",
+      "potaff": 29767,
+      "defect": "Hyundai is recalling certain model year 2012-2013 Hyundai Sonata passenger cars, manufactured from January 24, 2012, through June 21, 2012.  The curtain side airbags on these vehicles may inflate without deployment command due to an error during manufacturing.",
+      "consequence": "The curtain airbag may inflate without deployment command and increase the risk of injury to occupants of the vehicle.  Additionally,  an unexpected deployment would be a significant driver distraction and would limit the driver's visibility, increasing the risk of a crash.",
+      "remedy": "Hyundai dealers will notify owners, and dealers will replace the curtain side airbags free of charge.  This recall began on August 31, 2012. Owners may contact Hyundai at 1-800-633-5151.",
+      "years": [
+        2012,
+        2013
+      ],
+      "components": [
+        "AIR BAGS:SIDE/WINDOW"
+      ],
+      "categories": [
+        "airbag"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=12V352000"
+    },
+    {
+      "campno": "10V457000",
+      "maker": "HYUNDAI CARIBBEAN-PUERTO RICO",
+      "received": "20101001",
+      "potaff": 60,
+      "defect": "HYUNDAI IS RECALLING CERTAIN MODEL YEAR 2011 SONATA VEHICLES MANUFACTURED FROM DECEMBER 11, 2009, THROUGH SEPTEMBER 10, 2010.  ON SOME OF THESE VEHICLES THE STEERING COLUMN INTERMEDIATE SHAFT UNIVERSAL JOINT CONNECTIONS MAY HAVE BEEN EITHER IMPROPERLY ASSEMBLED OR INSUFFICIENTLY TIGHTENED.",
+      "consequence": "IMPROPER ASSEMBLY OR INSUFFICIENT TIGHTENING OF THE CONNECTIONS COULD RESULT IN A COMPLETE SEPARATION OR COMPROMISED ATTACHMENT OF THE CONNECTIONS, SUCH THAT THE DRIVER COULD EXPERIENCE A LOSS OF, OR REDUCTION IN, STEERING CAPABILITY INCREASING THE RISK OF A CRASH.",
+      "remedy": "DEALERS WILL INSPECT THE STEERING COLUMN INTERMEDIATE SHAFT UNIVERSAL JOINT CONNECTIONS FOR PROPER ASSEMBLY AND TORQUE.  IN ADDITION DEALERS WILL UPDATE THE POWER STEERING SOFTWARE FREE OF CHARGE.  THE SAFETY RECALL BEGAN ON OCTOBER 11, 2010.  OWNERS MAY CONTACT HYUNDAI CUSTOMER SERVICE CENTER AT 1-787-999-3333.",
+      "years": [
+        2011
+      ],
+      "components": [
+        "STEERING:GEAR BOX:SHAFT SECTOR"
+      ],
+      "categories": [
+        "steering"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=10V457000"
+    },
+    {
+      "campno": "10V426000",
+      "maker": "Hyundai Motor Company",
+      "received": "20100920",
+      "potaff": 138354,
+      "defect": "HYUNDAI IS RECALLING CERTAIN MODEL YEAR 2011 SONATA VEHICLES MANUFACTURED FROM DECEMBER 11, 2009, THROUGH SEPTEMBER 10, 2010.  ON SOME OF THESE VEHICLES THE STEERING COLUMN INTERMEDIATE SHAFT UNIVERSAL JOINT CONNECTIONS MAY HAVE BEEN EITHER IMPROPERLY ASSEMBLED OR INSUFFICIENTLY TIGHTENED.",
+      "consequence": "IMPROPER ASSEMBLY OR INSUFFICIENT TIGHTENING OF THE CONNECTIONS COULD RESULT IN A COMPLETE SEPARATION OR COMPROMISED ATTACHMENT OF THE CONNECTIONS, SUCH THAT THE DRIVER COULD EXPERIENCE A LOSS OF, OR REDUCTION IN, STEERING CAPABILITY INCREASING THE RISK OF A CRASH.",
+      "remedy": "DEALERS WILL INSPECT THE STEERING COLUMN INTERMEDIATE SHAFT UNIVERSAL JOINT CONNECTIONS FOR PROPER ASSEMBLY AND TORQUE.  IN ADDITION DEALERS WILL UPDATE THE POWER STEERING SOFTWARE FREE OF CHARGE.  THE SAFETY RECALL IS EXPECTED TO BEGIN DURING OCTOBER 2010.  OWNERS MAY CONTACT HYUNDAI CUSTOMER ASSISTANCE CENTER AT 1-800-633-5151.",
+      "years": [
+        2011
+      ],
+      "components": [
+        "STEERING:GEAR BOX:SHAFT SECTOR"
+      ],
+      "categories": [
+        "steering"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=10V426000"
+    },
+    {
+      "campno": "10V070000",
+      "maker": "Hyundai Motor Company",
+      "received": "20100302",
+      "potaff": 5893,
+      "defect": "HYUNDAI-KIA HAS NOTIFIED NHTSA ABOUT A DEFECT IN CERTAIN MODEL YEAR 2011 SONATA VEHICLES MANUFACTURED FROM DECEMBER 11, 2009 THROUGH FEBRUARY 15, 2010.  THE FRONT INSIDE DOOR LOCK SWITCH CAN REMAIN IN THE UNLATCHED POSITION.",
+      "consequence": "THE DOOR MAY NOT BE IN THE LOCKED POSITION AND MAY OPEN WHILE THE VEHICLE IS IN MOTION, POSSIBLY RESULTING IN INJURY TO THE DRIVER OR PASSENGER.",
+      "remedy": "HYUNDAI-KIA WILL NOTIFY OWNERS AND DEALERS WILL REPAIR THE VEHICLES BY REPLACING LATCHES AFFECTED BY THIS RECALL CAMPAIGN FREE OF CHARGE.  THE SAFETY RECALL BEGAN ON MARCH 12, 2010.  OWNERS MAY CONTACT HYUNDAI CUSTOMER ASSISTANCE CENTER AT 1-800-633-5151.",
+      "years": [
+        2011
+      ],
+      "components": [
+        "LATCHES/LOCKS/LINKAGES:DOORS:LATCH"
+      ],
+      "categories": [
+        "latches"
+      ],
+      "mfr_part": "",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=10V070000"
+    }
+  ],
+  "sorento": [
+    {
+      "campno": "25V649000",
+      "maker": "Kia America, Inc.",
+      "received": "20250925",
+      "potaff": 39536,
+      "defect": "Kia America, Inc. (Kia) is recalling certain 2021-2023 Sorento vehicles. The heating, ventilation, and air conditioning (HVAC) blower motor wiring harness may be inadequate, which can result in a fire.",
+      "consequence": "A fire increases the risk of injury.",
+      "remedy": "Dealers will replace the wiring harness and blower motor resistor, free of charge. Owner notification letters were mailed January 23, 2026. Owners may contact Kia customer service at 800-333-4542. Kia's number for this recall is SC351. Vehicle Identification Numbers (VINs) involved in this recall will be searchable on NHTSA.gov beginning October 9, 2025.",
+      "years": [
+        2021,
+        2022,
+        2023
+      ],
+      "components": [
+        "ELECTRICAL SYSTEM:WIRING:FUSES AND CIRCUIT BREAKERS",
+        "VISIBILITY:DEFROSTER/DEFOGGER/HVAC SYSTEM:FAN/MOTOR"
+      ],
+      "categories": [
+        "electrical",
+        "other"
+      ],
+      "mfr_part": "WIRING ASSY-MAIN",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=25V649000"
+    },
+    {
+      "campno": "23V610000",
+      "maker": "Kia America, Inc.",
+      "received": "20230831",
+      "potaff": 144979,
+      "defect": "Kia America, Inc. (Kia) is recalling certain 2022-2023 Sorento, Sorento Hybrid, and Sorento Plug-in Hybrid (PHEV) vehicles.  The mounting clips for the rearview camera may break, which can cause the rearview camera image not to appear properly on the display.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard number 111, \"Rear Visibility.\"",
+      "consequence": "A rearview camera that does not properly display an image can reduce the driver's rear view, increasing the risk of a crash.",
+      "remedy": "Dealers will inspect and replace the rearview camera housing, as necessary, free of charge.  Owner notification letters were mailed October 27, 2023.  Owners may contact Kia customer service at 1-800-333-4542.  Kia's number for this recall is SC280.",
+      "years": [
+        2022,
+        2023
+      ],
+      "components": [
+        "BACK OVER PREVENTION: SENSING SYSTEM: CAMERA"
+      ],
+      "categories": [
+        "other"
+      ],
+      "mfr_part": "UNIT ASSY-REAR VIEW CAMERA",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=23V610000"
+    },
+    {
+      "campno": "23V579000",
+      "maker": "Kia America, Inc.",
+      "received": "20230815",
+      "potaff": 50517,
+      "defect": "Kia America, Inc. (Kia) is recalling certain 2023 Sorento vehicles.  The air bag warning labels on the driver and front passenger sun visors may detach.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard number 208, \"Occupant Crash Protection.\"",
+      "consequence": "A detached air bag warning label will not warn occupants about the risks of air bag deployment, increasing the risk of injury in a crash.",
+      "remedy": "Dealers will inspect and replace the driver and front passenger sun visors, as necessary, free of charge.  Owner notification letters were mailed October 10, 2023.  Owners may contact Kia customer service at 1-800-333-4542.  Kia's number for this recall is SC277.",
+      "years": [
+        2023
+      ],
+      "components": [
+        "EQUIPMENT:OTHER:LABELS"
+      ],
+      "categories": [
+        "other"
+      ],
+      "mfr_part": "SUNVISOR ASSY",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=23V579000"
+    },
+    {
+      "campno": "22V760000",
+      "maker": "Kia America, Inc.",
+      "received": "20221011",
+      "potaff": 69038,
+      "defect": "Kia Motors, Inc. (Kia) is recalling certain 2021-2022 Sorento and 2021-2023 K5 vehicles.  The vehicle's \"fail-safe\" limited-mobility drive mode may be impaired, when prompted by a transmission oil pump malfunction, which can result in a complete loss of drive power.",
+      "consequence": "Loss of drive power increases the risk of a crash.",
+      "remedy": "Dealers will inspect and replace the transmission, as necessary.  Dealers will also update the transmission control unit software.  All repairs will be performed free of charge.  Owner notification letters were mailed December 9, 2022.  Owners may contact Kia customer service at 1-800-333-4542.  Kia's number for this recall is SC250.",
+      "years": [
+        2021,
+        2022
+      ],
+      "components": [
+        "POWER TRAIN:AUTOMATIC TRANSMISSION"
+      ],
+      "categories": [
+        "transmission"
+      ],
+      "mfr_part": "PUMP ASSY-ELECTRIC OIL",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=22V760000"
+    },
+    {
+      "campno": "22V703000",
+      "maker": "Kia America, Inc.",
+      "received": "20220919",
+      "potaff": 70887,
+      "defect": "Kia America, Inc. (Kia) is recalling certain 2016-2022 Sorento, 2021-2022 Sorento Hybrid (HEV), 2022-2023 Sorento Plug-In Hybrid (PHEV), and 2017-2022 Sportage vehicles equipped with a tow hitch harness installed as original equipment, or purchased as an accessory through a Kia dealership.  Debris and moisture accumulation on the tow hitch harness module printed circuit board (PCB) may cause an electrical short, which can result in a fire.",
+      "consequence": "A fire while parked or driving can increase the risk of injury.",
+      "remedy": "Owners are advised to park outside and away from structures until the recall repair is complete.  Dealers will inspect the vehicle, and, as necessary, replace the fuse and/or tow hitch harness module, free of charge.  Owner notification letters were mailed August 11, 2023.  Owners may contact Kia customer service at 1-800-333-4542.  Kia's number for this recall is SC249.",
+      "years": [
+        2021,
+        2022
+      ],
+      "components": [
+        "TRAILER HITCHES"
+      ],
+      "categories": [
+        "other"
+      ],
+      "mfr_part": "TOW HITCH HARNESS",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=22V703000"
+    },
+    {
+      "campno": "22V509000",
+      "maker": "Kia Motors America",
+      "received": "20220719",
+      "potaff": 8,
+      "defect": "Kia Motors America (Kia) is recalling certain 2022 Sorento and Telluride vehicles.  The vehicles may be equipped with an incorrect spare tire which, when installed, can impair the anti-lock braking system (ABS) and the traction control system (TCS).  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard number 110, \"Tire Selection and Rims.\"",
+      "consequence": "Impaired anti-lock braking or traction control systems can increase the risk of a crash.",
+      "remedy": "Dealers will inspect and replace the spare tire, as necessary, free of charge.  Owner notification letters were mailed July 27, 2022.  Owners may contact Kia customer service at 1-800-333-4542.  Kia's number for this recall is SC244.",
+      "years": [
+        2022
+      ],
+      "components": [
+        "TIRES:TEMPORARY/EMERGENCY SPARE TIRE"
+      ],
+      "categories": [
+        "other"
+      ],
+      "mfr_part": "WHEEL ASSY-TEMPORARY",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=22V509000"
+    },
+    {
+      "campno": "22V202000",
+      "maker": "Kia Motors America",
+      "received": "20220329",
+      "potaff": 26,
+      "defect": "Kia Motor America (Kia) is recalling certain 2022 Sorento vehicles.  The oil supply pipe to the turbocharger may crack, which could result in an oil leak in the engine compartment.",
+      "consequence": "An oil leak in the presence of an ignition source such as hot engine or exhaust components, can increase the risk of a fire.",
+      "remedy": "Dealers will replace the turbocharger oil supply pipe, free of charge.  Owner notification letters were mailed April 22, 2022.  Owners may contact Kia customer service at 1-800-333-4542.  Kia's number for this recall is SC233.",
+      "years": [
+        2022
+      ],
+      "components": [
+        "ENGINE AND ENGINE COOLING:ENGINE:GASOLINE:TURBO/SUPERCHARGER",
+        "ENGINE AND ENGINE COOLING:ENGINE:OIL/LUBRICATION:PIPES, HOSES, AND FITTINGS"
+      ],
+      "categories": [
+        "engine"
+      ],
+      "mfr_part": "PIPE ASSY-OIL FEED",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=22V202000"
+    },
+    {
+      "campno": "21V519000",
+      "maker": "Kia Motors America",
+      "received": "20210708",
+      "potaff": 21575,
+      "defect": "Kia Motor America (Kia) is recalling certain 2021 Sorento and 2021-2022 K5 vehicles equipped with 2.5L turbocharged engines.  Fuel may leak at the pipe connection between the high-pressure fuel pump and fuel rail.",
+      "consequence": "A fuel leak increases the risk of a fire.",
+      "remedy": "Dealers will inspect and tighten, or replace the fuel pipe as necessary, free of charge.  Owner notification letters were mailed July 21, 2021.  Owners may contact Kia customer service at 1-800-333-4542.  Kia's number for this recall is SC214.",
+      "years": [
+        2021
+      ],
+      "components": [
+        "FUEL SYSTEM, GASOLINE:DELIVERY:HOSES, LINES/PIPING, AND FITTINGS"
+      ],
+      "categories": [
+        "fuel"
+      ],
+      "mfr_part": "Pipe-High Pressure",
+      "source": "https://www.nhtsa.gov/recalls?nhtsaId=21V519000"
+    }
+  ]
+}

@@ -270,7 +270,13 @@
 - **Status**: Accepted (사용자 요청 2026-10-09) — 2026-10-10 전환함: Actions를 끄고 로컬 검사(`scripts/local_ci.sh`)로 병합 전 검증을 한다(SESSION_LOG 2026-10-10, HANDOFF "Actions: 꺼져 있음")
 - **Date**: 2026-10-09
 
-> DEC-041은 PR #60(화면 — React `frontend/`)이 쓸 예정이라 비워 둔다.
+## DEC-041: 화면은 Vite + React + TypeScript로 만들고, 3D 모델 파일은 커밋하지 않는다
+- **Decision**: ① `frontend/`는 Vite 공식 `react-ts` 템플릿(create-vite 9.2.1)으로 시작한다. React 19 + TypeScript를 쓰고, 린트는 템플릿 기본인 oxlint, 테스트는 vitest(`npm test` = `vitest run`)로 한다. DEC-032의 미결 중 빌드 도구·TypeScript 여부를 이것으로 정한다. ② 첫 화면은 claude.ai artifact "결함 선례 쇼룸"(판본 `1791386571-be6b`)을 옮긴 3D 쇼룸이다. three.js를 직접 쓴다(React Three Fiber는 쓰지 않음). 렌더링은 `src/showroom/Showroom.ts` 한 클래스가 하고, 상태와 HTML은 React가 맡는다. ③ 3D 모델(`frontend/public/models/*.glb`, 10.5MB·8.4MB)은 커밋하지 않는다(`.gitignore`). 팀 드라이브로 나누고 sha256은 `frontend/README.md`에 적는다. ④ 데모 데이터 `frontend/public/data/*.json`(각 1MB 미만)은 커밋한다. ⑤ `frontend/.nvmrc`는 `24`(로컬 Node 24.19.0)로 임시로 둔다. Node 고정 담당(우지훈, 할 일 26)이 확인할 때까지다. ⑥ 폰트는 Pretendard(npm `pretendard` 1.3.9, OFL-1.1)를 번들에 넣는다. 외부 CDN은 쓰지 않는다.
+- **Reason**: 사용자 결정(2026-10-09): "react로", TypeScript 선택, 모델은 gitignore + 드라이브 선택, "폰트는 pretendard로". TypeScript를 쓰면 API 서버(DEC-038) 응답 JSON 모양을 타입으로 고정하고 `npm run build`에서 타입 오류를 잡을 수 있다. 모델은 커밋 훅의 1MB 제한(`scripts/check-staged.sh`)에 걸린다. three.js를 직접 쓰는 것은 원본 동작(렌더 타깃으로 바깥 부품 판정, `setViewOffset`으로 패널만큼 차 옮기기)을 그대로 옮기기 위해서다.
+- **Alternatives**: JavaScript는 원본과 가깝지만 API 응답 모양이 바뀌어도 빌드가 잡지 못해 기각했다. Git LFS는 팀원 모두 설치하고 저장소 설정을 바꿔야 해 기각했다. 모델을 압축해 커밋하는 안은 1MB 아래로 준다는 보장이 없어 기각했다. ESLint는 템플릿이 oxlint로 바뀌어 템플릿 기본을 따랐다. React Three Fiber는 의존성이 2개 늘고 원본 동작이 달라질 위험이 있어 쓰지 않았다.
+- **영향 / 알려진 한계**: 데모 데이터는 저장소 스크립트로 만든 파일이 아니다(서비스 원칙 4 추적성 — HANDOFF 할 일 44). 화면은 아직 API 서버와 연결되지 않았다(P2). 빌드 결과 JS가 873kB(three.js 포함)라 Vite가 500kB 경고를 낸다(오류 아님). 모델의 팀 드라이브 위치는 아직 정하지 않았다(할 일 43).
+- **Status**: Accepted (사용자 결정 2026-10-09)
+- **Date**: 2026-10-09
 
 ## DEC-042: 카드 벡터는 Supabase(pgvector)에 build 단위로 보관하고, API 서버는 시작할 때 읽어 대조한 뒤 메모리에서 검색한다 — 고객사 선례는 `maker_group` 허용 목록으로 먼저 보여 준다
 - **Decision**: ① **벡터 보관**(DEC-034 미결 ①·DEC-039 미결 정리): 카드 임베딩을 Supabase `recall_embeddings`(build·모델·리콜 번호당 1줄, `vector(384)`)와 `embedding_sets`(build·모델당 1줄 — fastembed 판본·카드 글 sha256·지문·줄 수)에 둔다(`server/rag/embeddings.sql`). 이미 있는 (build, 모델)은 지우거나 덮어쓰지 않는다. 값은 float32를 그대로 되살리는 자릿수로 적재해 적재 전후가 같다. 검색은 그대로 서버 메모리에서 한다(DEC-039 ②) — 서버는 시작할 때 로컬 build 파일을 적재와 같은 검사(`load_db.load_files`)로 확인하고, 원인 명세 전체(실패 사유 `failed_kinds` 포함 — `build_id`에 들어가지 않으므로)를 DB에 적재된 `data_builds.causes_spec`과, DB 벡터 기록(카드 글 해시·줄 수·판본)과 대조하고, 카드 16장을 지금 모델로 다시 임베딩해 저장값과 비교한다. 하나라도 어긋나면 시작을 거부한다. ② **고객사 선례**: 고객사는 회사명 대응표 확인본의 `maker_group` 허용 목록 `{"Hyundai Motor America", "Kia"}`로만 정한다(이름에 Hyundai·Kia가 들어간다는 문자열 검사 금지 — Hyundai Translead 17·HYUNDAI CARIBBEAN-PUERTO RICO 19·Genesis Supreme RV 2·NOKIAN TYRES 3·HYUNDAI TRUCK AMERICA 1장 제외). 합친 순위 상위 100 안의 고객사 카드 최대 5건을 끌어올려 먼저, 나머지 회사 카드 상위 10건을 따로 보여 준다. 후보·점수는 합친 순위 그대로지만 **보이는 카드 묶음은 상위 10과 다르다**(최대 15건, 고객사 카드는 87위여도 보일 수 있다) — 그래서 화면 구성의 정답 포함률을 따로 잰다(아래 검증). ③ **573 판본 미확정·읽지 못한 보고서**: 어느 판본이 최신인지 정하지 못한 보고서(`resolution = unresolved`, 23건)는 원인 글을 싣지 않고 상태만 알린다(AGENTS.md 2-3). 보고서는 있는데 읽지 못한 18개 캠페인(`causes.manifest.json` `failed_kinds`)은 "보고서 없음"이 아니라 `report_unreadable`과 사유로 알린다. "보고서 없음"(`no_573_report`)은 573 원문 수집 범위 밖(접수일 2014-08-20 이전)에만 쓰고, 범위 안인데 원문·실패 목록 어디에도 없는 리콜(현재 build 274장)은 이유를 모르므로 `report_status_unknown`으로 따로 알린다. 응답은 Pydantic 모델로 검사해 원인 글에 말한 주체·출처가 없거나 모델에 없는 칸이 있으면 내보내지 않는다. ④ DB 테스트 이미지는 `pgvector/pgvector:pg17`(Postgres 17 + pgvector)로 바꾼다(CI·`local_ci.sh`·테스트 안내). ⑤ **서버 DB 연결**: 서버는 조회 전용 계정(`rag_reader` — `data_builds`·`embedding_sets`·`recall_embeddings` SELECT와 RLS 조회 정책만, `server/README.md`)의 `SERVER_DATABASE_URL`로 읽는다. 적재용 관리자 연결(`DATABASE_URL`, RLS 우회)은 스크립트만 쓴다. 서버는 관리자 연결이 없는 서버 전용 환경 파일(`.env.server`)로 띄우고, `SERVER_DATABASE_URL`이 없으면 시작하지 않는다 — 로컬 개발에서만 `ALLOW_ADMIN_DB_FOR_SERVER=1`을 직접 붙여 관리자 연결로 읽는다(경고). 계정 생성은 배포를 정할 때 사용자가 한다(#63).
@@ -357,3 +363,28 @@
 - **영향 / 알려진 한계**: **공개 주소에 인증·호출 상한이 없다** — 누구나 `/search`를 부를 수 있다(DB는 `rag_reader` 조회 전용, 관리자 키는 Vercel에 없음). Hobby 플랜 한도를 넘거나 새 인스턴스마다 받는 묶음(155.4MB)으로 Supabase Storage 전송량이 빨리 줄면 서비스가 멈출 수 있다 — 발표 시연 중에도. #63(인증·호출 상한·CORS)을 빨리 한다. 같은 질문이라도 Vercel과 로컬(macOS)의 화면 목록이 다를 수 있다(위 15문항 구성 다름) — 시연·인용 때 어느 환경의 결과인지 밝힌다. 함수 크기는 근사치뿐이다(위 약 210MB — Vercel 번들 최적화 뒤 실제 값은 모름). `UV_NO_CONFIG=1`이라 Vercel 빌드에서는 `[tool.uv]`의 `package = false` 등도 읽지 않는다(빌드 통과 확인).
 - **Status**: Accepted (사용자 결정 ①·②·③, 2026-10-12)
 - **Date**: 2026-10-12
+
+## DEC-052: 3D 모델 재배포 허용과 받는 방법 · 데모 데이터 원문 정정과 범위
+- **Decision**: 디자인 시스템 v1.0 작업 D에 기록된 2026-10-13 사용자 결정을 구현한다. ① 3D 모델 재배포를 허용하되 `public/models/`는 gitignore로 둔다. ② 우지훈 소유 비공개 artifact [결함 선례 쇼룸 (Copy)](https://claude.ai/artifact/5022cf20-2f08-4389-b13f-5adde11b78d4)의 `models/*.gltf.json`을 공유받아 기존 `gltf-json-to-glb.mjs`로 만든다. 원본·결과 전체 SHA-256과 크기는 `frontend/README.md`에 기록한다. ③ 데모 `14V614000` remedy의 `GMÂ\u0092s`를 카드 원문 `GM\u0092s`로 복원한다. U+0092를 보기 좋은 따옴표로 바꾸지 않는다(원칙 2). ④ Silverado HD만 명시한 `13V544000`·`14V614000`은 1500 탭에서 제외하고, 장비 리콜 `13E073000`(Silverado)·`16E041000`(Ram)은 배지로 구분한다. ⑤ 쇼룸의 보조 글자 `--ink-3`를 `#636b78`로, 원문은 Source Serif 4로 맞춘다. 합산 대수 대신 접수일 범위를 표시한다.
+- **Reason**: `docs/design-system/codex/task-D-pr60-cleanup.md`·`open-questions.md`에 확정된 모델 공유·원문 보존·차종 범위·대비 결정. 정적 쇼룸 자료를 실제 검색 결과처럼 보이게 하지 않는다.
+- **검증**: 복원 직후 원문·회사명 77/77건 카드와 일치. HD 제외 뒤 75/75건 일치(`check-demo-against-cards.mjs`), Silverado 36 + Ram 39. 최종 recalls.json sha256 `7a74f48ddde6dd1119de05c23a6e0f0173fadf544e8a77564eddd7b6f093270d`. 로컬 GLB가 README 지문과 일치하고 gitignore인 것을 확인했다.
+- **한계**: artifact 판본의 데모 스냅샷이다. 데이터·부품 대응표 재생성 스크립트는 없고(HANDOFF 55), 비공개 모델 공유 접근 확인은 54에 남긴다. 이 작업은 재배포 허용 결정의 구현이며 실제 배포는 하지 않았다.
+- **Status**: Accepted (2026-10-13 확정 설계의 구현 — PR #105에 커밋, 병합 전)
+- **Date**: 2026-10-13
+
+## DEC-053: 검색 전용 화면과 API 연결 · 쇼룸 지연 로딩 · 원문 표시
+- **Decision**: 확정 설계 v1.0 작업 E를 구현한다. ① `#search`를 기본으로 두고 `#showroom`과 전환한다. 쇼룸은 `React.lazy`로 열 때 받아 모델·WebGL 실패가 검색을 막지 않게 한다. 검색 상태는 탭 전환 때 유지하며 쇼룸 분류는 영어 질문만 채우고 자동 전송하지 않는다. ② `VITE_API_BASE` 기본값은 `https://lg-cns-rag.vercel.app`, 로컬 포트는 CORS에 맞춰 5173으로 고정한다. 키·토큰은 화면에 두지 않는다. ③ 원인 상태 9종·모르는 값 문구는 `docs/design-system/copy/cause-status.md` 잠정안 그대로다(#53 합의는 별도). 원문은 텍스트 노드로 보존하고 꼬리표는 Python 코드포인트·원문 대조를 통과한 구간만 감싼다. ④ Pretendard·Source Serif 4·JetBrains Mono를 npm으로 번들한다. ⑤ 검색·공통 상단은 정본 남색 토큰, 기존 쇼룸 주황색은 `.view-showroom` 안으로 한정한다. 서버 응답 계약은 바꾸지 않는다.
+- **Reason**: 질문 → 선례·원인 원문·출처 확인이라는 P2 흐름을 연결하면서 기존 3D 데모의 목적과 데이터 범위를 드러내기 위해서다. 근거는 `docs/design-system/`와 `server/api.py`다.
+- **검증**: Node 24에서 npm ci·lint·build, vitest 74개 통과(첫 구현 시점 — 리터치·#104 맞춤·리뷰 반영 뒤 178개, `docs/프런트_구현_검증.md` 마지막 절). 원문·출처 렌더링, 상태 문구, Unicode 꼬리표, API 실패·응답 검사, 판정 패턴을 시험했다. Safari에서 공개 API 예시 검색·모바일 복귀·한글만 입력 시 안내·쇼룸 분류 전달·3D 렌더링을 확인했다. `docs/프런트_구현_검증.md`에 실행 결과와 미확인 범위를 구분했다.
+- **한계 / 후속**: 프런트 배포·배포 주소 CORS는 F에서 한다. 3D 청크는 약 653KB로 Vite 크기 경고가 남지만 검색 첫 청크와 분리됐다. DB 통합 시험 16개는 전용 시험 DB가 없어 건너뛰었다. D와 E는 PR #105 하나로 올렸다(#60 대체).
+- **Status**: Accepted (2026-10-13 확정 설계의 구현 — PR #105에 커밋, 병합 전)
+- **Date**: 2026-10-13
+
+## DEC-054: 쇼룸은 쏘나타·쏘렌토로 시연하고 설명용 추정 부품과 실제 리콜 기록을 구분한다
+- **Decision**: ① 현재 쇼룸 차종은 현대 쏘나타 YF(2014 외관 모델)·기아 쏘렌토(2022 외관 모델)다. 리콜 범위는 SONATA 2011–2014·SORENTO 2021–2023이며, 외관 모델 연식과 자료 범위를 화면에서 구별한다. DEC-052의 트럭 차종·파일 경로는 보관용이고 현재 차종은 이 결정을 따른다. ② 실제 모델은 Sketchfab CC BY 4.0 GLB를 사용하고 저작자·출처·지문을 기록한다. `public/models/`는 계속 gitignore이며 다른 기계와 배포본에는 별도 준비한다. ③ 사용자가 허용한 추정은 원본 모델에 없는 부품의 설명용 도형·위치에 한정한다. 실제 리콜이 있는 분류만 투시에 표시하고 범례·포인트·패널에서 추정임을 밝힌다. 위치를 특정할 수 없는 기록에는 단일 위치를 지어내지 않는다. ④ 리콜 번호·원문·원인·공급사를 추정하지 않는다. 보관 NHTSA flat의 정확한 차종·연식·차량 리콜 조건으로 CAMPNO 중복을 제거하고 카드 원문을 보존한다. 검색 API·RAG·평가셋은 이 시각화 변경과 무관하다. ⑤ 차량 중앙 수직 회전축을 유지한다.
+- **Reason**: 사용자 요청 “데이터가 많은 차량”, “쏘렌토는 유지해도 될 듯 함 그리고 부품들은 추측하여 보여주면 좋을듯 함”에 따라, 쏘렌토를 유지하면서 코나를 리콜 자료가 더 많은 쏘나타로 바꿨다. 실차형 외관을 쓰면서 내부 부품이 부족한 모델의 설명력을 보완하되 실제 결함 기록과 추정 위치를 혼동하지 않게 한다. 서비스의 원문·출처 보존 원칙은 바꾸지 않는다.
+- **검증**: 2026-10-06 데이터 사본에서 쏘나타 18건·쏘렌토 8건, 원문 대조 26/26 일치. Node 24 npm ci·lint·build·92개 시험 통과, Python ruff·포맷·498개 시험 통과/DB 16개 생략. 두 차량 회전·투시·전환 확인 및 포인트 11상태/80점의 최대 화면 오차 0.01093px 미만. 근거는 `docs/프런트_현대기아_모델.md`; 모델 저작자·라이선스·전체 지문·설치는 `frontend/README.md`와 `frontend/public/data/vehicle-sources.json`이다.
+- **Alternatives**: 코나 유지 — 자료 4건으로 시연 범위가 작아 쏘나타로 변경. 텔루라이드 교체 — 후보 조사 후 사용자가 쏘렌토 유지로 변경해 종료. 추정 부품을 실제 모델의 정밀 부품처럼 표시 — 실제 위치를 검증하지 못하므로 채택하지 않는다.
+- **한계 / 후속**: 부품 도형·위치는 제조사 CAD나 정비 매뉴얼에 근거한 정밀 재현이 아니다. 자료 건수는 서로 다른 연식 범위의 보관 사본이며 최신 전체 리콜 수를 뜻하지 않는다. 쏘나타 GLB 약 111MiB의 초기 로딩 비용, 모델 파일 별도 전달·배포 포함, 독립 리뷰·PR 반영은 남는다.
+- **Status**: Accepted (2026-10-13 사용자 차종·추정 표시 결정의 구현 — PR #105 `afa8538`, 병합 전)
+- **Date**: 2026-10-13
