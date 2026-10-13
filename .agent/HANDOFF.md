@@ -1,6 +1,6 @@
 # Agent Handoff
 
-_갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105(화면) 병합(main `528d114`, #109 닫힘), 이승노 D 파트 복귀(DEC-055). 그 앞: 리터치 완료 체크포인트(쏘나타·쏘렌토, DEC-054)._
+_갱신: 2026-10-13 체크포인트 — #63 공개 API 호출 상한 구현(PR #117, DEC-057, 미병합)과 발표·학습 자료 정리. 그 앞: #111(D 파트 복귀, DEC-055) 병합(main `1a669a4`), #113(LLM 사람 평가 제외, DEC-056) 검증 중, #105(화면)·#104(설계) 병합._
 
 ## Current Objective
 
@@ -12,6 +12,7 @@ _갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105(화면) �
 
 ## Completed
 
+- **#63 공개 API 호출 상한 구현 — PR #117**(`f3051ad`, 브랜치 `feat/api-rate-limit`, DEC-057, 아직 병합 전): `server/ratelimit.py`(POST /search만 IP별 1분 60회, 넘으면 429 + `Retry-After`, CORS 미들웨어 안쪽이라 429에도 CORS 머리글, 클라이언트 IP는 Vercel에서만 `x-forwarded-for`), `tests/test_rate_limit.py` 8개, `docs/배포_Vercel.md` 3-2절(WAF 규칙·실측·시연 날 워밍업), `.env.example` `RATE_LIMIT_PER_MINUTE`. 사용자 인터뷰 결정(2026-10-13)을 이슈 #63에 코멘트로 남겼다. `uv run ruff check .`·`ruff format --check .` 통과, `uv run pytest` 506 passed / 20 skipped.
 - 디자인 시스템 v1.0 검색 화면·API 연결·쇼룸 분리(D·E, DEC-052·053)와 쇼룸 리터치(DEC-054)·판본 검증·리뷰 반영은 **PR #105로 main에 병합**됐다(`528d114`, 2026-10-13). #104(설계)는 `ecc2c4a`로 병합, #60은 #105로 대체·닫힘(브랜치 `feat/frontend-showroom`은 남김), #109는 #105 병합으로 닫힘.
 - 쇼룸은 **쏘나타 YF 2014 모델 + 쏘렌토 2022 모델**로 교체했다. 회전 중심 수직축 고정, 원본 재질·법선 보존, 쏘렌토 바퀴 복원, 쏘나타 유리·바닥 정렬을 반영했다.
 - 실제 NHTSA 차량 리콜은 **SONATA 2011–2014 18건 + SORENTO 2021–2023 8건 = 26건**이다(2026-10-06 사본, 차종·연식 일치 및 CAMPNO 중복 제거). 원문 대조 26/26 일치. 재생성 도구와 입력·모델 지문을 기록했다.
@@ -21,21 +22,21 @@ _갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105(화면) �
 
 ## Last Work
 
-2026-10-13 리터치의 마지막 수정·검증:
+2026-10-13 이 세션(학습 + #63):
 
-- 원인: 라벨까지 포함한 버튼 전체를 `translate(-50%, -50%)`로 정렬해 점이 왼쪽 **69.65–90.73px**로 밀렸다. `.hs`를 26px 정사각형으로 고정하고 라벨은 절대 위치로 분리했다(`frontend/src/styles.css`). 3D 좌표와 회전축을 바꾸지 않고 해결했다.
-- Chrome에서 두 차종 회전·자동 회전·투시·차종 전환·선택 라벨 등 **11상태/80점의 최대 화면 오차 0.01093px 미만**. 캡처된 브라우저 경고·오류 0건. 최신 리터치에서는 모바일을 다시 확인하지 않았다.
-- Node 24: `npm ci`·`npm run lint --if-present`·`npm run build --if-present`·`npm test --if-present` 통과, **14파일/92개 시험**. 없는 스크립트 없음. 기존 500kB 초과 쇼룸 청크 경고는 남는다.
-- Python: `uv run ruff check .`·`uv run ruff format --check .` 통과(118파일), `uv run pytest` **498 passed / 16 skipped / 1 warning**. 전용 DB 미설정으로 16개 생략, 기존 `runpy` 경고 1개. 체크포인트에서도 같은 결과를 재확인했다. 프런트는 마지막 수정 뒤 통과한 로그를 확인했으며 문서만 바꾼 이번 체크포인트에서는 재실행하지 않았다.
-- 근거 정본: `docs/프런트_현대기아_모델.md`의 “회전 시 포인트 이탈 수정” 절. 임시 측정/캡처는 `/private/tmp/lgcns-hotspot-{before,after}.json`, `lgcns-hotspot-fixed.png`; 실행 로그는 `lgcns-hotspot-frontend.log`, `lgcns-checkpoint-python.log`다(모두 `/private/tmp`, 영구 보관 아님).
+- **#63 인터뷰 → 구현 → PR #117.** 인터뷰 결정: 비밀 키 인증 없음, 상한은 앱 + Vercel WAF 둘 다(앱 1분 60회, WAF 1분 120회 — 에이전트 제안을 사용자가 채택), CORS는 지금 `localhost:5173`만(배포 화면 주소는 작업 F 6단계), **발표 시연은 공개 주소 + 화면도 Vercel 배포**(DEC-048 ① 대체), 시연 전 수동 워밍업, 429 화면 처리는 작업 F, PR 범위는 상한·CORS·문서만. 미들웨어 순서를 뒤집으면 CORS 시험이 실패함을 확인했다.
+- **학습 자료(저장소 밖 `~/Documents/학습노트/`, 커밋 대상 아님)**: 전체 정리본·데이터 구조·프로젝트 전체 이해·예상 질문 28개와 답변 틀, 학습지 2개(`~/claude-lessons/…data-midterm…`·`…data-to-verify-final…`). 중간평가 오답(9·6·3·2번)과 최종평가 오답(4·2·1번)의 공통 원인은 "합치거나 거를 때 무엇이 남고 빠지는가"를 따라가지 않은 것 — 판단 질문(2×2 칸, 칸 장부, 컨닝 비유)으로 압축해 두었다.
+- **발표 대본 초안 `docs/발표대본_초안.md`(미추적, 20분 이내·용어 풀이)와 `docs/기획_결함선례.md` 6절 "데이터 규모와 이 접근의 정당성" 소절(미커밋)**을 만들었다. 소절의 신뢰구간 수치는 Wilson 간이 계산이라 🟡 잠정으로 표시했다.
+- 이번 세션에서 계산한 ⚠ 값(저장소 스크립트로 재현 전, 확정값으로 쓰지 않는다): 조사 5,349건 중 리콜 연결 1,550건(29%)·PE·EA 2010년 이후 531건, 749문항 짝 비교(결합만 62 / BM25만 38, p≈0.021; 214문항 10:7, p≈0.63), RRF 후보 풀 안에 정답 568/749·풀 안 10위 밖 162문항(21.6% — 앞서 말한 "약 18%"는 BM25 단독 값이었다), 자기 회사 선례 0건 비율(원문 표기 49.5% → 통일 후 36.4%), RRF가 합치며 구한 19문항·밀린 62문항.
+- 근거 정본: 이전 리터치(쏘나타·쏘렌토)의 마지막 수정·검증은 `docs/프런트_현대기아_모델.md`의 "회전 시 포인트 이탈 수정" 절(PR #105로 병합).
 
 ## Current State
 
 2026-10-13 `git status --short`·`git diff --stat`·`git log -10`으로 확인:
 
-- main = `528d114`(#105 병합). 이 갱신은 브랜치 `docs/d-part-reassign`(PR #111 — D 파트 복귀·시트 배정, DEC-055)에서 한다. 화면 배포(작업 F)는 하지 않았다.
+- origin/main = `1a669a4`(#111 병합). 이 갱신은 브랜치 `feat/api-rate-limit`(PR #117, worktree `.claude/worktrees/feat-api-rate-limit`)에서 한다 — 앞선 인계는 main을 `528d114`, 브랜치를 `docs/d-part-reassign`으로 적어 실제 상태와 어긋나 있어 바로잡았다. 열린 PR: #113(`docs/drop-llm-labeling`, DEC-056), #117(DEC-057). 화면 배포(작업 F)는 하지 않았다.
 - (완료 기록 — 이미 병합된 #105의) 주요 수정: `frontend/src/showroom/`, 컴포넌트·설정·스타일·리콜 처리, README·검사 도구·`.gitignore`. 새 파일: `estimatedParts.ts`·`vehicle.ts`·`geometry.ts`와 관련 시험, 현대·기아 JSON/manifest, `scripts/build_showroom_demo.py`, 모델·후보·회전축·표면 검증 문서.
-- 사용자 미추적 파일은 **`docs/계획_P3_리랭커시험.md`**다. 수정하지 않았다. 이전 인계의 `기획_P3_리랭커시험.md` 표기는 실제 파일명에 맞춰 정정했다. SHA-256 `edbb4d9e5201fc36b1824ceff84f05ccf98e9d4592d3003d88aacc5d9332693a` 유지.
+- 메인 체크아웃(`docs/drop-llm-labeling`)의 미커밋 파일(이 worktree에는 없음): `docs/기획_결함선례.md`(6절에 정당성 소절 +39줄), 미추적 `docs/계획_P3_리랭커시험.md`(SHA-256 `edbb4d9e5201fc36b1824ceff84f05ccf98e9d4592d3003d88aacc5d9332693a` 유지), 미추적 `docs/발표대본_초안.md`(작성 시점 SHA-256 `766890c4b1d5d013c2493ed35e868cf8d985f00b32758d110ecbb3ca5e462737`). 이 파일들은 사용자가 정할 때까지 수정·삭제하지 않는다.
 - 실행: `cd frontend && npm run dev`, 쇼룸 `http://localhost:5173/#showroom`. Node는 `frontend/.nvmrc` 정본(24). 현재 PC의 사용 가능한 Node 24 경로는 `/Users/jihun/.npm/_npx/387698761821791d/node_modules/node/bin`이며 환경에 따라 달라진다. Python 검사 시 샌드박스 캐시 권한 문제는 `UV_CACHE_DIR=/private/tmp/lgcns-uv-cache`로 해결했다.
 - 모델은 gitignore인 `frontend/public/models/sonata.glb`(116,543,736바이트, 약 111MiB)·`sorento.glb`(18,780,960바이트)다. 원본은 Downloads의 `hyundai_sonata_2014 (1).glb`·`kia_sorento.glb`. 다른 기계에서는 README에 따라 별도 준비한다. 출처·CC BY 4.0 저작자·전체 지문은 README와 `public/data/vehicle-sources.json`에 있다. 옛 코나·트럭 자료는 보관용이며 현재 선택 차종이 아니다.
 - 운영 기록상 API는 `https://lg-cns-rag.vercel.app` Production, 운영 build `f1fe1843ed0f2c66`, 조회 전용 `rag_reader`, Storage 서빙 묶음 업로드·검증 완료(DEC-049~051). #63(호출 상한·CORS — 비밀 키 인증 없음, 사용자 결정 2026-10-13)과 배포 측정 후속 #103이 남는다. **2026-10-13 확인**: main = `528d114`(#105 병합, 그 앞 `ecc2c4a` #104·`1a43791` #102). 열린 PR은 #111. 프런트 F 배포는 미실행이다.
@@ -109,10 +110,12 @@ _갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105(화면) �
 - [[DEC-030]] 서비스 범위 / [[DEC-024]] 평가 생성·표시 세션 분리 / [[DEC-013]]·[[DEC-016]] 비식별
 - [[DEC-032]]·[[DEC-041]] React·npm·three.js / [[DEC-052]] 이전 트럭 자료·원문 정정 / [[DEC-053]] 검색 화면·API·원문 표시 / [[DEC-054]] 현재 현대·기아 쇼룸과 추정 부품의 범위
 - [[DEC-037]] 시점 평가 / [[DEC-039]] 검색 확정 / [[DEC-042]] 벡터·서버 대조 / [[DEC-044]]·[[DEC-045]] 원인 표시·부품 범위 실험 / [[DEC-047]] 원문·미확인 상태
-- [[DEC-035]] push한 이력 보존 / [[DEC-040]] 로컬 CI / [[DEC-043]]·[[DEC-046]] 리뷰·병합 절차 / [[DEC-048]]~[[DEC-051]] 배포·서빙 묶음·공개 API
+- [[DEC-035]] push한 이력 보존 / [[DEC-040]] 로컬 CI / [[DEC-043]]·[[DEC-046]] 리뷰·병합 절차 / [[DEC-048]]~[[DEC-051]] 배포·서빙 묶음·공개 API / [[DEC-057]] 호출 상한·공개 주소 시연(DEC-048 ① 대체)
 
 ## Failed Attempts
 
+- **열린 PR들이 같은 "다음 DEC 번호"를 쓸 수 있음**: #113이 DEC-056을 쓰는 동안 인계는 "main의 다음 빈 번호 = DEC-056"이라고 적고 있어, 쓰기 직전 main만 보면 충돌한다. 다음에 DEC를 쓰기 전에는 `gh pr list`의 열린 PR 브랜치에서 `DECISIONS.md` 끝 번호까지 확인하고, 겹치면 큰 번호를 쓰고 병합 순서에 맞춰 다시 맞춘다. 같은 이유로 SESSION_LOG·DECISIONS 끝줄에 붙인 항목은 병합 때 충돌한다.
+- **인계의 main·브랜치 서술이 병합 전 상태로 낡음**: PR이 병합되기 전 브랜치에서 쓴 HANDOFF가 main에 올라가면 "main = 이전 해시, 브랜치 = 이미 병합된 브랜치"로 남는다. 다음에 인계를 읽을 때는 서술보다 `git log origin/main -3`과 `gh pr list`를 먼저 본다.
 - **회전 포인트 오차를 3D 좌표만으로 보면 놓침**: 원인은 2D 라벨 폭이 점의 중심 정렬에 섞인 것이었다. 다음에 라벨 길이에 따라 점이 밀리면 먼저 실제 점 중심과 투영 좌표를 화면 픽셀로 대조하고, 라벨이 앵커 크기를 바꾸지 않게 분리한다. 회전·선택·라벨 노출 상태도 함께 확인한다.
 - **GLB 전체 경계만으로 바닥 정렬 시 떠 보임**: 변환된 메시의 느슨한 경계 상자가 실제 바닥과 달랐다. 다음에 정규화한 모델이 떠 있으면 실제 정점 기준 `Box3.setFromObject(..., true)`와 바닥 높이를 대조한다(`vehicle.ts`).
 - **무료 실차 모델 다운로드가 자동 진행되지 않음**: 로그인 필요·품질 불명·브라우저 차단이 있었고, 텔루라이드 경로는 자동 승인 검토에서 차단 우회 위험으로 거부됐다. 우회하지 않았으며 사용자의 쏘렌토 유지 결정으로 후보를 종료했다. 다음에 다운로드가 차단되면 허용된 정상 경로 또는 사용자 제공 파일을 사용한다. 현재 두 차종 파일은 확보됐다.
@@ -120,6 +123,8 @@ _갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105(화면) �
 
 ## Relevant Files
 
+- `server/ratelimit.py`, `server/api.py`(`create_app`), `tests/test_rate_limit.py`, `docs/배포_Vercel.md` 3-2절, `.agent/DECISIONS.md` DEC-057 — #63 호출 상한(PR #117)
+- `docs/발표대본_초안.md`, `docs/계획_P3_리랭커시험.md`(둘 다 미추적), `~/Documents/학습노트/`(저장소 밖) — 발표·학습 자료
 - `frontend/README.md` — 실행·모델 설치·라이선스·데이터 재생성
 - `docs/프런트_현대기아_모델.md` — 현재 모델·추정 부품·실제 데이터·포인트 수정과 검증 근거
 - `frontend/src/showroom/Showroom.ts`, `vehicle.ts`, `estimatedParts.ts`, `frontend/src/styles.css` — 3D 처리·추정 도형·화면 포인트
@@ -131,7 +136,7 @@ _갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105(화면) �
 
 ## Next Action
 
-1. **#63 → 작업 F** (2026-10-13 현재): #104(설계 v1.0, `ecc2c4a`)와 #105(화면 구현·쇼룸 리터치, #60 대체, `528d114`)는 병합됐다 — #104 리뷰 지적 중 구현에 남은 것도 #105에서 맞췄다. 다음 #63은 **비밀값 없는 보호**(IP별 호출 상한·허용 주소 CORS)로 한다 — 비밀 키 인증은 넣지 않는다(화면이 브라우저에서 API를 직접 부르므로 키를 넣을 곳이 없고 `VITE_*`는 공개된다, AGENTS.md 7절). 사용자 결정 2026-10-13(이슈 #63 코멘트), DEC는 #63 PR에서 그때 main의 다음 번호로 남긴다. 실질 보호는 호출 상한이고 CORS는 다른 출처의 브라우저 화면만 막는다. 429 화면 처리·상한 응답의 CORS 머리글·서버리스 상한 한계·배포 문서 문구는 이슈 #63 확인 항목. 마지막으로 작업 F(화면 Vercel 배포, `docs/design-system/codex/task-F-frontend-deploy.md`, #108). 이미 push한 커밋은 고치지 않고 새 커밋을 쌓는다. 독립 리뷰와 병합 게이트는 별도로 필요하다. **이전 메모의 처리**(#104): ⓐ 응답 칸 이름(`received`↔`received_date`, `potaff`·`years`·`mfr_part`) — 검색 화면은 API 응답 칸 이름을 그대로 쓰고 설계에 `potaff`·`years`·`mfr_part`가 없어 카드 추가(`nhtsa build`)는 하지 않는다, 다시 필요해지면 새로 정한다. ⓑ DEC-047 칸은 #60에 안내했고 v1.0 설계·#105 구현에 반영됐다. ⓒ 옛 트럭 `.glb` 재현은 비공개 artifact "결함 선례 쇼룸 (Copy)"의 `models/*.gltf.json` → `gltf-json-to-glb.mjs`(sha256 `d608c0bc…`·`f8532a1d…`, 보관), 현재 쏘나타·쏘렌토 출처·지문은 `frontend/README.md`·`vehicle-sources.json`. 사용자 `docs/계획_P3_리랭커시험.md`는 포함하지 않는다.
+1. **PR #117 리뷰·병합 → WAF 규칙 설정 → 배포 뒤 실측 → 작업 F** (2026-10-13 현재): PR #117에 자동 리뷰(Codex)가 아직 없다 — Actions가 꺼져 있어(DEC-040) 리뷰봇이 달리는지 보고, 안 달리면 `MERGE_PROTOCOL.md` G-02대로 리뷰 에이전트로 직접 돌려 원문을 게시한다. 병합은 사용자가 PR 번호를 들어 지시하고 게이트 G-01~09가 ✅일 때만. **DEC 번호**: #113이 DEC-056, #117이 DEC-057을 써서 병합 순서에 따라 맞춘다(SESSION_LOG·DECISIONS 끝줄 충돌도 예상). 병합·재배포 뒤 사용자 계정 작업은 ① Vercel 대시보드에 WAF 규칙(`/search`, 고정 창 60초, 한도 120, IP 키) ② WAF가 막은 429에 CORS 머리글이 붙는지와 Vercel에서 요청 경로가 `/search`로 잡히고 `VERCEL` 환경변수로 IP가 구분되는지 실측(`docs/배포_Vercel.md` 3-2절). 그다음 **작업 F가 발표 전 필수 경로**다 — 공개 주소 시연이라 화면 Vercel 배포, 배포 화면 주소를 `ALLOWED_ORIGINS`에 추가, 429 안내("잠시 뒤에 다시 시도해 주세요(429)")와 `Retry-After` 동안 [다시 시도] 비활성을 넣는다. #63에서 뺀 스키마 변경 2건은 할 일 56.
 2. F는 별도 요청 시 진행한다. 실제 모델 파일 포함·저작자 표시·API CORS·시연 환경을 확인한다. 쏘나타 약 111MiB와 쇼룸 JS 청크 경고는 남는 비용이며 이번 체크포인트에서 최적화·배포를 시작하지 않는다 — 배포 전에 Vercel 정적 파일 크기 한도에 걸리는지 공식 문서로 확인한다. **번호 주의**: F의 결정은 쓰기 직전 main의 다음 빈 번호를 쓴다(2026-10-13 기준 DEC-056 — DEC-054는 쇼룸 차종, DEC-055는 D 파트 복귀 결정이 썼다). `docs/design-system/codex/task-F-frontend-deploy.md`(3절)·`codex/README.md`는 이미 이렇게 고쳐 두었다(PR #111). 화면이 더는 읽지 않는 옛 트럭 자산(`public/data/recalls.json`·`silverado_parts.json`·`ram_parts.json`, `inspect-model-surfaces.mjs`의 트럭 대상, README 트럭 절)은 **보관한다**(사용자 결정 2026-10-13 — 지우지 않음, 다시 정할 때까지 그대로 둔다).
 3. 프로젝트 후속: #63(호출 상한·CORS — 비밀 키 인증 없음, Next Action 1), #103(배포 측정), #53 원인 상태 문구 합의·#83 미보고 경계, #84·#87·#75~#78·#93·#95·#98은 최신 상태 조회 후 남은 범위만 처리한다. 화면 잠정 문구 구현과 사람 합의는 구별한다.
 4. P3: 시점 평가 전달본·원본 열 대조(48) 후 사람 표시를 늦어도 10/16까지, 10/17 채점·보고. 원인 품질 573 30건과 참고용 조사 요약 30건은 사람이 따로 표시·채점한다. `stated_unknown`은 그 표본 밖이다. 표시 질문을 만든 세션에서 AI가 정답을 표시하지 않는다.
