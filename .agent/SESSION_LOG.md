@@ -172,3 +172,4 @@
 - 2026-10-13: #105 review-agent(4ec3e9e)·Codex(ab18c14) 반영 — 쇼룸 데모 JSON 줄바꿈 LF 고정(.gitattributes, Windows 해시 시험 보호), 생성기 utf-8 읽기, HANDOFF 15·36행 현재 상태
 - 2026-10-13: #105 병합(main 528d114, #109 닫힘)·임시 worktree 정리. 이승노(@powercodingman) 합류 → D 파트 복귀(DEC-055): 원인 품질 30건·원인 미확인 150건 표시, 실무자 확인 제외(사용자 결정), 전달본 zip 46d7222b·안내 docs/D파트_표시_안내.md
 - 2026-10-13: PR #111 review-agent(e27fda1) 반영 — ② 표시 전 열람 금지에 실험_P2 5-2 B절 추가, labeler_id 예시를 파트 없는 값으로, DEC-055 지문 설명 정정, HANDOFF #105 병합·F는 DEC-056, Luna 문서에 C 표시자 변경 주석, 전달본 다시 묶음(zip 46d7222b)
+- 2026-10-13: PR #111 review-agent(422555c)·Codex(e27fda1) 반영 — HANDOFF의 #105 서술 6곳을 병합(528d114) 상태로, 눈가림은 '의도'로 낮추고 자기보고·규칙 공개 한계 기록, 기획서 실무자 표기·CODEOWNERS는 #112
