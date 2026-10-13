@@ -314,7 +314,7 @@ footer.doc-foot { padding-top: var(--sp-5); font-size: var(--fs-xs); color: var(
         <tr><td><code>--sp-1…7</code></td><td class="num">4 · 8 · 12 · 16 · 24 · 32 · 48px</td><td>간격(블록 사이 18~24px)</td></tr>
         <tr><td><code>--radius / --radius-s / --radius-pill</code></td><td class="num">18 / 10 / 999px</td><td>앱 틀·패널 / 블록·목록 항목 / 배지·칩</td></tr>
         <tr><td><code>--shadow-panel</code></td><td>0 1 2 · 0 8 24, 6% 잉크</td><td>앱 틀 하나에만(블록은 선만)</td></tr>
-        <tr><td><code>--focus</code></td><td>3px <code>--accent-2</code> 35%</td><td>키보드 초점(모든 버튼·입력)</td></tr>
+        <tr><td><code>--focus</code></td><td>3px <code>--accent-2</code> 35%</td><td>입력칸 <code>:focus-within</code> 보조(키보드 초점은 불투명 outline)</td></tr>
       </table>
     </div>
   </section>
@@ -341,7 +341,7 @@ footer.doc-foot { padding-top: var(--sp-5); font-size: var(--fs-xs); color: var(
   <section class="part" id="mock-desktop">
     <header>
       <h2>목업 · 결과 화면 (데스크톱 1280px)</h2>
-      <p class="note">질문 <code id="mq"></code>의 실제 응답입니다. 왼쪽 목록을 누르면 오른쪽 상세가 바뀝니다. <b>14E073000</b>은 원인 원문이 "The cause is under investigation"인데 상태는 <code>filled</code>입니다 — 상태 이름만 보고 판단하지 않도록 원문과 꼬리표를 함께 보여 주는 이유입니다(#83).</p>
+      <p class="note">질문 <code id="mq"></code>의 실제 응답입니다. 왼쪽 목록을 누르면 오른쪽 상세가 바뀝니다. (목업은 아래 경계 사례를 보이려고 <b>14E073000</b>을 먼저 선택해 둡니다 — 실제 화면의 첫 선택은 고객사 선례 첫 항목, <code>components/result-list.md</code>.) <b>14E073000</b>은 원인 원문이 "The cause is under investigation"인데 상태는 <code>filled</code>입니다 — 상태 이름만 보고 판단하지 않도록 원문과 꼬리표를 함께 보여 주는 이유입니다(#83).</p>
     </header>
     <div class="frame-wrap"><div class="frame-desktop" id="desk"></div></div>
   </section>
@@ -596,7 +596,11 @@ footer.doc-foot { padding-top: var(--sp-5); font-size: var(--fs-xs); color: var(
       btn.type = "button";
       const msg = el("span", "note", "");
       msg.setAttribute("role", "status");
-      const fail = () => { msg.textContent = "복사하지 못했습니다 — 위 글자를 눌러 선택한 뒤 복사해 주세요"; };
+      const fail = () => {
+        msg.textContent = "복사하지 못했습니다 — 위 글자를 눌러 선택한 뒤 복사해 주세요";
+        const r = document.createRange(); r.selectNodeContents(full);
+        const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      };
       btn.onclick = () => {
         if (!navigator.clipboard) return fail();
         navigator.clipboard.writeText(RESP.bundle_sha256).then(() => { msg.textContent = "복사했습니다"; }, fail);

@@ -149,3 +149,4 @@
 - 2026-10-12: PR #102 리뷰 반영 — 탐침 1e-3은 묶음 경로만(같은 기계 1e-4), 통과 때 차이·시작 최대 RSS(Vercel 901MB) 로그, maxDuration 60, Vercel 통과 기준을 shown_any 차이·세 갈래 기록(706·28·15)으로 대체(사용자 결정)
 - 2026-10-13: #102 병합(main 1a43791), #60은 우지훈이 정리·API 연동 맡기로(사용자 결정), 디자인 인터뷰로 검색 전용 화면 설계 v0.1(docs/design-system/), 3D 모델 .glb를 우지훈 소유 쇼룸 artifact의 gltf.json에서 재현(sha256 일치)
 - 2026-10-13: PR #104 리뷰(Codex 4차) 반영 — 첫 화면 "같은 부품"→관련 리콜 후보, 목록·근거 줄 pre-wrap, 전체 묶음 해시 "판본 자세히", 키보드 초점 불투명 outline, 응답 검사 전 필드, 오류 5종, D·E 완료 표시·HANDOFF Next Action 1 현행화
+- 2026-10-13: PR #104 Codex(1cbf6dc) 반영 — 응답 검사 시험을 전 필수 칸으로, spacing의 sha256 전체 보기 규칙, 복사 실패 시 글자 선택, HANDOFF Current Phase·State 현행화, 목업 --focus 설명(#107)
