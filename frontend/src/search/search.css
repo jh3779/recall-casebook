@@ -55,7 +55,7 @@
 .item-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .item-top .who { font-size: var(--fs-s); color: var(--ink-2); min-width: 0; overflow-wrap: anywhere; }
 .item-top .date { margin-left: auto; font-size: var(--fs-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.item .snip { font-family: var(--font-source); font-size: var(--fs-s); color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.item .snip { font-family: var(--font-source); white-space: pre-wrap; font-size: var(--fs-s); color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .item-bottom { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
 /* 원인 상태 배지 3단계 — 글이 있는가만 보여 준다 */
@@ -110,7 +110,7 @@ details.more[open] > summary::before { content: "－ "; }
 .ev { display: grid; gap: 4px; min-width: 0; }
 .ev-row { display: grid; grid-template-columns: 96px 1fr; gap: 8px; font-size: var(--fs-s); }
 .ev-row .f { color: var(--ink-3); font-size: var(--fs-xs); }
-.ev-row .t { font-family: var(--font-source); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ev-row .t { font-family: var(--font-source); white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .prov { font-size: 11px; color: var(--ink-3); display: flex; gap: 6px 14px; flex-wrap: wrap; font-family: var(--font-id); padding-top: 4px; border-top: 1px solid var(--line); }
 @media (max-width: 560px) { .check-item, .ev-row, .kv { grid-template-columns: 1fr; } }
 
@@ -226,3 +226,7 @@ input::placeholder { color: var(--ink-3); opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 @media (prefers-reduced-transparency: reduce) { .app-top, .list { background: var(--surface); backdrop-filter: none; } }
+
+.prov-more { flex-basis: 100%; display: grid; gap: 4px; }
+.prov-more summary { cursor: pointer; color: var(--accent-2); }
+.prov-sha { user-select: all; overflow-wrap: anywhere; }

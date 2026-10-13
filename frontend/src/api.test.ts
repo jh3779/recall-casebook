@@ -16,6 +16,44 @@ it("422는 서버 문구의 접두사만 제거한다", async () => {
 });
 it("TypeError는 연결 실패", async () => { vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed"))); await expect(search("airbag")).rejects.toMatchObject({ kind: "network" }); });
 it("abort는 시간 초과", async () => { vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("aborted", "AbortError"))); await expect(search("airbag")).rejects.toMatchObject({ kind: "timeout" }); });
+const filledIndex = fixture.precedents.findIndex((c) => c.cause.status === "filled");
+const drop = (path: string[]) => {
+  const body = structuredClone(fixture) as Record<string, any>;
+  const target = path.slice(0, -1).reduce((o, k) => o[k], body);
+  delete target[path[path.length - 1]];
+  return body;
+};
+const P = (...k: (string | number)[]) => k.join(".");
+it.each([
+  P("build_id"), P("bundle_sha256"), P("snapshot_date"), P("model"), P("question"), P("customer_precedents"), P("precedents"),
+  ...["rank", "campno", "maker", "maker_group", "received_date", "defect", "consequence", "remedy", "components", "source", "cause", "investigations", "checklist"].map((k) => P("precedents", 0, k)),
+  ...["dataset", "snapshot_date", "speaker"].map((k) => P("precedents", 0, "source", k)),
+  P("precedents", filledIndex, "cause", "status"),
+  ...["text", "speaker", "source", "flags"].map((k) => P("precedents", filledIndex, "cause", k)),
+  ...["campaign", "file", "pdf_sha256", "submission_date", "text_basis"].map((k) => P("precedents", filledIndex, "cause", "source", k)),
+])("필수 칸 %s가 없으면 형식 오류", async (path) => { reply(drop(path.split("."))); await expect(search("airbag")).rejects.toMatchObject({ kind: "shape" }); });
+it.each(["bundle_sha256", "maker_group"])("%s의 자료형이 다르면 형식 오류(null은 허용)", async (key) => {
+  const body = structuredClone(fixture) as Record<string, any>;
+  if (key === "bundle_sha256") body.bundle_sha256 = 1; else body.precedents[0].maker_group = 1;
+  reply(body); await expect(search("airbag")).rejects.toMatchObject({ kind: "shape" });
+});
+const withInv = fixture.precedents.findIndex((c) => c.investigations.length > 0);
+const withEv = fixture.precedents.findIndex((c) => c.checklist.some((i) => i.evidence.length > 0));
+it("시험 픽스처에 조사·근거 원소가 있다", () => { expect(withInv).toBeGreaterThanOrEqual(0); expect(withEv).toBeGreaterThanOrEqual(0); });
+it.each([
+  ...["action", "speaker", "subject", "summary", "open_date", "close_date"].map((k) => P("precedents", withInv, "investigations", 0, k)),
+  ...["item", "label", "evidence"].map((k) => P("precedents", withEv, "checklist", 0, k)),
+])("배열 원소 안의 필수 칸 %s가 없으면 형식 오류", async (path) => { reply(drop(path.split("."))); await expect(search("airbag")).rejects.toMatchObject({ kind: "shape" }); });
+it("근거 원문(evidence.text)이 없으면 형식 오류", async () => {
+  const body = structuredClone(fixture) as Record<string, any>;
+  const item = body.precedents[withEv].checklist.find((i: Record<string, any>) => i.evidence.length > 0);
+  delete item.evidence[0].text;
+  reply(body); await expect(search("airbag")).rejects.toMatchObject({ kind: "shape" });
+});
+it.each(["build_id", "bundle_sha256", "snapshot_date", "cards", "model"])("health의 %s가 없으면 형식 오류", async (key) => {
+  const body = structuredClone(healthFixture) as Record<string, any>; delete body[key];
+  reply(body); await expect(health()).rejects.toMatchObject({ kind: "shape" });
+});
 it("500은 서버 오류", async () => { reply({}, 500); await expect(search("airbag")).rejects.toMatchObject({ kind: "server", status: 500 }); });
 it("JSON이 아닌 응답은 형식 오류", async () => { vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<html>"))); await expect(search("airbag")).rejects.toMatchObject({ kind: "shape" }); });
 it.each([null, {}, { ...fixture, customer_precedents: null }, { ...fixture, precedents: [{ campno: "x", cause: { status: "filled" } }] }, { ...fixture, precedents: [{ ...fixture.precedents[0], checklist: null }] }])("렌더할 수 없는 응답을 거절한다", async (body) => { reply(body); await expect(search("airbag")).rejects.toMatchObject({ kind: "shape" }); });

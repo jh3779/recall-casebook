@@ -38,6 +38,11 @@ it("HTML과 U+0092도 텍스트 노드로 보존한다", () => {
   expect(markup).not.toContain("<script>");
   expect(markup).toContain("묶음 없음(로컬 파일로 띄운 서버)");
 });
+it("판본 자세히에 묶음 sha256 64자 전체가 들어 있다", () => {
+  const markup = renderToStaticMarkup(<PrecedentDetail card={response.precedents[0]} response={response} />);
+  expect(response.bundle_sha256).toHaveLength(64);
+  expect(markup).toMatch(new RegExp("<details[^>]*>[\\s\\S]*판본 자세히[\\s\\S]*" + response.bundle_sha256 + "[\\s\\S]*</details>"));
+});
 it("목업 응답 픽스처를 글자 그대로 보관한다", () => {
   const html = readFileSync(new URL("../../../docs/design-system/mockup.html", import.meta.url), "utf8");
   for (const [id, file] of [["data-search", "search_airbag.json"], ["data-health", "health.json"]]) {
