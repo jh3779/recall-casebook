@@ -174,3 +174,4 @@
 - 2026-10-13: PR #111 review-agent(e27fda1) 반영 — ② 표시 전 열람 금지에 실험_P2 5-2 B절 추가, labeler_id 예시를 파트 없는 값으로, DEC-055 지문 설명 정정, HANDOFF #105 병합·F는 DEC-056, Luna 문서에 C 표시자 변경 주석, 전달본 다시 묶음(zip 46d7222b)
 - 2026-10-13: PR #111 review-agent(422555c)·Codex(e27fda1) 반영 — HANDOFF의 #105 서술 6곳을 병합(528d114) 상태로, 눈가림은 '의도'로 낮추고 자기보고·규칙 공개 한계 기록, 기획서 실무자 표기·CODEOWNERS는 #112
 - 2026-10-13: PR #111 review-agent(73df158) 반영 — 열람 금지를 Luna 비교 문서 전체로, DEC-052~054 상태 병합, labeler_id 한계 기록, 전달본 다시 묶음(zip 48634f27)
+- 2026-10-13: PR #111 review-agent(351e76f) 반영 — HANDOFF 지문 오기 정정(48634f27d3ae07ae), ② 리콜 번호 저장소 노출 전수 검사(15V629 1건, P2 5-1절)와 SESSION_LOG 지칭 범위를 DEC-055 한계에
