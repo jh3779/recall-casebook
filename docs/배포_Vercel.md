@@ -60,13 +60,13 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 
 배포 서버 환경변수(DEC-050, `.env.example`): `RAG_SOURCE=bundle`·`SERVING_BUILD_ID`(띄울 build)·`SUPABASE_URL`(공개 주소용)·`SERVER_DATABASE_URL`(`rag_reader`)·`ALLOWED_ORIGINS`(배포 화면 주소). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
 
-공개 전 필수: 이슈 #63 — 조회 전용 계정 `rag_reader`(묶음 기록 `serving_bundles` 조회 권한 포함)와 Vercel 환경변수 `SERVER_DATABASE_URL`(관리자 키는 Vercel에 두지 않음), Storage 읽기 자격(공개 읽기 버킷 — DEC-049 ③, 무결성은 `serving_bundles` 기록 sha256 대조), 인증 또는 호출 상한, 배포 주소 CORS. 통과 기준: 749문항 H@10 0.542 재현, `/search` 응답이 묶음 sha256 칸(로컬 경로는 `null`)을 빼고 로컬 경로와 바이트까지 같음, Vercel에서 함수 크기·최대 메모리·첫 요청 시간 실측.
+공개 전 필수: 이슈 #63 — 조회 전용 계정 `rag_reader`(묶음 기록 `serving_bundles` 조회 권한 포함)와 Vercel 환경변수 `SERVER_DATABASE_URL`(관리자 키는 Vercel에 두지 않음), Storage 읽기 자격(공개 읽기 버킷 — DEC-049 ③, 무결성은 `serving_bundles` 기록 sha256 대조), IP별 호출 상한(앱 1분 60회 + Vercel WAF 안전망 — 비밀 키 인증은 두지 않는다, DEC-057), 배포 주소 CORS. 통과 기준: 749문항 H@10 0.542 재현, `/search` 응답이 묶음 sha256 칸(로컬 경로는 `null`)을 빼고 로컬 경로와 바이트까지 같음, Vercel에서 함수 크기·최대 메모리·첫 요청 시간 실측.
 
 > (2026-10-12) 위 "공개 전 필수"는 사용자 결정으로 바뀌어 #63 전에 Production에 먼저 올렸다(아래 3-1, DEC-051 ①). 통과 기준 중 "응답 바이트까지 같음"은 Vercel에서 **충족하지 못했고**, 사용자 결정으로 **CPU가 다른 환경에서는** "같은 749문항의 화면 기준 점수 `shown_any` 차이가 0.03 안 + 완전 같음/순서만 다름/구성 다름 기록"으로 대체했다(DEC-051 ③) — 실측 Vercel 0.545·로컬 0.543, 706·28·15. 같은 기계 안의 비교는 바이트 동일 기준 그대로다. 최대 메모리는 서버가 시작 끝에 로그로 남긴다(3-1). 함수 크기는 Vercel이 출력하지 않아 Linux x86 컨테이너 설치 크기로 근사했다(3-1, 약 210MB).
 
 ### 3-1. 실제 배포 (2026-10-12, DEC-051)
 
-**지금 공개 주소: `https://lg-cns-rag.vercel.app`** (Vercel 프로젝트 `lg-cns-rag`, Hobby, 함수 지역 `syd1`). **인증·호출 상한이 아직 없다** — 사용자 결정으로 #63보다 먼저 Production에 올렸다(DEC-051 ①). 누구나 `/search`를 부를 수 있으므로 #63을 서두른다.
+**지금 공개 주소: `https://lg-cns-rag.vercel.app`** (Vercel 프로젝트 `lg-cns-rag`, Hobby, 함수 지역 `syd1`). 사용자 결정으로 #63보다 먼저 Production에 올렸다(DEC-051 ①). 비밀 키 인증은 두지 않는다(DEC-057). 앱의 IP별 호출 상한(1분 60회)은 `server/ratelimit.py`로 구현됐고 **이 변경을 배포해야 적용된다**. WAF 규칙은 Vercel 대시보드에서 설정해야 하며, 설정 전에는 앱 상한만 있다(아래 3-2).
 
 | 파일 | 하는 일 |
 |---|---|
@@ -89,3 +89,31 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 | 탐침 차이(macOS arm 벡터 ↔ Vercel Linux x86 재계산) | 최대 4.30e-04(콜드 스타트 네 번 모두 같음) → 묶음 경로만 허용 차이 1e-3(`CROSS_MACHINE_ATOL`, DEC-051 ②), 같은 기계는 1e-4. 서버는 통과해도 `탐침 최대 차이 …`를 로그에 남긴다 — `vercel logs <배포 주소> --json`으로 분포를 모아 다시 판단 |
 | 시작 최대 RSS | **901MB**(Hobby 2GB 안) — 서버가 시작 끝에 `시작 최대 RSS …MB`를 로그로 남긴다 |
 | 함수 크기 | Vercel이 출력하지 않아 **근사로 잼**: Linux x86 컨테이너(`python:3.12-slim`, uv 0.10.11)에 `uv.lock`대로 개발 의존성 없이 설치한 site-packages **약 208MB**(onnxruntime 63·numpy 57·pillow 14·tokenizers 12·psycopg 11MB 등) + 코드 약 2MB ≈ **210MB**(한도 500MB의 약 42%, Vercel 번들 최적화 전 값 — 실제 Vercel 산출물 크기는 미측정). 다시 잴 때: `pyproject.toml`·`uv.lock`·`.python-version`을 임시 폴더에 복사해 uv 공식 이미지로 `docker run --rm --platform linux/amd64 -v <폴더>:/src:ro ghcr.io/astral-sh/uv:0.10.11-python3.12-trixie-slim sh -c 'cp -r /src /w && cd /w && UV_NO_CONFIG=1 uv sync --frozen --no-dev -q && du -sm .venv/lib/python3.12/site-packages'` + `du -sh server scripts/defect_precedent`. (위 208MB는 2026-10-12 `python:3.12-slim` 일회용 컨테이너 안에서 uv 0.10.11을 `pip`으로 설치해 잰 값이다 — 저장소는 `pip install`을 쓰지 않으므로 다시 잴 때는 이 공식 이미지 명령을 쓴다. 같은 날 이 명령으로 재현하려 했으나 이 컴퓨터(Apple Silicon)에서 amd64 컨테이너가 시작되지 않아 확인하지 못했다 — #103) |
+
+### 3-2. 호출 상한과 시연 준비 (이슈 #63, DEC-057)
+
+**구조 — 두 겹, 둘 다 비밀값 없이**
+
+| 겹 | 위치 | 기준 | 하는 일 |
+|---|---|---|---|
+| 앱 | `server/ratelimit.py` (CORS 미들웨어 안쪽) | `POST /search`, IP당 1분 `RATE_LIMIT_PER_MINUTE`(기본 60) | 넘으면 429 + `Retry-After`. 429에도 `Access-Control-Allow-Origin`이 붙고 `Retry-After`는 `Access-Control-Expose-Headers`로 화면이 읽을 수 있다 |
+| WAF | Vercel 방화벽 규칙 1개 (Hobby 한도 1개) | `/search`, IP당 1분 120회 *(에이전트 제안, 사용자 채택 2026-10-13)* | 앱을 우회하는 폭주를 엣지에서 차단 |
+
+- 앱 60 < WAF 120인 이유: WAF가 막은 429에 CORS 머리글이 붙는지 Vercel 문서에 없다. 정상 사용은 앱의 429(머리글 있음)가 먼저 나가게 한다.
+- 앱 카운터는 인스턴스별 메모리라 인스턴스 수만큼 느슨하다. 새 인스턴스마다 서빙 묶음(약 155MB)을 받으므로 폭주하면 Supabase 전송량이 늘 수 있다. WAF 카운터는 지역별로 센다(Vercel 문서).
+- 클라이언트 IP는 Vercel 위에서만 `x-forwarded-for`의 첫 값을 쓴다(Vercel이 외부에서 온 값을 덮어써 위조할 수 없다). 그 밖의 환경은 소켓 주소를 쓴다.
+- 시연장이 공유 IP면 호출이 합산된다.
+
+**WAF 규칙 설정 (사용자 계정 작업, 대시보드 문구는 달라질 수 있다)**
+1. 프로젝트 `lg-cns-rag` → Firewall → Configure → New Rule.
+2. 이름 `search-rate-limit`, 조건: Request Path가 `/search`와 같다(가능하면 Method POST도).
+3. Then: Rate Limit, Fixed Window, 창 60초, 한도 120, 키 IP, 응답 기본(429) → Save → Review Changes → Publish.
+4. 처음 며칠은 Action을 **Log**로 두고 트래픽을 본 뒤 Default(429)로 바꿔도 된다.
+
+**WAF 429의 CORS 머리글 확인 (배포 뒤 한 번)** — 앱 상한을 임시로 크게(`RATE_LIMIT_PER_MINUTE=1000`) 한 Preview에서 같은 IP로 `/search`를 121회 이상 부르고, 마지막 429 응답에 `access-control-allow-origin`이 있는지 `curl -i -H "Origin: http://localhost:5173"`로 본다. 없으면 화면이 429를 '연결 실패(CORS)'로 안내하므로 WAF 한도를 더 느슨하게 두거나 작업 F에서 그 경우를 따로 안내한다.
+
+**공개 주소로 시연하는 날 (DEC-057 ④)**
+1. 시연 5분 전: `curl -s https://lg-cns-rag.vercel.app/health`와 예시 검색 1회를 부른다 — 새 인스턴스가 서빙 묶음을 받아 시작하는 시간을 미리 쓴다. 중간에 인스턴스가 내려가면 첫 요청이 다시 느릴 수 있다(화면은 3초 뒤 '서버 시작 중' 안내, 60초 뒤 취소).
+2. 시연 직전: 상한이 시연을 막을 위험이 있으면 WAF 규칙을 Log로 바꾸고, 앱 상한은 `RATE_LIMIT_PER_MINUTE`를 올려 다시 배포한다(환경변수 변경은 재배포가 필요하다).
+3. 화면(Vercel)에서 배포 주소가 CORS에 들어 있는지 한 번 호출해 본다(작업 F 6단계에서 `ALLOWED_ORIGINS`에 추가).
+4. 429 화면 처리(안내 문구와 `Retry-After` 동안 [다시 시도] 비활성)는 작업 F에서 한다 — 그 전에는 "서버 오류 (429)"로 보인다.
