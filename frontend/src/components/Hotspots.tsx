@@ -25,7 +25,7 @@ export function Hotspots({ items, category, onSelect, bind }: Props) {
         >
           <span className="hs-dot">+</span>
           <span className="hs-label">
-            {CATEGORIES[key].name} · {count}건
+            {CATEGORIES[key].name} · {count}건 · 추정 위치
           </span>
         </button>
       ))}

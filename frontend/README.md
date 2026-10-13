@@ -26,6 +26,42 @@ npm run dev       # http://localhost:5173
 
 ## 3D 모델 파일 — 커밋하지 않는다
 
+현재 차량은 **쏘나타(YF)·쏘렌토**다. Sketchfab 쏘나타와 사용자 제공 쏘렌토 GLB를 적용했다. 원본 법선·텍스처·스킨을 유지하며 두 모델의 앞 방향·바닥·차체 중심을 맞춘다. 화면의 길이는 5.2 단위로 통일해 실제 차체 크기 비교에는 쓰지 않는다. 회전은 차량 중앙의 수직축에 고정하며 부품 선택 중에도 중심이 이동하지 않는다. 팬·상하 회전은 제한하고 확대·축소는 유지한다.
+
+| 모델 | 출처·저작자 | GLB 크기 |
+|---|---|---:|
+| 쏘나타 YF | [Hyundai Sonata 2014 — DR1KING100K](https://sketchfab.com/3d-models/hyundai-sonata-2014-7a0e4fa5122e4cc1b57d8b9149916558) | 116,543,736바이트 (1K GLB) |
+| 쏘렌토 | [Kia Sorento — MattDoesBlender](https://sketchfab.com/3d-models/kia-sorento-47a0016ba8b842c780d79ded8fa0a891) | 18,780,960바이트 |
+
+두 파일의 내장 출처는 CC BY 4.0이다. 화면에 저작자·출처·라이선스·변경 사항을 표시한다. 출처·원본 SHA-256은 `public/data/vehicle-sources.json`에 있다. 쏘렌토는 원본의 회색 재질을 재질 이름에 맞게 나눴고, 원본 바퀴 한 벌을 나머지 세 바퀴 배치 지점에 복제했다.
+
+```bash
+# frontend/에서. 사용자가 받은 GLB 경로에 맞게 복사한다.
+mkdir -p public/models
+cp ~/Downloads/hyundai_sonata_2014.glb public/models/sonata.glb
+cp ~/Downloads/kia_sorento.glb public/models/sorento.glb
+node scripts/prepare-vehicle-parts.mjs
+```
+
+`public/models/`는 gitignore다. 다른 환경에서도 원본 파일을 준비해야 하며 모델이 없으면 실패 안내·검색 복귀 버튼이 뜬다. 원본 메시·재질·본 이름으로 확인된 분류는 원본 형상을 사용한다. 없는 엔진·변속기·연료 배관 등은 일반적인 전륜구동 배치를 단순화한 도형으로 보완한다. 추정 도형은 투시에서만 보이고 실제 기록이 있는 분류에만 연결한다. 화면·핫스팟·패널에 설명용 추정임을 밝힌다. 기타 장비처럼 위치가 하나로 특정되지 않는 분류는 기록만 연다. 쏘나타 GLB는 약 111MiB이므로 첫 로딩 비용이 크다. [구현·검증 기록](../docs/프런트_현대기아_모델.md).
+
+## 현재 쇼룸 데모 데이터
+
+`public/data/hyundai-kia-recalls.json`: 2026-10-06 보관 NHTSA 스냅샷에서 **SONATA 2011–2014년식 18건, SORENTO 2021–2023년식 8건**을 추렸다. 쏘나타·쏘렌토 하이브리드는 포함하지 않는다. 검색 결과가 아니며 차종의 전체 연식·최신 리콜 목록을 뜻하지 않는다. 한 리콜에 여러 분류가 있으면 분류별 건수의 합이 총 리콜 수보다 클 수 있다.
+
+```bash
+# 저장소 루트에서. 원본 flat ZIP과 카드 JSONL은 로컬에 준비되어 있어야 한다.
+uv run python -m scripts.build_showroom_demo
+node frontend/scripts/check-demo-against-cards.mjs data/processed/defect/recalls.jsonl
+# 쏘나타 18건 + 쏘렌토 8건 · 원문 대조 26/26 일치
+```
+
+원본 파일 SHA-256·정확한 차종·연식·RECORD_ID는 `hyundai-kia-manifest.json`에 남긴다. 결함·위험·시정 문장과 회사명은 카드 원문 그대로다. 각 카드에서 NHTSA 원문을 열 수 있으며 대상 대수는 해당 리콜 전체(다른 차종 포함)임을 표시한다. 검색 API·평가셋·색인은 바꾸지 않았다.
+
+## 이전 트럭 모델·데이터 — 보관 기록
+
+아래 Silverado·Ram 모델과 데모 데이터는 현재 화면에서 사용하지 않는다. 기존 검증 기록과 재현 입력을 보존한다.
+
 쇼룸은 PR #60의 커밋 `5be42cb577237f3050f3123fb0d744756727acb1`에서 가져왔다. CCSA(George Mason University)의 FHWA/NHTSA 유한요소 차량 모델을 단순화한 화면이다. 재배포는 **2026-10-13 사용자 결정**으로 허용됐다(DEC-052). `public/models/`는 gitignore이며 커밋 훅의 1MB 제한도 지킨다.
 
 우지훈 소유 [결함 선례 쇼룸 (Copy)](https://claude.ai/artifact/5022cf20-2f08-4389-b13f-5adde11b78d4)의 `models/silverado.gltf.json`·`models/ram.gltf.json`을 받는다. 비공개 artifact이므로 공유받아야 열린다. 아래 명령은 `frontend/`에서 실행한다.
@@ -44,7 +80,9 @@ shasum -a 256 public/models/*.glb
 
 원본 SHA-256: `silverado.gltf.json` = `2bb27ed2fb5482dd9b2b0d7f62b8c6de389fcb619456cbba731cb181fd9e10b0`, `ram.gltf.json` = `08e4d6eb162092c4e46d021275643222193b203d9a3ca4e0f7862e3b8eda8e30`. 변환은 포장만 바꾼다. 2026-10-13 로컬 보관 GLB 두 파일도 위 지문과 일치했다. 모델이 없으면 쇼룸에 실패 안내·검색 복귀 버튼이 뜬다. 화면 배포는 아직 하지 않았다.
 
-## 쇼룸 데모 데이터
+이전 트럭 화면에서는 원본의 메모리 사본에 중복 면 제거·45도 기준 음영 평활화를 적용했다. 원본 파일은 유지하며 모서리와 부품 선택 위치를 보존한다. `node scripts/inspect-model-surfaces.mjs`로 트럭 면 수·위치·법선을 확인할 수 있다. 수치와 한계는 [모델 표면 정리 기록](../docs/프런트_모델표면_정리.md)을 따른다. 새 외관 모델에는 이 처리를 적용하지 않는다.
+
+### 이전 쇼룸 데모 데이터
 
 `public/data/`는 artifact 판본 `1791386571-be6b`에서 받은 스냅샷이다. **검색 결과가 아니다.** 전체 재생성 스크립트는 아직 없고, 부품 대응표의 생성 과정도 후속 일이다(HANDOFF 55).
 
@@ -63,7 +101,7 @@ shasum -a 256 public/models/*.glb
 
 ```bash
 # 저장소 루트에서. 카드 파일은 gitignore라 로컬에 준비되어 있어야 한다.
-node frontend/scripts/check-demo-against-cards.mjs data/processed/defect/recalls.jsonl
+node frontend/scripts/check-demo-against-cards.mjs data/processed/defect/recalls.jsonl frontend/public/data/recalls.json
 # 총 75건 · 일치 75건 (2026-10-13)
 ```
 

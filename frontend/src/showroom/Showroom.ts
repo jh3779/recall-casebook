@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { prepareVehicle } from "./vehicle";
+import { createEstimatedParts } from "./estimatedParts";
 import { MODELS, PAINTS } from "../config";
 import type { CategoryKey, Mode, ModelKey, PartInfo, PartsMap } from "../types";
 
@@ -23,7 +25,7 @@ const partOf = (m: THREE.Mesh) => m.userData.part as PartInfo;
 function createMaterials() {
   return {
     paint: new THREE.MeshPhysicalMaterial({
-      color: PAINTS[0].color, metalness: 0.45, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.06,
+      color: PAINTS[0].color, metalness: 0.35, roughness: 0.38, clearcoat: 0.7, clearcoatRoughness: 0.2,
       side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
     }),
     glass: new THREE.MeshPhysicalMaterial({
@@ -37,6 +39,7 @@ function createMaterials() {
       color: 0xf4f6f8, roughness: 0.05, metalness: 0.2, emissive: 0xffffff, emissiveIntensity: 0.15,
       side: THREE.DoubleSide,
     }),
+    tailLight: new THREE.MeshStandardMaterial({ color: 0x940c18, emissive: 0x6b0610, emissiveIntensity: 0.3, roughness: 0.25, side: THREE.DoubleSide }),
     under: new THREE.MeshStandardMaterial({ color: 0x3b3f46, roughness: 0.7, metalness: 0.35, side: THREE.DoubleSide }),
     ghost: new THREE.MeshBasicMaterial({
       color: 0x9cc3ea, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide,
@@ -99,7 +102,11 @@ export class Showroom {
     controls.dampingFactor = 0.07;
     controls.minDistance = 1.2;
     controls.maxDistance = 16;
-    controls.maxPolarAngle = Math.PI * 0.495;
+    // 차량 중앙의 수직축만 돈다. 팬·상하 회전으로 축이 흐트러지지 않게 한다.
+    controls.enablePan = false;
+    const polarAngle = new THREE.Spherical().setFromVector3(HOME.pos.clone().sub(HOME.target)).phi;
+    controls.minPolarAngle = polarAngle;
+    controls.maxPolarAngle = polarAngle;
     controls.autoRotateSpeed = 0.6;
     // 사용자가 직접 돌리면 자동 회전·카메라 이동을 멈춘다
     controls.addEventListener("start", () => {
@@ -135,6 +142,7 @@ export class Showroom {
 
     this.camera.position.copy(HOME.pos);
     controls.target.copy(HOME.target);
+    controls.update();
     addEventListener("resize", this.fitView);
     this.fitView();
     this.raf = requestAnimationFrame(this.tick);
@@ -177,6 +185,7 @@ export class Showroom {
     this.ring.material.color.set(mode === "xray" ? 0x3d4a5c : 0x9aa4b2);
     for (const m of this.current?.meshes ?? []) {
       const cat = partOf(m).defect;
+      m.visible = !m.userData.estimated || (mode === "xray" && !!cat && activeCats.has(cat) && (!category || cat === category));
       if (mode === "exterior") {
         m.material = m.userData.base;
         m.castShadow = true;
@@ -190,7 +199,7 @@ export class Showroom {
     }
   }
 
-  /** 부품 쪽으로 카메라를 옮긴다. null이면 처음 시점으로 돌아가 자동 회전 */
+  /** 부품 쪽으로 시점을 옮겨도 차량 중앙의 회전축은 유지한다. null이면 처음 시점 */
   focus(cat: CategoryKey | null) {
     this.controls.autoRotate = !cat && !this.reducedMotion;
     if (!cat) {
@@ -203,7 +212,7 @@ export class Showroom {
     const size = h.box.getSize(new THREE.Vector3()).length();
     const dir = new THREE.Vector3(0.55, 0.42, -0.72).normalize();
     if (target.y < 0.6) dir.set(0.5, 0.25, -0.83).normalize();
-    this.flyTo(target.clone().addScaledVector(dir, Math.max(3.8, size * 2.2)), target);
+    this.flyTo(target.clone().addScaledVector(dir, Math.max(6.8, size * 2.2)), HOME.target.clone());
   }
 
   setAutoRotate(on: boolean) {
@@ -242,88 +251,16 @@ export class Showroom {
       }),
     ]);
     if (this.disposed) throw new Error("Showroom disposed");
-    const root = gltf.scene;
-
-    // 차 중심을 원점, 바닥을 y=0으로
-    const box = new THREE.Box3().setFromObject(root);
-    const center = box.getCenter(new THREE.Vector3());
-    root.position.set(-center.x, -box.min.y, -center.z);
-
-    const meshes: THREE.Mesh[] = [];
-    root.traverse((o) => {
-      if (!(o instanceof THREE.Mesh)) return;
-      const name = /^p\d+/.test(o.name) ? o.name : (o.parent?.name ?? "");
-      o.userData.part = parts[name] ?? { title: name, defect: null, look: null };
-      o.castShadow = true;
-      meshes.push(o);
-    });
+    const vehicle = prepareVehicle(gltf.scene, key, parts, this.mat);
+    // 추정 도형은 정규화한 차체 좌표계에 추가해 원본 GLB와 분리한다.
+    const estimated = createEstimatedParts(vehicle.meshes, this.mat.defect);
+    const root = new THREE.Group();
+    root.add(vehicle.root, ...estimated);
     root.updateMatrixWorld(true);
-
-    const exterior = this.detectExterior(root, meshes);
-    meshes.forEach((m, i) => {
-      const p = partOf(m);
-      m.userData.base = p.look ? this.mat[p.look] : exterior[i] ? this.mat.paint : this.mat.under;
-      m.material = m.userData.base;
-    });
-
+    const meshes = [...vehicle.meshes, ...estimated];
     const entry = { root, meshes, hotspots: computeHotspots(meshes) };
     this.entries.set(key, entry);
     return entry;
-  }
-
-  // 바깥에서 보이는 부품 = 차체 도장면. 여러 방향에서 부품 ID를 색으로 렌더해 화면에 보이는 픽셀 수로 판정.
-  private detectExterior(root: THREE.Object3D, meshes: THREE.Mesh[]) {
-    const { renderer } = this;
-    const size = 256;
-    const rt = new THREE.WebGLRenderTarget(size, size);
-    const saved = meshes.map((m) => m.material);
-    meshes.forEach((m, i) => {
-      const id = i + 1;
-      const idMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-      idMat.color.setRGB((id & 255) / 255, ((id >> 8) & 255) / 255, ((id >> 16) & 255) / 255, THREE.LinearSRGBColorSpace);
-      m.material = idMat;
-    });
-    const tmpScene = new THREE.Scene();
-    const parent = root.parent;
-    tmpScene.add(root);
-    const box = new THREE.Box3().setFromObject(root);
-    const c = box.getCenter(new THREE.Vector3());
-    const r = box.getSize(new THREE.Vector3()).length() / 2;
-    const cam = new THREE.OrthographicCamera(-r, r, r, -r, 0.01, r * 4);
-    const hits = new Uint32Array(meshes.length + 1);
-    const buf = new Uint8Array(size * size * 4);
-    const prevTone = renderer.toneMapping;
-    renderer.toneMapping = THREE.NoToneMapping;
-    for (let az = 0; az < 16; az++) {
-      for (const el of [0.05, 0.45, 0.9, 1.35]) {
-        const dir = new THREE.Vector3(
-          Math.cos((az * Math.PI) / 8) * Math.cos(el),
-          Math.sin(el),
-          Math.sin((az * Math.PI) / 8) * Math.cos(el),
-        );
-        cam.position.copy(c).addScaledVector(dir, r * 2);
-        cam.lookAt(c);
-        renderer.setRenderTarget(rt);
-        renderer.setClearColor(0x000000, 1);
-        renderer.clear();
-        renderer.render(tmpScene, cam);
-        renderer.readRenderTargetPixels(rt, 0, 0, size, size, buf);
-        for (let k = 0; k < buf.length; k += 4) {
-          const id = buf[k] | (buf[k + 1] << 8) | (buf[k + 2] << 16);
-          if (id && id <= meshes.length) hits[id]++;
-        }
-      }
-    }
-    renderer.setRenderTarget(null);
-    renderer.setClearColor(0x000000, 0);
-    renderer.toneMapping = prevTone;
-    if (parent) parent.add(root);
-    meshes.forEach((m, i) => {
-      (m.material as THREE.Material).dispose();
-      m.material = saved[i];
-    });
-    rt.dispose();
-    return meshes.map((_, i) => hits[i + 1] >= 60);
   }
 
   // ------------------------------------------------------------ 카메라 · 그리기
@@ -378,7 +315,7 @@ export class Showroom {
 }
 
 // 분류별 핫스팟 위치: 운전석 쪽(-z) 부품이 있으면 그쪽, 없으면 전체의 중심
-function computeHotspots(meshes: THREE.Mesh[]): Entry["hotspots"] {
+export function computeHotspots(meshes: THREE.Mesh[]): Entry["hotspots"] {
   const byCat: Partial<Record<CategoryKey, THREE.Mesh[]>> = {};
   for (const m of meshes) {
     const cat = partOf(m).defect;
@@ -388,13 +325,22 @@ function computeHotspots(meshes: THREE.Mesh[]): Entry["hotspots"] {
   for (const [cat, list] of Object.entries(byCat) as [CategoryKey, THREE.Mesh[]][]) {
     const all = new THREE.Box3();
     list.forEach((m) => all.expandByObject(m));
-    let pick = list;
+    let b = all;
     if (all.max.z - all.min.z > 0.9) {
-      const near = list.filter((m) => new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()).z < 0);
-      if (near.length) pick = near;
+      // 외관 모델은 네 바퀴/좌석을 한 메시로 묶기도 한다. 실제 정점에서 가까운 쪽을 고른다.
+      const near = new THREE.Box3(), front = new THREE.Box3(), vertex = new THREE.Vector3();
+      for (const mesh of list) {
+        const count = mesh.geometry.getAttribute("position").count;
+        for (let i = 0; i < count; i++) {
+          mesh.getVertexPosition(i, vertex).applyMatrix4(mesh.matrixWorld);
+          if (vertex.z >= 0) continue;
+          near.expandByPoint(vertex);
+          if (vertex.x > 0) front.expandByPoint(vertex);
+        }
+      }
+      if (!near.isEmpty()) b = near;
+      if (all.max.x - all.min.x > 2 && !front.isEmpty()) b = front;
     }
-    const b = new THREE.Box3();
-    pick.forEach((m) => b.expandByObject(m));
     out[cat] = { point: b.getCenter(new THREE.Vector3()), box: all };
   }
   return out;

@@ -41,7 +41,7 @@ export function heroStats(list: Recall[]) {
   };
 }
 
-export const otherModel = (m: ModelKey): ModelKey => (m === "silverado" ? "ram" : "silverado");
+export const otherModel = (m: ModelKey): ModelKey => (m === "sonata" ? "sorento" : "sonata");
 
 export const fmtDate = (d: string) => `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}`;
 

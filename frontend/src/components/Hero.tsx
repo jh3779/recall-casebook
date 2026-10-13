@@ -13,7 +13,7 @@ export function Hero({ model, recalls }: { model: ModelKey; recalls: Recall[] })
       <h1 className="hero-title">{cfg.label}</h1>
       <div className="hero-stats">
         <Stat num={s.total} label="NHTSA 리콜" />
-        <Stat num={s.in3d} label="3D로 보이는 부품" />
+        <Stat num={"외관 참고"} label="3D 모델 용도" />
         <Stat num={s.receivedRange} label="접수일 범위" />
       </div>
     </section>

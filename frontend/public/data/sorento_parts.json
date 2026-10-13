@@ -1,0 +1,637 @@
+{
+  "Object_7": {
+    "title": "bodyshell_030 / vehicle_generic_smallspecmap_PRIMARY.011",
+    "defect": null,
+    "look": "paint"
+  },
+  "Object_8": {
+    "title": "bodyshell_030 / 2021kiasorento",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_9": {
+    "title": "bodyshell_030 / 2021kiasorento.001",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_10": {
+    "title": "bodyshell_030 / black.027",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_11": {
+    "title": "bodyshell_030 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_12": {
+    "title": "bodyshell_030 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_14": {
+    "title": "bonnet_040 / vehicle_generic_smallspecmap_PRIMARY.011",
+    "defect": null,
+    "look": "paint"
+  },
+  "Object_15": {
+    "title": "bonnet_040 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_17": {
+    "title": "boot_080 / vehicle_generic_smallspecmap_PRIMARY.011",
+    "defect": "tailgate",
+    "look": "paint"
+  },
+  "Object_18": {
+    "title": "boot_080 / black.027",
+    "defect": "tailgate",
+    "look": "under"
+  },
+  "Object_19": {
+    "title": "boot_080 / black.028",
+    "defect": "tailgate",
+    "look": "under"
+  },
+  "Object_20": {
+    "title": "boot_080 / black.029",
+    "defect": "tailgate",
+    "look": "under"
+  },
+  "Object_22": {
+    "title": "bootstuff_081 / vehicle_licenseplate.008",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_23": {
+    "title": "bootstuff_081 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_24": {
+    "title": "bootstuff_081 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_26": {
+    "title": "brakelight_m_083 / 2021kiasorento",
+    "defect": null,
+    "look": "tailLight"
+  },
+  "Object_28": {
+    "title": "bumper_f_038 / vehicle_generic_smallspecmap_PRIMARY.011",
+    "defect": null,
+    "look": "paint"
+  },
+  "Object_29": {
+    "title": "bumper_f_038 / 2021kiasorento",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_30": {
+    "title": "bumper_f_038 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_31": {
+    "title": "bumper_f_038 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_33": {
+    "title": "bumper_r_03 / vehicle_generic_smallspecmap_PRIMARY.011",
+    "defect": null,
+    "look": "paint"
+  },
+  "Object_34": {
+    "title": "bumper_r_03 / 2021kiasorento.001",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_35": {
+    "title": "bumper_r_03 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_36": {
+    "title": "bumper_r_03 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_38": {
+    "title": "chassis_02 / vehicle_generic_tyrewallblack.002",
+    "defect": null,
+    "look": "tire"
+  },
+  "Object_39": {
+    "title": "chassis_02 / dashsymbols",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_40": {
+    "title": "chassis_02 / 2021kiasorento",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_41": {
+    "title": "chassis_02 / 23kiasordashsymb",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_42": {
+    "title": "chassis_02 / 2021kiasorento.001",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_43": {
+    "title": "chassis_02 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_44": {
+    "title": "chassis_02 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_45": {
+    "title": "chassis_02 / black.029",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_46": {
+    "title": "chassis_02 / xromat_SECONDARY",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_48": {
+    "title": "dials_052 / script_rt_dials_gen_taxi",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_50": {
+    "title": "dlf_058 / 2021kiasorento",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_51": {
+    "title": "dlf_058 / 2021kiasorento.001",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_52": {
+    "title": "dlf_058 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_53": {
+    "title": "dlf_058 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_54": {
+    "title": "dlf_058 / black.029",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_55": {
+    "title": "dlf_058 / xromat_SECONDARY",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_57": {
+    "title": "dlr_068 / 2021kiasorento",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_58": {
+    "title": "dlr_068 / 2021kiasorento.001",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_59": {
+    "title": "dlr_068 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_60": {
+    "title": "dlr_068 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_61": {
+    "title": "dlr_068 / black.029",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_62": {
+    "title": "dlr_068 / xromat_SECONDARY",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_64": {
+    "title": "door_dside_f_056 / vehicle_generic_smallspecmap_PRIMARY.011",
+    "defect": null,
+    "look": "paint"
+  },
+  "Object_65": {
+    "title": "door_dside_f_056 / 2021kiasorento.001",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_66": {
+    "title": "door_dside_f_056 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_67": {
+    "title": "door_dside_f_056 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_69": {
+    "title": "door_dside_r_066 / vehicle_generic_smallspecmap_PRIMARY.011",
+    "defect": null,
+    "look": "paint"
+  },
+  "Object_70": {
+    "title": "door_dside_r_066 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_72": {
+    "title": "door_pside_f_061 / vehicle_generic_smallspecmap_PRIMARY.011",
+    "defect": null,
+    "look": "paint"
+  },
+  "Object_73": {
+    "title": "door_pside_f_061 / 2021kiasorento.001",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_74": {
+    "title": "door_pside_f_061 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_75": {
+    "title": "door_pside_f_061 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_77": {
+    "title": "door_pside_r_070 / vehicle_generic_smallspecmap_PRIMARY.011",
+    "defect": null,
+    "look": "paint"
+  },
+  "Object_78": {
+    "title": "door_pside_r_070 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_80": {
+    "title": "drf_064 / 2021kiasorento",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_81": {
+    "title": "drf_064 / 2021kiasorento.001",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_82": {
+    "title": "drf_064 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_83": {
+    "title": "drf_064 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_84": {
+    "title": "drf_064 / black.029",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_85": {
+    "title": "drf_064 / xromat_SECONDARY",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_87": {
+    "title": "drr_072 / 2021kiasorento",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_88": {
+    "title": "drr_072 / 2021kiasorento.001",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_89": {
+    "title": "drr_072 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_90": {
+    "title": "drr_072 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_91": {
+    "title": "drr_072 / black.029",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_92": {
+    "title": "drr_072 / xromat_SECONDARY",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_94": {
+    "title": "extra_1_039 / vehicle_licenseplate.008",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_96": {
+    "title": "extra_11_054 / vehicle_generic_detail2.002",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_97": {
+    "title": "extra_11_054 / black.027",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_99": {
+    "title": "extra_12_055 / vehicle_generic_detail2.002",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_100": {
+    "title": "extra_12_055 / black.027",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_102": {
+    "title": "extra_2_011 / vehicle_generic_tyrewallblack.002",
+    "defect": null,
+    "look": "tire"
+  },
+  "Object_103": {
+    "title": "extra_2_011 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_104": {
+    "title": "extra_2_011 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_106": {
+    "title": "fara_08 / 2021kiasorento.001",
+    "defect": null,
+    "look": "tailLight"
+  },
+  "Object_107": {
+    "title": "fara_08 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_108": {
+    "title": "fara_08 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_110": {
+    "title": "grill_07 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_111": {
+    "title": "grill_07 / xromat",
+    "defect": null,
+    "look": "chrome"
+  },
+  "Object_113": {
+    "title": "headlight_l_076 / 2021kiasorento",
+    "defect": null,
+    "look": "light"
+  },
+  "Object_114": {
+    "title": "headlight_l_076 / vehicle_generic_glasswindows2.004",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_116": {
+    "title": "headlight_r_077 / 2021kiasorento",
+    "defect": null,
+    "look": "light"
+  },
+  "Object_117": {
+    "title": "headlight_r_077 / vehicle_generic_glasswindows2.004",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_119": {
+    "title": "hub_lf_035 / vehicle_generic_tyrewallblack.002",
+    "defect": null,
+    "look": "tire"
+  },
+  "Object_121": {
+    "title": "hub_lr_033 / vehicle_generic_tyrewallblack.002",
+    "defect": null,
+    "look": "tire"
+  },
+  "Object_123": {
+    "title": "hub_rf_034 / vehicle_generic_tyrewallblack.002",
+    "defect": null,
+    "look": "tire"
+  },
+  "Object_125": {
+    "title": "hub_rr_036 / vehicle_generic_tyrewallblack.002",
+    "defect": null,
+    "look": "tire"
+  },
+  "Object_127": {
+    "title": "indicator_lf_059 / 2021kiasorento",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_129": {
+    "title": "indicator_lr_078 / 2021kiasorento",
+    "defect": null,
+    "look": "tailLight"
+  },
+  "Object_130": {
+    "title": "indicator_lr_078 / vehicle_generic_glasswindows2.004",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_132": {
+    "title": "indicator_rf_063 / 2021kiasorento",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_134": {
+    "title": "indicator_rr_079 / 2021kiasorento",
+    "defect": null,
+    "look": "tailLight"
+  },
+  "Object_135": {
+    "title": "indicator_rr_079 / vehicle_generic_glasswindows2.004",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_137": {
+    "title": "interior_031 / black.029",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_139": {
+    "title": "misc_c_032 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_141": {
+    "title": "motor_010 / vehicle_generic_tyrewallblack.002",
+    "defect": null,
+    "look": "tire"
+  },
+  "Object_142": {
+    "title": "motor_010 / taxi_interior2",
+    "defect": "engine",
+    "look": "under"
+  },
+  "Object_143": {
+    "title": "motor_010 / black.028",
+    "defect": null,
+    "look": "under"
+  },
+  "Object_145": {
+    "title": "reversinglight_l_04 / 2021kiasorento",
+    "defect": null,
+    "look": "light"
+  },
+  "Object_147": {
+    "title": "reversinglight_r_05 / 2021kiasorento",
+    "defect": null,
+    "look": "light"
+  },
+  "Object_149": {
+    "title": "seats_09 / xromat_SECONDARY",
+    "defect": "seat",
+    "look": "under"
+  },
+  "Object_151": {
+    "title": "steeringwheel_053 / 23kiasordashsymb",
+    "defect": "steering",
+    "look": "under"
+  },
+  "Object_152": {
+    "title": "steeringwheel_053 / 2021kiasorento.001",
+    "defect": "steering",
+    "look": "under"
+  },
+  "Object_153": {
+    "title": "steeringwheel_053 / xromat",
+    "defect": "steering",
+    "look": "chrome"
+  },
+  "Object_154": {
+    "title": "steeringwheel_053 / black.029",
+    "defect": "steering",
+    "look": "under"
+  },
+  "Object_156": {
+    "title": "suspension_lf_013 / black.028",
+    "defect": "suspension",
+    "look": "under"
+  },
+  "Object_158": {
+    "title": "suspension_lr_012 / black.028",
+    "defect": "suspension",
+    "look": "under"
+  },
+  "Object_160": {
+    "title": "suspension_rf_014 / black.028",
+    "defect": "suspension",
+    "look": "under"
+  },
+  "Object_162": {
+    "title": "suspension_rr_015 / black.028",
+    "defect": "suspension",
+    "look": "under"
+  },
+  "Object_164": {
+    "title": "taillight_l_046 / 2021kiasorento",
+    "defect": null,
+    "look": "tailLight"
+  },
+  "Object_165": {
+    "title": "taillight_l_046 / vehicle_generic_glasswindows2.004",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_167": {
+    "title": "taillight_r_047 / 2021kiasorento",
+    "defect": null,
+    "look": "tailLight"
+  },
+  "Object_168": {
+    "title": "taillight_r_047 / vehicle_generic_glasswindows2.004",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_170": {
+    "title": "window_lf_057 / greenglass",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_172": {
+    "title": "window_lm_088 / vehicle_generic_glasswindows2.005",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_174": {
+    "title": "window_lr_067 / vehicle_generic_glasswindows2.005",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_176": {
+    "title": "window_rf_065 / greenglass",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_178": {
+    "title": "window_rm_087 / vehicle_generic_glasswindows2.005",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_180": {
+    "title": "window_rr_073 / vehicle_generic_glasswindows2.005",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_182": {
+    "title": "windscreen_089 / greenglass",
+    "defect": null,
+    "look": "glass"
+  },
+  "Object_184": {
+    "title": "windscreen_r_082 / vehicle_generic_glasswindows2.005",
+    "defect": null,
+    "look": "glass"
+  },
+  "wheel_lfchild_vehicle_generic_tyrewallblack002_0": {
+    "title": "vehicle_generic_tyrewallblack.002",
+    "defect": null,
+    "look": "tire"
+  },
+  "wheel_lfchild_2021kiasorento002_0": {
+    "title": "2021kiasorento.002",
+    "defect": null,
+    "look": "rim"
+  }
+}

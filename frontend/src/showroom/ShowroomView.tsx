@@ -10,7 +10,7 @@ import { otherModel, recallsFor } from "../recalls";
 import { Showroom } from "./Showroom";
 import type { CategoryKey, Mode, ModelKey, RecallsByModel } from "../types";
 
-const FIRST: ModelKey = "silverado";
+const FIRST: ModelKey = "sonata";
 
 const loadingText = (key: ModelKey) => `${MODELS[key].label} 3D 모델 불러오는 중…`;
 
@@ -43,7 +43,7 @@ export default function ShowroomView({ onSearch }: { onSearch: (question: string
       showroom = scene;
       const [firstCats, recalls] = await Promise.all([
         scene.load(FIRST),
-        fetch("data/recalls.json", { signal: controller.signal }).then((r) => {
+        fetch("data/hyundai-kia-recalls.json", { signal: controller.signal }).then((r) => {
           if (!r.ok) throw new Error("데모 데이터를 받지 못했습니다");
           return r.json() as Promise<RecallsByModel>;
         }),
@@ -84,8 +84,8 @@ function Explorer({ showroom, recalls, firstCats, setLoader, onSearch }: Ready &
 
   function selectCategory(cat: CategoryKey | null) {
     setCategory(cat);
-    if (cat) setMode("xray");
-    showroom.focus(cat);
+    if (cat) setMode(cats3d.has(cat) ? "xray" : "exterior");
+    showroom.focus(cat && cats3d.has(cat) ? cat : null);
   }
 
   const aliveRef = useRef(true);
@@ -110,8 +110,10 @@ function Explorer({ showroom, recalls, firstCats, setLoader, onSearch }: Ready &
     setModel(key);
     setCats3d(cats);
     setLoader({ text: loadingText(key), active: false });
-    const keep = cat && cats.has(cat) && recallsFor(recalls, key, cat).length > 0;
-    selectCategory(keep ? cat : null);
+    const keep = cat && recallsFor(recalls, key, cat).length > 0 ? cat : null;
+    setCategory(keep);
+    setMode(keep && cats.has(keep) ? "xray" : "exterior");
+    showroom.focus(keep && cats.has(keep) ? keep : null);
   }
 
   function changeMode(m: Mode) {
@@ -160,8 +162,10 @@ function Explorer({ showroom, recalls, firstCats, setLoader, onSearch }: Ready &
         onSearch={onSearch}
       />
       <Dock mode={mode} onMode={changeMode} paint={paint} onPaint={setPaint} onReset={() => selectCategory(null)} />
+      <div className="model-legend">{mode === "xray" ? "● " : "+ "}부품 형상·위치는 설명용 추정 · 리콜은 실제 기록</div>
       <div className="credit">
-        3D: CCSA, George Mason University · FHWA/NHTSA 유한요소 모델(실차 역설계, 단순화) · 리콜: NHTSA 공개 데이터 · 데모 스냅샷 {recalls.silverado.length + recalls.ram.length}건 (검색 결과 아님)
+        3D: <a href={MODELS[model].source} target="_blank" rel="noreferrer">{MODELS[model].credit}</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a> · 크기·재질 조정{model === "sorento" ? " · 바퀴 복제" : ""} · 추정 도형 추가<br />
+        리콜: NHTSA · 2026-10-06 스냅샷 {recalls.sonata.length + recalls.sorento.length}건 (검색 결과 아님)
       </div>
     </>
   );

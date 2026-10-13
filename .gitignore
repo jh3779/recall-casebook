@@ -24,6 +24,7 @@ build/
 
 # 화면 3D 모델 (파일당 8~11MB, 커밋 훅 1MB 제한 — 팀 드라이브로 나눈다, frontend/README.md·DEC-041)
 frontend/public/models/
+frontend/.vite/
 
 # Jupyter
 .ipynb_checkpoints/

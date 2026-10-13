@@ -124,6 +124,8 @@ body.xray & .model-tabs button.on { background: #fff; color: #0b0e13; }
 .cat.disabled:hover { background: transparent; }
 .cat-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
 .cat.disabled .cat-dot { background: var(--ink-3); }
+.cat.records-only .cat-dot { background: var(--ink-3); }
+.view-showroom .credit a { color: inherit; text-underline-offset: 2px; }
 .cat-name { flex: 1; font-weight: 600; font-size: 14px; }
 .cat-sub { display: block; font-size: 12px; color: var(--ink-2); font-weight: 400; }
 .cat-count { font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -160,7 +162,9 @@ body.xray & .cross { background: #fff; color: #0b0e13; }
 .hotspots { position: fixed; inset: var(--app-bar-height) 0 0; pointer-events: none; }
 .hs {
   position: absolute; transform: translate(-50%, -50%);
-  display: flex; align-items: center; gap: 8px;
+  /* 투영 좌표는 점의 중심이다. 라벨 길이가 정렬 기준을 바꾸지 않게 한다. */
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
   border: 0; background: none; padding: 0;
   pointer-events: auto; cursor: pointer;
   transition: opacity 0.3s;
@@ -174,13 +178,15 @@ body.xray & .cross { background: #fff; color: #0b0e13; }
 }
 .hs.on .hs-dot { background: var(--accent); color: #fff; }
 .hs-label {
+  position: absolute; left: calc(100% + 8px); top: 50%;
+  pointer-events: none;
   font-size: 12px; font-weight: 600; white-space: nowrap;
   padding: 5px 10px; border-radius: 999px;
   background: var(--glass); backdrop-filter: blur(10px);
   border: 1px solid var(--line);
-  opacity: 0; transform: translateX(-4px); transition: all 0.2s;
+  opacity: 0; transform: translate(-4px, -50%); transition: opacity 0.2s, transform 0.2s;
 }
-.hs:hover .hs-label, .hs:focus-visible .hs-label, .hs.on .hs-label { opacity: 1; transform: none; }
+.hs:hover .hs-label, .hs:focus-visible .hs-label, .hs.on .hs-label { opacity: 1; transform: translateY(-50%); }
 .hs.hidden, .hs[data-behind] { opacity: 0; pointer-events: none; }
 
 
@@ -213,6 +219,12 @@ body.xray & .swatches { opacity: 0.3; pointer-events: none; }
   position: fixed; left: 28px; bottom: 12px;
   font-size: 11px; color: var(--ink-3); max-width: 360px; line-height: 1.4;
 }
+.model-legend {
+  position: fixed; left: 28px; bottom: 85px;
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--glass); color: var(--ink-2); font-size: 11px;
+  pointer-events: none;
+}
 
 /* ---------- loader ---------- */
 .loader {
@@ -232,6 +244,7 @@ body.xray & .swatches { opacity: 0.3; pointer-events: none; }
   .hero { display: none; }
   .panel { left: 16px; right: 16px; width: auto; top: auto; bottom: 86px; height: 42vh; }
   .credit { display: none; }
+  .model-legend { left: 16px; right: 16px; bottom: calc(42vh + 98px); font-size: 10px; width: fit-content; }
   .topbar { padding: 14px 16px; }
   .brand { gap: 10px; }
   .brand-sub { display: none; }

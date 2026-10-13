@@ -8,7 +8,7 @@ export function TopBar({ model, onSelect }: { model: ModelKey; onSelect: (key: M
         <span className="brand-mark" />
         <div>
           <div className="brand-title">결함 선례 쇼룸</div>
-          <div className="brand-sub">NHTSA 리콜 × 실차 역설계 3D 모델</div>
+          <div className="brand-sub">NHTSA 리콜 × 현대·기아 외관 모델</div>
         </div>
       </div>
       <nav className="model-tabs">

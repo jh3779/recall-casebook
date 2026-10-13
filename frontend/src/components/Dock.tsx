@@ -3,7 +3,7 @@ import type { Mode } from "../types";
 
 const MODES: { mode: Mode; label: string }[] = [
   { mode: "exterior", label: "외관" },
-  { mode: "xray", label: "결함 투시" },
+  { mode: "xray", label: "부품 투시" },
 ];
 
 interface Props {

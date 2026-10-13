@@ -27,7 +27,7 @@ export function Panel({ recalls, model, category, cats3d, onSelect, onCross, onS
       {/* 목록이 바뀌면 스크롤·펼침 상태를 처음으로 */}
       <div className="panel-body" key={`${model}-${category}`}>
         {category && list ? (
-          <RecallList recalls={recalls} model={model} category={category} list={list} onSelect={onSelect} onCross={onCross} />
+          <RecallList recalls={recalls} model={model} category={category} list={list} cats3d={cats3d} onSelect={onSelect} onCross={onCross} />
         ) : (
           <CategoryList recalls={recalls} model={model} cats3d={cats3d} onSelect={onSelect} />
         )}
@@ -44,14 +44,13 @@ function CategoryList({ recalls, model, cats3d, onSelect }: Pick<Props, "recalls
         <button
           key={r.key}
           type="button"
-          className={"cat" + (r.has3d ? "" : " disabled")}
-          disabled={!r.has3d}
+          className={"cat" + (r.has3d ? "" : " records-only")}
           onClick={() => onSelect(r.key)}
         >
           <span className="cat-dot" />
           <span className="cat-name">
             {r.name}
-            <span className="cat-sub">{r.sub}</span>
+            <span className="cat-sub">{r.has3d ? "추정 위치 · " : "기록 보기 · "}{r.sub}</span>
           </span>
           <span className="cat-count">{r.count}</span>
         </button>
@@ -77,7 +76,8 @@ function RecallList({
   list,
   onSelect,
   onCross,
-}: Pick<Props, "recalls" | "model" | "onSelect" | "onCross"> & { category: CategoryKey; list: Recall[] }) {
+  cats3d,
+}: Pick<Props, "recalls" | "model" | "onSelect" | "onCross" | "cats3d"> & { category: CategoryKey; list: Recall[] }) {
   const c = CATEGORIES[category];
   const o = otherModel(model);
   const crossN = recallsFor(recalls, o, category).length;
@@ -94,9 +94,9 @@ function RecallList({
           </small>
         </button>
       )}
-      {c.sub.includes("위치로 표시") && (
-        <div className="note">해석 모델에 해당 부품의 형상이 없어, {c.sub.replace(" 위치로 표시", "")} 위치로 표시합니다.</div>
-      )}
+      <div className="note">{cats3d.has(category)
+        ? "추정 위치 · 설명용 표시입니다. 일반적인 부품 배치와 단순화한 형상을 사용하며, 실제 결함 위치나 정비 도면을 뜻하지 않습니다. 아래 리콜은 NHTSA 실제 기록입니다."
+        : "이 모델에서 해당 부품의 3D 위치를 확인하지 못했습니다. 아래 원문에서 결함 부품을 확인하세요."}</div>
       {list.map((r) => (
         <RecallCard key={r.campno} r={r} />
       ))}
@@ -122,7 +122,7 @@ function RecallCard({ r }: { r: Recall }) {
         ))}
       </div>
       {/^\d{2}E/.test(r.campno) && <span className="equipment-badge">장비 리콜</span>}
-      <div className="recall-meta">NHTSA 원문</div>
+      <div className="recall-meta">{r.source ? <a href={r.source} target="_blank" rel="noreferrer">NHTSA 원문 ↗</a> : "NHTSA 원문"}</div>
       <div className="recall-label">결함</div>
       <div lang="en" className={"recall-text" + (open ? "" : " clamp")}>{r.defect}</div>
       {open && (

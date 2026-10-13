@@ -23,29 +23,29 @@ function recall(campno: string, categories: Recall["categories"], potaff = 1000)
 }
 
 const sample: RecallsByModel = {
-  silverado: [
+  sonata: [
     recall("A1", ["airbag"], 1_000_000),
     recall("A2", ["airbag", "seat"], 500_000),
     recall("B1", ["brakes"], 100_000),
     recall("X1", [], 30_000),
   ],
-  ram: [recall("R1", ["brakes"])],
+  sorento: [recall("R1", ["brakes"])],
 };
 
 describe("recallsFor", () => {
   it("부품 분류가 들어 있는 리콜만 고른다", () => {
-    expect(recallsFor(sample, "silverado", "airbag").map((r) => r.campno)).toEqual(["A1", "A2"]);
-    expect(recallsFor(sample, "silverado", "seat").map((r) => r.campno)).toEqual(["A2"]);
+    expect(recallsFor(sample, "sonata", "airbag").map((r) => r.campno)).toEqual(["A1", "A2"]);
+    expect(recallsFor(sample, "sonata", "seat").map((r) => r.campno)).toEqual(["A2"]);
   });
 
   it("분류가 null이면 3D 형상이 없는(분류가 빈) 리콜만 고른다", () => {
-    expect(recallsFor(sample, "silverado", null).map((r) => r.campno)).toEqual(["X1"]);
+    expect(recallsFor(sample, "sonata", null).map((r) => r.campno)).toEqual(["X1"]);
   });
 });
 
 describe("categoryRows", () => {
   it("0건 분류는 빼고 건수 내림차순, 같으면 CATEGORIES 순서로 둔다", () => {
-    const rows = categoryRows(sample, "silverado", new Set(["airbag", "brakes"]));
+    const rows = categoryRows(sample, "sonata", new Set(["airbag", "brakes"]));
     expect(rows.map((r) => [r.key, r.count])).toEqual([
       ["airbag", 2],
       ["brakes", 1],
@@ -54,14 +54,14 @@ describe("categoryRows", () => {
   });
 
   it("3D 위치가 있는 분류만 고를 수 있게 표시한다", () => {
-    const rows = categoryRows(sample, "silverado", new Set(["airbag", "brakes"]));
+    const rows = categoryRows(sample, "sonata", new Set(["airbag", "brakes"]));
     expect(Object.fromEntries(rows.map((r) => [r.key, r.has3d]))).toEqual({ airbag: true, brakes: true, seat: false });
   });
 });
 
 describe("heroStats", () => {
   it("리콜 건수 · 3D로 보이는 리콜 건수 · 접수일 범위", () => {
-    expect(heroStats(sample.silverado)).toEqual({ total: 4, in3d: 3, receivedRange: "2026.09–2026.09" });
+    expect(heroStats(sample.sonata)).toEqual({ total: 4, in3d: 3, receivedRange: "2026.09–2026.09" });
   });
 });
 
@@ -76,14 +76,14 @@ describe("표시 형식", () => {
   });
 
   it("다른 차종", () => {
-    expect(otherModel("silverado")).toBe("ram");
-    expect(otherModel("ram")).toBe("silverado");
+    expect(otherModel("sonata")).toBe("sorento");
+    expect(otherModel("sorento")).toBe("sonata");
   });
 });
 
 // 화면이 기대하는 데이터 모양을 실제 파일로 확인한다 (artifact에서 받은 데모 스냅샷)
 describe("public/data 약속", () => {
-  const data = recallsJson as RecallsByModel;
+  const data = recallsJson as Record<"silverado" | "ram", Recall[]>;
 
   it.each(["silverado", "ram"] as const)("%s 리콜마다 리콜 번호가 있고 서로 다르며, 분류는 CATEGORIES 안에 있다", (model) => {
     const list = data[model];
