@@ -115,15 +115,16 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 **앱 상한 확인 (배포 뒤 한 번, WAF는 평소 설정 그대로)** — 앱 상한이 Vercel 위에서 실제로 켜졌고 IP별로 갈리는지 본다(시험은 `VERCEL=1`을 가정하므로 배포에서만 확인된다).
 1. **60초 동안 이 네트워크에서 API를 부르지 않은 뒤** 시작한다(앞선 호출이 창에 남아 있으면 일찍 429가 나온다). 검색 계산을 하지 않아 빨리 끝나는 잘못된 요청(빈 본문 → 422)도 상한에 세므로(`tests/test_rate_limit.py`의 `test_rejected_requests_count_too`) 그것으로 60초 안에 보낸다:
    ```bash
-   T=$(mktemp -d); for i in $(seq -w 1 119); do code=$(curl -s -o "$T/b" -D "$T/h" -w "%{http_code}" -X POST -H "content-type: application/json" -d '{}' https://lg-cns-rag.vercel.app/search); if [ "$code" = 429 ]; then echo "${i}번째에 429"; grep -i "^retry-after" "$T/h"; cat "$T/b"; echo; break; fi; done; [ "$code" = 429 ] || echo "119번째까지 429 없음"; rm -rf "$T"
+   T=$(mktemp -d); res="판별 불가"; for i in $(seq -w 1 119); do code=$(curl -s -o "$T/b" -D "$T/h" -w "%{http_code}" -X POST -H "content-type: application/json" -d '{}' https://lg-cns-rag.vercel.app/search); if [ "$code" = 429 ]; then if grep -q "호출이 너무 잦습니다" "$T/b" && grep -qi "^retry-after" "$T/h"; then res="앱 429 ${i}번째"; else res="WAF 429 ${i}번째(앱 아님)"; fi; break; fi; done; echo "$res"; rm -rf "$T"; case "$res" in "앱 429"*) true;; *) false;; esac
    ```
-2. 읽는 법:
-   - **61번째에 429**(본문이 한국어 `detail` "호출이 너무 잦습니다…", `retry-after` 있음): 앱 상한이 켜져 있다.
-   - **62~119번째에 처음 429**: 앱 상한은 켜져 있고 요청이 여러 인스턴스로 나뉜 것이다(인스턴스별 카운터) — 실패가 아니다.
-   - **119번째까지 429 없음**: 앱 상한이 꺼졌을 수 있다(경로가 `/search`로 잡히지 않는 등) — 배포 로그를 본다. 120번째부터는 WAF가 막으므로 그 전에 멈춘다.
-   - **60번째 이전에 429**: 60초를 쉬지 않았거나, 다른 사람의 호출과 한 주소로 묶였을 수 있다 — 60초 쉰 뒤 다시 해 보고, 그래도 같으면 시스템 환경변수 노출을 확인한다.
-3. 1번에서 429를 받은 직후 다른 네트워크(휴대폰 핫스팟)에서 1번 보낸다. 429면 모두 한 주소로 묶인 것이다 — 시스템 환경변수 노출을 확인한다. 422(빈 본문)는 IP별로 갈린다는 **약한 증거**다 — 요청이 상한이 안 찬 다른 인스턴스로 갔어도 422가 나오기 때문이다. 그래서 대시보드에서 시스템 환경변수 노출이 켜져 있는지도 함께 확인해 기록한다.
-   (명령에서 한글을 변수 바로 뒤에 붙일 때는 `${i}`처럼 중괄호로 감싼다 — macOS zsh·bash가 한글까지 변수 이름으로 읽어 값이 사라진다.)
+   (번호는 `seq -w`라 `061`처럼 세 자리다. 한글을 변수 바로 뒤에 붙일 때는 `${i}`처럼 중괄호로 감싼다 — macOS zsh·bash가 한글까지 변수 이름으로 읽어 값이 사라진다.)
+2. 읽는 법 — **앱 429는 본문이 한국어 `detail`("호출이 너무 잦습니다…")이고 `retry-after`가 있는 응답만** 인정한다(명령이 이것으로 가르고, 앱 429가 아니면 종료 코드 1):
+   - **`앱 429 061번째`**: 앱 상한이 켜져 있다.
+   - **`앱 429 062~119번째`**: 앱 상한은 켜져 있고 요청이 여러 인스턴스로 나뉜 것이다(인스턴스별 카운터) — 실패가 아니다.
+   - **`앱 429 060번째 이전`**: 60초를 쉬지 않았거나 다른 사람의 호출과 한 주소로 묶였을 수 있다 — 60초 쉰 뒤 다시 하고, 그래도 같으면 시스템 환경변수 노출을 확인한다.
+   - **`WAF 429 …(앱 아님)`**: 같은 네트워크의 다른 기기 호출이 더해져 WAF(모든 경로 120회)가 먼저 막았다 — 앱 상한의 증거가 아니다. 다른 기기 사용을 멈추고 60초 쉰 뒤 다시 한다.
+   - **`판별 불가`**(119번째까지 429 없음): 앱 상한이 꺼진 것인지 인스턴스가 많이 나뉜 것인지 이 방법으로는 가를 수 없다 — 성공으로 기록하지 않는다. 다른 사람이 쓰지 않는 시간에 `RATE_LIMIT_PER_MINUTE`를 잠시 5로 낮춰 다시 배포하고 같은 명령(10번 안에 앱 429가 나와야 함)으로 확인한 뒤 60으로 되돌려 다시 배포한다.
+3. 1번에서 앱 429를 받은 직후 다른 네트워크(휴대폰 핫스팟)에서 1번 보낸다. 앱 429면 모두 한 주소로 묶인 것이다 — 시스템 환경변수 노출을 확인한다. 422(빈 본문)는 IP별로 갈린다는 **약한 증거**다 — 요청이 상한이 안 찬 다른 인스턴스로 갔어도 422가 나오기 때문이다. 그래서 대시보드에서 시스템 환경변수 노출이 켜져 있는지도 함께 확인해 기록한다.
 4. 결과(날짜·처음 429가 나온 번째·다른 네트워크 코드·시스템 환경변수 노출 설정 상태)를 DEC-057에 적는다. 1분 기다리면 풀린다.
 
 **WAF 확인 — 모든 경로 차단과 WAF 429의 CORS 머리글 (배포 뒤 한 번, Production에서)** — **시연 날이나 다른 사람이 쓰는 시간에는 하지 않는다. 4번 원복을 확인하기 전에는 끝내지 않는다**(공개 API가 막힌 채 남는다). Preview는 Production 환경변수가 없고(위 환경변수 표는 Production만) 배포 보호에 걸릴 수 있으며 WAF 규칙 적용 여부도 문서로 확인되지 않아, 재배포 없이 Production에서 잰다.
@@ -132,11 +133,11 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
    ```bash
    bad=0; for p in /health "/no-such-path-$(date +%s)"; do got=$(for i in $(seq 1 12); do curl -s -o /dev/null -w "%{http_code}\n" "https://lg-cns-rag.vercel.app$p"; done | grep -c '^429$'); echo "${p}: 429 ${got}회"; [ "$got" -gt 0 ] || bad=1; done; [ "$bad" -eq 0 ] || { echo "실패 — 모든 경로 조건 확인"; false; }
    ```
-3. `/search`에서 **처음 나온 429**의 머리글과 본문을 함께 저장해, 한국어 `detail`이 없는(앱이 아닌) WAF 429인지 확인하고 CORS 머리글을 본다:
+3. `/search`에서 **처음 나온 429**의 머리글과 본문을 함께 저장해, 한국어 `detail`이 없는(앱이 아닌) WAF 429인지 확인하고 CORS 머리글을 본다 — WAF 429를 확인하지 못하면 종료 코드 1이다(CORS 머리글 유무는 결과로 기록할 값이라 실패로 치지 않는다):
    ```bash
    sleep 11; T=$(mktemp -d); for i in $(seq -w 1 15); do curl -s -o "$T/h$i.body" -D "$T/h$i.head" -w "%{http_code}\n" -X POST -H "Origin: http://localhost:5173" -H "content-type: application/json" -d '{"question":"brake fluid leak"}' https://lg-cns-rag.vercel.app/search; done
    first=$(grep -lE "^HTTP/[0-9.]+ 429" "$T"/h??.head | head -1)
-   if [ -z "$first" ]; then echo "실패 — 429가 한 번도 안 나옴(규칙 Action·한도·Publish 확인)"; else b="${first%.head}.body"; grep -q "호출이 너무 잦습니다" "$b" && echo "앱 429임 — WAF 한도가 앱보다 작은지 확인" || { echo "첫 WAF 429: $first"; grep -i "access-control-allow-origin" "$first" || echo "WAF 429에 CORS 머리글 없음"; }; fi; rm -rf "$T"
+   ok=0; if [ -z "$first" ]; then echo "실패 — 429가 한 번도 안 나옴(규칙 Action·한도·Publish 확인)"; elif grep -q "호출이 너무 잦습니다" "${first%.head}.body"; then echo "실패 — 앱 429임(WAF 한도가 앱보다 작은지 확인)"; else ok=1; echo "첫 WAF 429: $first"; grep -i "access-control-allow-origin" "$first" || echo "WAF 429에 CORS 머리글 없음"; fi; rm -rf "$T"; [ "$ok" -eq 1 ]
    ```
 4. 규칙을 원래대로(모든 경로·창 60초·한도 120·Default(429)) 되돌리고 Publish한 뒤 대시보드에서 값을 다시 확인한다.
 5. 결과(모든 경로 차단 여부, WAF 429의 CORS 머리글 있음/없음, 날짜)를 이 절과 DEC-057에 적는다. 머리글이 없으면 화면이 WAF 429를 '연결 실패(CORS)'로 안내하므로 작업 F에서 그 경우를 따로 안내한다.
