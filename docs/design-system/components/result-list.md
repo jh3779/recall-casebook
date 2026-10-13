@@ -37,7 +37,7 @@ Hyundai Motor America (Hyundai) is recalling certain 2015-2016 Elantra…   ← 
 | 일반 | 흰 바탕, 테두리 없음 |
 | hover | `--line-strong` 테두리 |
 | 선택 | `--accent` 테두리 + 왼쪽 안쪽 3px 남색 띠 |
-| 초점 | `--focus` |
+| 초점 | 키보드 초점은 불투명 `outline`(`:focus-visible`, [tokens/spacing.md](../tokens/spacing.md)) — `--focus`(box-shadow)를 쓰지 않는다(선택 띠와 겹쳐 사라짐) |
 
 항목 전체가 `button`이다. 누르면 오른쪽 상세가 바뀌고(데스크톱) 상세 화면으로 넘어간다(모바일).
 

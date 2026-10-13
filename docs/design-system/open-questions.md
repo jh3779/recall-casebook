@@ -8,7 +8,7 @@ v0.1의 열린 질문 6개와 이어진 질문 2개를 디자인 인터뷰(우�
 | 2 | 예시 질문 | **고객사(현대·기아) 선례가 나오는 질문 위주** — 아래 기준으로 공개 API에 후보 16개를 돌려 4개를 골랐다 | [components/search-input.md](components/search-input.md#예시-질문-첫-화면) |
 | 3 | 상세 패널 순서 | **원문 먼저** — 머리 → 결함·결과·시정 원문 → Part 573 원인 → NHTSA 조사 → 확인 항목 → 출처 꼬리 | [components/precedent-detail.md](components/precedent-detail.md) |
 | 4 | 원문 글꼴 | **세리프(Source Serif 4) + 쇼룸도 맞춤** — 두 화면 모두 원문은 `--font-source` | [tokens/typography.md](tokens/typography.md) |
-| 5 | 판본 정보 범위 | **상단 요약 + 결과 아래 꼬리** — 상단 바에 카드 수·스냅샷, 상세 맨 아래 출처 꼬리에 build·묶음 sha256 앞 12자·스냅샷·모델·질문(전체 값은 마우스를 올리면). 접지 않는다 | [components/app-bar.md](components/app-bar.md) · [precedent-detail.md](components/precedent-detail.md#출처-꼬리) |
+| 5 | 판본 정보 범위 | **상단 요약 + 결과 아래 꼬리** — 상단 바에 카드 수·스냅샷, 상세 맨 아래 출처 꼬리에 build·묶음 sha256 앞 12자·스냅샷·모델·질문(전체 값은 출처 꼬리 끝 **"판본 자세히"**에서 터치·키보드로 열고 복사 — 2026-10-13 #104 리뷰 반영, 마우스 `title`은 보조). 꼬리 자체는 접지 않는다 | [components/app-bar.md](components/app-bar.md) · [precedent-detail.md](components/precedent-detail.md#출처-꼬리) |
 | 6 | 고객사 선례 0건 | **구역 유지 + 안내 문구** — "검색 상위 100건 안에 현대·기아 리콜이 없습니다" | [components/result-list.md](components/result-list.md) |
 | 7 | 예시 질문 고르는 기준 | **네 가지 모두**: 고객사 선례 1건 이상 · 고객사 선례 중 원인 원문(`filled`) 카드 포함 · 부품 분야가 겹치지 않게 · 시험지 749문항과 겹치지 않게 | [components/search-input.md](components/search-input.md#예시-질문-첫-화면) |
 | 8 | 쇼룸 `--ink-3`(`#8c94a1`, 3.06:1)도 맞출까? | **맞춤** — #60 정리(PR D) 때 쇼룸 `styles.css`의 `--ink-3`을 `#636b78`로(투시 모드 어두운 테마 값은 그대로) | [tokens/colors.md](tokens/colors.md) |

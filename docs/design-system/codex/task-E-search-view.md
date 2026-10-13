@@ -53,7 +53,7 @@
 | `InvestigationBlock.tsx` | [components/investigation.md](../components/investigation.md) |
 | `Checklist.tsx` | [components/checklist.md](../components/checklist.md) |
 | `Provenance.tsx` — 출처 꼬리(결정 5) | [precedent-detail.md 출처 꼬리](../components/precedent-detail.md#출처-꼬리) |
-| `Feedback.tsx` — 로딩·오류 4종+5xx·빈 결과 | [components/feedback.md](../components/feedback.md) |
+| `Feedback.tsx` — 로딩·오류 5종(5xx 포함)·빈 결과 | [components/feedback.md](../components/feedback.md) |
 | `causeStatus.ts` — 상태 → 단계(text/stated/none)·문구 | [copy/cause-status.md](../copy/cause-status.md) **문구 글자 그대로** |
 | `highlight.ts` — 꼬리표 강조 조각 | [cause.md 꼬리표](../components/cause.md#꼬리표) |
 | `fieldLabels.ts` — evidence `field` → 칸 라벨 | [components/checklist.md](../components/checklist.md) 표 |

@@ -27,4 +27,4 @@
 
 ## 접근성
 
-탭은 `button` 두 개(`aria-pressed`), 키보드로 이동·선택 가능, 초점은 `--focus`.
+탭은 `button` 두 개(`aria-pressed`), 키보드로 이동·선택 가능, 키보드 초점은 불투명 `outline`(`:focus-visible`, [tokens/spacing.md](../tokens/spacing.md)) — `--focus`(box-shadow)를 쓰지 않는다(선택 띠와 겹쳐 사라짐).

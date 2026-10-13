@@ -384,7 +384,7 @@ footer.doc-foot { padding-top: var(--sp-5); font-size: var(--fs-xs); color: var(
       <div class="box q"><b>2. 예시 질문</b><p class="opt"><span class="rec">결정:</span> 고객사(현대·기아) 선례가 나오고, 그중 원인 원문 카드가 있고, 부품 분야가 겹치지 않고, 시험지 749문항과 겹치지 않는 4개.</p><div class="examples" id="ex-list"></div></div>
       <div class="box q"><b>3. 상세 패널 순서</b><p class="opt"><span class="rec">결정:</span> 원문 먼저 — 머리 → 결함·결과·시정 원문 → Part 573 원인 → NHTSA 조사 → 확인 항목 → 출처 꼬리.</p></div>
       <div class="box q"><b>4. 원문 글꼴</b><p class="opt"><span class="rec">결정:</span> 세리프(Source Serif 4), 쇼룸 리콜 카드 원문도 같은 토큰으로 맞춥니다.</p></div>
-      <div class="box q"><b>5. 판본 정보</b><p class="opt"><span class="rec">결정:</span> 상단 바에 카드 수·스냅샷, 상세 아래 출처 꼬리에 build·묶음 sha256 앞 12자·스냅샷·모델·질문(전체 값은 마우스를 올리면). 접지 않습니다.</p></div>
+      <div class="box q"><b>5. 판본 정보</b><p class="opt"><span class="rec">결정:</span> 상단 바에 카드 수·스냅샷, 상세 아래 출처 꼬리에 build·묶음 sha256 앞 12자·스냅샷·모델·질문(전체 값은 출처 꼬리 끝 "판본 자세히"에서 열고 복사 — #104 리뷰 반영). 꼬리 자체는 접지 않습니다.</p></div>
       <div class="box q"><b>6. 고객사 선례 0건</b><p class="opt"><span class="rec">결정:</span> 구역을 남기고 "검색 상위 100건 안에 현대·기아 리콜이 없습니다".</p></div>
       <div class="box q"><b>7. 쇼룸 글자색</b><p class="opt"><span class="rec">결정:</span> 쇼룸 <code>--ink-3</code>도 <code>#636b78</code>로 맞춥니다(#60 정리 때, 투시 모드 값은 그대로).</p></div>
     </div>
@@ -594,8 +594,14 @@ footer.doc-foot { padding-top: var(--sp-5); font-size: var(--fs-xs); color: var(
       const full = el("code", null, RESP.bundle_sha256); full.style.userSelect = "all"; full.style.overflowWrap = "anywhere";
       const btn = el("button", "btn ghost", "복사");
       btn.type = "button";
-      btn.onclick = () => navigator.clipboard?.writeText(RESP.bundle_sha256).catch(() => {});
-      add(d, el("div", null, "build " + RESP.build_id), full, btn);
+      const msg = el("span", "note", "");
+      msg.setAttribute("role", "status");
+      const fail = () => { msg.textContent = "복사하지 못했습니다 — 위 글자를 눌러 선택한 뒤 복사해 주세요"; };
+      btn.onclick = () => {
+        if (!navigator.clipboard) return fail();
+        navigator.clipboard.writeText(RESP.bundle_sha256).then(() => { msg.textContent = "복사했습니다"; }, fail);
+      };
+      add(d, el("div", null, "build " + RESP.build_id), full, btn, msg);
       p.appendChild(d);
     }
     return p;
@@ -691,7 +697,7 @@ footer.doc-foot { padding-top: var(--sp-5); font-size: var(--fs-xs); color: var(
     const ver = el("div", "callout");
     add(ver, el("b", null, "데이터 판본"), el("p", "mono", `build ${HEALTH.build_id} · 카드 ${HEALTH.cards.toLocaleString()}장 · 스냅샷 ${HEALTH.snapshot_date} · 묶음 ${HEALTH.bundle_sha256.slice(0, 12)}… · ${HEALTH.model}`));
     const go = el("div", "go-showroom");
-    const gt = el("div"); add(gt, el("b", null, "3D 쇼룸(데모)"), el("p", "note", "Silverado·Ram 차종을 부품 분류로 둘러보는 데모 화면입니다. 데모 스냅샷이라 검색 결과와 다릅니다."));
+    const gt = el("div"); add(gt, el("b", null, "3D 쇼룸(데모)"), el("p", "note", "쏘나타·쏘렌토 차종을 부품 분류로 둘러보는 데모 화면입니다. 데모 스냅샷이라 검색 결과와 다릅니다."));
     add(go, el("span", "thumb"), gt, el("span", "spacer"), Object.assign(el("button", "btn ghost small", "쇼룸 열기"), { type: "button" }));
     add(w, exWrap, does, ver, go);
     add(app, topBar(), searchBar(""), w);
