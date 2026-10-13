@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | D | [task-D-pr60-cleanup.md](task-D-pr60-cleanup.md) | `feat/frontend-showroom`(PR #60에 커밋을 더함) | #60 정리 — main 합치기, 데모 데이터 원문 정정, 문구, 쇼룸 토큰, DEC-052 | **완료** — #105에 통합(#60 대체·닫힘). 다시 실행하지 않는다 |
 | E | [task-E-search-view.md](task-E-search-view.md) | `feat/search-view` (D 병합 뒤 main에서) | 검색 전용 화면 + 공개 API 연동, DEC-053 | **완료** — #105에 통합. 다시 실행하지 않는다 |
-| F | [task-F-frontend-deploy.md](task-F-frontend-deploy.md) | `chore/frontend-vercel-deploy` (E 병합 뒤) | 화면 Vercel 배포 준비(설정·문서·런북). 실제 배포는 사람이 한다 | 대기 — #105 병합 뒤 |
+| F | [task-F-frontend-deploy.md](task-F-frontend-deploy.md) | `chore/frontend-vercel-deploy` (E 병합 뒤) | 화면 Vercel 배포 준비(설정·문서·런북). 실제 배포는 사람이 한다 | 대기 — #105·#63(호출 상한·CORS) 병합 뒤 |
 
 한 작업이 병합된 뒤 다음 작업을 시작한다. 작업 하나 = PR 하나.
 
