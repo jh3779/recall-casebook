@@ -189,3 +189,4 @@
 - 2026-10-13: #63 인터뷰(WAF+앱 둘 다·1분 60회·CORS는 localhost만·공개 주소 시연·화면도 배포·수동 워밍업·429 화면은 작업 F·PR은 상한·CORS·문서만, 스키마 변경 2건은 HANDOFF 할 일 56) 결과를 이슈에 게시하고 구현 — `server/ratelimit.py`(IP별 슬라이딩 창, CORS 안쪽, Retry-After 노출)·`tests/test_rate_limit.py` 8개·문서·DEC-057
 - 2026-10-13: 체크포인트 — PR #117(#63 호출 상한)·학습 자료(저장소 밖 학습노트, 학습지 2개)·발표 대본 초안(미추적)·기획 6절 정당성 소절(미커밋). 인계의 main·브랜치 서술이 실제와 어긋나 있어 바로잡음. 이 세션의 남은 시간은 학습 위주
 - 2026-10-13: PR #117에 main(#113 병합 018860f) 합침 — DECISIONS·HANDOFF·SESSION_LOG 충돌 해결(DEC-056 뒤 DEC-057), 작업 F 번호 DEC-058로(codex 2곳·HANDOFF), DEC-048 ① Superseded by DEC-057 표시
+- 2026-10-13: PR #117 Codex(f3051ad3·79c2ad9a)·review-agent(79c2ad9) 반영 — WAF 규칙을 모든 경로로(/health·없는 주소 폭주), WAF 429 CORS 실측을 Production 임시 한도(10초·5회)·첫 429 검사·429 없으면 실패로, 시연 날 순서(재배포는 전날, 워밍업은 마지막), 로컬 시연을 대체 수단으로 표시, create_app 기본 경로의 환경변수 상한 시험 추가

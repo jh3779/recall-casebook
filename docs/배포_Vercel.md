@@ -1,8 +1,10 @@
 # Vercel 배포 안내 (DEC-048)
 
-> 2026-10-12 기준. 발표 시연은 **로컬**에서 하고(1절), 외부 배포는 **일단 Vercel**로 한다. 화면을 먼저 올리고(2절), API는 서빙 묶음(Supabase Storage)으로 발표 전에 옮긴다(3절). API는 **Hobby** 플랜 프로젝트 `lg-cns-rag`로 배포했다(3-1절) — Hobby는 비상업·개인 용도이고 팀 협업 기능은 Pro다.
+> 2026-10-12 기준(2026-10-13 갱신). **발표 시연은 공개 주소로 한다**(DEC-057 ④가 DEC-048 ①을 대체 — 시연 날 절차는 3-2절). 1절의 로컬 포트는 공개 주소가 막혔을 때의 대체 수단이다. 외부 배포는 **일단 Vercel**로 한다. 화면을 먼저 올리고(2절), API는 서빙 묶음(Supabase Storage)으로 발표 전에 옮긴다(3절). API는 **Hobby** 플랜 프로젝트 `lg-cns-rag`로 배포했다(3-1절) — Hobby는 비상업·개인 용도이고 팀 협업 기능은 Pro다.
 
-## 1. 시연 — 로컬 포트
+## 1. 시연 — 로컬 포트 (대체 수단)
+
+> 2026-10-13 DEC-057 ④로 시연 기본은 공개 주소다(3-2절). 이 절은 공개 주소·Vercel이 막혔을 때 쓰는 대체 수단이다.
 
 터미널 두 개로 띄운다(`uvicorn`은 끝날 때까지 터미널을 잡고 있다).
 
@@ -17,7 +19,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
 
 시연 전 점검: `curl localhost:8000/health`가 `build_id`를 돌려주는지, `/docs`에서 `POST /search` 한 건이 원인 출처(리콜 번호·PDF)와 함께 나오는지, 화면이 데모 스냅샷인지 API 연결 화면인지(아래 첫 항목).
 
-- **지금 화면은 API를 부르지 않는다.** #60 화면은 `public/data/recalls.json` 데모 스냅샷을 읽는다 — 화면↔API 연결(#60 뒤 작업, HANDOFF 할 일 50)이 끝나기 전의 시연 화면은 우리 검색 결과(카드 30,350장)가 아니다. API 결과를 보여 주려면 연결을 먼저 하거나, API 응답(`curl`·`/docs`)을 따로 보여 준다.
+- 화면의 검색 탭은 API를 부른다(#105, DEC-053). 3D 쇼룸 탭은 정적 데모 스냅샷(쏘나타·쏘렌토 26건)이라 검색 결과가 아니다.
 - 서버가 시작할 때 읽는 로컬 파일: `data/processed/defect/`의 `build.json`·`recalls.jsonl`·`eval.jsonl`·`causes.jsonl`·`causes.manifest.json`, `data/raw/nhtsa/`의 `manifest.json`·`FLAT_INV.zip`. **드라이브의 `data.zip`·`defect_data_2026-10-08` 사본으로는 서버가 뜨지 않는다**(`docs/환경셋팅.md` 4절 주의) — 서버용 묶음 `defect_data_2026-10-12_dec047`(드라이브 업로드 뒤 위치를 `docs/환경셋팅.md` 4절에 적는다)을 쓴다.
 - 시작할 때 **Supabase 접속(인터넷)**이 필요하고(DB 명세·벡터 대조), 임베딩 모델 캐시가 없으면 모델(약 67MB)도 내려받는다 — **발표 전에 시연 장소 네트워크에서 한 번 띄워 둔다.**
 - CORS는 기본으로 `http://localhost:5173`만 허용한다(환경변수 `ALLOWED_ORIGINS`로 바꿈, DEC-050).
@@ -97,23 +99,33 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 | 겹 | 위치 | 기준 | 하는 일 |
 |---|---|---|---|
 | 앱 | `server/ratelimit.py` (CORS 미들웨어 안쪽) | `POST /search`, IP당 1분 `RATE_LIMIT_PER_MINUTE`(기본 60) | 넘으면 429 + `Retry-After`. 429에도 `Access-Control-Allow-Origin`이 붙고 `Retry-After`는 `Access-Control-Expose-Headers`로 화면이 읽을 수 있다 |
-| WAF | Vercel 방화벽 규칙 1개 (Hobby 한도 1개) | `/search`, IP당 1분 120회 *(에이전트 제안, 사용자 채택 2026-10-13)* | 앱을 우회하는 폭주를 엣지에서 차단 |
+| WAF | Vercel 방화벽 규칙 1개 (Hobby 한도 1개) | **모든 경로**, IP당 1분 120회 *(한도는 에이전트 제안·사용자 채택 2026-10-13. 경로 범위는 PR #117 리뷰로 `/search` → 모든 경로)* | 앱을 우회하는 폭주를 엣지에서 차단. `/health`나 없는 주소도 새 인스턴스를 깨워 서빙 묶음(약 155MB)을 받게 하므로 함께 센다 |
 
-- 앱 60 < WAF 120인 이유: WAF가 막은 429에 CORS 머리글이 붙는지 Vercel 문서에 없다. 정상 사용은 앱의 429(머리글 있음)가 먼저 나가게 한다.
+- 앱 60 < WAF 120인 이유: WAF가 막은 429에 CORS 머리글이 붙는지 Vercel 문서에 없다. 정상 사용은 앱의 429(머리글 있음)가 먼저 나가게 한다. WAF는 모든 경로를 세므로 검색 60회에 CORS 사전 요청(OPTIONS)·`/health`가 더해진다 — 사전 요청은 브라우저가 `Access-Control-Max-Age`(Starlette 기본 600초) 동안 재사용해 검색마다 붙지 않는다.
 - 앱 카운터는 인스턴스별 메모리라 인스턴스 수만큼 느슨하다. 새 인스턴스마다 서빙 묶음(약 155MB)을 받으므로 폭주하면 Supabase 전송량이 늘 수 있다. WAF 카운터는 지역별로 센다(Vercel 문서).
 - 클라이언트 IP는 Vercel 위에서만 `x-forwarded-for`의 첫 값을 쓴다(Vercel이 외부에서 온 값을 덮어써 위조할 수 없다). 그 밖의 환경은 소켓 주소를 쓴다.
 - 시연장이 공유 IP면 호출이 합산된다.
 
 **WAF 규칙 설정 (사용자 계정 작업, 대시보드 문구는 달라질 수 있다)**
 1. 프로젝트 `lg-cns-rag` → Firewall → Configure → New Rule.
-2. 이름 `search-rate-limit`, 조건: Request Path가 `/search`와 같다(가능하면 Method POST도).
+2. 이름 `api-rate-limit`, 조건: Request Path가 `/`로 시작한다(모든 경로 — 규칙이 1개뿐이라 `/search`만 걸면 `/health`·없는 주소 폭주를 못 막는다).
 3. Then: Rate Limit, Fixed Window, 창 60초, 한도 120, 키 IP, 응답 기본(429) → Save → Review Changes → Publish.
 4. 처음 며칠은 Action을 **Log**로 두고 트래픽을 본 뒤 Default(429)로 바꿔도 된다.
 
-**WAF 429의 CORS 머리글 확인 (배포 뒤 한 번)** — 앱 상한을 임시로 크게(`RATE_LIMIT_PER_MINUTE=1000`) 한 Preview에서 같은 IP로 `/search`를 121회 이상 부르고, 마지막 429 응답에 `access-control-allow-origin`이 있는지 `curl -i -H "Origin: http://localhost:5173"`로 본다. 없으면 화면이 429를 '연결 실패(CORS)'로 안내하므로 WAF 한도를 더 느슨하게 두거나 작업 F에서 그 경우를 따로 안내한다.
+**WAF 429의 CORS 머리글 확인 (배포 뒤 한 번, Production에서)** — Preview는 Production 환경변수가 없고(위 환경변수 표는 Production만) 배포 보호에 걸릴 수 있으며 WAF 규칙 적용 여부도 문서로 확인되지 않아, 재배포 없이 Production에서 잰다.
+1. WAF 규칙을 임시로 **창 10초·한도 5**, Action **Default(429)**로 바꿔 Publish한다(앱 상한 60보다 작아야 WAF가 먼저 막는다).
+2. 같은 IP에서 짧게 연달아 보내 **처음 나온 429**를 저장한다 — 마지막 응답이 아니라 첫 429를 본다:
+   ```bash
+   for i in $(seq 1 15); do curl -s -o /dev/null -D h$i.txt -w "%{http_code}\n" -X POST -H "Origin: http://localhost:5173" -H "content-type: application/json" -d '{"question":"brake fluid leak"}' https://lg-cns-rag.vercel.app/search; done
+   first=$(grep -lE "^HTTP/[0-9.]+ 429" h*.txt | head -1)
+   if [ -z "$first" ]; then echo "실패 — 429가 한 번도 안 나옴(규칙 Action·한도·Publish 확인)"; else echo "첫 429: $first"; grep -i "access-control-allow-origin" "$first" || echo "WAF 429에 CORS 머리글 없음"; fi
+   ```
+   앱의 429는 본문이 한국어 `detail`("호출이 너무 잦습니다…")이라 구분된다 — 위 설정에서는 WAF가 먼저 막는다.
+3. 규칙을 원래대로(창 60초·한도 120) 되돌리고 Publish한다.
+4. 결과(머리글 있음/없음, 날짜)를 이 절과 DEC-057에 적는다. 없으면 화면이 WAF 429를 '연결 실패(CORS)'로 안내하므로 작업 F에서 그 경우를 따로 안내한다.
 
 **공개 주소로 시연하는 날 (DEC-057 ④)**
-1. 시연 5분 전: `curl -s https://lg-cns-rag.vercel.app/health`와 예시 검색 1회를 부른다 — 새 인스턴스가 서빙 묶음을 받아 시작하는 시간을 미리 쓴다. 중간에 인스턴스가 내려가면 첫 요청이 다시 느릴 수 있다(화면은 3초 뒤 '서버 시작 중' 안내, 60초 뒤 취소).
-2. 시연 직전: 상한이 시연을 막을 위험이 있으면 WAF 규칙을 Log로 바꾸고, 앱 상한은 `RATE_LIMIT_PER_MINUTE`를 올려 다시 배포한다(환경변수 변경은 재배포가 필요하다).
-3. 화면(Vercel)에서 배포 주소가 CORS에 들어 있는지 한 번 호출해 본다(작업 F 6단계에서 `ALLOWED_ORIGINS`에 추가).
+1. **시연 전날까지**: 앱 상한을 올려야 하면 `RATE_LIMIT_PER_MINUTE`를 바꿔 다시 배포한다 — 환경변수 변경은 재배포가 필요하고 재배포는 새 인스턴스라 워밍업이 사라지므로 시연 당일에 하지 않는다. 화면(Vercel)에서 배포 주소가 CORS에 들어 있는지도 한 번 호출해 본다(작업 F 6단계에서 `ALLOWED_ORIGINS`에 추가).
+2. 시연 직전(필요할 때만): WAF 규칙을 Log로 바꾼다 — 재배포가 필요 없다.
+3. **마지막 단계 — 시연 5분 전**: `curl -s https://lg-cns-rag.vercel.app/health`와 예시 검색 1회를 부른다 — 새 인스턴스가 서빙 묶음을 받아 시작하는 시간을 미리 쓴다. 중간에 인스턴스가 내려가면 첫 요청이 다시 느릴 수 있다(화면은 3초 뒤 '서버 시작 중' 안내, 60초 뒤 취소).
 4. 429 화면 처리(안내 문구와 `Retry-After` 동안 [다시 시도] 비활성)는 작업 F에서 한다 — 그 전에는 "서버 오류 (429)"로 보인다.

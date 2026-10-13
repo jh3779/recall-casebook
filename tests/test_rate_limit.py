@@ -168,3 +168,12 @@ def test_off_vercel_a_forged_forwarded_header_does_not_buy_a_new_bucket(tmp_path
             ).status_code
             == 429
         )
+
+
+def test_create_app_without_a_limiter_uses_the_env_limit(tmp_path, monkeypatch):
+    # 배포는 `app = create_app()`라 상한이 환경변수에서 와야 한다 — 이 연결이 빠지면 설정이 말없이 무시된다
+    monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1")
+    state = make_state(tmp_path)
+    with TestClient(create_app(lambda: state)) as client:
+        assert client.post("/search", json=QUESTION).status_code == 200
+        assert client.post("/search", json=QUESTION).status_code == 429
