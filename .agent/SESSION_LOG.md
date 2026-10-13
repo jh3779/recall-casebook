@@ -170,4 +170,5 @@
 - 2026-10-13: #105 Codex(5f258f1·b1562e0) 반영 — 쇼룸 데모 생성기가 build.json 판본(원본 manifest·flat·카드 sha256) 검증·스냅샷 날짜를 build.json에서·--check 바이트 대조, manifest에 원본 manifest·결과 JSON sha256, 화면 날짜는 manifest에서, HANDOFF·DEC-053·054 현재 상태
 - 2026-10-13: #105 review-agent(49230e3) 반영 — 상태별 원인·꼬리표 안쪽 칸 응답 검사 시험(약화 5가지 모두 잡음, 178개 통과), 검색 CSS 목업 전용 규칙 삭제·.campno 범위 한정, 검증 기록·DEC-053 시점 표시, 옛 데이터 배포 제외는 #108
 - 2026-10-13: #105 review-agent(4ec3e9e)·Codex(ab18c14) 반영 — 쇼룸 데모 JSON 줄바꿈 LF 고정(.gitattributes, Windows 해시 시험 보호), 생성기 utf-8 읽기, HANDOFF 15·36행 현재 상태
-- 2026-10-13: #105 병합(main 528d114, #109 닫힘)·임시 worktree 정리. 이승노(@powercodingman) 합류 → D 파트 복귀(DEC-055): 원인 품질 30건·원인 미확인 150건 표시, 실무자 확인 제외(사용자 결정), 전달본 zip 490cc33b·안내 docs/D파트_표시_안내.md
+- 2026-10-13: #105 병합(main 528d114, #109 닫힘)·임시 worktree 정리. 이승노(@powercodingman) 합류 → D 파트 복귀(DEC-055): 원인 품질 30건·원인 미확인 150건 표시, 실무자 확인 제외(사용자 결정), 전달본 zip 46d7222b·안내 docs/D파트_표시_안내.md
+- 2026-10-13: PR #111 review-agent(e27fda1) 반영 — ② 표시 전 열람 금지에 실험_P2 5-2 B절 추가, labeler_id 예시를 파트 없는 값으로, DEC-055 지문 설명 정정, HANDOFF #105 병합·F는 DEC-056, Luna 문서에 C 표시자 변경 주석, 전달본 다시 묶음(zip 46d7222b)
