@@ -470,7 +470,17 @@ def test_cause_trials_score_rule_needs_no_result_file_and_prints_rule_only(tmp_p
     # 결과 파일 없이 시트 원문에 지금 규칙을 적용한다(DEC-056)
     ct.main(["score-rule", "--sheet", str(sheet)])
     out = json.loads(capsys.readouterr().out)
-    assert set(out) == {"n", "unknown", "mixed", "rule", "rule_vs_unknown_or_mixed", "verified"}
+    assert set(out) == {
+        "n",
+        "unknown",
+        "mixed",
+        "rule",
+        "rule_vs_unknown_or_mixed",
+        "verified",
+        "rule_basis",
+    }
+    assert out["rule_basis"]["unknown_re"] == ct.UNKNOWN_RE.pattern  # 어느 규칙으로 쟀는지 남긴다
+    assert len(out["rule_basis"]["rules_py_sha256"]) == 64
     assert out["rule"] == ct.confusion([True, False, True], [True, False, False])
     assert out["rule_vs_unknown_or_mixed"] == ct.confusion([True, False, True], [True, False, True])
     assert out["verified"] == meta

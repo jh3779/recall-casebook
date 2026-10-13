@@ -185,3 +185,4 @@
 - 2026-10-13: PR #113 review-agent(5f7366c) 🟢 3건 반영 — ② 범위를 사용자 확인 전으로 HANDOFF·Luna 문서에도 구분하고 사용자 후속에 추가, Luna 5절 표지를 10/12 두 결과 명령으로 좁힘, DEC-056에 규칙 대조 명령 기재
 - 2026-10-13: PR #113 Codex(8cd6a6b) 🟡 4건 반영 — ② 결과를 filled 150건 기준 규칙 참고 정확도로 한정(stated_unknown 미포함), DEC-056 ② Status를 Proposed로 분리, 저장소 안내서 ② 채점 줄에 폐기 표지(zip 불변), 채점 입력 지문·위치·명령 기재(#114 두 항목 함께 처리)
 - 2026-10-13: PR #113 Codex(52b23b2) 🟡 3건 반영 + 사용자 확인(② 유지·규칙 전용 채점) — cause_trials score-rule(모델 결과 없이 시트 원문에 UNKNOWN_RE, read_sheet 공유, 시험 추가), DEC-056 ② Accepted, 안내서 목적·② 명령을 규칙 전용으로 고치고 전달 전이라 zip 다시 묶음(39ab9aa8, 이전 2df9e5ff는 .superseded), #115 표지 정리
+- 2026-10-13: PR #113 review-agent(ba38f49) 🟢 4건·Codex(ba38f495) 하 1건 반영 — score-rule 출력에 rule_basis(rules.py sha256·패턴), DEC-056에 표시 전 규칙 지문 bad5f1ee·사용자 선택 문구, 기본 모델 주석 정정, HANDOFF 10/17 ② 채점, #90에 이전 zip 지문 폐기 코멘트

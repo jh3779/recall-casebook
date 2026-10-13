@@ -30,6 +30,7 @@ import sys
 import time
 from pathlib import Path
 
+from scripts.defect_precedent import rules
 from scripts.defect_precedent.bm25_baseline import BM25, tokenize
 from scripts.defect_precedent.nhtsa import OUT_DIR
 from scripts.defect_precedent.retrieval_compare import card_text, provenance, read_jsonl
@@ -39,7 +40,7 @@ SEED = 20261008
 # 추론 모델(gpt-6-luna 등)의 reasoning.effort 허용 값 — OpenAI 모델 문서(developers.openai.com/api/docs/models/gpt-6-luna, 2026-10-12 확인)
 REASONING_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
 # 기본 모델 — 사용자 지정 2026-10-12(운영 선택, 품질 우위 근거 아님 — docs/실험_LLM_Luna비교.md 4절).
-# 정확도는 사람 표시 뒤 채점으로 확인한다.
+# 모델 정확도의 사람 평가는 하지 않기로 했다(DEC-056) — 기본값은 품질 확인 없이 남은 운영 선택이다.
 DEFAULT_MODEL, DEFAULT_EFFORT = "gpt-6-luna", "none"
 
 
@@ -299,6 +300,12 @@ def score_rule(sheet: Path) -> None:
         "rule": confusion(pred, gold),
         "rule_vs_unknown_or_mixed": confusion(pred, gold_any),
         "verified": sheet_meta,
+        # 어느 규칙으로 쟀는지 — 표시 전 지문(DEC-056)과 다르면 재평가로 보고한다
+        "rule_basis": {
+            "rules_py_sha256": hashlib.sha256(Path(rules.__file__).read_bytes()).hexdigest(),
+            "unknown_re": UNKNOWN_RE.pattern,
+            "flags": UNKNOWN_RE.flags,
+        },
     }
     print(json.dumps(out, ensure_ascii=False, indent=1))
 
