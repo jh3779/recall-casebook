@@ -28,7 +28,8 @@
 | 토큰 | 값 | 규칙 |
 |---|---|---|
 | `--shadow-panel` | `0 1px 2px rgba(21,24,29,.06), 0 8px 24px rgba(21,24,29,.06)` | 앱 틀(바깥) 하나에만. 블록은 선만 쓰고 그림자를 주지 않는다 |
-| `--focus` | `0 0 0 3px rgba(44,90,160,.35)` | 키보드 초점 — 모든 버튼·입력·목록 항목·`summary`에 보이게 |
+| `--focus` | `0 0 0 3px rgba(44,90,160,.35)` | 입력칸 `:focus-within` 보조 테두리만 |
+| 키보드 초점 | `:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px }` | 모든 버튼·입력·목록 항목·`summary`에. **불투명 `outline`**(`--accent-2` 흰 바탕 대비 6.82:1)이라 선택 항목의 안쪽 띠(`box-shadow: inset`)와 다른 속성이어서 겹쳐 사라지지 않는다. `box-shadow`로 초점을 그리지 않는다 |
 
 움직임은 짧게(0.15~0.2초), `prefers-reduced-motion: reduce`이면 끈다. 로딩 뼈대의 반짝임도 끈다.
 

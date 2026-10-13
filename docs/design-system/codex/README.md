@@ -5,11 +5,11 @@
 
 ## 작업 순서
 
-| 작업 | 파일 | 브랜치 | 결과 |
-|---|---|---|---|
-| D | [task-D-pr60-cleanup.md](task-D-pr60-cleanup.md) | `feat/frontend-showroom`(PR #60에 커밋을 더함) | #60 정리 — main 합치기, 데모 데이터 원문 정정, 문구, 쇼룸 토큰, DEC-052 |
-| E | [task-E-search-view.md](task-E-search-view.md) | `feat/search-view` (D 병합 뒤 main에서) | 검색 전용 화면 + 공개 API 연동, DEC-053 |
-| F | [task-F-frontend-deploy.md](task-F-frontend-deploy.md) | `chore/frontend-vercel-deploy` (E 병합 뒤) | 화면 Vercel 배포 준비(설정·문서·런북). 실제 배포는 사람이 한다 |
+| 작업 | 파일 | 브랜치 | 결과 | 상태(2026-10-13) |
+|---|---|---|---|---|
+| D | [task-D-pr60-cleanup.md](task-D-pr60-cleanup.md) | `feat/frontend-showroom`(PR #60에 커밋을 더함) | #60 정리 — main 합치기, 데모 데이터 원문 정정, 문구, 쇼룸 토큰, DEC-052 | **완료** — #105에 통합(#60 대체·닫힘). 다시 실행하지 않는다 |
+| E | [task-E-search-view.md](task-E-search-view.md) | `feat/search-view` (D 병합 뒤 main에서) | 검색 전용 화면 + 공개 API 연동, DEC-053 | **완료** — #105에 통합. 다시 실행하지 않는다 |
+| F | [task-F-frontend-deploy.md](task-F-frontend-deploy.md) | `chore/frontend-vercel-deploy` (E 병합 뒤) | 화면 Vercel 배포 준비(설정·문서·런북). 실제 배포는 사람이 한다 | 대기 — #105 병합 뒤 |
 
 한 작업이 병합된 뒤 다음 작업을 시작한다. 작업 하나 = PR 하나.
 
@@ -46,7 +46,7 @@
 - `.env`·`.env.*`를 읽거나 출력하지 않는다. API 키·토큰을 코드·로그·커밋·PR에 넣지 않는다. `VITE_*` 환경변수에는 공개돼도 되는 값(공개 API 주소)만 넣는다.
 
 **기록 (AGENTS.md 8절)**
-- 되돌리기 어려운 결정은 `.agent/DECISIONS.md`에 다음 번호로(작업 D = DEC-052, E = DEC-053, F = DEC-054 — 쓰기 직전 main의 마지막 번호를 다시 확인). 기존 DEC 본문은 고치지 않는다.
+- 되돌리기 어려운 결정은 `.agent/DECISIONS.md`에 다음 번호로(작업 D = DEC-052, E = DEC-053, F = DEC-055(DEC-054는 #105의 쇼룸 차종 결정이 썼다) — 쓰기 직전 main의 마지막 번호를 다시 확인). 기존 DEC 본문은 고치지 않는다.
 - 의미 있는 진전은 `.agent/HANDOFF.md`(현재 상태로 고쳐 씀)와 `.agent/SESSION_LOG.md`(한 줄 추가). HANDOFF "할 일 목록"의 항목은 완료나 폐기 결정 전에는 지우지 않는다.
 
 ## 멈추고 사람에게 물어볼 때

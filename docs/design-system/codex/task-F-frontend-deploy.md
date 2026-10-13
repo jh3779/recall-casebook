@@ -42,7 +42,7 @@
 
 - `docs/배포_Vercel.md`: 2절(화면) 위 런북, 3-1절에 `ALLOWED_ORIGINS` 값과 API 재배포 기록 자리(실측은 사람이 채움 — 빈칸에 "배포 뒤 기입").
 - `frontend/README.md`: "배포 화면의 `/models/*.glb`에서도 받을 수 있다" — 3D 모델 받는 길이 하나 더 생긴다(리뷰 지적 "새로 받은 사람은 3D 실행 불가" 해소).
-- `.agent/DECISIONS.md` **DEC-054**: 화면은 별도 Vercel 프로젝트·CLI 전용 배포(이유: `.glb` gitignore), `ALLOWED_ORIGINS`에 화면 주소 + localhost. 공개 화면이 생기면 인증·호출 상한(#63)이 더 급해진다는 점을 영향에 적는다.
+- `.agent/DECISIONS.md` **DEC-055**(DEC-054는 #105 쇼룸 차종 결정이 썼다 — 쓰기 직전 main의 마지막 번호를 다시 확인): 화면은 별도 Vercel 프로젝트·CLI 전용 배포(이유: `.glb` gitignore), `ALLOWED_ORIGINS`에 화면 주소 + localhost. 공개 화면이 생기면 인증·호출 상한(#63)이 더 급해진다는 점을 영향에 적는다.
 - `.agent/HANDOFF.md`: Next Action을 "사람이 런북 실행 → 실측 기입 → #63"으로. #93(Vercel 프로젝트 구성 명시)을 이 PR로 닫을 수 있으면 `Closes #93`, 남으면 `Refs #93`.
 
 ## 4. 검증
