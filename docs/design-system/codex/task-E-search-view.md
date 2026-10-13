@@ -1,5 +1,7 @@
 # 작업 E — 검색 전용 화면 + 공개 API 연동
 
+> **실행 완료된 기록(2026-10-13)** — 이 작업은 PR #105로 구현됐다(#60은 #105로 대체·닫힘). 아래 브랜치·시작 조건은 당시 계획이며 **다시 실행하지 않는다.** 남은 일은 #105 리뷰에서 처리한다.
+
 > 먼저 [README.md](README.md)(공통 규칙)와 `docs/design-system/` 전체(v1.0)를 읽는다. 이 작업의 화면 모양·문구·값은 그 폴더가 정본이다 — 여기 적은 것과 다르면 디자인 시스템을 따르고 차이를 보고한다.
 > 시작 조건: 작업 D(PR #60 정리)가 main에 병합됨. `git switch main && git pull && git switch -c feat/search-view`.
 
@@ -31,7 +33,7 @@
 | `src/api.ts` (새) | `API_BASE = (import.meta.env.VITE_API_BASE \|\| "https://lg-cns-rag.vercel.app").replace(/\/+$/, "")`. `search(question: string, signal?: AbortSignal): Promise<SearchResponse>`, `health(): Promise<HealthResponse>`. 오류는 `ApiError { kind: "validation" \| "network" \| "timeout" \| "server" \| "shape"; message: string; status?: number }` |
 | | 422 → `validation`, 메시지는 응답 `detail[0].msg`에서 앞의 `"Value error, "`만 뗀 서버 문구 그대로 |
 | | `fetch`가 `TypeError` → `network` / `AbortError` → `timeout` / 5xx → `server`(상태 코드) / 응답 모양이 다름 → `shape` |
-| | 응답 모양 최소 검사는 손으로 쓴 타입 가드(새 의존성 금지): 최상위 칸, 배열, 카드의 `campno`·`cause.status` 정도 |
+| | 응답 모양 검사는 손으로 쓴 타입 가드(새 의존성 금지): **화면이 그리는 모든 필수 칸을 중첩까지** — 최상위 칸, 카드의 `components`·`source`·`cause`(상태별 필수 칸 — `filled`·`stated_unknown`의 text·speaker·source·flags, `report_unreadable`의 campaign·reason 등)·`investigations`·`checklist[].evidence`. 화면과 API는 따로 배포돼 판본이 어긋날 수 있으므로, 빠진 칸은 그리는 도중의 오류가 아니라 `shape` 안내가 되어야 한다 |
 | `src/search/types.ts` (새) | `server/api.py`의 Pydantic 모델을 TS로 옮긴다: `SearchResponse`(build_id, bundle_sha256: string\|null, snapshot_date, model, question, customer_precedents, precedents), `Card`(rank, campno, maker, maker_group: string\|null, received_date, components, defect, consequence, remedy, dup_group, source{dataset, snapshot_date, speaker}, cause, investigations, checklist), `Cause`는 `status`로 구분하는 유니온(`filled`·`stated_unknown` → text·speaker·source{campaign,file,pdf_sha256,submission_date,text_basis}·flags[{kind,label,spans[{start,end,text}]}] / `no_573_report` / `report_unreadable` → campaign·reason / 나머지 5종 → campaign / 모르는 값도 받는 형태), `Investigation`(action, speaker, subject, summary, open_date, close_date), `CheckItem`(item, label, evidence[{field,text}]), `HealthResponse`(build_id, bundle_sha256, snapshot_date, cards, model). **서버 코드는 바꾸지 않는다.** |
 
 - 요청 본문은 `{"question": "..."}` 하나(서버가 모르는 칸을 422로 거부한다).
@@ -51,21 +53,21 @@
 | `InvestigationBlock.tsx` | [components/investigation.md](../components/investigation.md) |
 | `Checklist.tsx` | [components/checklist.md](../components/checklist.md) |
 | `Provenance.tsx` — 출처 꼬리(결정 5) | [precedent-detail.md 출처 꼬리](../components/precedent-detail.md#출처-꼬리) |
-| `Feedback.tsx` — 로딩·오류 4종+5xx·빈 결과 | [components/feedback.md](../components/feedback.md) |
+| `Feedback.tsx` — 로딩·오류 5종(5xx 포함)·빈 결과 | [components/feedback.md](../components/feedback.md) |
 | `causeStatus.ts` — 상태 → 단계(text/stated/none)·문구 | [copy/cause-status.md](../copy/cause-status.md) **문구 글자 그대로** |
 | `highlight.ts` — 꼬리표 강조 조각 | [cause.md 꼬리표](../components/cause.md#꼬리표) |
 | `fieldLabels.ts` — evidence `field` → 칸 라벨 | [components/checklist.md](../components/checklist.md) 표 |
 
 **지켜야 할 세부**
-- 원문 칸(결함·결과·시정·원인 text·조사 summary·checklist evidence text)은 `lang="en"`, `--font-source`, `white-space: pre-wrap`. 목록의 결함 원문은 CSS로 2줄 자르기만(문자열을 자르지 않는다).
+- 원문 칸(결함·결과·시정·원인 text·조사 summary·checklist evidence text, **목록의 결함 첫 2줄 포함**)은 `lang="en"`, `--font-source`, `white-space: pre-wrap`. 목록의 결함 원문은 CSS로 2줄 자르기만(문자열을 자르지 않는다).
 - 날짜 `YYYYMMDD` → `YYYY.MM.DD` 표시만(값은 그대로). 조사 `close_date`가 빈 문자열이면 "기록 없음".
 - `maker_group`이 `maker`와 다를 때만 함께 보인다.
-- `bundle_sha256`이 `null`이면 "묶음 없음(로컬 파일로 띄운 서버)". sha256은 앞 12자 + `…`, 전체는 `title`.
+- `bundle_sha256`이 `null`이면 "묶음 없음(로컬 파일로 띄운 서버)". sha256은 앞 12자 + `…`, 전체 64자는 출처 꼬리의 "판본 자세히"(터치·키보드로 열림, 복사 버튼) — `title`은 보조.
 - 573 PDF 링크를 만들지 않는다(주소 규칙 미확인 — 파일 이름만).
 - 로딩: 3초 뒤 안내, `AbortController`로 60초에 끊음. 검색 중 버튼 "찾는 중…" 비활성. 오류가 나도 입력한 질문은 그대로.
 - 입력: 영어 글자(`[A-Za-z]`)가 하나도 없으면 보내기 전에 안내, 1~4000자, 한글 조합 중 Enter 무시(`e.nativeEvent.isComposing`).
 - 반응형([tokens/spacing.md](../tokens/spacing.md)): 768px 이상 2단(목록 300~380px), 767px 이하 한 단(목록 → 상세, "← 목록").
-- 키보드: 목록 항목은 `button`, 초점 링 `--focus`, 탭은 `aria-pressed`.
+- 키보드: 목록 항목은 `button`, 초점은 불투명 `outline`([tokens/spacing.md](../tokens/spacing.md) — 선택 띠와 겹치지 않게), 탭은 `aria-pressed`.
 - **판정 색·문구 금지**(빨강·초록·주황, "위험·안전·확정" 등). 오류 상자 왼쪽 띠도 `--ink-2`.
 
 **`highlight.ts` 규칙(반드시)**
@@ -85,8 +87,8 @@
 |---|---|
 | `causeStatus.test.ts` | 상태 10가지(9종 + 모르는 값) 모두 문구가 있고 `copy/cause-status.md` 표와 글자까지 같다 · campaign·reason이 들어간다 · 단계 매핑(filled→text, stated_unknown→stated, 나머지→none) |
 | `highlight.test.ts` | 이어 붙이면 원문과 같다(픽스처의 모든 원인 글) · 비-BMP 문자(예: 😀)와 U+0092가 앞에 있을 때 좌표가 맞다 · 어긋난 span은 강조하지 않는다 · 겹치는 span |
-| `api.test.ts` | `globalThis.fetch`를 흉내 내서: 422 메시지 추출, TypeError → network, abort → timeout, 500 → server, 모양 다름 → shape, 정상 응답 통과 |
-| `render.test.tsx` | `react-dom/server`의 `renderToStaticMarkup`으로 픽스처를 그려: 원문 세 칸·원인 text·조사 summary가 (HTML 이스케이프한) 원문 그대로 들어 있다 · campno·speaker·text_basis·build_id가 보인다 · 고객사 0건 문구 |
+| `api.test.ts` | `globalThis.fetch`를 흉내 내서: 422 메시지 추출, TypeError → network, abort → timeout, 500 → server, 모양 다름 → shape — 정상 픽스처에서 **화면이 읽는 필수 칸을 하나씩 빼거나 자료형을 바꾼** 응답이 모두 shape: 최상위(`build_id`·`bundle_sha256`·`snapshot_date`·`model`·`question`·두 목록), 카드(`rank`·`campno`·`maker`·`maker_group`·`received_date`·`defect`·`consequence`·`remedy`·`components`·`source`와 그 `dataset`·`snapshot_date`·`speaker`), `cause`(`status` 문자열 자체와 상태별 필수 칸 — `filled`·`stated_unknown`의 `text`·`speaker`·`source` 5칸·`flags` 배열 자체·`flags[].kind`·`label`·`spans[].start`·`end`·`text`, `report_unreadable`의 `campaign`·`reason`, 나머지 5종의 `campaign`), `investigations[]`의 6칸, `checklist[]`의 `item`·`label`·`evidence[].field`·`text`. 배열 원소 안의 칸도 포함한다(표로 돌리는 시험 하나로). `bundle_sha256`·`maker_group`은 `null`은 허용하고 **키 누락·다른 자료형은 shape**다. 이 목록은 `server/api.py`의 `SearchResponse`·`Card`·`Cause*`·`Investigation`·`CheckItem` 칸 중 화면이 읽는 것 전부다 — 빠진 칸을 찾으면 구현자가 보고한다. `health()`도 같은 방식으로 `/health`의 `build_id`·`bundle_sha256`(null 허용)·`snapshot_date`·`cards`(정수)·`model`을 하나씩 빼거나 자료형을 바꾸면 shape다. 반대로 **모르는 `cause.status`(예: `new_status`)를 가진 카드는 shape가 아니라 통과**하고 `copy/cause-status.md`의 폴백 문구로 그려진다(정상 통과 사례로 시험), 정상 응답 통과 |
+| `render.test.tsx` | `react-dom/server`의 `renderToStaticMarkup`으로 픽스처를 그려: 원문 세 칸·원인 text·조사 summary가 (HTML 이스케이프한) 원문 그대로 들어 있다 · campno·speaker·text_basis·build_id가 보인다 · `bundle_sha256`이 문자열이면 "판본 자세히" `<details>` 안에 64자 전체가 들어 있고, `null`이면 "묶음 없음(로컬 파일로 띄운 서버)"이 보인다 · 고객사 0건 문구 |
 | `principles.test.ts` | ① 렌더 결과 ② `src/**/*.{ts,tsx}` 소스 문자열에 판정 패턴이 0건: `/applies|verdict|is_?applicable|recall[_\s-]?required|리콜\s*대상(입니다|이다)|원인은\s.{0,30}입니다|해당(합니다|됩니다|되지\s*않습니다)|적용(됩니다|되지\s*않습니다)/` — 시험 파일 자신과 주석 설명은 제외 |
 
 ## 6. 기록

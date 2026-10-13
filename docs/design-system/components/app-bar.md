@@ -22,9 +22,9 @@
 | 상태 | 점 | 글 |
 |---|---|---|
 | 받는 중 | 빈 점(`--ink-3` 테두리) | "서버 확인 중…" |
-| 받음 | 채운 점(`--accent-2`) | "카드 {cards}장 · 스냅샷 {snapshot_date}" — 마우스를 올리면 build_id·묶음 sha256 전체 |
+| 받음 | 채운 점(`--accent-2`) | "카드 {cards}장 · 스냅샷 {snapshot_date}" — 마우스를 올리면 build_id·묶음 sha256 전체(보조). 전체 값을 터치·키보드로 보는 길은 상세 출처 꼬리의 "판본 자세히"([precedent-detail.md](precedent-detail.md#출처-꼬리)) |
 | 실패 | 빈 점 | "서버 판본을 받지 못했습니다" (검색은 막지 않음) |
 
 ## 접근성
 
-탭은 `button` 두 개(`aria-pressed`), 키보드로 이동·선택 가능, 초점은 `--focus`.
+탭은 `button` 두 개(`aria-pressed`), 키보드로 이동·선택 가능, 키보드 초점은 불투명 `outline`(`:focus-visible`, [tokens/spacing.md](../tokens/spacing.md)) — `--focus`(box-shadow)를 쓰지 않는다(선택 띠와 겹쳐 사라짐).

@@ -27,7 +27,7 @@ Hyundai Motor America (Hyundai) is recalling certain 2015-2016 Elantra…   ← 
 | 리콜 번호 | `campno`, `--font-id` 굵게 |
 | 회사 | `maker`. `maker_group`이 다르면 `maker · maker_group` |
 | 접수일 | `received_date` → `YYYY.MM.DD`, 오른쪽 끝, tabular-nums |
-| 결함 원문 | `defect` 첫 2줄을 자르기만(`-webkit-line-clamp: 2`), `--font-source` 13px, `lang="en"` |
+| 결함 원문 | `defect` 첫 2줄을 자르기만(`-webkit-line-clamp: 2`), `--font-source` 13px, `lang="en"`, `white-space: pre-wrap`(연속 공백·줄바꿈을 원문대로 — 원칙 2) |
 | 부품 칩 | `components` 앞 2개 + 나머지는 `+n`. `--font-id` 11px, `--surface-2` 바탕, 모서리 6px, 원문 그대로(대문자·콜론 포함) |
 | 원인 상태 | [원인 상태 배지](cause.md) 3단계 |
 | 조사 연결 | `investigations`가 있으면 "NHTSA 조사 {n}" 회색 알약 |
@@ -37,7 +37,7 @@ Hyundai Motor America (Hyundai) is recalling certain 2015-2016 Elantra…   ← 
 | 일반 | 흰 바탕, 테두리 없음 |
 | hover | `--line-strong` 테두리 |
 | 선택 | `--accent` 테두리 + 왼쪽 안쪽 3px 남색 띠 |
-| 초점 | `--focus` |
+| 초점 | 키보드 초점은 불투명 `outline`(`:focus-visible`, [tokens/spacing.md](../tokens/spacing.md)) — `--focus`(box-shadow)를 쓰지 않는다(선택 띠와 겹쳐 사라짐) |
 
 항목 전체가 `button`이다. 누르면 오른쪽 상세가 바뀌고(데스크톱) 상세 화면으로 넘어간다(모바일).
 
