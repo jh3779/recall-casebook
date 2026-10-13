@@ -152,3 +152,4 @@
 - 2026-10-13: PR #104 Codex(1cbf6dc) 반영 — 응답 검사 시험을 전 필수 칸으로, spacing의 sha256 전체 보기 규칙, 복사 실패 시 글자 선택, HANDOFF Current Phase·State 현행화, 목업 --focus 설명(#107)
 - 2026-10-13: PR #104 리뷰(review-agent 935db2a·Codex f963ab1·935db2a) 반영 — 응답 검사 시험 목록 완성(bundle_sha256·maker_group·status·flags·/health, 모르는 상태 통과), 판본 자세히 렌더 시험, 작업 F를 쏘나타·쏘렌토 모델·지문으로, HANDOFF #102 병합 완료 반영
 - 2026-10-13: PR #104 Codex(c2f925e) 반영 — HANDOFF Next Action 5를 남은 일(#63·F·#103)과 완료 기록으로 분리, 작업 F 6단계에 루트 이동·API 프로젝트 연결 확인
+- 2026-10-13: PR #104 review-agent(6378d30) 🟢 반영 — HANDOFF의 끊긴 Next Action 5 참조 2곳, main에 없는 커밋 포인터(5f258f1→1a43791), Supabase 설정 수치(200MB·Pro) 보존
