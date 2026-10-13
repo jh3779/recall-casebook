@@ -103,7 +103,7 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 
 - 앱 60 < WAF 120인 이유: WAF가 막은 429에 CORS 머리글이 붙는지 Vercel 문서에 없다. 정상 사용은 앱의 429(머리글 있음)가 먼저 나가게 한다. WAF는 모든 경로를 세므로 검색 60회에 CORS 사전 요청(OPTIONS)·`/health`가 더해진다 — 사전 요청은 브라우저가 `Access-Control-Max-Age`(Starlette 기본 600초) 동안 재사용해 검색마다 붙지 않는다.
 - 앱 카운터는 인스턴스별 메모리라 인스턴스 수만큼 느슨하다. 새 인스턴스마다 서빙 묶음(약 155MB)을 받으므로 폭주하면 Supabase 전송량이 늘 수 있다. WAF 카운터는 지역별로 센다(Vercel 문서).
-- 클라이언트 IP는 Vercel 위에서만 `x-forwarded-for`의 첫 값을 쓴다(Vercel이 외부에서 온 값을 덮어써 위조할 수 없다). 그 밖의 환경은 소켓 주소를 쓴다. "Vercel 위"는 환경변수 `VERCEL`로 안다 — 이 값은 프로젝트 설정의 **시스템 환경변수 노출(Automatically expose System Environment Variables)**이 켜져 있어야 생긴다(Vercel 문서). 꺼져 있으면 모든 방문자가 한 주소로 묶여 함께 1분 60회에서 막히므로 아래 "앱 상한 확인"으로 배포 뒤 확인한다.
+- 클라이언트 IP는 Vercel 위에서만 `x-forwarded-for`의 첫 값을 쓴다(Vercel이 외부에서 온 값을 덮어써 위조할 수 없다). 그 밖의 환경은 소켓 주소를 쓴다. "Vercel 위"는 환경변수 `VERCEL`로 안다 — 이 값은 프로젝트 설정의 **시스템 환경변수 노출**(공식 문서 문구 "Enable access to System Environment Variables" — 대시보드 문구는 달라질 수 있다)이 켜져 있어야 생긴다(Vercel 문서). 꺼져 있으면 모든 방문자가 한 주소로 묶여 함께 1분 60회에서 막히므로 아래 "앱 상한 확인"으로 배포 뒤 확인한다.
 - 시연장이 공유 IP면 호출이 합산된다.
 
 **WAF 규칙 설정 (사용자 계정 작업, 대시보드 문구는 달라질 수 있다)**
@@ -113,14 +113,17 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 4. **평소·시연 상태는 Action Default(429)**다. Log는 요청을 기록만 하고 막지 않아 안전망이 꺼진다 — 처음 트래픽을 보려고 Log로 둘 수는 있지만 시연 전날까지 Default(429)로 되돌리고, 최종 설정이 "모든 경로·고정 창 60초·한도 120·키 IP·Default(429)"인지 대시보드에서 다시 확인한다.
 
 **앱 상한 확인 (배포 뒤 한 번, WAF는 평소 설정 그대로)** — 앱 상한이 Vercel 위에서 실제로 켜졌고 IP별로 갈리는지 본다(시험은 `VERCEL=1`을 가정하므로 배포에서만 확인된다).
-1. 같은 네트워크에서 `POST /search`를 61번 연달아 보낸다(WAF 한도 120 안). 결과 파일은 임시 폴더에 둔다:
+1. **60초 동안 이 네트워크에서 API를 부르지 않은 뒤** 시작한다(앞선 호출이 창에 남아 있으면 일찍 429가 나온다). 검색 계산을 하지 않아 빨리 끝나는 잘못된 요청(빈 본문 → 422)도 상한에 세므로(`tests/test_rate_limit.py`의 `test_rejected_requests_count_too`) 그것으로 60초 안에 보낸다:
    ```bash
-   T=$(mktemp -d); for i in $(seq -w 1 61); do curl -s -o "$T/a$i.body" -D "$T/a$i.head" -w "$i %{http_code}\n" -X POST -H "content-type: application/json" -d '{"question":"brake fluid leak"}' https://lg-cns-rag.vercel.app/search; done
-   grep -iE "^HTTP/[0-9.]+ 429|^retry-after" "$T/a61.head"; cat "$T/a61.body"; echo; rm -rf "$T"
+   T=$(mktemp -d); for i in $(seq -w 1 119); do code=$(curl -s -o "$T/b" -D "$T/h" -w "%{http_code}" -X POST -H "content-type: application/json" -d '{}' https://lg-cns-rag.vercel.app/search); if [ "$code" = 429 ]; then echo "$i번째에 429"; grep -i "^retry-after" "$T/h"; cat "$T/b"; echo; break; fi; done; [ "$code" = 429 ] || echo "119번째까지 429 없음"; rm -rf "$T"
    ```
-   61번째가 429이고 `retry-after`와 한국어 `detail`("호출이 너무 잦습니다…")이 있어야 한다. 60번째까지 중 429가 있으면 여러 사람이 한 주소로 묶였을 수 있다 — 시스템 환경변수 노출을 확인한다. 61번째도 200이면 앱 상한이 꺼져 있다(경로가 `/search`로 잡히지 않는 등) — 배포 로그를 본다.
-2. 바로 다른 네트워크(휴대폰 핫스팟)에서 1번 보내 200인지 본다 — IP별로 갈린다는 뜻이다.
-3. 결과(날짜·61번째 코드·다른 네트워크 코드)를 DEC-057에 적는다. 1분 기다리면 풀린다.
+2. 읽는 법:
+   - **61번째에 429**(본문이 한국어 `detail` "호출이 너무 잦습니다…", `retry-after` 있음): 앱 상한이 켜져 있다.
+   - **62~119번째에 처음 429**: 앱 상한은 켜져 있고 요청이 여러 인스턴스로 나뉜 것이다(인스턴스별 카운터) — 실패가 아니다.
+   - **119번째까지 429 없음**: 앱 상한이 꺼졌을 수 있다(경로가 `/search`로 잡히지 않는 등) — 배포 로그를 본다. 120번째부터는 WAF가 막으므로 그 전에 멈춘다.
+   - **60번째 이전에 429**: 60초를 쉬지 않았거나, 다른 사람의 호출과 한 주소로 묶였을 수 있다 — 60초 쉰 뒤 다시 해 보고, 그래도 같으면 시스템 환경변수 노출을 확인한다.
+3. 1번에서 429를 받은 직후 다른 네트워크(휴대폰 핫스팟)에서 1번 보내 422(빈 본문)이면 IP별로 갈린다는 뜻이다. 429면 모두 한 주소로 묶인 것이다 — 시스템 환경변수 노출을 확인한다.
+4. 결과(날짜·처음 429가 나온 번째·다른 네트워크 코드)를 DEC-057에 적는다. 1분 기다리면 풀린다.
 
 **WAF 확인 — 모든 경로 차단과 WAF 429의 CORS 머리글 (배포 뒤 한 번, Production에서)** — **시연 날이나 다른 사람이 쓰는 시간에는 하지 않는다. 4번 원복을 확인하기 전에는 끝내지 않는다**(공개 API가 막힌 채 남는다). Preview는 Production 환경변수가 없고(위 환경변수 표는 Production만) 배포 보호에 걸릴 수 있으며 WAF 규칙 적용 여부도 문서로 확인되지 않아, 재배포 없이 Production에서 잰다.
 1. WAF 규칙을 임시로 **창 10초·한도 5**, Action **Default(429)**로 바꿔 Publish한다(앱 상한 60보다 작아야 WAF가 먼저 막는다).

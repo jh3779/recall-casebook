@@ -12,7 +12,7 @@ _갱신: 2026-10-13 — #113(LLM 사람 평가 제외, DEC-056) 병합(main `018
 
 ## Completed
 
-- **#63 공개 API 호출 상한 구현 — PR #117**(`f3051ad`, 브랜치 `feat/api-rate-limit`, DEC-057, 아직 병합 전): `server/ratelimit.py`(POST /search만 IP별 1분 60회, 넘으면 429 + `Retry-After`, CORS 미들웨어 안쪽이라 429에도 CORS 머리글, 클라이언트 IP는 Vercel에서만 `x-forwarded-for`), `tests/test_rate_limit.py` 8개, `docs/배포_Vercel.md` 3-2절(WAF 규칙·실측·시연 날 워밍업), `.env.example` `RATE_LIMIT_PER_MINUTE`. 사용자 인터뷰 결정(2026-10-13)을 이슈 #63에 코멘트로 남겼다. `uv run ruff check .`·`ruff format --check .` 통과, `uv run pytest` 506 passed / 20 skipped.
+- **#63 공개 API 호출 상한 구현 — PR #117**(`f3051ad`, 브랜치 `feat/api-rate-limit`, DEC-057, 아직 병합 전): `server/ratelimit.py`(POST /search만 IP별 1분 60회, 넘으면 429 + `Retry-After`, CORS 미들웨어 안쪽이라 429에도 CORS 머리글, 클라이언트 IP는 Vercel에서만 `x-forwarded-for`), `tests/test_rate_limit.py` 9개(리뷰 반영 후), `docs/배포_Vercel.md` 3-2절(WAF 규칙·실측·시연 날 워밍업), `.env.example` `RATE_LIMIT_PER_MINUTE`. 사용자 인터뷰 결정(2026-10-13)을 이슈 #63에 코멘트로 남겼다. `uv run ruff check .`·`ruff format --check .` 통과, `uv run pytest` 506 passed / 20 skipped.
 - 디자인 시스템 v1.0 검색 화면·API 연결·쇼룸 분리(D·E, DEC-052·053)와 쇼룸 리터치(DEC-054)·판본 검증·리뷰 반영은 **PR #105로 main에 병합**됐다(`528d114`, 2026-10-13). #104(설계)는 `ecc2c4a`로 병합, #60은 #105로 대체·닫힘(브랜치 `feat/frontend-showroom`은 남김), #109는 #105 병합으로 닫힘.
 - 이승노 D 파트 복귀·시트 배정(DEC-055)은 **PR #111로 main에 병합**됐다(`1a669a4`, 2026-10-13). LLM 사람 평가 제외(DEC-056 — Luna A·B 표시 취소, ② 규칙 정확도만 `score-rule`로 참고 평가, 전달본 다시 묶음)는 PR #113에서 검증 중이다.
 - 쇼룸은 **쏘나타 YF 2014 모델 + 쏘렌토 2022 모델**로 교체했다. 회전 중심 수직축 고정, 원본 재질·법선 보존, 쏘렌토 바퀴 복원, 쏘나타 유리·바닥 정렬을 반영했다.
