@@ -1,25 +1,12 @@
 .tag { justify-self: start; }
 
-/* 토큰 */
-.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: var(--sp-3); }
-.sw { border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; background: var(--surface); }
-.sw .chip { height: 56px; border-bottom: 1px solid var(--line); }
-.sw .info { padding: 10px 12px; display: grid; gap: 2px; font-size: var(--fs-xs); }
-.sw .info b { font-size: var(--fs-s); }
-.sw .info span { color: var(--ink-2); }
-.type-row { display: grid; grid-template-columns: 140px 1fr; gap: var(--sp-3); align-items: baseline; padding-block: var(--sp-2); border-bottom: 1px dashed var(--line); }
-.type-row:last-child { border-bottom: 0; }
-.type-row .k { font-size: var(--fs-xs); color: var(--ink-2); }
-@media (max-width: 520px) { .type-row { grid-template-columns: 1fr; gap: 2px; } }
 
 /* ── 컴포넌트 (검색 화면에서 그대로 쓰는 모양) ── */
 .tag { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xs); font-weight: 600; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
-.tag.accent { background: var(--accent-soft); color: var(--accent); }
 .chip-part { display: inline-block; font-family: var(--font-id); font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); word-break: break-word; }
-.campno { font-family: var(--font-id); font-weight: 600; letter-spacing: 0.01em; }
+.view-search .campno { font-family: var(--font-id); font-weight: 600; letter-spacing: 0.01em; }
 .rank { font-family: var(--font-id); font-size: 11px; color: var(--ink-3); }
 
-.app { background: var(--bg-1); border: 1px solid var(--line-strong); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-panel); }
 .app-top { display: flex; align-items: center; gap: var(--sp-4); padding: 12px 18px; background: var(--glass); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .app-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; }
 .app-brand-mark { width: 22px; height: 22px; border-radius: 7px; background: conic-gradient(from 210deg, var(--accent), #6f8fc4, var(--accent)); }

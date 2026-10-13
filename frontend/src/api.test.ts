@@ -50,6 +50,31 @@ it("근거 원문(evidence.text)이 없으면 형식 오류", async () => {
   delete item.evidence[0].text;
   reply(body); await expect(search("airbag")).rejects.toMatchObject({ kind: "shape" });
 });
+const filledCause = fixture.precedents[filledIndex].cause as Record<string, any>;
+const withFlag = () => ({ ...structuredClone(filledCause), flags: [{ kind: "unknown_expression", label: "원인 미확인 표현", spans: [{ start: 0, end: 1, text: [...filledCause.text][0] }] }] });
+const causeCases: Record<string, () => Record<string, any>> = {
+  filled: withFlag,
+  stated_unknown: () => ({ ...withFlag(), status: "stated_unknown" }),
+  report_unreadable: () => ({ status: "report_unreadable", campaign: "SYNTHETIC", reason: "no_confirmable_date" }),
+  ...Object.fromEntries(["report_status_unknown", "version_unresolved", "cause_empty", "cause_no_field", "verify_failed"].map((st) => [st, () => ({ status: st, campaign: "SYNTHETIC" })])),
+};
+const withCause = (cause: Record<string, any>) => { const body = structuredClone(fixture) as Record<string, any>; body.precedents[0].cause = cause; return body; };
+it.each(Object.keys(causeCases))("상태 %s의 올바른 원인은 통과한다", async (status) => { const body = withCause(causeCases[status]()); reply(body); await expect(search("airbag")).resolves.toEqual(body); });
+const causeDrops: [string, (c: Record<string, any>) => void][] = [
+  ...["text", "speaker", "source", "flags"].flatMap((k) => ["filled", "stated_unknown"].map((st) => [`${st}.${k}`, (c: Record<string, any>) => { delete c[k]; }] as [string, (c: Record<string, any>) => void])),
+  ...["kind", "label", "spans"].map((k) => [`filled.flags[0].${k}`, (c: Record<string, any>) => { delete c.flags[0][k]; }] as [string, (c: Record<string, any>) => void]),
+  ...["start", "end", "text"].map((k) => [`filled.flags[0].spans[0].${k}`, (c: Record<string, any>) => { delete c.flags[0].spans[0][k]; }] as [string, (c: Record<string, any>) => void]),
+  ["filled.flags[0].spans[0].start 자료형", (c) => { c.flags[0].spans[0].start = "0"; }],
+  ["filled.flags[0].kind 모르는 값", (c) => { c.flags[0].kind = "other"; }],
+  ...["campaign", "reason"].map((k) => [`report_unreadable.${k}`, (c: Record<string, any>) => { delete c[k]; }] as [string, (c: Record<string, any>) => void]),
+  ...["report_status_unknown", "version_unresolved", "cause_empty", "cause_no_field", "verify_failed"].map((st) => [`${st}.campaign`, (c: Record<string, any>) => { delete c.campaign; }] as [string, (c: Record<string, any>) => void]),
+  ["status 자료형", (c) => { c.status = 1; }],
+];
+it.each(causeDrops)("원인 %s가 없거나 틀리면 형식 오류", async (name, mutate) => {
+  const cause = causeCases[name.split(/[.\s]/)[0]]?.() ?? causeCases.filled();
+  mutate(cause); reply(withCause(cause)); await expect(search("airbag")).rejects.toMatchObject({ kind: "shape" });
+});
+it("dup_group이 없으면 형식 오류", async () => { reply(drop(["precedents", "0", "dup_group"])); await expect(search("airbag")).rejects.toMatchObject({ kind: "shape" }); });
 it.each(["build_id", "bundle_sha256", "snapshot_date", "cards", "model"])("health의 %s가 없으면 형식 오류", async (key) => {
   const body = structuredClone(healthFixture) as Record<string, any>; delete body[key];
   reply(body); await expect(health()).rejects.toMatchObject({ kind: "shape" });
