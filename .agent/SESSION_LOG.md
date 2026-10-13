@@ -186,3 +186,12 @@
 - 2026-10-13: PR #113 Codex(8cd6a6b) 🟡 4건 반영 — ② 결과를 filled 150건 기준 규칙 참고 정확도로 한정(stated_unknown 미포함), DEC-056 ② Status를 Proposed로 분리, 저장소 안내서 ② 채점 줄에 폐기 표지(zip 불변), 채점 입력 지문·위치·명령 기재(#114 두 항목 함께 처리)
 - 2026-10-13: PR #113 Codex(52b23b2) 🟡 3건 반영 + 사용자 확인(② 유지·규칙 전용 채점) — cause_trials score-rule(모델 결과 없이 시트 원문에 UNKNOWN_RE, read_sheet 공유, 시험 추가), DEC-056 ② Accepted, 안내서 목적·② 명령을 규칙 전용으로 고치고 전달 전이라 zip 다시 묶음(39ab9aa8, 이전 2df9e5ff는 .superseded), #115 표지 정리
 - 2026-10-13: PR #113 review-agent(ba38f49) 🟢 4건·Codex(ba38f495) 하 1건 반영 — score-rule 출력에 rule_basis(rules.py sha256·패턴), DEC-056에 표시 전 규칙 지문 bad5f1ee·사용자 선택 문구, 기본 모델 주석 정정, HANDOFF 10/17 ② 채점, #90에 이전 zip 지문 폐기 코멘트
+- 2026-10-13: #63 인터뷰(WAF+앱 둘 다·1분 60회·CORS는 localhost만·공개 주소 시연·화면도 배포·수동 워밍업·429 화면은 작업 F·PR은 상한·CORS·문서만, 스키마 변경 2건은 HANDOFF 할 일 56) 결과를 이슈에 게시하고 구현 — `server/ratelimit.py`(IP별 슬라이딩 창, CORS 안쪽, Retry-After 노출)·`tests/test_rate_limit.py` 8개·문서·DEC-057
+- 2026-10-13: 체크포인트 — PR #117(#63 호출 상한)·학습 자료(저장소 밖 학습노트, 학습지 2개)·발표 대본 초안(미추적)·기획 6절 정당성 소절(미커밋). 인계의 main·브랜치 서술이 실제와 어긋나 있어 바로잡음. 이 세션의 남은 시간은 학습 위주
+- 2026-10-13: PR #117에 main(#113 병합 018860f) 합침 — DECISIONS·HANDOFF·SESSION_LOG 충돌 해결(DEC-056 뒤 DEC-057), 작업 F 번호 DEC-058로(codex 2곳·HANDOFF), DEC-048 ① Superseded by DEC-057 표시
+- 2026-10-13: PR #117 Codex(f3051ad3·79c2ad9a)·review-agent(79c2ad9) 반영 — WAF 규칙을 모든 경로로(/health·없는 주소 폭주), WAF 429 CORS 실측을 Production 임시 한도(10초·5회)·첫 429 검사·429 없으면 실패로, 시연 날 순서(재배포는 전날, 워밍업은 마지막), 로컬 시연을 대체 수단으로 표시, create_app 기본 경로의 환경변수 상한 시험 추가
+- 2026-10-13: PR #117 review-agent(0dbb97a) 반영 — 배포 뒤 앱 상한 확인 절차(61번째 429·다른 네트워크 200)와 VERCEL 시스템 환경변수 노출 의존 기록, WAF 실측 스크립트 파일 이름 자릿수·이전 파일 삭제·시연 날 금지와 원복 확인
+- 2026-10-13: PR #117 Codex(0dbb97a7) 반영 — WAF 확인에 /health·없는 주소 차단 검사(429 없으면 실패), 첫 429의 본문으로 앱/WAF 구분, 결과 파일은 임시 폴더, WAF는 평소·시연 모두 Default(429)(시연 직전 Log 전환 삭제)
+- 2026-10-13: PR #117 Codex(cdd9ed8d)·review-agent(cdd9ed8) 반영 — 앱 상한 실측을 60초 쉰 뒤 빈 본문(422)으로 119번까지 보내 처음 429 위치로 읽게(인스턴스 분산·시간 경과 오판 제거), 시스템 환경변수 설정 이름을 공식 문구로, HANDOFF 시험 수 9개
+- 2026-10-13: PR #117 review-agent(a74a29b) 반영 — 문서 셸 명령의 한글 붙은 변수를 ${}로(zsh·bash에서 번호·횟수가 사라짐), 다른 네트워크 422는 약한 증거로 표시하고 시스템 환경변수 노출 상태를 함께 기록, HANDOFF Next Action 1의 리뷰 현황 문구 갱신
+- 2026-10-13: PR #117 Codex(a74a29b2) 반영 — 앱 상한 확인은 한국어 detail+retry-after 응답만 앱 429로 인정(WAF 429·판별 불가는 종료 코드 1), WAF 확인은 WAF 429를 못 잡거나 앱 429만 나오면 종료 코드 1, 가짜 응답 7경우를 bash·zsh에서 확인. HANDOFF 시험 결과 수치 정정(#118 1·3번 함께 처리)

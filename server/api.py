@@ -8,6 +8,7 @@
 
 - `POST /search {"question": "..."}` → 고객사 선례, 같은 부품·다른 회사 선례. 카드마다 결함·결과·시정 원문과 Part 573 원인 원문(말한 주체·출처)을 싣는다.
 - `GET /health` → 데이터 판본(build_id·스냅샷 날짜)과 카드 수.
+- `POST /search`는 IP당 1분 60회(`RATE_LIMIT_PER_MINUTE`)를 넘으면 429와 `Retry-After`를 낸다 — `server/ratelimit.py`, 이슈 #63.
 - 판정하지 않는다: 응답에 적용 여부·리콜 필요 여부 같은 칸을 두지 않는다(AGENTS.md 2-1). 모든 응답에 build_id를 싣는다(2-4).
 - 시작할 때 로컬 build 파일(적재와 같은 검사)·DB 원인 명세·DB 벡터 기록을 대조하고, 하나라도 어긋나면 서버를 띄우지 않는다.
 - 응답은 아래 Pydantic 모델로 검사한다 — 원인 글(`filled`·`stated_unknown`)에는 말한 주체·출처가 반드시 있고, 모델에 없는 칸은 내보내지 않는다.
@@ -32,6 +33,7 @@ from server.rag.checks import checklist
 from server.rag.investigations import SPEAKER_INV
 from server.rag.search import Searcher
 from server.rag.verify import verify
+from server.ratelimit import RateLimiter, RateLimitMiddleware, limit_from_env
 
 # 프런트 개발 서버(Vite 기본 주소). 배포 주소는 환경변수 ALLOWED_ORIGINS(쉼표로 구분)로 바꾼다
 DEFAULT_ORIGINS = ["http://localhost:5173"]
@@ -366,7 +368,13 @@ def peak_rss_mb() -> int:
     return peak // (1024 * 1024) if sys.platform == "darwin" else peak // 1024
 
 
-def create_app(loader: Callable[[], RagState] = load_state) -> FastAPI:
+def create_app(
+    loader: Callable[[], RagState] = load_state, limiter: RateLimiter | None = None
+) -> FastAPI:
+    limiter = limiter or RateLimiter(
+        limit_from_env()
+    )  # IP당 1분 60회(이슈 #63), 잘못된 값이면 시작하지 않는다
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.rag = loader()
@@ -376,11 +384,14 @@ def create_app(loader: Callable[[], RagState] = load_state) -> FastAPI:
         yield
 
     app = FastAPI(title="결함 선례 찾기 도우미", lifespan=lifespan)
+    # 나중에 더한 미들웨어가 바깥이다 — CORS를 상한 바깥에 둬야 429에도 Access-Control-Allow-Origin이 붙는다
+    app.add_middleware(RateLimitMiddleware, limiter=limiter)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins(),
         allow_methods=["GET", "POST"],
         allow_headers=["content-type"],
+        expose_headers=["Retry-After"],  # 브라우저(화면)가 상한 대기 시간을 읽을 수 있게
     )
 
     @app.get("/health", response_model=HealthResponse)
