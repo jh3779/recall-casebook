@@ -34,7 +34,7 @@ _갱신: 2026-10-13 — #104(설계 v1.0) 병합(main `ecc2c4a`), #105(화면) �
 2026-10-13 `git status --short`·`git diff --stat`·`git log -10`으로 확인:
 
 - main = `528d114`(#105 병합). 이 갱신은 브랜치 `docs/d-part-reassign`(PR #111 — D 파트 복귀·시트 배정, DEC-055)에서 한다. 화면 배포(작업 F)는 하지 않았다.
-- 주요 수정: `frontend/src/showroom/`, 컴포넌트·설정·스타일·리콜 처리, README·검사 도구·`.gitignore`. 새 파일: `estimatedParts.ts`·`vehicle.ts`·`geometry.ts`와 관련 시험, 현대·기아 JSON/manifest, `scripts/build_showroom_demo.py`, 모델·후보·회전축·표면 검증 문서.
+- (완료 기록 — 이미 병합된 #105의) 주요 수정: `frontend/src/showroom/`, 컴포넌트·설정·스타일·리콜 처리, README·검사 도구·`.gitignore`. 새 파일: `estimatedParts.ts`·`vehicle.ts`·`geometry.ts`와 관련 시험, 현대·기아 JSON/manifest, `scripts/build_showroom_demo.py`, 모델·후보·회전축·표면 검증 문서.
 - 사용자 미추적 파일은 **`docs/계획_P3_리랭커시험.md`**다. 수정하지 않았다. 이전 인계의 `기획_P3_리랭커시험.md` 표기는 실제 파일명에 맞춰 정정했다. SHA-256 `edbb4d9e5201fc36b1824ceff84f05ccf98e9d4592d3003d88aacc5d9332693a` 유지.
 - 실행: `cd frontend && npm run dev`, 쇼룸 `http://localhost:5173/#showroom`. Node는 `frontend/.nvmrc` 정본(24). 현재 PC의 사용 가능한 Node 24 경로는 `/Users/jihun/.npm/_npx/387698761821791d/node_modules/node/bin`이며 환경에 따라 달라진다. Python 검사 시 샌드박스 캐시 권한 문제는 `UV_CACHE_DIR=/private/tmp/lgcns-uv-cache`로 해결했다.
 - 모델은 gitignore인 `frontend/public/models/sonata.glb`(116,543,736바이트, 약 111MiB)·`sorento.glb`(18,780,960바이트)다. 원본은 Downloads의 `hyundai_sonata_2014 (1).glb`·`kia_sorento.glb`. 다른 기계에서는 README에 따라 별도 준비한다. 출처·CC BY 4.0 저작자·전체 지문은 README와 `public/data/vehicle-sources.json`에 있다. 옛 코나·트럭 자료는 보관용이며 현재 선택 차종이 아니다.
