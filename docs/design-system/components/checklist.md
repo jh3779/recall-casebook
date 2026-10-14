@@ -1,6 +1,6 @@
 # 확인 항목
 
-서버 `checklist[]` — `{item, label, evidence[{field, text}]}`. 근거가 없는 항목은 서버가 싣지 않는다(`server/rag/checks.py`). 화면은 **같다·다르다를 표시하지 않고** 근거 원문만 나란히 둔다(원칙 1).
+서버 `checklist[]` — `{item, label, evidence[{field, text}]}`. 생산 기간 항목(`production_period`)만 `omitted`(한도로 싣지 못한 블록 수)·`unread`(날짜가 적히지 않았거나 읽을 수 없어 뺀 블록 수, 0이면 안내를 그리지 않음)·`source`(읽은 573 보고서 판본, 필수)가 더 있다(DEC-059). 근거가 없는 항목은 서버가 싣지 않는다(`server/rag/checks.py`). 화면은 **같다·다르다를 표시하지 않고** 근거 원문만 나란히 둔다(원칙 1).
 
 ## 구성
 
