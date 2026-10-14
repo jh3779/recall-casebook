@@ -60,7 +60,7 @@ it("생산 기간 항목은 블록 원문·싣지 못한 수·출처 보고서�
   expect(markup).toContain("573 생산 기간 칸");
   expect(markup).toContain("Vehicle 1: 2023-2023 FOO BAR | Jan 02, 2023 - Feb 03, 2023");
   expect(markup).toContain("외 3개 블록은 싣지 않았습니다");
-  expect(markup).toContain("날짜를 읽지 못한 블록 2개는 싣지 않았습니다");
+  expect(markup).toContain("날짜가 적히지 않았거나 읽을 수 없는 블록 2개는 싣지 않았습니다");
   expect(markup).toContain(source.file);
   expect(markup).toContain(source.pdf_sha256);
   expect(markup).not.toMatch(/겹칩니다|일치|같습니다/); // 같다·다르다를 말하지 않는다(AGENTS.md 2-1)

@@ -17,7 +17,7 @@
 | item | label (서버) | evidence field → 화면 칸 라벨 |
 |---|---|---|
 | `same_part` | 같은 부품 | `components` → 부품 |
-| `production_period` | 생산 기간 | `573.production_dates` → 573 생산 기간 칸 (블록마다 `머리글 | 원문`, 앞 5개만 싣고 나머지는 `omitted`로 "외 N개", `source`의 보고서 파일·제출일·sha256을 "출처 보고서" 줄로 보임) |
+| `production_period` | 생산 기간 | `573.production_dates` → 573 생산 기간 칸 (블록마다 `머리글 | 원문`, 앞 5개만 싣고 나머지는 `omitted`로 "외 N개", 날짜가 적히지 않았거나 읽을 수 없어 싣지 않은 블록은 `unread`로 "…블록 N개는 싣지 않았습니다", `source`의 보고서 파일·제출일·sha256을 "출처 보고서" 줄로 보임) |
 | `failure_mode` | 고장 양상 | `defect` → 결함, `consequence` → 결과 |
 | `remedy` | 시정 | `remedy` → 시정 |
 | `supplier` | 공급사 | `573.supplier_names` → 573 공급사 칸 |

@@ -248,6 +248,7 @@ def test_card_model_requires_source_for_production_period_and_forbids_it_for_oth
         production,  # 출처 없는 생산 기간
         {**production, "source": None},
         {**production, "source": source, "omitted": -1},
+        {**production, "source": source, "unread": -1},
         {
             "item": "same_part",
             "label": "x",
@@ -255,6 +256,7 @@ def test_card_model_requires_source_for_production_period_and_forbids_it_for_oth
             "source": source,
         },  # 다른 항목에는 출처 칸이 없다
         {"item": "same_part", "label": "x", "evidence": evidence, "omitted": 2},
+        {"item": "same_part", "label": "x", "evidence": evidence, "unread": 1},
     ):
         with pytest.raises(ValidationError):
             Card.model_validate({**card, "checklist": [bad]})
