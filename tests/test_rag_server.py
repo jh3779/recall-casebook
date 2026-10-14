@@ -787,9 +787,20 @@ def test_production_period_skips_unreadable_blocks_and_hides_item_when_none_is_r
     unreadable = _block(2, raw="NR - NR", start="", end="")
     row = _row(production_dates=[_block(1), unreadable])
     item = _production(row)
-    assert len(item["evidence"]) == 1 and "omitted" not in item  # 읽히지 않은 블록은 세지 않는다
+    assert len(item["evidence"]) == 1 and "omitted" not in item  # 한도 때문에 못 실은 것은 없다
+    assert (
+        item["unread"] == 1
+    )  # 날짜를 읽지 못해 뺀 블록은 개수를 알려 목록이 전부라고 믿지 않게 한다
+    assert "unread" not in _production(_row(production_dates=[_block(1)]))  # 다 읽혔으면 칸이 없다
     only_bad = _row(production_dates=[unreadable])
     assert _production(only_bad) is None
+
+
+def test_production_period_without_readable_blocks_does_not_touch_the_pdf_source():
+    # 싣을 근거가 없으면 출처(pdfs[source_file])를 읽지 않는다 — 생산 기간과 무관한 카드가 출처 칸 때문에 멈추지 않게
+    broken = cause("24V001", pdfs={}, production_dates=[_block(1, raw="NR - NR", start="", end="")])
+    assert _production(broken) is None
+    assert _production(cause("24V001", pdfs={}, production_dates=[])) is None
 
 
 def test_production_period_is_not_shown_for_unresolved_missing_or_old_rows():

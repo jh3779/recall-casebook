@@ -1,14 +1,14 @@
 # Agent Handoff
 
-_갱신: 2026-10-14 — 작업 F(화면 Vercel 배포, DEC-058) 진행: 화면 `https://lg-cns-rag-web.vercel.app` 첫 배포, API `ALLOWED_ORIGINS` 추가·재배포(#117 호출 상한도 적용), PR은 브랜치 `chore/frontend-vercel-deploy`. 그 앞: #117(DEC-057, main `de4d6fa`)·#113(DEC-056, `018860f`) 병합._
+_갱신: 2026-10-14 — **생산 기간 확인 항목(PR #124, DEC-059)** 병합 준비: 573 `Production Dates` 판독·`causes.production_dates`·확인 항목 `production_period`, 일회용 로컬 DB 리허설 통과, 병합 뒤 운영 적재 단계는 할 일 57번. 그 앞: 작업 F(화면 Vercel 배포, DEC-058)는 **#119로 병합**(main `0a25f82`, 화면 `https://lg-cns-rag-web.vercel.app` 공개·API `ALLOWED_ORIGINS` 추가), #117(DEC-057, `de4d6fa`)·#113(DEC-056, `018860f`) 병합._
 
 ## Current Objective
 
-결함 선례 찾기 도우미(DEC-030). 한국 부품사 품질·제품안전 엔지니어에게 같은 부품의 다른 회사 선례와 원인 원문·출처를 보여 준다. 현재 프런트 리터치는 사용자가 완료로 정했고, 다음 세션에서 변경을 검토·전달할 수 있도록 상태를 보존한다. 검색·평가의 근거 보존 원칙은 그대로다.
+결함 선례 찾기 도우미(DEC-030). 한국 부품사 품질·제품안전 엔지니어에게 같은 부품의 다른 회사 선례와 원인 원문·출처를 보여 준다. 검색·평가의 근거 보존 원칙은 그대로다. **지금 하는 일은 PR #124**: 확인 항목에 573 보고서 `Production Dates`를 블록별 원문으로 더하고(DEC-059), 병합 뒤 단계마다 사용자의 "진행"을 받아 운영 데이터 교체 → DB·벡터 적재 → 서빙 묶음 → 재배포를 10/16 밤까지 끝낸다(10/17부터 데이터·스키마 동결).
 
 ## Current Phase
 
-`PROJECT_CONTEXT.md` 기준 **P2 개발 마무리 → P3 평가 진입 전**. 검색 화면의 질문 → 공개 API → 선례·원문·출처 표시와 쇼룸 리터치는 PR #105로 main에 병합됐다(`528d114`). 작업 F(화면 배포)는 PR #119로 리뷰 중이고(화면은 이미 공개 — `lg-cns-rag-web.vercel.app`) 사람 평가가 남아 있어 이번 체크포인트만으로 프로젝트 전체의 P3 전환을 선언하지 않는다. 발표 10/20, 시점 평가 정답 표시 마감 10/16·채점/보고 10/17.
+`PROJECT_CONTEXT.md` 기준 **P2 개발 마무리 → P3 평가 진입 전**. 검색 화면의 질문 → 공개 API → 선례·원문·출처 표시와 쇼룸 리터치는 PR #105로 main에 병합됐다(`528d114`). 작업 F(화면 배포)는 PR #119로 병합됐고(`0a25f82`, 화면은 이미 공개 — `lg-cns-rag-web.vercel.app`) 생산 기간 항목(PR #124)과 사람 평가가 남아 있어 이번 체크포인트만으로 프로젝트 전체의 P3 전환을 선언하지 않는다. 발표 10/20, 시점 평가 정답 표시 마감 10/16·채점/보고 10/17.
 
 ## Completed
 
@@ -22,6 +22,8 @@ _갱신: 2026-10-14 — 작업 F(화면 Vercel 배포, DEC-058) 진행: 화면 `
 - 서버/API와 배포 기반은 기존 완료 범위다(DEC-039·042·044·047~051). #102는 `1a43791`로 병합돼 현재 브랜치 이력에 있다. 세부 과거 작업은 `SESSION_LOG.md`와 각 DEC·검증 문서를 본다.
 
 ## Last Work
+
+2026-10-14 이 세션(생산 기간, PR #124): 조사(파서가 안 읽던 칸 → 573 PDF `Production Dates` 99.89% 읽힘) → B안 구현(파서·적재·서버·화면·문서·새 기준 파일) → 전용 사본에서 `causes.jsonl` 재생성(새 build `5e32c164b15a544a`, 운영 데이터 미변경) → 인터뷰 8개 "추천대로" → 일회용 로컬 Postgres 리허설(749문항 0.311/0.411/0.462/0.542 변화 없음) → 자동 리뷰(Codex·review-agent) 반영. 세부는 할 일 57번과 DEC-059.
 
 2026-10-13 이 세션(학습 + #63):
 
@@ -103,7 +105,7 @@ _갱신: 2026-10-14 — 작업 F(화면 Vercel 배포, DEC-058) 진행: 화면 `
   54. **3D 모델 파일 나누기(#60의 옛 43)**: 현재 쏘나타·쏘렌토는 Sketchfab CC BY 4.0 GLB이며 출처·지문·설치는 `frontend/README.md`와 `vehicle-sources.json`에 기록했다(DEC-054). 로컬 파일은 준비됐고 gitignore다. 팀 공유 접근 확인과 F 배포본 포함은 남는다. 옛 트럭은 비공개 artifact glTF → GLB 방식(DEC-052)을 보관 기록으로 유지한다.
   55. **데모 데이터 출처 잇기(#60의 옛 44)**: artifact 판본·해시·HD 제외 근거·75/75 카드 대조 스크립트를 기록했다. **2026-10-13 현재 현대·기아 쇼룸은 재생성 도구 추가 완료** — `scripts/build_showroom_demo.py`(보관 NHTSA flat·카드 → 현재 쏘나타·쏘렌토 26건·manifest(앞선 코나·쏘렌토는 12건)), `frontend/scripts/prepare-vehicle-parts.mjs`(사용자 제공 GLB → 부품 대응·출처 지문). 옛 트럭 artifact의 전체 재생성 과정은 여전히 없고 보관 기록으로 남긴다. 검색 응답과 데모를 구분해 유지한다.
   56. **#63에서 뺀 스키마 변경 2건 (DEC-057 ⑥)**: ① 벡터 배열 전체 해시를 `embedding_sets`에 저장·대조(지금은 카드 글 해시·줄 수·판본 + 16장 재임베딩만 — 운영 테이블에 칸을 더하는 변경이라 DEC 필요) ② fastembed 판본을 바꿀 때 벡터 세트 키에 판본을 넣는 스키마 변경(DEC-042 한계). 이슈 #63에 남은 두 체크박스다.
-  57. **생산 기간 확인 항목 ([[DEC-059]], 사용자 결정 2026-10-14 · 인터뷰 8개 "추천대로")**: 573 `Production Dates`를 블록별 원문으로 읽어(`parse_report` → `causes.production_dates` → 확인 항목 `production_period`) 앞 5개·나머지 수·출처 보고서를 보인다. 코드·테스트·문서·새 기준 파일 `baseline_2026-10-06_production-dates.json`은 브랜치 `feat/production-period-check`(**PR #124**, 단일 PR)에 있고, 재생성한 `causes.jsonl`·`causes.manifest.json`은 그 작업 폴더 전용 사본(`data/processed/defect/`, 새 build_id `5e32c164b15a544a`)에만 있다 — **운영 데이터는 바꾸지 않았다**(명세 `manifest_sha256`이 새 기준 파일에 고정돼 있어 **이 두 파일을 그대로** 옮겨야 한다). **순서와 승인 지점**: ① 작업 F는 #119로 병합됨(2026-10-14) → ② 이 PR에 main을 합쳐 충돌(`.agent/DECISIONS.md`·`SESSION_LOG.md`·`render.test.tsx`는 양쪽 유지로 해결, DEC-058 다음 059) → 리뷰·병합 → ③ 운영 `data/processed/defect/`의 `causes.jsonl`·`causes.manifest.json`을 새 파일로 교체(기존은 `.prev`로 보존, sha256 b34edec908d5…·0f294cb6ccc2…인지 확인) → ④ `load_db schema` → `load_db load --causes full`(**build는 지우는 도구가 없어 되돌릴 수 없음**) → ⑤ `server.rag.embeddings load`(새 build의 벡터 — 없으면 `bundle build`가 멈춤, `RETRIEVAL_CACHE`를 리허설이 만든 캐시 폴더로 하면 바로 끝나고 아니면 CPU 약 9분) → ⑥ `server.rag.bundle build` → `bundle upload` → ⑦ `server.rag.parity --vectors bundle --bundle <tar>`가 0.311/0.411/0.462/0.542·종료 코드 0인지 → ⑧ Vercel Production의 `SERVING_BUILD_ID`를 `5e32c164b15a544a`로 바꾸고 API(`vercel deploy --prod`)와 화면(`cd frontend && vercel deploy --prod`) 재배포 → ⑨ 공개 주소 `/health`·`/search` 확인. **되돌리기**: `SERVING_BUILD_ID`를 `f1fe1843ed0f2c66`으로 되돌려 재배포(이전 묶음·벡터는 DB·Storage에 남아 있음). **리허설 완료(2026-10-14, 로컬 일회용 Postgres)**: ④~⑦과 같은 사슬이 새 데이터로 모두 통과 — 749문항 점수 변화 없음, 묶음은 `causes.jsonl`·`meta.json`만 운영 묶음과 다름(DEC-059 ⑨). ③~⑥은 병합 뒤 에이전트가 `--env-file`로 실행하되 단계마다 사용자의 "진행" 지시를 받는다. **동결**: 10/16 밤까지 ⑥을 끝내고 10/17부터 데이터·스키마 동결, 이상 시 이전 build의 묶음으로 되돌리며, 못 끝내면 발표 뒤로 미룬다. 연식(`YEARTXT`)은 제외로 확정(DEC-059). 이 PR 이후 `cause_trials`처럼 `causes.jsonl` 지문을 메타에 남기는 새 판독 결과는 새 판본으로 만들어지므로, 옛 시트와 섞어 채점하지 않는다(채점 도구가 거부함).
+  57. **생산 기간 확인 항목 ([[DEC-059]], 사용자 결정 2026-10-14 · 인터뷰 8개 "추천대로")**: 573 `Production Dates`를 블록별 원문으로 읽어(`parse_report` → `causes.production_dates` → 확인 항목 `production_period`) 앞 5개·나머지 수·출처 보고서를 보인다. 코드·테스트·문서·새 기준 파일 `baseline_2026-10-06_production-dates.json`은 브랜치 `feat/production-period-check`(**PR #124**, 단일 PR)에 있고, 재생성한 `causes.jsonl`·`causes.manifest.json`은 그 작업 폴더 전용 사본(`data/processed/defect/`, 새 build_id `5e32c164b15a544a`)에만 있다 — **운영 데이터는 바꾸지 않았다**(명세 `manifest_sha256`이 새 기준 파일에 고정돼 있어 **이 두 파일을 그대로** 옮겨야 한다). **순서와 승인 지점**: ① 작업 F는 #119로 병합됨(2026-10-14) → ② 이 PR에 main을 합쳐 충돌(`.agent/DECISIONS.md`·`SESSION_LOG.md`·`render.test.tsx`는 양쪽 유지로 해결, DEC-058 다음 059) → 리뷰·병합 → ③ 운영 `data/processed/defect/`의 `causes.jsonl`·`causes.manifest.json`을 새 파일로 교체(기존은 `.prev`로 보존, sha256 b34edec908d5…·0f294cb6ccc2…인지 확인) → ④ `load_db schema` → `load_db load --causes full`(**build는 지우는 도구가 없어 되돌릴 수 없음**) → ⑤ `server.rag.embeddings load`(새 build의 벡터 — 없으면 `bundle build`가 멈춤, `RETRIEVAL_CACHE`를 리허설이 만든 캐시 폴더로 하면 바로 끝나고 아니면 CPU 약 9분) → ⑥ `server.rag.bundle build` → `bundle upload` → ⑦ `server.rag.parity --vectors bundle --bundle <tar>`가 0.311/0.411/0.462/0.542·종료 코드 0인지 → ⑧ Vercel Production의 `SERVING_BUILD_ID`를 `5e32c164b15a544a`로 바꾸고 API(`vercel deploy --prod`)와 화면(`cd frontend && vercel deploy --prod`) 재배포 → ⑨ 공개 주소 `/health`·`/search` 확인. **되돌리기**: `SERVING_BUILD_ID`를 `f1fe1843ed0f2c66`으로 되돌려 재배포(이전 묶음·벡터는 DB·Storage에 남아 있음; 운영 폴더 파일을 교체한 뒤에는 옛 build를 파일에서 다시 묶을 수 없다 — DEC-059 ⑧). 배포 뒤 `docs/배포_Vercel.md`의 `SERVING_BUILD_ID` 기록을 새 build id로 고친다. **리허설 완료(2026-10-14, 로컬 일회용 Postgres)**: ④~⑦과 같은 사슬이 새 데이터로 모두 통과 — 749문항 점수 변화 없음, 묶음은 `causes.jsonl`·`meta.json`만 운영 묶음과 다름(DEC-059 ⑨). ③~⑥은 병합 뒤 에이전트가 `--env-file`로 실행하되 단계마다 사용자의 "진행" 지시를 받는다. **동결**: 10/16 밤까지 ⑥을 끝내고 10/17부터 데이터·스키마 동결, 이상 시 이전 build의 묶음으로 되돌리며, 못 끝내면 발표 뒤로 미룬다. 연식(`YEARTXT`)은 제외로 확정(DEC-059). 이 PR 이후 `cause_trials`처럼 `causes.jsonl` 지문을 메타에 남기는 새 판독 결과는 새 판본으로 만들어지므로, 옛 시트와 섞어 채점하지 않는다(채점 도구가 거부함).
 - 역할(이슈 #24): A 박예원 · B 우지훈 · C 박성호(발표) · D 이승노 → 2026-10-07 임시 제외(D 일은 우지훈) → **2026-10-13 복귀**(`@powercodingman` 초대 수락, [[DEC-055]]): D는 ① 원인 품질 30건(+참고 조사 요약 30건)·② 원인 미확인 150건 표시(기한 10/17, 중간 확인 10/15). ③ 실무자 확인은 사용자 결정으로 제외 — 기획서의 "실무자 1명 이상 확인"은 미실시로 보고한다. Luna A·B 각 30건 표시는 취소(DEC-056) — ② 채점은 우지훈이 `score-rule`로 규칙 수치만 낸다. 전달본은 로컬 `data/processed/defect/D파트_표시시트_2026-10-13.zip`(sha256 `39ab9aa832b17206…` — DEC-056으로 안내서를 고쳐 다시 묶음, 이전 `2df9e5ff…`는 `.superseded`로 남기고 보내지 않음, 파일별 지문은 묶음 안 `전달본_sha256.txt`), 안내 `docs/D파트_표시_안내.md`. 돌려받으면 원본 칸을 전달본과 줄·칸 단위로 대조한 뒤 채점한다.
 - **주의(재발 방지)**: `.gitignore`에 핸드북 데이터 무시 줄(`docs/handbook/`, 옛 브랜치는 `docs/handbook/*`)이 없는 브랜치에서 `uv run ruff format .` 금지. 결과 코멘트는 수정하지 말고 새로 올린다.
 
@@ -148,6 +150,6 @@ _갱신: 2026-10-14 — 작업 F(화면 Vercel 배포, DEC-058) 진행: 화면 `
 
 ## Definition of Done
 
-이번 작업(#119): 작업 F(화면 Vercel 배포, DEC-058)를 기록하고, 리뷰 지적을 모두 처리해 병합 전 검증(`docs/MERGE_PROTOCOL.md`)을 통과한 뒤 PR 번호를 든 사용자 지시로 병합한다. 병합 뒤 화면을 다시 배포한다. #111·#113·#117은 병합됐고 D 파트 시트 전달은 사용자가 저장소 밖으로 한다. 기존 할 일 1~55를 보존한다. 사용자 기획 파일(`docs/계획_P3_리랭커시험.md` 등)은 건드리지 않는다.
+이번 작업(#124): 생산 기간 확인 항목(DEC-059)의 리뷰 지적을 모두 처리해 병합 전 검증(`docs/MERGE_PROTOCOL.md`)을 통과한 뒤 PR 번호를 든 사용자 지시로 병합한다. 병합 뒤 할 일 57번의 운영 단계(데이터 교체 → `load_db` → `embeddings load` → 서빙 묶음 → API·화면 재배포)를 단계마다 사용자 확인으로 10/16 밤까지 끝낸다. #111·#113·#117·#119는 병합됐고 D 파트 시트 전달은 사용자가 저장소 밖으로 한다. 기존 할 일 1~55를 보존한다. 사용자 기획 파일(`docs/계획_P3_리랭커시험.md` 등)은 건드리지 않는다.
 
 프로젝트 전체: `docs/기획_결함선례.md` 1~7절과 발표 전 점검이 실제 근거로 채워지고, 모든 수치가 원본 사본 조건을 밝혀 재현되며, 기준선 Hit@10 0.510 대비 before/after와 시점 평가(정답 있는 34문항 이상)의 후보 묶음 한정 Hit@k·하한을 따로 보고한다. 34문항 미만이면 미측정으로 표시한다(DEC-037). 원인 품질 표본과 함께 10/20 발표에서 보여 줄 수 있어야 한다.

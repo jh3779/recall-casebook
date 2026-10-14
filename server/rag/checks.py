@@ -21,14 +21,19 @@ ITEMS = (
 )
 
 
-def production_evidence(cause_row: dict | None) -> tuple[list[dict], int, dict | None]:
-    """(싣는 근거, 싣지 못한 블록 수, 출처). 블록마다 `머리글 | Production Dates 원문`이고, 머리글이 없으면 원문만이다.
+def production_evidence(cause_row: dict | None) -> tuple[list[dict], int, int, dict | None]:
+    """(싣는 근거, 한도 때문에 싣지 못한 블록 수, 날짜를 읽지 못해 싣지 않은 블록 수, 출처).
 
-    출처는 읽은 573 보고서 판본(파일·sha256·제출일)이다 — 원인 글이 없는 카드에서도 생산 기간 근거를 되짚을 수 있게 한다(AGENTS.md 2-4).
+    블록마다 `머리글 | Production Dates 원문`이고, 머리글이 없으면 원문만이다. 날짜까지 읽힌 블록만 싣되, 읽지 못해 뺀 블록은
+    개수를 알려 목록이 전부라고 믿지 않게 한다. 출처는 읽은 573 보고서 판본(파일·sha256·제출일)이다 — 원인 글이 없는
+    카드에서도 생산 기간 근거를 되짚을 수 있게 한다(AGENTS.md 2-4).
     """
     if not cause_row or cause_row.get("resolution") == "unresolved":
-        return [], 0, None
-    blocks = [b for b in cause_row.get("production_dates", []) if b["start"] and b["end"]]
+        return [], 0, 0, None
+    every = cause_row.get("production_dates", [])
+    blocks = [b for b in every if b["start"] and b["end"]]
+    if not blocks:  # 싣을 근거가 없으면 출처도 만들지 않는다 — 생산 기간과 무관한 카드가 출처 칸 때문에 멈추지 않게
+        return [], 0, 0, None
     shown = blocks[:PRODUCTION_SHOWN]
     evidence = [
         {
@@ -43,13 +48,13 @@ def production_evidence(cause_row: dict | None) -> tuple[list[dict], int, dict |
         "pdf_sha256": cause_row["pdfs"][cause_row["source_file"]],
         "submission_date": cause_row["submission_date"],
     }
-    return evidence, len(blocks) - len(shown), source if evidence else None
+    return evidence, len(blocks) - len(shown), len(every) - len(blocks), source
 
 
 def checklist(
     card: dict, cause_row: dict | None, investigations: list[dict], cause: dict
 ) -> list[dict]:
-    production, omitted, source = production_evidence(cause_row)
+    production, omitted, unread, source = production_evidence(cause_row)
     evidence: dict[str, list[dict]] = {
         "same_part": [{"field": "components", "text": c} for c in card["components"] if c],
         "production_period": production,
@@ -79,6 +84,7 @@ def checklist(
     return [
         {"item": key, "label": label, "evidence": evidence[key]}
         | ({"omitted": omitted} if key == "production_period" and omitted else {})
+        | ({"unread": unread} if key == "production_period" and unread else {})
         | ({"source": source} if key == "production_period" else {})
         for key, label in ITEMS
         if evidence[key]

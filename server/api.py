@@ -216,7 +216,10 @@ class ProductionCheckItem(Strict):
     item: Literal["production_period"]
     label: str
     evidence: list[Evidence] = Field(min_length=1)
-    omitted: int = Field(default=0, ge=0)
+    omitted: int = Field(default=0, ge=0)  # 한도(5개) 때문에 싣지 못한 블록 수
+    unread: int = Field(
+        default=0, ge=0
+    )  # 날짜까지 읽히지 않아 싣지 않은 블록 수(`NR - NR`·빈 값·한쪽만 있는 날짜)
     source: CheckSource
 
 

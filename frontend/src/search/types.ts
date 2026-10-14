@@ -45,6 +45,8 @@ export interface PlainCheckItem extends CheckBase {
 export interface ProductionCheckItem extends CheckBase {
   item: "production_period";
   omitted: number;
+  /** 날짜까지 읽히지 않아 싣지 않은 블록 수 */
+  unread: number;
   source: { campaign: string; file: string; pdf_sha256: string; submission_date: string };
 }
 export type CheckItem = PlainCheckItem | ProductionCheckItem;

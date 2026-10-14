@@ -29,7 +29,9 @@
   모두 "있음"으로 더한 값이 상한이다. 573 보고서가 목록에 없는 리콜은 목록에 없는 이유를 확인하지 못했고(`report_status_unknown`) 두 값 모두 0으로 센다.
 
     uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06_maker-aliases.json
-    uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06_maker-aliases.json --full
+    uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06_production-dates.json --full
+    # 위: 생산 기간을 읽는 새 원인 파일(sha256 b34edec908d5…, DEC-059)의 기준 파일. 옛 원인 파일(06b0fe44990f…)은 baseline_2026-10-06_maker-aliases.json을 쓴다 —
+    # 원인 파일 판본마다 기준 파일이 다르고, 다른 판본과 짝지으면 전수 결과 고정값이 달라 멈춘다.
     uv run python -m scripts.defect_precedent.why_stats    # 기준 파일 없이 현재 데이터로 계산 (재현이 아니다)
 """
 

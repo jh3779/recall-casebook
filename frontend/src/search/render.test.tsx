@@ -54,19 +54,20 @@ it("목업 응답 픽스처를 글자 그대로 보관한다", () => {
 it("생산 기간 항목은 블록 원문·싣지 못한 수·출처 보고서를 판정 없이 보여 준다", () => {
   const source = { campaign: "24V001", file: "odi/rcl/2024/RCLRPT-24V001-0001.PDF", pdf_sha256: "cd".repeat(32), submission_date: "20240201" };
   const markup = renderToStaticMarkup(<Checklist items={[{
-    item: "production_period", label: "생산 기간", omitted: 3, source,
+    item: "production_period", label: "생산 기간", omitted: 3, unread: 2, source,
     evidence: [{ field: "573.production_dates", text: "Vehicle 1: 2023-2023 FOO BAR | Jan 02, 2023 - Feb 03, 2023" }],
   }]} />);
   expect(markup).toContain("573 생산 기간 칸");
   expect(markup).toContain("Vehicle 1: 2023-2023 FOO BAR | Jan 02, 2023 - Feb 03, 2023");
   expect(markup).toContain("외 3개 블록은 싣지 않았습니다");
+  expect(markup).toContain("날짜를 읽지 못한 블록 2개는 싣지 않았습니다");
   expect(markup).toContain(source.file);
   expect(markup).toContain(source.pdf_sha256);
   expect(markup).not.toMatch(/겹칩니다|일치|같습니다/); // 같다·다르다를 말하지 않는다(AGENTS.md 2-1)
 });
 it("싣지 못한 블록이 없으면 안내를 그리지 않는다", () => {
   const source = { campaign: "24V001", file: "f.PDF", pdf_sha256: "cd".repeat(32), submission_date: "20240201" };
-  const markup = renderToStaticMarkup(<Checklist items={[{ item: "production_period", label: "생산 기간", omitted: 0, source, evidence: [{ field: "573.production_dates", text: "x" }] }]} />);
+  const markup = renderToStaticMarkup(<Checklist items={[{ item: "production_period", label: "생산 기간", omitted: 0, unread: 0, source, evidence: [{ field: "573.production_dates", text: "x" }] }]} />);
   expect(markup).not.toContain("싣지 않았습니다");
 });
 it("호출 상한(429)은 기다릴 시간을 알리고 그동안 다시 시도를 막는다", async () => {
