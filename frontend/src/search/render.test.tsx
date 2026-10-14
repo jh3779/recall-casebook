@@ -50,3 +50,11 @@ it("목업 응답 픽스처를 글자 그대로 보관한다", () => {
     expect(readFileSync(new URL(`./__fixtures__/${file}`, import.meta.url), "utf8")).toBe(body);
   }
 });
+it("호출 상한(429)은 기다릴 시간을 알리고 그동안 다시 시도를 막는다", async () => {
+  const { ApiError } = await import("../api");
+  const { Feedback } = await import("./Feedback");
+  const markup = renderToStaticMarkup(<Feedback error={new ApiError("rate_limit", "x", 429, undefined, 7)} onRetry={() => {}} />);
+  expect(markup).toContain("호출이 너무 잦습니다 (429)");
+  expect(markup).toContain("7초 뒤에 다시 시도할 수 있습니다");
+  expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>다시 시도 \(7\)<\/button>/);
+});

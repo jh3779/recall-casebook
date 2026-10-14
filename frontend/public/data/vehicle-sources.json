@@ -1,11 +1,18 @@
 {
   "sonata": {
-    "bytes": 116543736,
-    "sha256": "e3a9bf1e821ba553e23c51da3d7ac668a9a0e5678a9ba304fd329b4ae0355470",
+    "bytes": 44211620,
+    "sha256": "6e00b8603a84e95fac76c1c00f58157fdd21f0044b35f007aea0aecb53499345",
     "author": "DR1KING100K (https://sketchfab.com/DR1KING100K)",
     "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
     "source": "https://sketchfab.com/3d-models/hyundai-sonata-2014-7a0e4fa5122e4cc1b57d8b9149916558",
-    "title": "Hyundai Sonata 2014"
+    "title": "Hyundai Sonata 2014",
+    "derivedFrom": {
+      "from": {
+        "bytes": 116543736,
+        "sha256": "e3a9bf1e821ba553e23c51da3d7ac668a9a0e5678a9ba304fd329b4ae0355470"
+      },
+      "change": "참조되지 않는 텍스처 좌표(TEXCOORD) 속성 제거 — scripts/strip-unused-texcoords.mjs, 나머지 속성·인덱스·재질은 원본과 바이트 동일"
+    }
   },
   "sorento": {
     "bytes": 18780960,

@@ -30,7 +30,7 @@ npm run dev       # http://localhost:5173
 
 | 모델 | 출처·저작자 | GLB 크기 |
 |---|---|---:|
-| 쏘나타 YF | [Hyundai Sonata 2014 — DR1KING100K](https://sketchfab.com/3d-models/hyundai-sonata-2014-7a0e4fa5122e4cc1b57d8b9149916558) | 116,543,736바이트 (1K GLB) |
+| 쏘나타 YF | [Hyundai Sonata 2014 — DR1KING100K](https://sketchfab.com/3d-models/hyundai-sonata-2014-7a0e4fa5122e4cc1b57d8b9149916558) | 원본 116,543,736바이트 (1K GLB) → 화면용 44,211,620바이트(쓰이지 않는 텍스처 좌표만 제거) |
 | 쏘렌토 | [Kia Sorento — MattDoesBlender](https://sketchfab.com/3d-models/kia-sorento-47a0016ba8b842c780d79ded8fa0a891) | 18,780,960바이트 |
 
 두 파일의 내장 출처는 CC BY 4.0이다. 화면에 저작자·출처·라이선스·변경 사항을 표시한다. 출처·원본 SHA-256은 `public/data/vehicle-sources.json`에 있다. 쏘렌토는 원본의 회색 재질을 재질 이름에 맞게 나눴고, 원본 바퀴 한 벌을 나머지 세 바퀴 배치 지점에 복제했다.
@@ -38,12 +38,13 @@ npm run dev       # http://localhost:5173
 ```bash
 # frontend/에서. 사용자가 받은 GLB 경로에 맞게 복사한다.
 mkdir -p public/models
-cp ~/Downloads/hyundai_sonata_2014.glb public/models/sonata.glb
+# 쏘나타는 재질이 쓰지 않는 텍스처 좌표만 지워 둔다(Vercel 파일 하나 100MB 한도, DEC-058) — 원본 지문이 다르면 멈춘다
+node scripts/strip-unused-texcoords.mjs ~/Downloads/hyundai_sonata_2014.glb public/models/sonata.glb
 cp ~/Downloads/kia_sorento.glb public/models/sorento.glb
 node scripts/prepare-vehicle-parts.mjs
 ```
 
-`public/models/`는 gitignore다. 다른 환경에서도 원본 파일을 준비해야 하며 모델이 없으면 실패 안내·검색 복귀 버튼이 뜬다. 원본 메시·재질·본 이름으로 확인된 분류는 원본 형상을 사용한다. 없는 엔진·변속기·연료 배관 등은 일반적인 전륜구동 배치를 단순화한 도형으로 보완한다. 추정 도형은 투시에서만 보이고 실제 기록이 있는 분류에만 연결한다. 화면·핫스팟·패널에 설명용 추정임을 밝힌다. 기타 장비처럼 위치가 하나로 특정되지 않는 분류는 기록만 연다. 쏘나타 GLB는 약 111MiB이므로 첫 로딩 비용이 크다. [구현·검증 기록](../docs/프런트_현대기아_모델.md).
+`public/models/`는 gitignore다. 화면용 두 파일은 공개 화면에서도 받을 수 있다: `https://lg-cns-rag-web.vercel.app/models/sonata.glb`·`/models/sorento.glb`(받은 뒤 `public/data/vehicle-sources.json` 지문과 대조). 쏘나타 화면용 파일은 원본에서 쓰이지 않는 텍스처 좌표(TEXCOORD)만 지운 것이다 — 남은 속성·인덱스·재질은 원본과 바이트까지 같고(스크립트가 대조한 뒤에만 쓴다) 원본 지문은 `vehicle-sources.json`의 `derivedFrom`에 있다. 화면에는 CC BY 4.0 변경 사항으로 "미사용 UV 제거"를 표시한다. 그 밖에도 다른 환경에서는 원본 파일을 준비해야 하며 모델이 없으면 실패 안내·검색 복귀 버튼이 뜬다. 원본 메시·재질·본 이름으로 확인된 분류는 원본 형상을 사용한다. 없는 엔진·변속기·연료 배관 등은 일반적인 전륜구동 배치를 단순화한 도형으로 보완한다. 추정 도형은 투시에서만 보이고 실제 기록이 있는 분류에만 연결한다. 화면·핫스팟·패널에 설명용 추정임을 밝힌다. 기타 장비처럼 위치가 하나로 특정되지 않는 분류는 기록만 연다. 쏘나타 화면용 GLB는 약 42MiB(원본 약 111MiB)라 첫 로딩 비용이 여전히 크다. [구현·검증 기록](../docs/프런트_현대기아_모델.md).
 
 ## 현재 쇼룸 데모 데이터
 

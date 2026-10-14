@@ -1,0 +1,15 @@
+# 화면 CLI 배포(작업 F, DEC-058)는 로컬 폴더를 올린다 — node_modules·dist·.env*·보관 모델이 올라가지 않게 필요한 것만 허용한다
+/*
+!index.html
+!package.json
+!package-lock.json
+!.nvmrc
+!tsconfig*.json
+!vite.config.ts
+!vercel.json
+!src
+!public
+# 3D 모델은 화면이 부르는 두 파일만(src/config.ts) — 보관 중인 트럭·코나 모델은 올리지 않는다(#108)
+public/models/*
+!public/models/sonata.glb
+!public/models/sorento.glb

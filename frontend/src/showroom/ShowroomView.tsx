@@ -167,7 +167,7 @@ function Explorer({ showroom, recalls, snapshotDate, firstCats, setLoader, onSea
       <Dock mode={mode} onMode={changeMode} paint={paint} onPaint={setPaint} onReset={() => selectCategory(null)} />
       <div className="model-legend">{mode === "xray" ? "● " : "+ "}부품 형상·위치는 설명용 추정 · 리콜은 실제 기록</div>
       <div className="credit">
-        3D: <a href={MODELS[model].source} target="_blank" rel="noreferrer">{MODELS[model].credit}</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a> · 크기·재질 조정{model === "sorento" ? " · 바퀴 복제" : ""} · 추정 도형 추가<br />
+        3D: <a href={MODELS[model].source} target="_blank" rel="noreferrer">{MODELS[model].credit}</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a> · 크기·재질 조정{model === "sorento" ? " · 바퀴 복제" : " · 미사용 UV 제거"} · 추정 도형 추가<br />
         리콜: NHTSA · {snapshotDate} 스냅샷 {recalls.sonata.length + recalls.sorento.length}건 (검색 결과 아님)
       </div>
     </>

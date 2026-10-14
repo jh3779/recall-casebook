@@ -195,3 +195,4 @@
 - 2026-10-13: PR #117 Codex(cdd9ed8d)·review-agent(cdd9ed8) 반영 — 앱 상한 실측을 60초 쉰 뒤 빈 본문(422)으로 119번까지 보내 처음 429 위치로 읽게(인스턴스 분산·시간 경과 오판 제거), 시스템 환경변수 설정 이름을 공식 문구로, HANDOFF 시험 수 9개
 - 2026-10-13: PR #117 review-agent(a74a29b) 반영 — 문서 셸 명령의 한글 붙은 변수를 ${}로(zsh·bash에서 번호·횟수가 사라짐), 다른 네트워크 422는 약한 증거로 표시하고 시스템 환경변수 노출 상태를 함께 기록, HANDOFF Next Action 1의 리뷰 현황 문구 갱신
 - 2026-10-13: PR #117 Codex(a74a29b2) 반영 — 앱 상한 확인은 한국어 detail+retry-after 응답만 앱 429로 인정(WAF 429·판별 불가는 종료 코드 1), WAF 확인은 WAF 429를 못 잡거나 앱 429만 나오면 종료 코드 1, 가짜 응답 7경우를 bash·zsh에서 확인. HANDOFF 시험 결과 수치 정정(#118 1·3번 함께 처리)
+- 2026-10-14: 작업 F(DEC-058) — 화면 별도 Vercel 프로젝트 lg-cns-rag-web CLI 배포(vercel.json·허용 목록 .vercelignore·engines 24.x), 원본 쏘나타 1차 배포가 파일 100MB 한도로 실패 → 참조되지 않는 TEXCOORD만 지운 배포본(44.2MB, 나머지 바이트 동일·스크립트 strip-unused-texcoords.mjs)으로 2차 배포 성공(첫 배포라 Production), 두 모델 지문 대조, API ALLOWED_ORIGINS 추가·재배포(#117 상한 적용, CORS·검색 200 확인), 429 화면 처리(남은 초·다시 시도 비활성)
