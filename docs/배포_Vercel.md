@@ -57,7 +57,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
    ```bash
    printf 'https://lg-cns-rag-web.vercel.app,http://localhost:5173' | vercel env add ALLOWED_ORIGINS production
    vercel deploy --prod      # 같은 SERVING_BUILD_ID — 환경변수는 서버가 시작할 때 한 번 읽으므로 재배포해야 적용된다
-   curl -s https://lg-cns-rag.vercel.app/health      # build_id f1fe1843ed0f2c66 그대로인지(첫 요청 13~16초)
+   curl -s https://lg-cns-rag.vercel.app/health      # build_id가 그대로인지(2026-10-14 당시 f1fe1843ed0f2c66, 생산 기간 재배포 뒤에는 5e32c164b15a544a; 첫 요청 13~16초)
    curl -si -X OPTIONS https://lg-cns-rag.vercel.app/search -H "Origin: https://lg-cns-rag-web.vercel.app" \
      -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type" | grep -i access-control-allow-origin
    ```
@@ -104,7 +104,7 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 | `vercel.json` | `framework: fastapi`(CLI로 만든 프로젝트는 프리셋이 비어 `app.py`를 함수로 못 찾는다), `regions: ["syd1"]`(운영 Supabase ap-southeast-2와 같은 지역), `maxDuration` 60(첫 요청 실측 13.2초 — 공개 상태에서 요청 하나가 함수를 오래 붙잡지 않게 실측에 맞춤) |
 | `.vercelignore` | CLI 배포는 로컬 폴더를 올린다. Vercel 기본 무시 목록에 `.env`·`.env.server`·`data/`가 없으므로 **필요한 것만 허용**한다(진입점·설정·`pyproject.toml`·`uv.lock`·`.python-version`·`server/`·`scripts/defect_precedent/`) |
 
-Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BUILD_ID=f1fe1843ed0f2c66` · `SUPABASE_URL` · `SERVER_DATABASE_URL`(`rag_reader`, Sensitive) · `UV_NO_CONFIG=1`(빌더 uv 0.10.11이 `required-version >=0.12.5`에 걸려서 — DEC-051 ④). `ALLOWED_ORIGINS=https://lg-cns-rag-web.vercel.app,http://localhost:5173`(2026-10-14 작업 F에서 추가하고 재배포 — 2절 실측 기록). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
+Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BUILD_ID=5e32c164b15a544a`(2026-10-14 생산 기간 재배포 — DEC-059; 이전 값 `f1fe1843ed0f2c66`은 되돌리기용, 되돌릴 때는 이 값을 다시 넣고 `vercel deploy --prod`) · `SUPABASE_URL` · `SERVER_DATABASE_URL`(`rag_reader`, Sensitive) · `UV_NO_CONFIG=1`(빌더 uv 0.10.11이 `required-version >=0.12.5`에 걸려서 — DEC-051 ④). `ALLOWED_ORIGINS=https://lg-cns-rag-web.vercel.app,http://localhost:5173`(2026-10-14 작업 F에서 추가하고 재배포 — 2절 실측 기록). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
 
 다시 배포: 저장소 루트에서 `vercel deploy --prod`(먼저 `vercel link --project lg-cns-rag` — `.vercel/`은 gitignore). 값 확인은 `vercel env ls production`(값은 숨김). 로그는 `vercel logs <배포 주소>`.
 
