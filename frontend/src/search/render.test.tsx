@@ -55,6 +55,9 @@ it("호출 상한(429)은 기다릴 시간을 알리고 그동안 다시 시도�
   const { Feedback } = await import("./Feedback");
   const markup = renderToStaticMarkup(<Feedback error={new ApiError("rate_limit", "x", 429, undefined, 7)} onRetry={() => {}} />);
   expect(markup).toContain("호출이 너무 잦습니다 (429)");
-  expect(markup).toContain("7초 뒤에 다시 시도할 수 있습니다");
-  expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>다시 시도 \(7\)<\/button>/);
+  // 남은 초는 화면에만 보이고 알림(role=alert) 밖·aria-hidden이라 화면 낭독기가 매초 다시 읽지 않는다
+  const alert = markup.match(/<div role="alert">.*?<\/div>/)![0];
+  expect(alert).not.toMatch(/\d+초/);
+  expect(markup).toContain('<p aria-hidden="true">7초 남음</p>');
+  expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>다시 시도<span aria-hidden="true"> \(7\)<\/span><\/button>/);
 });

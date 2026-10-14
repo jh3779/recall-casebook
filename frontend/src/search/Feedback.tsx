@@ -19,17 +19,22 @@ export function Feedback({ loading, delayed, error, onRetry }: { loading?: boole
   </div></div>;
 }
 
-// 호출 상한(429, DEC-057): Retry-After 동안 [다시 시도]를 막고 남은 초를 보여 준다
+// 호출 상한(429, DEC-057): Retry-After 동안 [다시 시도]를 막고 남은 초를 보여 준다.
+// 알림(role="alert")에는 바뀌지 않는 문구만 둔다 — 1초마다 바뀌는 남은 초가 알림 안에 있으면 화면 낭독기가 매초 다시 읽는다.
 function RateLimited({ error, onRetry }: { error: ApiError; onRetry?: () => void }) {
   // 남은 초는 오류가 정한 마감(retryAt)에서 계산한다 — 다시 보낸 검색이 또 429면 새 오류의 마감으로 센다
   const [now, setNow] = useState(() => Date.now());
+  const left = Math.max(0, Math.ceil(((error.retryAt ?? now) - now) / 1000));
+  const waiting = left > 0;
   useEffect(() => {
+    if (!waiting) return; // 다 기다렸으면 타이머를 멈춘다
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
-  const left = Math.max(0, Math.ceil(((error.retryAt ?? now) - now) / 1000));
-  return <div className="feedback"><div className="err" role="alert"><h2>호출이 너무 잦습니다 (429)</h2>
-    <p>{left > 0 ? `같은 주소에서 1분에 보낼 수 있는 검색 수를 넘었습니다. ${left}초 뒤에 다시 시도할 수 있습니다.` : "이제 다시 시도할 수 있습니다."}</p>
-    <div className="act"><button className="btn ghost small" disabled={left > 0} onClick={onRetry}>{left > 0 ? `다시 시도 (${left})` : "다시 시도"}</button></div>
+  }, [waiting]);
+  return <div className="feedback"><div className="err">
+    <div role="alert"><h2>호출이 너무 잦습니다 (429)</h2>
+      <p>같은 주소에서 1분에 보낼 수 있는 검색 수를 넘었습니다. 잠시 뒤에 다시 시도할 수 있습니다.</p></div>
+    {waiting ? <p aria-hidden="true">{left}초 남음</p> : <p role="status">이제 다시 시도할 수 있습니다.</p>}
+    <div className="act"><button className="btn ghost small" disabled={waiting} onClick={onRetry}>다시 시도{waiting && <span aria-hidden="true"> ({left})</span>}</button></div>
   </div></div>;
 }

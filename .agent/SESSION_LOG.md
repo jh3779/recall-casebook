@@ -198,3 +198,4 @@
 - 2026-10-14: 작업 F(DEC-058) — 화면 별도 Vercel 프로젝트 lg-cns-rag-web CLI 배포(vercel.json·허용 목록 .vercelignore·engines 24.x), 원본 쏘나타 1차 배포가 파일 100MB 한도로 실패 → 참조되지 않는 TEXCOORD만 지운 배포본(44.2MB, 나머지 바이트 동일·스크립트 strip-unused-texcoords.mjs)으로 2차 배포 성공(첫 배포라 Production), 두 모델 지문 대조, API ALLOWED_ORIGINS 추가·재배포(#117 상한 적용, CORS·검색 200 확인), 429 화면 처리(남은 초·다시 시도 비활성)
 - 2026-10-14: PR #119 review-agent(67389c1) 반영 — 한도 설명을 '파일 하나'에서 '업로드 소스 합계(문서), 실패 문구로는 구분 못 함'으로 정정하고 소스 합계 약 61MiB·여유 기록, 스크립트 대조 범위 서술을 실제(속성·인덱스 바이트·재질 배정)로 줄이고 재질 확장 있는 GLB 거부, 원본 그대로 문구 4곳에 DEC-058 배포본 주석, Feedback의 도달 불가 rate_limit 항목 삭제
 - 2026-10-14: PR #119 Codex(67389c17) 반영 — 쏘나타 변환 스크립트가 출력을 다시 읽어 재질 값·텍스처·목록까지 원본과 대조하고 배포본 지문·크기·지운 속성 수를 고정(재질 색을 바꾼 사본으로 거부 확인), Retry-After는 숫자만 받고 그 밖은 60초(시험 5개), README 배포·CORS·429 현황 갱신
+- 2026-10-14: PR #119 review-agent(d732ccb) 반영 — 429 알림(role=alert)은 고정 문구만, 남은 초는 aria-hidden·끝나면 role=status, 다 기다리면 타이머 정지; 스크립트 대조 범위·EXPECTED 불일치 시 절차를 문서·DEC·주석에 맞춤

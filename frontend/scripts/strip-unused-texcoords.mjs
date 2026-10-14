@@ -1,5 +1,6 @@
 // 쏘나타 GLB의 참조되지 않는 텍스처 좌표(TEXCOORD_n)만 지운다 — Vercel CLI 업로드 100MB 한도 때문(작업 F, DEC-058).
-// 출력을 다시 읽어 남은 정점 속성·인덱스 바이트, 재질 값·텍스처(이미지 지문·texCoord·샘플러), 재질·노드·메시 목록이 원본과 같고,
+// 출력을 다시 읽어 남은 정점 속성·인덱스 바이트, 재질 값·텍스처(이미지 지문·texCoord·샘플러), 재질·노드·메시·스킨 이름 목록이 원본과 같고,
+// (노드 변환은 비교하지 않는다 — 원본의 matrix가 TRS로 다시 쓰여 float32 오차만큼 다를 수 있다)
 // 출력이 기록된 배포본(크기·SHA-256·지운 속성 수)과 같을 때만 쓴다.
 // 이 모델 전용이다 — 재질 확장(KHR_texture_transform·clearcoat 등)은 이 스크립트가 등록하지 않아 읽고 쓰는 동안 사라질 수 있으므로 확장이 있는 파일은 거부한다.
 // 사용: node scripts/strip-unused-texcoords.mjs <원본 sonata GLB> public/models/sonata.glb

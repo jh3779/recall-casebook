@@ -44,7 +44,7 @@ cp ~/Downloads/kia_sorento.glb public/models/sorento.glb
 node scripts/prepare-vehicle-parts.mjs
 ```
 
-`public/models/`는 gitignore다. 화면용 두 파일은 공개 화면에서도 받을 수 있다: `https://lg-cns-rag-web.vercel.app/models/sonata.glb`·`/models/sorento.glb`(받은 뒤 `public/data/vehicle-sources.json` 지문과 대조). 쏘나타 화면용 파일은 원본에서 쓰이지 않는 텍스처 좌표(TEXCOORD)만 지운 것이다 — 스크립트가 남은 정점 속성·인덱스 바이트와 재질 배정이 원본과 같은지 대조한 뒤에만 쓰고, 원본 지문은 `vehicle-sources.json`의 `derivedFrom.from`에 있다. 화면에는 CC BY 4.0 변경 사항으로 "미사용 UV 제거"를 표시한다. 그 밖에도 다른 환경에서는 원본 파일을 준비해야 하며 모델이 없으면 실패 안내·검색 복귀 버튼이 뜬다. 원본 메시·재질·본 이름으로 확인된 분류는 원본 형상을 사용한다. 없는 엔진·변속기·연료 배관 등은 일반적인 전륜구동 배치를 단순화한 도형으로 보완한다. 추정 도형은 투시에서만 보이고 실제 기록이 있는 분류에만 연결한다. 화면·핫스팟·패널에 설명용 추정임을 밝힌다. 기타 장비처럼 위치가 하나로 특정되지 않는 분류는 기록만 연다. 쏘나타 화면용 GLB는 약 42MiB(원본 약 111MiB)라 첫 로딩 비용이 여전히 크다. [구현·검증 기록](../docs/프런트_현대기아_모델.md).
+`public/models/`는 gitignore다. 화면용 두 파일은 공개 화면에서도 받을 수 있다: `https://lg-cns-rag-web.vercel.app/models/sonata.glb`·`/models/sorento.glb`(받은 뒤 `public/data/vehicle-sources.json` 지문과 대조). 쏘나타 화면용 파일은 원본에서 쓰이지 않는 텍스처 좌표(TEXCOORD)만 지운 것이다 — 스크립트는 출력을 다시 읽어 남은 정점 속성·인덱스 바이트와 재질 값·텍스처(이미지 지문·texCoord·샘플러)·재질·노드·메시 이름 목록을 원본과 대조하고, 출력 크기·SHA-256·지운 속성 수가 기록값과 같을 때만 쓴다(노드 변환은 `matrix`가 TRS로 다시 쓰여 float32 오차만큼 다를 수 있고 비교하지 않는다. 재질 확장이 있는 모델은 거부 — 이 모델 전용), 원본 지문은 `vehicle-sources.json`의 `derivedFrom.from`에 있다. 화면에는 CC BY 4.0 변경 사항으로 "미사용 UV 제거"를 표시한다. 그 밖에도 다른 환경에서는 원본 파일을 준비해야 하며 모델이 없으면 실패 안내·검색 복귀 버튼이 뜬다. 원본 메시·재질·본 이름으로 확인된 분류는 원본 형상을 사용한다. 없는 엔진·변속기·연료 배관 등은 일반적인 전륜구동 배치를 단순화한 도형으로 보완한다. 추정 도형은 투시에서만 보이고 실제 기록이 있는 분류에만 연결한다. 화면·핫스팟·패널에 설명용 추정임을 밝힌다. 기타 장비처럼 위치가 하나로 특정되지 않는 분류는 기록만 연다. 쏘나타 화면용 GLB는 약 42MiB(원본 약 111MiB)라 첫 로딩 비용이 여전히 크다. [구현·검증 기록](../docs/프런트_현대기아_모델.md).
 
 ## 현재 쇼룸 데모 데이터
 
