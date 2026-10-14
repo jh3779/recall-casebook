@@ -202,3 +202,4 @@
 - 2026-10-14: PR #119 Codex(d732ccb8)·review-agent(856a8f1) 반영 — 429 완료 알림 영역을 처음부터 비운 채 그려 두고(sr-only) 글자만 채움, 429 안내 제목·본문 간격 복구(.err [role=alert]), 작업 지시문 task-F에 실행 완료 머리말(바뀐 점 4가지·현재 런북 링크)
 - 2026-10-14: PR #119 Codex(6134850a)·review-agent(6134850) 반영 — DEC-058 텍스처 크기 실측값으로 정정(이미지 약 6.0MB, TEXCOORD 한 벌 약 7.3MB), HANDOFF Current State·작업 지시 README 표·task-F CORS 줄을 현재 상태로, .nvmrc 단정·인용 문구·실패 크기(129.8MB) 정정
 - 2026-10-14: PR #119 병합 전 문서 정합(#121) — HANDOFF #117 병합·모델 배포본 크기·날짜·옛 상태 줄, README 원본 고르기·npm ci, 런북 1단계 npm ci, 세션 기록 한도 표현, 모바일 후속 #120 연결
+- 2026-10-14: PR #119 Codex(fc18444c)·review-agent(fc18444) 반영 — 모델 준비 명령의 꺾쇠 자리표시를 따옴표 변수($SONATA_GLB)로(zsh·bash 실행 확인), HANDOFF의 #113 검증 중·이번 작업 줄을 #119로, 업로드 크기 단위(MiB·MB) 표시. 429 시간 경과 시험은 후속 이슈

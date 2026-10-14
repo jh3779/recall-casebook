@@ -6,7 +6,7 @@
 
 > **실행 완료(2026-10-14, PR #119, DEC-058)** — 아래 1·2절은 **작업 전 계획**이다. 지금 따라 할 절차는 [`docs/배포_Vercel.md`](../../배포_Vercel.md) 2절 런북이다. 실행하며 계획과 달라진 것:
 > - `.vercelignore`는 `!public` 뒤 `public/models/*`를 다시 막고 `sonata.glb`·`sorento.glb`만 연다(보관 모델 제외, #108) (아래 1절 표에 반영).
-> - 원본 쏘나타(116,543,736바이트, `e3a9bf1e…`)는 Vercel CLI 업로드 100MB 한도에 걸려(업로드 129.8MB → 실패, 예상 135MB) 쓰이지 않는 텍스처 좌표만 지운 배포본(44,211,620바이트, `6e00b860…`)을 쓴다. 그래서 지문 대조 기준은 배포본이고 업로드는 약 61MiB다 (아래 2절 1·4단계에 반영).
+> - 원본 쏘나타(116,543,736바이트, `e3a9bf1e…`)는 Vercel CLI 업로드 100MB 한도에 걸려(업로드 129.8MiB(CLI 표시) → 실패, 모델 두 개 원본 합계 135.3MB) 쓰이지 않는 텍스처 좌표만 지운 배포본(44,211,620바이트, `6e00b860…`)을 쓴다. 그래서 지문 대조 기준은 배포본이고 업로드는 약 61MiB다 (아래 2절 1·4단계에 반영).
 > - 배포본을 만드는 `@gltf-transform/core`를 개발 의존성으로 더해 lock이 바뀌었다 (아래 1절 표에 반영).
 > - 새 프로젝트의 첫 배포는 미리보기가 아니라 Production에 붙었다. 429 화면 처리(DEC-057 ⑤)도 이 작업에서 했다.
 ## 배경
@@ -29,10 +29,10 @@
 
 다음 순서를 명령까지 적는다:
 
-1. **3D 모델 준비** *(실행됨 — 원본 쏘나타는 업로드 한도에 걸려 배포본을 쓴다, DEC-058)*: 절차·지문은 [`docs/배포_Vercel.md`](../../배포_Vercel.md) 2절 1단계를 따른다 — `node scripts/strip-unused-texcoords.mjs <원본> public/models/sonata.glb`로 만든 쏘나타 배포본 `6e00b8603a84e95fac76c1c00f58157fdd21f0044b35f007aea0aecb53499345`(44,211,620바이트) · 쏘렌토 `fd39a70b9e34b1ce4a153ed890b5a2acfc10092bd84559e03c74ef59962c6470`(18,780,960바이트)가 `frontend/public/data/vehicle-sources.json`과 같아야 한다(원본 쏘나타 지문은 그 파일의 `derivedFrom.from`). 화면이 부르는 경로는 `frontend/src/config.ts`의 `glb`다. 옛 트럭·코나 모델은 배포하지 않는다.
+1. **3D 모델 준비** *(실행됨 — 원본 쏘나타는 업로드 한도에 걸려 배포본을 쓴다, DEC-058)*: 절차·지문은 [`docs/배포_Vercel.md`](../../배포_Vercel.md) 2절 1단계를 따른다 — `node scripts/strip-unused-texcoords.mjs "$SONATA_GLB" public/models/sonata.glb`(`SONATA_GLB`는 받은 원본 경로)로 만든 쏘나타 배포본 `6e00b8603a84e95fac76c1c00f58157fdd21f0044b35f007aea0aecb53499345`(44,211,620바이트) · 쏘렌토 `fd39a70b9e34b1ce4a153ed890b5a2acfc10092bd84559e03c74ef59962c6470`(18,780,960바이트)가 `frontend/public/data/vehicle-sources.json`과 같아야 한다(원본 쏘나타 지문은 그 파일의 `derivedFrom.from`). 화면이 부르는 경로는 `frontend/src/config.ts`의 `glb`다. 옛 트럭·코나 모델은 배포하지 않는다.
 2. **프로젝트 연결**(처음 한 번): `cd frontend && vercel project add lg-cns-rag-web && vercel link --yes --project lg-cns-rag-web`. `vercel link`가 `.gitignore`에 `.env*`를 덧붙이면 그 줄을 지운다(루트 `.gitignore`의 `.env.example` 추적을 깨지 않게 — API 배포 때 실제로 있었던 일, DEC-051).
 3. **환경변수**: `printf 'https://lg-cns-rag.vercel.app' | vercel env add VITE_API_BASE production` (빌드 때 화면에 들어가는 공개값 — 비밀값 금지).
-4. **미리보기 배포로 실측**: `vercel deploy` → 업로드 크기(실행: 원본 쏘나타가 든 업로드 129.8MB(예상 135MB)는 100MB 한도로 실패, 배포본으로 약 61MiB)·빌드 로그 확인. 화면이 부르는 **두 모델 모두** 받아 지문을 대조한다: `vercel curl /models/sonata.glb --deployment <주소> -- -s -o /tmp/sonata.glb && shasum -a 256 /tmp/sonata.glb`, 같은 방법으로 `/models/sorento.glb`. 둘 다 1단계 값과 같아야 통과다. **하위 폴더의 `.vercelignore`가 기대대로 읽혔는지**(업로드 목록에 `node_modules` 없음) 확인 — 안 되면 대안 `vercel build --prod && vercel deploy --prebuilt --prod`(로컬 빌드 결과 `dist`만 올림)로 바꾸고 문서를 고친다.
+4. **미리보기 배포로 실측**: `vercel deploy` → 업로드 크기(실행: 원본 쏘나타가 든 업로드 129.8MiB(CLI 표시)(모델 두 개 원본 합계 135.3MB)는 100MB 한도로 실패, 배포본으로 약 61MiB)·빌드 로그 확인. 화면이 부르는 **두 모델 모두** 받아 지문을 대조한다: `vercel curl /models/sonata.glb --deployment <주소> -- -s -o /tmp/sonata.glb && shasum -a 256 /tmp/sonata.glb`, 같은 방법으로 `/models/sorento.glb`. 둘 다 1단계 값과 같아야 통과다. **하위 폴더의 `.vercelignore`가 기대대로 읽혔는지**(업로드 목록에 `node_modules` 없음) 확인 — 안 되면 대안 `vercel build --prod && vercel deploy --prebuilt --prod`(로컬 빌드 결과 `dist`만 올림)로 바꾸고 문서를 고친다.
 5. **Production**: `vercel deploy --prod` → 실제 Production 주소를 기록한다(아래에서 `<화면 주소>` — 예: `https://lg-cns-rag-web.vercel.app`이지만 Vercel이 준 값을 쓴다).
 6. **API CORS 열기**(저장소 루트, API 프로젝트) — 2단계에서 `frontend/`로 들어왔으므로 **먼저 루트로 나와 API 프로젝트에 연결**한다: `cd .. && vercel link --yes --project lg-cns-rag && cat .vercel/project.json`(`projectName`이 `lg-cns-rag`인지 확인 — `lg-cns-rag-web`이면 멈춘다). 그다음 `printf '<화면 주소>,http://localhost:5173' | vercel env add ALLOWED_ORIGINS production` → `vercel deploy --prod`(같은 `SERVING_BUILD_ID`) → 확인:
    ```bash

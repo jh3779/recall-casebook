@@ -40,7 +40,8 @@ npm run dev       # http://localhost:5173
 mkdir -p public/models
 # 쏘나타는 재질이 쓰지 않는 텍스처 좌표만 지워 둔다(Vercel CLI 업로드 100MB 한도, DEC-058) — 원본 지문이 다르면 멈춘다
 # 원본은 116,543,736바이트 파일(Sketchfab 1K GLB)이다 — 내려받은 파일이 여럿이면 바이트 수로 고른다(다르면 스크립트가 거부). 먼저 npm ci
-node scripts/strip-unused-texcoords.mjs <원본 쏘나타 GLB> public/models/sonata.glb
+SONATA_GLB="$HOME/Downloads/hyundai_sonata_2014 (1).glb"   # 받은 원본 쏘나타 경로로 바꾼다
+node scripts/strip-unused-texcoords.mjs "$SONATA_GLB" public/models/sonata.glb
 cp ~/Downloads/kia_sorento.glb public/models/sorento.glb
 node scripts/prepare-vehicle-parts.mjs
 ```

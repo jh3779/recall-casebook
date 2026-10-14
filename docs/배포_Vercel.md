@@ -34,20 +34,22 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
 | `frontend/.vercelignore` | **허용 목록**(`/*` 뒤 `!…`) — `index.html`·`package*.json`·`.nvmrc`·`tsconfig*.json`·`vite.config.ts`·`vercel.json`·`src`·`public`, 모델은 화면이 부르는 `sonata.glb`·`sorento.glb`만(보관 트럭·코나 제외, #108). `node_modules`·`dist`·`.env*`는 올라가지 않는다. 시험 `frontend/src/vercelignore.test.ts` |
 | `frontend/package.json` `engines.node` | `24.x` — `engines.node`가 프로젝트 설정을 덮어쓴다(Vercel Node.js 버전 문서 — `.nvmrc`는 그 문서에 언급이 없어 쓰지 않는다). 지금 Vercel 기본값도 24.x라 고정 효과다 |
 
-**크기 한도 — 쏘나타는 줄여서 올린다**: Vercel 한도 문서는 Hobby CLI 배포의 **업로드 소스 합계 100MB**로 적는다(vercel.com/docs/limits "Static file uploads"). 실패 문구 `File size limit exceeded (100 MB)`로는 파일 하나 기준인지 합계 기준인지 가르지 못했다(2026-10-14 실측: 원본 쏘나타 116,543,736바이트가 든 업로드 129.8MB → 실패). 어느 쪽이든 원본 쏘나타는 혼자 100MB를 넘는다. 지금 올리는 소스 합계는 약 61MiB(쏘나타 배포본 42.2MiB + 쏘렌토 17.9MiB + 코드)라 합계 기준이면 여유가 약 36MB뿐이다 — 모델·데이터를 허용 목록에 더하기 전에 합계를 잰다. 원본 쏘나타에는 재질이 쓰지 않는 텍스처 좌표(TEXCOORD) 속성이 정점마다 여러 벌 붙어 있어, 그것만 지운 배포본(44,211,620바이트)을 쓴다 — 스크립트는 출력을 다시 읽어 남은 정점 속성·인덱스 바이트와 재질 값·텍스처(이미지 지문·texCoord·샘플러)·재질·노드·메시 이름 목록을 원본과 대조하고, 출력 크기·SHA-256·지운 속성 수가 기록값과 같을 때만 쓴다(노드 변환은 `matrix`가 TRS로 다시 쓰여 float32 오차만큼 다를 수 있고 비교하지 않는다. 재질 확장이 있는 모델은 거부 — 이 모델 전용). 원본·배포본 지문은 `frontend/public/data/vehicle-sources.json`(`derivedFrom`)에 있다.
+**크기 한도 — 쏘나타는 줄여서 올린다**: Vercel 한도 문서는 Hobby CLI 배포의 **업로드 소스 합계 100MB**로 적는다(MB·MiB 중 어느 단위인지는 확인하지 못했다 — 아래 CLI 표시 크기는 MiB 값과 맞는다)(vercel.com/docs/limits "Static file uploads"). 실패 문구 `File size limit exceeded (100 MB)`로는 파일 하나 기준인지 합계 기준인지 가르지 못했다(2026-10-14 실측: 원본 쏘나타 116,543,736바이트가 든 업로드 129.8MiB(CLI 표시) → 실패). 어느 쪽이든 원본 쏘나타는 혼자 100MB를 넘는다. 지금 올리는 소스 합계는 약 61MiB(쏘나타 배포본 42.2MiB + 쏘렌토 17.9MiB + 코드)라 합계 기준이면 여유가 약 36MB뿐이다 — 모델·데이터를 허용 목록에 더하기 전에 합계를 잰다. 원본 쏘나타에는 재질이 쓰지 않는 텍스처 좌표(TEXCOORD) 속성이 정점마다 여러 벌 붙어 있어, 그것만 지운 배포본(44,211,620바이트)을 쓴다 — 스크립트는 출력을 다시 읽어 남은 정점 속성·인덱스 바이트와 재질 값·텍스처(이미지 지문·texCoord·샘플러)·재질·노드·메시 이름 목록을 원본과 대조하고, 출력 크기·SHA-256·지운 속성 수가 기록값과 같을 때만 쓴다(노드 변환은 `matrix`가 TRS로 다시 쓰여 float32 오차만큼 다를 수 있고 비교하지 않는다. 재질 확장이 있는 모델은 거부 — 이 모델 전용). 원본·배포본 지문은 `frontend/public/data/vehicle-sources.json`(`derivedFrom`)에 있다.
 
 **런북 (사람이 그대로 따라 한다, `frontend/`에서)**
 
 1. **3D 모델 준비** — 먼저 `npm ci`(스크립트가 개발 의존성 `@gltf-transform/core`를 쓴다). `frontend/README.md` "3D 모델 파일" 절대로 원본을 받아 쏘나타는 줄여서 둔다(원본은 116,543,736바이트 파일 — 내려받은 파일이 여럿이면 바이트 수로 고른다):
    ```bash
-   node scripts/strip-unused-texcoords.mjs <받은 원본 쏘나타 GLB> public/models/sonata.glb   # 원본 지문이나 출력 지문(6e00b860…)이 기록값과 다르면 쓰지 않고 멈춘다
-   cp <받은 쏘렌토 GLB> public/models/sorento.glb
+   SONATA_GLB="$HOME/Downloads/hyundai_sonata_2014 (1).glb"   # 받은 원본 쏘나타 경로로 바꾼다(116,543,736바이트 파일)
+   SORENTO_GLB="$HOME/Downloads/kia_sorento.glb"               # 받은 쏘렌토 경로로 바꾼다
+   node scripts/strip-unused-texcoords.mjs "$SONATA_GLB" public/models/sonata.glb   # 원본 지문이나 출력 지문(6e00b860…)이 기록값과 다르면 쓰지 않고 멈춘다
+   cp "$SORENTO_GLB" public/models/sorento.glb
    shasum -a 256 public/models/sonata.glb public/models/sorento.glb
    ```
    쏘나타 `6e00b8603a84e95fac76c1c00f58157fdd21f0044b35f007aea0aecb53499345`(44,211,620바이트) · 쏘렌토 `fd39a70b9e34b1ce4a153ed890b5a2acfc10092bd84559e03c74ef59962c6470`(18,780,960바이트)여야 한다(`public/data/vehicle-sources.json`). 다른 `.glb`가 폴더에 있어도 `.vercelignore`가 막는다. 스크립트가 "기록된 배포본과 다르다"로 멈추면 `@gltf-transform/core` 판본이나 Node가 바뀐 것이다 — `npm ci`로 lock 판본을 맞춰 다시 하고, 그래도 다르면 새 출력이 원본과 대조를 통과했는지(같은 오류가 아니라 지문만 다른지) 사람이 확인한 뒤 스크립트의 `EXPECTED`와 `vehicle-sources.json`을 함께 고친다(DEC 기록).
 2. **프로젝트 연결**(처음 한 번, 이미 됨): `vercel project add lg-cns-rag-web && vercel link --yes --project lg-cns-rag-web`. `vercel link`가 `frontend/.gitignore`(`.vercel`·`.env*`)와 `frontend/.env.local`을 만든다 — `.gitignore`는 지운다(저장소 루트 `.gitignore`가 이미 `.vercel`·`.env.*`를 막고, 새 파일의 `.env*`는 추적 중인 `frontend/.env.example`과 어긋난다). `.env.local`은 열어 보지 않는다(루트 `.gitignore`가 막고 `.vercelignore` 허용 목록에도 없다).
 3. **환경변수(선택)**: 화면은 `VITE_API_BASE`가 없으면 `https://lg-cns-rag.vercel.app`을 부른다(`frontend/src/api.ts`). 바꿀 때만 `printf '<API 주소>' | vercel env add VITE_API_BASE production` — 빌드 결과(브라우저)에 들어가는 공개값이라 비밀값을 넣지 않는다(AGENTS.md 7절).
-4. **배포**: `vercel deploy --prod`. 업로드 소스는 약 61MiB(대부분 `.glb`) — 이미 올린 같은 파일은 건너뛰어 더 작게 표시될 수 있다(2026-10-14 2차 배포는 42.2MB로 표시). 새 프로젝트의 **첫 배포는 `--prod` 없이도 Production에 붙는다**(2026-10-14 실제로 그랬다 — 공식 환경 문서: 새 프로젝트의 첫 배포는 항상 production). 배포 뒤 두 모델을 받아 1단계 지문과 대조한다:
+4. **배포**: `vercel deploy --prod`. 업로드 소스는 약 61MiB(대부분 `.glb`) — 이미 올린 같은 파일은 건너뛰어 더 작게 표시될 수 있다(2026-10-14 2차 배포는 42.2MiB로 표시). 새 프로젝트의 **첫 배포는 `--prod` 없이도 Production에 붙는다**(2026-10-14 실제로 그랬다 — 공식 환경 문서: 새 프로젝트의 첫 배포는 항상 production). 배포 뒤 두 모델을 받아 1단계 지문과 대조한다:
    ```bash
    T=$(mktemp -d); for m in sonata sorento; do curl -s -o "$T/$m.glb" https://lg-cns-rag-web.vercel.app/models/$m.glb; done; shasum -a 256 "$T"/*.glb; curl -s -o /dev/null -w "보관 모델 %{http_code}(404여야 함)\n" https://lg-cns-rag-web.vercel.app/models/kona.glb; rm -rf "$T"
    ```
@@ -62,7 +64,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
    localhost를 빼면 로컬 개발이 막힌다. 미리보기 배포 주소는 허용되지 않으니 그 주소의 검색 실패는 정상이다.
 6. **확인**: 공개 화면에서 예시 질문 한 건이 끝까지 되는지, 첫 화면 "데이터 판본"의 build가 `/health`와 같은지, 쇼룸이 뜨는지, 모바일 390px.
 
-**2026-10-14 실측 기록**(작업 F): 1차 `vercel deploy`는 원본 쏘나타 때문에 업로드 129.8MB 뒤 `File size limit exceeded (100 MB)`로 실패 — 업로드 목록에 `node_modules`·보관 모델은 없었다(하위 폴더 `.vercelignore`가 읽힘). 줄인 쏘나타로 2차 배포 성공(업로드 표시 42.2MB — 1차에서 올라간 쏘렌토 등은 건너뛴 것으로 보인다, 빌드 16초, 첫 배포라 Production `lg-cns-rag-web.vercel.app`에 붙음). 공개 주소에서 받은 두 모델 지문이 1단계 값과 같고 `kona.glb`·`.env.local`은 404. API는 `ALLOWED_ORIGINS` 추가 뒤 재배포 — `/health` build `f1fe1843ed0f2c66`(첫 요청 13.1초), 화면 주소의 사전 요청·검색 모두 200에 `access-control-allow-origin: https://lg-cns-rag-web.vercel.app`, 검색 응답에 `access-control-expose-headers: Retry-After`(#117 호출 상한도 이 재배포로 적용). 헤드리스 Chrome으로 공개 화면 첫 화면의 "데이터 판본"이 build `f1fe1843ed0f2c66`으로 뜨는 것을 확인했다. 모바일 390px 쇼룸에서는 부품 분류 패널이 차량을 가린다(기존 화면 배치 — 이 작업 밖, 후속 #120).
+**2026-10-14 실측 기록**(작업 F): 1차 `vercel deploy`는 원본 쏘나타 때문에 업로드 129.8MiB(CLI 표시) 뒤 `File size limit exceeded (100 MB)`로 실패 — 업로드 목록에 `node_modules`·보관 모델은 없었다(하위 폴더 `.vercelignore`가 읽힘). 줄인 쏘나타로 2차 배포 성공(업로드 표시 42.2MiB — 1차에서 올라간 쏘렌토 등은 건너뛴 것으로 보인다, 빌드 16초, 첫 배포라 Production `lg-cns-rag-web.vercel.app`에 붙음). 공개 주소에서 받은 두 모델 지문이 1단계 값과 같고 `kona.glb`·`.env.local`은 404. API는 `ALLOWED_ORIGINS` 추가 뒤 재배포 — `/health` build `f1fe1843ed0f2c66`(첫 요청 13.1초), 화면 주소의 사전 요청·검색 모두 200에 `access-control-allow-origin: https://lg-cns-rag-web.vercel.app`, 검색 응답에 `access-control-expose-headers: Retry-After`(#117 호출 상한도 이 재배포로 적용). 헤드리스 Chrome으로 공개 화면 첫 화면의 "데이터 판본"이 build `f1fe1843ed0f2c66`으로 뜨는 것을 확인했다. 모바일 390px 쇼룸에서는 부품 분류 패널이 차량을 가린다(기존 화면 배치 — 이 작업 밖, 후속 #120).
 
 - **환경변수에 키를 넣지 않는다.** `VITE_*` 값은 빌드 결과(브라우저)에 그대로 들어간다(AGENTS.md 7절, DEC-032).
 - 공개 화면의 검색도 API의 IP별 호출 상한(1분 60회, DEC-057)을 받는다. 화면은 앱 429에 남은 초를 보여 주고 그동안 [다시 시도]를 막는다(`frontend/src/search/Feedback.tsx`, DEC-057 ⑤) — 2026-10-14 첫 배포본에는 아직 없고 이 PR 병합 뒤 다시 배포하면 들어간다.
