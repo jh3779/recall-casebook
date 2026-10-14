@@ -38,7 +38,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
 
 **런북 (사람이 그대로 따라 한다, `frontend/`에서)**
 
-1. **3D 모델 준비** — `frontend/README.md` "3D 모델 파일" 절대로 원본을 받아 쏘나타는 줄여서 둔다:
+1. **3D 모델 준비** — 먼저 `npm ci`(스크립트가 개발 의존성 `@gltf-transform/core`를 쓴다). `frontend/README.md` "3D 모델 파일" 절대로 원본을 받아 쏘나타는 줄여서 둔다(원본은 116,543,736바이트 파일 — 내려받은 파일이 여럿이면 바이트 수로 고른다):
    ```bash
    node scripts/strip-unused-texcoords.mjs <받은 원본 쏘나타 GLB> public/models/sonata.glb   # 원본 지문이나 출력 지문(6e00b860…)이 기록값과 다르면 쓰지 않고 멈춘다
    cp <받은 쏘렌토 GLB> public/models/sorento.glb
@@ -62,7 +62,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
    localhost를 빼면 로컬 개발이 막힌다. 미리보기 배포 주소는 허용되지 않으니 그 주소의 검색 실패는 정상이다.
 6. **확인**: 공개 화면에서 예시 질문 한 건이 끝까지 되는지, 첫 화면 "데이터 판본"의 build가 `/health`와 같은지, 쇼룸이 뜨는지, 모바일 390px.
 
-**2026-10-14 실측 기록**(작업 F): 1차 `vercel deploy`는 원본 쏘나타 때문에 업로드 129.8MB 뒤 `File size limit exceeded (100 MB)`로 실패 — 업로드 목록에 `node_modules`·보관 모델은 없었다(하위 폴더 `.vercelignore`가 읽힘). 줄인 쏘나타로 2차 배포 성공(업로드 표시 42.2MB — 1차에서 올라간 쏘렌토 등은 건너뛴 것으로 보인다, 빌드 16초, 첫 배포라 Production `lg-cns-rag-web.vercel.app`에 붙음). 공개 주소에서 받은 두 모델 지문이 1단계 값과 같고 `kona.glb`·`.env.local`은 404. API는 `ALLOWED_ORIGINS` 추가 뒤 재배포 — `/health` build `f1fe1843ed0f2c66`(첫 요청 13.1초), 화면 주소의 사전 요청·검색 모두 200에 `access-control-allow-origin: https://lg-cns-rag-web.vercel.app`, 검색 응답에 `access-control-expose-headers: Retry-After`(#117 호출 상한도 이 재배포로 적용). 헤드리스 Chrome으로 공개 화면 첫 화면의 "데이터 판본"이 build `f1fe1843ed0f2c66`으로 뜨는 것을 확인했다. 모바일 390px 쇼룸에서는 부품 분류 패널이 차량을 가린다(기존 화면 배치 — 이 작업 밖, 후속).
+**2026-10-14 실측 기록**(작업 F): 1차 `vercel deploy`는 원본 쏘나타 때문에 업로드 129.8MB 뒤 `File size limit exceeded (100 MB)`로 실패 — 업로드 목록에 `node_modules`·보관 모델은 없었다(하위 폴더 `.vercelignore`가 읽힘). 줄인 쏘나타로 2차 배포 성공(업로드 표시 42.2MB — 1차에서 올라간 쏘렌토 등은 건너뛴 것으로 보인다, 빌드 16초, 첫 배포라 Production `lg-cns-rag-web.vercel.app`에 붙음). 공개 주소에서 받은 두 모델 지문이 1단계 값과 같고 `kona.glb`·`.env.local`은 404. API는 `ALLOWED_ORIGINS` 추가 뒤 재배포 — `/health` build `f1fe1843ed0f2c66`(첫 요청 13.1초), 화면 주소의 사전 요청·검색 모두 200에 `access-control-allow-origin: https://lg-cns-rag-web.vercel.app`, 검색 응답에 `access-control-expose-headers: Retry-After`(#117 호출 상한도 이 재배포로 적용). 헤드리스 Chrome으로 공개 화면 첫 화면의 "데이터 판본"이 build `f1fe1843ed0f2c66`으로 뜨는 것을 확인했다. 모바일 390px 쇼룸에서는 부품 분류 패널이 차량을 가린다(기존 화면 배치 — 이 작업 밖, 후속 #120).
 
 - **환경변수에 키를 넣지 않는다.** `VITE_*` 값은 빌드 결과(브라우저)에 그대로 들어간다(AGENTS.md 7절, DEC-032).
 - 공개 화면의 검색도 API의 IP별 호출 상한(1분 60회, DEC-057)을 받는다. 화면은 앱 429에 남은 초를 보여 주고 그동안 [다시 시도]를 막는다(`frontend/src/search/Feedback.tsx`, DEC-057 ⑤) — 2026-10-14 첫 배포본에는 아직 없고 이 PR 병합 뒤 다시 배포하면 들어간다.
