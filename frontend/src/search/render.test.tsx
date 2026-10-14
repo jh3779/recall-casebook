@@ -68,3 +68,16 @@ it("싣지 못한 블록이 없으면 안내를 그리지 않는다", () => {
   const markup = renderToStaticMarkup(<Checklist items={[{ item: "production_period", label: "생산 기간", evidence: [{ field: "573.production_dates", text: "x" }] }]} />);
   expect(markup).not.toContain("싣지 않았습니다");
 });
+it("호출 상한(429)은 기다릴 시간을 알리고 그동안 다시 시도를 막는다", async () => {
+  const { ApiError } = await import("../api");
+  const { Feedback } = await import("./Feedback");
+  const markup = renderToStaticMarkup(<Feedback error={new ApiError("rate_limit", "x", 429, undefined, 7)} onRetry={() => {}} />);
+  expect(markup).toContain("호출이 너무 잦습니다 (429)");
+  // 남은 초는 화면에만 보이고 알림(role=alert) 밖·aria-hidden이라 화면 낭독기가 매초 다시 읽지 않는다
+  const alert = markup.match(/<div role="alert">.*?<\/div>/)![0];
+  expect(alert).not.toMatch(/\d+초/);
+  expect(markup).toContain('<p aria-hidden="true">7초 남음</p>');
+  expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>다시 시도<span aria-hidden="true"> \(7\)<\/span><\/button>/);
+  // 끝났을 때 알릴 영역은 기다리는 동안에도 비어 있는 채로 먼저 있어야 한다(live 영역은 생긴 뒤의 변화만 읽힌다)
+  expect(markup).toContain('<p role="status" class="sr-only"></p>');
+});

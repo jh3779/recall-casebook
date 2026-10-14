@@ -18,10 +18,10 @@ npm run dev       # http://localhost:5173
 
 - 기본 API: `https://lg-cns-rag.vercel.app`. 요청은 `POST /search`의 `{ "question": "..." }`, 판본은 `GET /health`다. 서버 계약은 `server/api.py`를 따른다.
 - 다른 API를 쓰려면 `frontend/.env.development.local`에 `VITE_API_BASE=http://localhost:8000`을 지정한 뒤 개발 서버를 다시 시작한다. `.env.example`에는 키 이름만 있다. `VITE_*`는 브라우저에 공개되므로 비밀값을 넣지 않는다.
-- 공개 API의 CORS 허용 주소는 `http://localhost:5173`이다. `127.0.0.1`이나 다른 포트·배포 주소에서는 연결이 거부될 수 있다. 화면 배포·CORS 설정은 별도 작업 F다.
+- 공개 API의 CORS 허용 주소는 공개 화면 `https://lg-cns-rag-web.vercel.app`과 `http://localhost:5173`이다(2026-10-14 작업 F, DEC-058). `127.0.0.1`이나 다른 포트·미리보기 배포 주소에서는 연결이 거부될 수 있다. 화면 배포 절차는 [`docs/배포_Vercel.md`](../docs/배포_Vercel.md) 2절.
 - 원문은 React 텍스트 노드로만 그린다. 원인 상태 9종과 모르는 값을 모두 알리며, 문구의 잠정 정본은 [`cause-status.md`](../docs/design-system/copy/cause-status.md)다. 이슈 #53 게시·합의는 별도다.
 - 원인 꼬리표는 Python 코드포인트 좌표와 원문을 대조한 구간만 감싼다. 목록·확인 항목의 긴 글은 CSS로만 접고 문자열을 자르지 않는다. 573 파일의 주소는 추측하지 않으며 파일명·SHA-256·제출일·글 정리 방식을 펼쳐 볼 수 있다.
-- 3초 뒤 서버 시작 안내, 60초 뒤 취소, 입력/연결/시간 초과/서버/응답 형식 오류를 구분한다. 실패해도 질문은 유지한다. 화면 전환 시 검색 상태도 유지한다. 쇼룸의 분류 검색은 질문만 채우며 자동 전송하지 않는다.
+- 3초 뒤 서버 시작 안내, 60초 뒤 취소, 입력/호출 상한(429 — 남은 초를 보여 주고 그동안 [다시 시도]를 막음)/연결/시간 초과/서버/응답 형식 오류를 구분한다. 실패해도 질문은 유지한다. 화면 전환 시 검색 상태도 유지한다. 쇼룸의 분류 검색은 질문만 채우며 자동 전송하지 않는다.
 - 768px 이상은 목록·상세 2단, 767px 이하는 목록 → 상세 → 목록이다. three.js는 쇼룸을 열 때 받으므로 모델 파일이나 WebGL이 없어도 검색이 동작한다.
 
 ## 3D 모델 파일 — 커밋하지 않는다
@@ -30,20 +30,23 @@ npm run dev       # http://localhost:5173
 
 | 모델 | 출처·저작자 | GLB 크기 |
 |---|---|---:|
-| 쏘나타 YF | [Hyundai Sonata 2014 — DR1KING100K](https://sketchfab.com/3d-models/hyundai-sonata-2014-7a0e4fa5122e4cc1b57d8b9149916558) | 116,543,736바이트 (1K GLB) |
+| 쏘나타 YF | [Hyundai Sonata 2014 — DR1KING100K](https://sketchfab.com/3d-models/hyundai-sonata-2014-7a0e4fa5122e4cc1b57d8b9149916558) | 원본 116,543,736바이트 (1K GLB) → 화면용 44,211,620바이트(쓰이지 않는 텍스처 좌표만 제거) |
 | 쏘렌토 | [Kia Sorento — MattDoesBlender](https://sketchfab.com/3d-models/kia-sorento-47a0016ba8b842c780d79ded8fa0a891) | 18,780,960바이트 |
 
-두 파일의 내장 출처는 CC BY 4.0이다. 화면에 저작자·출처·라이선스·변경 사항을 표시한다. 출처·원본 SHA-256은 `public/data/vehicle-sources.json`에 있다. 쏘렌토는 원본의 회색 재질을 재질 이름에 맞게 나눴고, 원본 바퀴 한 벌을 나머지 세 바퀴 배치 지점에 복제했다.
+두 파일의 내장 출처는 CC BY 4.0이다. 화면에 저작자·출처·라이선스·변경 사항을 표시한다. 출처와 지문은 `public/data/vehicle-sources.json`에 있다 — `sha256`은 화면에 쓰는 파일(쏘나타는 배포본), 쏘나타 원본 SHA는 `derivedFrom.from`(DEC-058). 쏘렌토는 원본의 회색 재질을 재질 이름에 맞게 나눴고, 원본 바퀴 한 벌을 나머지 세 바퀴 배치 지점에 복제했다.
 
 ```bash
 # frontend/에서. 사용자가 받은 GLB 경로에 맞게 복사한다.
 mkdir -p public/models
-cp ~/Downloads/hyundai_sonata_2014.glb public/models/sonata.glb
+# 쏘나타는 재질이 쓰지 않는 텍스처 좌표만 지워 둔다(Vercel CLI 업로드 100MB 한도, DEC-058) — 원본 지문이 다르면 멈춘다
+# 원본은 116,543,736바이트 파일(Sketchfab 1K GLB)이다 — 내려받은 파일이 여럿이면 바이트 수로 고른다(다르면 스크립트가 거부). 먼저 npm ci
+SONATA_GLB="$HOME/Downloads/hyundai_sonata_2014 (1).glb"   # 받은 원본 쏘나타 경로로 바꾼다
+node scripts/strip-unused-texcoords.mjs "$SONATA_GLB" public/models/sonata.glb
 cp ~/Downloads/kia_sorento.glb public/models/sorento.glb
 node scripts/prepare-vehicle-parts.mjs
 ```
 
-`public/models/`는 gitignore다. 다른 환경에서도 원본 파일을 준비해야 하며 모델이 없으면 실패 안내·검색 복귀 버튼이 뜬다. 원본 메시·재질·본 이름으로 확인된 분류는 원본 형상을 사용한다. 없는 엔진·변속기·연료 배관 등은 일반적인 전륜구동 배치를 단순화한 도형으로 보완한다. 추정 도형은 투시에서만 보이고 실제 기록이 있는 분류에만 연결한다. 화면·핫스팟·패널에 설명용 추정임을 밝힌다. 기타 장비처럼 위치가 하나로 특정되지 않는 분류는 기록만 연다. 쏘나타 GLB는 약 111MiB이므로 첫 로딩 비용이 크다. [구현·검증 기록](../docs/프런트_현대기아_모델.md).
+`public/models/`는 gitignore다. 화면용 두 파일은 공개 화면에서도 받을 수 있다: `https://lg-cns-rag-web.vercel.app/models/sonata.glb`·`/models/sorento.glb`(받은 뒤 `public/data/vehicle-sources.json` 지문과 대조). 쏘나타 화면용 파일은 원본에서 쓰이지 않는 텍스처 좌표(TEXCOORD)만 지운 것이다 — 스크립트는 출력을 다시 읽어 남은 정점 속성·인덱스 바이트와 재질 값·텍스처(이미지 지문·texCoord·샘플러)·재질·노드·메시 이름 목록을 원본과 대조하고, 출력 크기·SHA-256·지운 속성 수가 기록값과 같을 때만 쓴다(노드 변환은 `matrix`가 TRS로 다시 쓰여 float32 오차만큼 다를 수 있고 비교하지 않는다. 재질 확장이 있는 모델은 거부 — 이 모델 전용), 원본 지문은 `vehicle-sources.json`의 `derivedFrom.from`에 있다. 화면에는 CC BY 4.0 변경 사항으로 "미사용 UV 제거"를 표시한다. 그 밖에도 다른 환경에서는 원본 파일을 준비해야 하며 모델이 없으면 실패 안내·검색 복귀 버튼이 뜬다. 원본 메시·재질·본 이름으로 확인된 분류는 원본 형상을 사용한다. 없는 엔진·변속기·연료 배관 등은 일반적인 전륜구동 배치를 단순화한 도형으로 보완한다. 추정 도형은 투시에서만 보이고 실제 기록이 있는 분류에만 연결한다. 화면·핫스팟·패널에 설명용 추정임을 밝힌다. 기타 장비처럼 위치가 하나로 특정되지 않는 분류는 기록만 연다. 쏘나타 화면용 GLB는 약 42MiB(원본 약 111MiB)라 첫 로딩 비용이 여전히 크다. [구현·검증 기록](../docs/프런트_현대기아_모델.md).
 
 ## 현재 쇼룸 데모 데이터
 
@@ -79,7 +82,7 @@ shasum -a 256 public/models/*.glb
 | `silverado.glb` | 10,524,576 | `d608c0bca5b7639cb5f735e758287c91b5bc927b5baeafb2ab22898a7b301612` |
 | `ram.glb` | 8,446,292 | `f8532a1d34e906bd6817d01175eb185040e4598dfa4bc107052a23214552f512` |
 
-원본 SHA-256: `silverado.gltf.json` = `2bb27ed2fb5482dd9b2b0d7f62b8c6de389fcb619456cbba731cb181fd9e10b0`, `ram.gltf.json` = `08e4d6eb162092c4e46d021275643222193b203d9a3ca4e0f7862e3b8eda8e30`. 변환은 포장만 바꾼다. 2026-10-13 로컬 보관 GLB 두 파일도 위 지문과 일치했다. 모델이 없으면 쇼룸에 실패 안내·검색 복귀 버튼이 뜬다. 화면 배포는 아직 하지 않았다.
+원본 SHA-256: `silverado.gltf.json` = `2bb27ed2fb5482dd9b2b0d7f62b8c6de389fcb619456cbba731cb181fd9e10b0`, `ram.gltf.json` = `08e4d6eb162092c4e46d021275643222193b203d9a3ca4e0f7862e3b8eda8e30`. 변환은 포장만 바꾼다. 2026-10-13 로컬 보관 GLB 두 파일도 위 지문과 일치했다. 모델이 없으면 쇼룸에 실패 안내·검색 복귀 버튼이 뜬다. 옛 트럭 모델은 배포하지 않는다(`.vercelignore`, #108).
 
 이전 트럭 화면에서는 원본의 메모리 사본에 중복 면 제거·45도 기준 음영 평활화를 적용했다. 원본 파일은 유지하며 모서리와 부품 선택 위치를 보존한다. `node scripts/inspect-model-surfaces.mjs`로 트럭 면 수·위치·법선을 확인할 수 있다. 수치와 한계는 [모델 표면 정리 기록](../docs/프런트_모델표면_정리.md)을 따른다. 새 외관 모델에는 이 처리를 적용하지 않는다.
 

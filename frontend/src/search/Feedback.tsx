@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ApiError } from "../api";
 export function Feedback({ loading, delayed, error, onRetry }: { loading?: boolean; delayed?: boolean; error?: ApiError; onRetry?: () => void }) {
   if (loading) return <div className="feedback" role="status" aria-live="polite">
@@ -6,6 +7,7 @@ export function Feedback({ loading, delayed, error, onRetry }: { loading?: boole
     <div className="loading-split"><div className="skeleton" aria-hidden="true">{[0, 1, 2, 3].map((i) => <div className="sk" key={i} />)}</div></div>
   </div>;
   if (!error) return null;
+  if (error.kind === "rate_limit") return <RateLimited error={error} onRetry={onRetry} />;
   const title = {
     validation: "질문을 다시 확인해 주세요 (422)", network: "서버에 연결하지 못했습니다",
     timeout: "응답이 60초 안에 오지 않았습니다", shape: "응답 형식이 예상과 다릅니다", server: `서버 오류가 났습니다 (${error.status})`,
@@ -14,5 +16,27 @@ export function Feedback({ loading, delayed, error, onRetry }: { loading?: boole
     : error.kind === "shape" ? `화면이 아는 응답 모양과 달라 결과를 그리지 않았습니다. build_id ${error.buildId ?? "받지 못함"}` : error.message;
   return <div className="feedback"><div className="err" role="alert"><h2>{title}</h2><p>{message}</p>
     {["network", "timeout", "server"].includes(error.kind) && <div className="act"><button className="btn ghost small" onClick={onRetry}>다시 시도</button></div>}
+  </div></div>;
+}
+
+// 호출 상한(429, DEC-057): Retry-After 동안 [다시 시도]를 막고 남은 초를 보여 준다.
+// 알림(role="alert")에는 바뀌지 않는 문구만 둔다 — 1초마다 바뀌는 남은 초가 알림 안에 있으면 화면 낭독기가 매초 다시 읽는다.
+function RateLimited({ error, onRetry }: { error: ApiError; onRetry?: () => void }) {
+  // 남은 초는 오류가 정한 마감(retryAt)에서 계산한다 — 다시 보낸 검색이 또 429면 새 오류의 마감으로 센다
+  const [now, setNow] = useState(() => Date.now());
+  const left = Math.max(0, Math.ceil(((error.retryAt ?? now) - now) / 1000));
+  const waiting = left > 0;
+  useEffect(() => {
+    if (!waiting) return; // 다 기다렸으면 타이머를 멈춘다
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [waiting]);
+  return <div className="feedback"><div className="err">
+    <div role="alert"><h2>호출이 너무 잦습니다 (429)</h2>
+      <p>같은 주소에서 1분에 보낼 수 있는 검색 수를 넘었습니다. 잠시 뒤에 다시 시도할 수 있습니다.</p></div>
+    {waiting && <p aria-hidden="true">{left}초 남음</p>}
+    {/* 알림 영역은 처음부터 비어 있는 채로 두고 글자만 채운다 — 이미 있는 live 영역의 변화만 화면 낭독기가 읽는다 */}
+    <p role="status" className={waiting ? "sr-only" : undefined}>{waiting ? "" : "이제 다시 시도할 수 있습니다."}</p>
+    <div className="act"><button className="btn ghost small" disabled={waiting} onClick={onRetry}>다시 시도{waiting && <span aria-hidden="true"> ({left})</span>}</button></div>
   </div></div>;
 }
