@@ -65,7 +65,8 @@ it("생산 기간 항목은 블록 원문·싣지 못한 수·출처 보고서�
   expect(markup).not.toMatch(/겹칩니다|일치|같습니다/); // 같다·다르다를 말하지 않는다(AGENTS.md 2-1)
 });
 it("싣지 못한 블록이 없으면 안내를 그리지 않는다", () => {
-  const markup = renderToStaticMarkup(<Checklist items={[{ item: "production_period", label: "생산 기간", evidence: [{ field: "573.production_dates", text: "x" }] }]} />);
+  const source = { campaign: "24V001", file: "f.PDF", pdf_sha256: "cd".repeat(32), submission_date: "20240201" };
+  const markup = renderToStaticMarkup(<Checklist items={[{ item: "production_period", label: "생산 기간", omitted: 0, source, evidence: [{ field: "573.production_dates", text: "x" }] }]} />);
   expect(markup).not.toContain("싣지 않았습니다");
 });
 it("호출 상한(429)은 기다릴 시간을 알리고 그동안 다시 시도를 막는다", async () => {

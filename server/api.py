@@ -203,13 +203,24 @@ class CheckSource(Strict):
 
 
 class CheckItem(Strict):
-    item: Literal[
-        "same_part", "production_period", "failure_mode", "remedy", "supplier", "cause_speaker"
-    ]
+    item: Literal["same_part", "failure_mode", "remedy", "supplier", "cause_speaker"]
     label: str
     evidence: list[Evidence] = Field(min_length=1)
-    omitted: int = Field(default=0, ge=0)  # 싣지 못한 근거 수(생산 기간 블록이 많을 때, DEC-059)
-    source: CheckSource | None = None  # 생산 기간 항목만: 읽은 573 보고서 판본(DEC-059)
+
+
+class ProductionCheckItem(Strict):
+    """생산 기간 항목 — 읽은 573 보고서 판본(`source`)이 반드시 있어야 하고, 싣지 못한 블록 수(`omitted`)를 알린다(DEC-059).
+
+    다른 항목에는 이 두 칸이 올 수 없다(`item`으로 모델을 나눠 출처 없는 생산 기간이 응답으로 나가지 못하게 한다)."""
+
+    item: Literal["production_period"]
+    label: str
+    evidence: list[Evidence] = Field(min_length=1)
+    omitted: int = Field(default=0, ge=0)
+    source: CheckSource
+
+
+AnyCheckItem = Annotated[CheckItem | ProductionCheckItem, Field(discriminator="item")]
 
 
 class CauseSource(Strict):
@@ -289,7 +300,7 @@ class Card(Strict):
         Field(discriminator="status"),
     ]
     investigations: list[Investigation]
-    checklist: list[CheckItem]
+    checklist: list[AnyCheckItem]
 
 
 class SearchResponse(Strict):

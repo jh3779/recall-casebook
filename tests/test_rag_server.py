@@ -222,6 +222,44 @@ def test_card_model_requires_fields_for_each_cause_status(cause):
         Card.model_validate({**card, "cause": cause})
 
 
+def test_card_model_requires_source_for_production_period_and_forbids_it_for_other_items():
+    from pydantic import ValidationError
+
+    from server.api import CARD_TEXT_SPEAKER, Card
+
+    card = {
+        "rank": 1, "campno": "24V001000", "maker": "m", "maker_group": "Kia", "received_date": "20240101",
+        "components": [], "defect": "", "consequence": "", "remedy": "", "dup_group": "24V001000",
+        "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06", "speaker": CARD_TEXT_SPEAKER},
+        "investigations": [], "cause": {"status": "no_573_report"},
+    }  # fmt: skip
+    evidence = [{"field": "573.production_dates", "text": "Jan 02, 2023 - Feb 03, 2023"}]
+    source = {
+        "campaign": "24V001",
+        "file": "f.PDF",
+        "pdf_sha256": "cd" * 32,
+        "submission_date": "20230201",
+    }
+    production = {"item": "production_period", "label": "생산 기간", "evidence": evidence}
+    Card.model_validate(
+        {**card, "checklist": [{**production, "source": source}]}
+    )  # 출처가 있으면 통과
+    for bad in (
+        production,  # 출처 없는 생산 기간
+        {**production, "source": None},
+        {**production, "source": source, "omitted": -1},
+        {
+            "item": "same_part",
+            "label": "x",
+            "evidence": evidence,
+            "source": source,
+        },  # 다른 항목에는 출처 칸이 없다
+        {"item": "same_part", "label": "x", "evidence": evidence, "omitted": 2},
+    ):
+        with pytest.raises(ValidationError):
+            Card.model_validate({**card, "checklist": [bad]})
+
+
 def test_load_build_rejects_failure_reasons_that_do_not_match_failed_campaigns(tmp_path):
     with pytest.raises(BuildMismatch, match="failed_kinds"):
         load_build(_with_failure(tmp_path, {"22V003": "non_pdf_response"}))

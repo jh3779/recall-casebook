@@ -205,3 +205,4 @@
 - 2026-10-14: PR #119 Codex(fc18444c)·review-agent(fc18444) 반영 — 모델 준비 명령의 꺾쇠 자리표시를 따옴표 변수($SONATA_GLB)로(zsh·bash 실행 확인), HANDOFF의 #113 검증 중·이번 작업 줄을 #119로, 업로드 크기 단위(MiB·MB) 표시. 429 시간 경과 시험은 후속 이슈
 - 2026-10-14: 생산 기간 확인 항목(DEC-059) — 573 Production Dates 블록별 판독(30,511블록 중 99.89% 날짜까지 읽힘)·causes.production_dates·확인 항목 production_period·출처 보고서, 전용 사본에서 causes.jsonl 재생성(새 build 5e32c164b15a544a, 운영 데이터 미변경), 연식 포함은 기준 지문 충돌로 미결
 - 2026-10-14: 생산 기간 인터뷰 8개 "추천대로" 확정(DEC-059 반영) — 새 기준 파일 baseline_2026-10-06_production-dates.json 고정, 573 재현 테스트가 지문으로 기준 파일 선택, 연식 제외, 이상값 원문 그대로, 기획 문구 "생산 기간(원문)", 10/16 밤 배포·10/17 동결, 단일 PR, 작업 F 먼저 병합
+- 2026-10-14: PR #124 Codex(bafa09bd) 반영 — 새 build의 벡터 적재(embeddings load) 단계를 순서에 추가하고, 확인 항목 응답 모델을 item으로 나눠 production_period만 source 필수로 강제. 일회용 로컬 Postgres로 스키마→적재→벡터→묶음→749문항 재측정 리허설(0.311/0.411/0.462/0.542 변화 없음, 묶음은 causes.jsonl·meta.json만 운영 묶음과 다름), 운영 Supabase 미변경
