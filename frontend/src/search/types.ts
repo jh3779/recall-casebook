@@ -35,9 +35,13 @@ export interface Investigation {
   close_date: string;
 }
 export interface CheckItem {
-  item: "same_part" | "failure_mode" | "remedy" | "supplier" | "cause_speaker";
+  item: "same_part" | "production_period" | "failure_mode" | "remedy" | "supplier" | "cause_speaker";
   label: string;
   evidence: { field: string; text: string }[];
+  /** 싣지 못한 근거 수 — 생산 기간 블록이 많을 때(최대 5개만 싣는다) */
+  omitted?: number;
+  /** 생산 기간 항목만: 읽은 573 보고서 판본 */
+  source?: { campaign: string; file: string; pdf_sha256: string; submission_date: string };
 }
 export interface Card {
   rank: number;

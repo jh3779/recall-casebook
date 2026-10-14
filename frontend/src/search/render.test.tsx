@@ -4,6 +4,7 @@ import { expect, it } from "vitest";
 import { PrecedentDetail } from "./PrecedentDetail";
 import { CauseBlock } from "./CauseBlock";
 import { ResultList } from "./ResultList";
+import { Checklist } from "./Checklist";
 import { hasCauseText, type SearchResponse } from "./types";
 import fixture from "./__fixtures__/search_airbag.json";
 import synthetic from "./__fixtures__/cause_statuses_synthetic.json";
@@ -49,4 +50,21 @@ it("목업 응답 픽스처를 글자 그대로 보관한다", () => {
     const body = html.match(new RegExp('<script[^>]*id="' + id + '"[^>]*>([\\s\\S]*?)</script>'))![1];
     expect(readFileSync(new URL(`./__fixtures__/${file}`, import.meta.url), "utf8")).toBe(body);
   }
+});
+it("생산 기간 항목은 블록 원문·싣지 못한 수·출처 보고서를 판정 없이 보여 준다", () => {
+  const source = { campaign: "24V001", file: "odi/rcl/2024/RCLRPT-24V001-0001.PDF", pdf_sha256: "cd".repeat(32), submission_date: "20240201" };
+  const markup = renderToStaticMarkup(<Checklist items={[{
+    item: "production_period", label: "생산 기간", omitted: 3, source,
+    evidence: [{ field: "573.production_dates", text: "Vehicle 1: 2023-2023 FOO BAR | Jan 02, 2023 - Feb 03, 2023" }],
+  }]} />);
+  expect(markup).toContain("573 생산 기간 칸");
+  expect(markup).toContain("Vehicle 1: 2023-2023 FOO BAR | Jan 02, 2023 - Feb 03, 2023");
+  expect(markup).toContain("외 3개 블록은 싣지 않았습니다");
+  expect(markup).toContain(source.file);
+  expect(markup).toContain(source.pdf_sha256);
+  expect(markup).not.toMatch(/겹칩니다|일치|같습니다/); // 같다·다르다를 말하지 않는다(AGENTS.md 2-1)
+});
+it("싣지 못한 블록이 없으면 안내를 그리지 않는다", () => {
+  const markup = renderToStaticMarkup(<Checklist items={[{ item: "production_period", label: "생산 기간", evidence: [{ field: "573.production_dates", text: "x" }] }]} />);
+  expect(markup).not.toContain("싣지 않았습니다");
 });

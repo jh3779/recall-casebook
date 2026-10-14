@@ -104,6 +104,7 @@ def parsed(campaign):
         "supplier_names": [],
         "supplier_countries": [],
         "new_form": False,
+        "production_dates": [],
         "pdfs": {f"odi/rcl/2024/RCLRPT-{campaign}-0001.PDF": "ab" * 32},
         "resolution": "auto",
         "unresolved_reasons": [],

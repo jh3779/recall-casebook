@@ -1033,3 +1033,139 @@ def test_committed_alias_draft_keeps_its_31_review_required_rows():
     초안을 다시 만들어 줄 수가 달라지면 이 숫자와 기준 파일의 `maker_aliases_draft_sha256`을 함께 고치고 `nhtsa build`를 다시 한다."""
     rows = maker_aliases.read_table(nhtsa.MAKER_ALIASES_DRAFT)
     assert sum(r.get("review_required") == "필요" for r in rows) == 31
+
+
+# --- 생산 기간 칸 (Part 573 "Production Dates", 블록마다 한 줄) ---------------------------------------------
+
+PRODUCTION_NEW_FORM = """
+Vehicle Information
+
+                     Vehicle 1: 2026-2026 ASTON MARTIN DBX S
+           Product Category: Light Vehicles
+            Production Dates: Jun 12, 2025 - Jul 04, 2025
+Number of potentially involved: 5
+
+                     Vehicle 2: 2023-2026 2023 DBX707
+            Production Dates: Dec 03, 2021 - Sep 09, 2025
+Number of potentially involved: 2,078
+"""
+
+PRODUCTION_OLD_FORM = """
+Vehicle Information :
+
+                Vehicle 1 : 2009-2013 Subaru Forester
+             Vehicle Type : LIGHT VEHICLES
+        Production Dates : DEC 07, 2007 - JAN 07, 2013
+            VIN Range 1 : Begin :           NR                    End : NR
+"""
+
+PRODUCTION_EQUIPMENT_OLD = """
+ Equipment Information :
+
+   Brand / Trade : Agility Fuel Systems
+   Model : Side-Mount CNG Fuel System
+   Production Dates : AUG 01, 2013 - AUG 21, 2014
+
+   Brand / Trade : Agility Fuel Systems
+   Model : Rail-Mount
+   Production Dates : AUG 01, 2013 - AUG 21, 2014
+"""
+
+
+def test_parse_report_reads_production_dates_per_block_with_labels():
+    blocks = parse_report(PRODUCTION_NEW_FORM)["production_dates"]
+    assert blocks == [
+        {
+            "label": "Vehicle 1: 2026-2026 ASTON MARTIN DBX S",
+            "raw": "Jun 12, 2025 - Jul 04, 2025",
+            "start": "20250612",
+            "end": "20250704",
+        },
+        {
+            "label": "Vehicle 2: 2023-2026 2023 DBX707",
+            "raw": "Dec 03, 2021 - Sep 09, 2025",
+            "start": "20211203",
+            "end": "20250909",
+        },
+    ]
+
+
+def test_parse_report_production_dates_old_form_keeps_label_as_written():
+    (block,) = parse_report(PRODUCTION_OLD_FORM)["production_dates"]
+    assert block == {
+        "label": "Vehicle 1 : 2009-2013 Subaru Forester",
+        "raw": "DEC 07, 2007 - JAN 07, 2013",
+        "start": "20071207",
+        "end": "20130107",
+    }
+
+
+def test_parse_report_production_dates_equipment_without_numbered_header_has_no_label():
+    blocks = parse_report(PRODUCTION_EQUIPMENT_OLD)["production_dates"]
+    assert [b["label"] for b in blocks] == ["", ""]  # 라벨을 짐작하지 않는다
+    assert [b["start"] for b in blocks] == ["20130801", "20130801"]
+
+
+def test_parse_report_production_dates_label_does_not_carry_to_next_block():
+    text = """
+Vehicle 1: 2020-2020 FOO BAR
+Production Dates: Jan 02, 2020 - Feb 03, 2020
+
+Production Dates: Mar 04, 2020 - Apr 05, 2020
+"""
+    blocks = parse_report(text)["production_dates"]
+    assert [b["label"] for b in blocks] == ["Vehicle 1: 2020-2020 FOO BAR", ""]
+
+
+def test_parse_report_production_dates_accepts_numbered_equipment_tire_and_child_headers():
+    for header in (
+        "Brand / Trade 1: Velvac, Inc.",
+        "Tire Brand 2: Michelin",
+        "Make 1: Baby Jogger",
+    ):
+        text = f"{header}\nProduction Dates: Jan 02, 2020 - Feb 03, 2020\n"
+        assert parse_report(text)["production_dates"][0]["label"] == header
+
+
+def test_parse_report_production_dates_ignores_numbers_in_descriptive_text_as_headers():
+    text = "Q5 : 30412\nProduction Dates: Jan 02, 2020 - Feb 03, 2020\n"
+    assert parse_report(text)["production_dates"][0]["label"] == ""
+
+
+def test_parse_report_production_dates_unreadable_values_keep_raw_and_leave_dates_empty():
+    cases = {
+        "NR - NR": "NR - NR",
+        "Aug 17, 2025": "Aug 17, 2025",  # 한쪽만 있는 값은 짐작해 채우지 않는다
+        "Feb 30, 2024 - Mar 01, 2024": "Feb 30, 2024 - Mar 01, 2024",  # 없는 날짜도 멈추지 않는다
+        "FCA: July 16, 2018 to August": "FCA: July 16, 2018 to August",
+    }
+    for raw, expected_raw in cases.items():
+        (block,) = parse_report(f"Production Dates: {raw}\n")["production_dates"]
+        assert block == {"label": "", "raw": expected_raw, "start": "", "end": ""}
+    (empty,) = parse_report("Production Dates:\n\nChronology :")["production_dates"]
+    assert empty == {"label": "", "raw": "", "start": "", "end": ""}
+
+
+def test_parse_report_production_dates_accepts_en_dash_and_full_month_names():
+    (a,) = parse_report("Production Dates: May 20, 2023 – Jan 5, 2024\n")["production_dates"]
+    assert (a["start"], a["end"]) == ("20230520", "20240105")
+    (b,) = parse_report("Production Dates: January 1, 2025 - December 31, 2025\n")[
+        "production_dates"
+    ]
+    assert (b["start"], b["end"]) == ("20250101", "20251231")
+    assert b["raw"] == "January 1, 2025 - December 31, 2025"  # 원문은 그대로
+
+
+def test_parse_report_production_dates_does_not_fix_odd_values():
+    # 원문의 이상한 값(시작이 종료보다 늦음, 자리표시 연도)은 고치지 않고 읽은 대로 둔다
+    (rev,) = parse_report("Production Dates: Jun 18, 2013 - Feb 11, 0204\n")["production_dates"]
+    assert rev["raw"] == "Jun 18, 2013 - Feb 11, 0204"
+    (sentinel,) = parse_report("Production Dates: JAN 01, 1900 - JAN 01, 1900\n")[
+        "production_dates"
+    ]
+    assert (sentinel["start"], sentinel["end"]) == ("19000101", "19000101")
+
+
+def test_parse_report_without_production_dates_gives_empty_list():
+    assert parse_report(OLD_FORM)["production_dates"] == []
+    assert parse_report("")["production_dates"] == []

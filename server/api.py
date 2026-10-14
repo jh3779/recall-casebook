@@ -193,10 +193,23 @@ class Evidence(Strict):
     text: str = Field(min_length=1)
 
 
+class CheckSource(Strict):
+    """근거를 읽은 573 보고서 판본 — 파일과 sha256으로 원본을 되짚는다."""
+
+    campaign: str
+    file: str
+    pdf_sha256: str
+    submission_date: str
+
+
 class CheckItem(Strict):
-    item: Literal["same_part", "failure_mode", "remedy", "supplier", "cause_speaker"]
+    item: Literal[
+        "same_part", "production_period", "failure_mode", "remedy", "supplier", "cause_speaker"
+    ]
     label: str
     evidence: list[Evidence] = Field(min_length=1)
+    omitted: int = Field(default=0, ge=0)  # 싣지 못한 근거 수(생산 기간 블록이 많을 때, DEC-059)
+    source: CheckSource | None = None  # 생산 기간 항목만: 읽은 573 보고서 판본(DEC-059)
 
 
 class CauseSource(Strict):
