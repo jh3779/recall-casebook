@@ -8,7 +8,7 @@ _갱신: 2026-10-14 — 작업 F(화면 Vercel 배포, DEC-058) 진행: 화면 `
 
 ## Current Phase
 
-`PROJECT_CONTEXT.md` 기준 **P2 개발 마무리 → P3 평가 진입 전**. 검색 화면의 질문 → 공개 API → 선례·원문·출처 표시와 쇼룸 리터치는 PR #105로 main에 병합됐다(`528d114`). 화면 배포(작업 F)와 사람 평가가 남아 있어 이번 체크포인트만으로 프로젝트 전체의 P3 전환을 선언하지 않는다. 발표 10/20, 시점 평가 정답 표시 마감 10/16·채점/보고 10/17.
+`PROJECT_CONTEXT.md` 기준 **P2 개발 마무리 → P3 평가 진입 전**. 검색 화면의 질문 → 공개 API → 선례·원문·출처 표시와 쇼룸 리터치는 PR #105로 main에 병합됐다(`528d114`). 작업 F(화면 배포)는 PR #119로 리뷰 중이고(화면은 이미 공개 — `lg-cns-rag-web.vercel.app`) 사람 평가가 남아 있어 이번 체크포인트만으로 프로젝트 전체의 P3 전환을 선언하지 않는다. 발표 10/20, 시점 평가 정답 표시 마감 10/16·채점/보고 10/17.
 
 ## Completed
 
@@ -35,7 +35,7 @@ _갱신: 2026-10-14 — 작업 F(화면 Vercel 배포, DEC-058) 진행: 화면 `
 
 2026-10-13 `git status --short`·`git diff --stat`·`git log -10`으로 확인:
 
-- origin/main = `018860f`(#113 병합, 그 앞 `1a669a4` #111). 이 갱신은 브랜치 `feat/api-rate-limit`(PR #117, worktree `.claude/worktrees/feat-api-rate-limit`)에서 main을 합친 뒤 한다. 열린 PR: #117(DEC-057). 화면 배포(작업 F)는 하지 않았다.
+- origin/main = `de4d6fa`(#117 병합, 그 앞 `018860f` #113). 이 갱신은 브랜치 `chore/frontend-vercel-deploy`(PR #119, 작업 F·DEC-058)에서 한다. 열린 PR: #119. 화면 `https://lg-cns-rag-web.vercel.app`은 2026-10-14 첫 배포로 공개 중이다(429 화면 처리는 #119 병합 뒤 재배포해야 들어간다).
 - (완료 기록 — 이미 병합된 #105의) 주요 수정: `frontend/src/showroom/`, 컴포넌트·설정·스타일·리콜 처리, README·검사 도구·`.gitignore`. 새 파일: `estimatedParts.ts`·`vehicle.ts`·`geometry.ts`와 관련 시험, 현대·기아 JSON/manifest, `scripts/build_showroom_demo.py`, 모델·후보·회전축·표면 검증 문서.
 - 메인 체크아웃(`docs/drop-llm-labeling`)의 미커밋 파일(이 worktree에는 없음): `docs/기획_결함선례.md`(6절에 정당성 소절 +39줄), 미추적 `docs/계획_P3_리랭커시험.md`(SHA-256 `edbb4d9e5201fc36b1824ceff84f05ccf98e9d4592d3003d88aacc5d9332693a` 유지), 미추적 `docs/발표대본_초안.md`(작성 시점 SHA-256 `766890c4b1d5d013c2493ed35e868cf8d985f00b32758d110ecbb3ca5e462737`). 이 파일들은 사용자가 정할 때까지 수정·삭제하지 않는다.
 - 실행: `cd frontend && npm run dev`, 쇼룸 `http://localhost:5173/#showroom`. Node는 `frontend/.nvmrc` 정본(24). 현재 PC의 사용 가능한 Node 24 경로는 `/Users/jihun/.npm/_npx/387698761821791d/node_modules/node/bin`이며 환경에 따라 달라진다. Python 검사 시 샌드박스 캐시 권한 문제는 `UV_CACHE_DIR=/private/tmp/lgcns-uv-cache`로 해결했다.

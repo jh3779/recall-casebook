@@ -200,3 +200,4 @@
 - 2026-10-14: PR #119 Codex(67389c17) 반영 — 쏘나타 변환 스크립트가 출력을 다시 읽어 재질 값·텍스처·목록까지 원본과 대조하고 배포본 지문·크기·지운 속성 수를 고정(재질 색을 바꾼 사본으로 거부 확인), Retry-After는 숫자만 받고 그 밖은 60초(시험 5개), README 배포·CORS·429 현황 갱신
 - 2026-10-14: PR #119 review-agent(d732ccb) 반영 — 429 알림(role=alert)은 고정 문구만, 남은 초는 aria-hidden·끝나면 role=status, 다 기다리면 타이머 정지; 스크립트 대조 범위·EXPECTED 불일치 시 절차를 문서·DEC·주석에 맞춤
 - 2026-10-14: PR #119 Codex(d732ccb8)·review-agent(856a8f1) 반영 — 429 완료 알림 영역을 처음부터 비운 채 그려 두고(sr-only) 글자만 채움, 429 안내 제목·본문 간격 복구(.err [role=alert]), 작업 지시문 task-F에 실행 완료 머리말(바뀐 점 4가지·현재 런북 링크)
+- 2026-10-14: PR #119 Codex(6134850a)·review-agent(6134850) 반영 — DEC-058 텍스처 크기 실측값으로 정정(이미지 약 6.0MB, TEXCOORD 한 벌 약 7.3MB), HANDOFF Current State·작업 지시 README 표·task-F CORS 줄을 현재 상태로, .nvmrc 단정·인용 문구·실패 크기(129.8MB) 정정
