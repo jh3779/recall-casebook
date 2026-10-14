@@ -1,6 +1,6 @@
 # Agent Handoff
 
-_갱신: 2026-10-13 — #113(LLM 사람 평가 제외, DEC-056) 병합(main `018860f`), #63 공개 API 호출 상한(PR #117, DEC-057) 검증 중. 그 앞: #111(D 파트 복귀, DEC-055) 병합(`1a669a4`), #104(설계 v1.0)·#105(화면) 병합._
+_갱신: 2026-10-14 — 작업 F(화면 Vercel 배포, DEC-058) 진행: 화면 `https://lg-cns-rag-web.vercel.app` 첫 배포, API `ALLOWED_ORIGINS` 추가·재배포(#117 호출 상한도 적용), PR은 브랜치 `chore/frontend-vercel-deploy`. 그 앞: #117(DEC-057, main `de4d6fa`)·#113(DEC-056, `018860f`) 병합._
 
 ## Current Objective
 
@@ -8,13 +8,13 @@ _갱신: 2026-10-13 — #113(LLM 사람 평가 제외, DEC-056) 병합(main `018
 
 ## Current Phase
 
-`PROJECT_CONTEXT.md` 기준 **P2 개발 마무리 → P3 평가 진입 전**. 검색 화면의 질문 → 공개 API → 선례·원문·출처 표시와 쇼룸 리터치는 PR #105로 main에 병합됐다(`528d114`). 화면 배포(작업 F)와 사람 평가가 남아 있어 이번 체크포인트만으로 프로젝트 전체의 P3 전환을 선언하지 않는다. 발표 10/20, 시점 평가 정답 표시 마감 10/16·채점/보고 10/17.
+`PROJECT_CONTEXT.md` 기준 **P2 개발 마무리 → P3 평가 진입 전**. 검색 화면의 질문 → 공개 API → 선례·원문·출처 표시와 쇼룸 리터치는 PR #105로 main에 병합됐다(`528d114`). 작업 F(화면 배포)는 PR #119로 리뷰 중이고(화면은 이미 공개 — `lg-cns-rag-web.vercel.app`) 사람 평가가 남아 있어 이번 체크포인트만으로 프로젝트 전체의 P3 전환을 선언하지 않는다. 발표 10/20, 시점 평가 정답 표시 마감 10/16·채점/보고 10/17.
 
 ## Completed
 
-- **#63 공개 API 호출 상한 구현 — PR #117**(`f3051ad`, 브랜치 `feat/api-rate-limit`, DEC-057, 아직 병합 전): `server/ratelimit.py`(POST /search만 IP별 1분 60회, 넘으면 429 + `Retry-After`, CORS 미들웨어 안쪽이라 429에도 CORS 머리글, 클라이언트 IP는 Vercel에서만 `x-forwarded-for`), `tests/test_rate_limit.py` 9개(리뷰 반영 후), `docs/배포_Vercel.md` 3-2절(WAF 규칙·실측·시연 날 워밍업), `.env.example` `RATE_LIMIT_PER_MINUTE`. 사용자 인터뷰 결정(2026-10-13)을 이슈 #63에 코멘트로 남겼다. `uv run ruff check .`·`ruff format --check .` 통과, `uv run pytest` 508 passed / 20 skipped(리뷰 반영 후 head 기준).
+- **#63 공개 API 호출 상한 구현 — PR #117**(DEC-057, 2026-10-13 병합 — main `de4d6fa`): `server/ratelimit.py`(POST /search만 IP별 1분 60회, 넘으면 429 + `Retry-After`, CORS 미들웨어 안쪽이라 429에도 CORS 머리글, 클라이언트 IP는 Vercel에서만 `x-forwarded-for`), `tests/test_rate_limit.py` 9개(리뷰 반영 후), `docs/배포_Vercel.md` 3-2절(WAF 규칙·실측·시연 날 워밍업), `.env.example` `RATE_LIMIT_PER_MINUTE`. 사용자 인터뷰 결정(2026-10-13)을 이슈 #63에 코멘트로 남겼다. `uv run ruff check .`·`ruff format --check .` 통과, `uv run pytest` 508 passed / 20 skipped(리뷰 반영 후 head 기준).
 - 디자인 시스템 v1.0 검색 화면·API 연결·쇼룸 분리(D·E, DEC-052·053)와 쇼룸 리터치(DEC-054)·판본 검증·리뷰 반영은 **PR #105로 main에 병합**됐다(`528d114`, 2026-10-13). #104(설계)는 `ecc2c4a`로 병합, #60은 #105로 대체·닫힘(브랜치 `feat/frontend-showroom`은 남김), #109는 #105 병합으로 닫힘.
-- 이승노 D 파트 복귀·시트 배정(DEC-055)은 **PR #111로 main에 병합**됐다(`1a669a4`, 2026-10-13). LLM 사람 평가 제외(DEC-056 — Luna A·B 표시 취소, ② 규칙 정확도만 `score-rule`로 참고 평가, 전달본 다시 묶음)는 PR #113에서 검증 중이다.
+- 이승노 D 파트 복귀·시트 배정(DEC-055)은 **PR #111로 main에 병합**됐다(`1a669a4`, 2026-10-13). LLM 사람 평가 제외(DEC-056 — Luna A·B 표시 취소, ② 규칙 정확도만 `score-rule`로 참고 평가, 전달본 다시 묶음)는 PR #113으로 병합됐다(`018860f`, 2026-10-13).
 - 쇼룸은 **쏘나타 YF 2014 모델 + 쏘렌토 2022 모델**로 교체했다. 회전 중심 수직축 고정, 원본 재질·법선 보존, 쏘렌토 바퀴 복원, 쏘나타 유리·바닥 정렬을 반영했다.
 - 실제 NHTSA 차량 리콜은 **SONATA 2011–2014 18건 + SORENTO 2021–2023 8건 = 26건**이다(2026-10-06 사본, 차종·연식 일치 및 CAMPNO 중복 제거). 원문 대조 26/26 일치. 재생성 도구와 입력·모델 지문을 기록했다.
 - 사용자가 허용한 **추정 부품은 설명용 3D 도형·위치에만 적용**했다. 투시·범례·포인트·패널에서 추정을 밝힌다. 리콜 번호·원인·공급사는 추정하지 않는다. 검색 API·RAG·평가셋 변경은 없다.
@@ -33,14 +33,14 @@ _갱신: 2026-10-13 — #113(LLM 사람 평가 제외, DEC-056) 병합(main `018
 
 ## Current State
 
-2026-10-13 `git status --short`·`git diff --stat`·`git log -10`으로 확인:
+2026-10-14 `git status --short`·`git diff --stat`·`git log -10`으로 확인:
 
-- origin/main = `018860f`(#113 병합, 그 앞 `1a669a4` #111). 이 갱신은 브랜치 `feat/api-rate-limit`(PR #117, worktree `.claude/worktrees/feat-api-rate-limit`)에서 main을 합친 뒤 한다. 열린 PR: #117(DEC-057). 화면 배포(작업 F)는 하지 않았다.
+- origin/main = `de4d6fa`(#117 병합, 그 앞 `018860f` #113). 이 갱신은 브랜치 `chore/frontend-vercel-deploy`(PR #119, 작업 F·DEC-058)에서 한다. 열린 PR: #119. 화면 `https://lg-cns-rag-web.vercel.app`은 2026-10-14 첫 배포로 공개 중이다(429 화면 처리는 #119 병합 뒤 재배포해야 들어간다).
 - (완료 기록 — 이미 병합된 #105의) 주요 수정: `frontend/src/showroom/`, 컴포넌트·설정·스타일·리콜 처리, README·검사 도구·`.gitignore`. 새 파일: `estimatedParts.ts`·`vehicle.ts`·`geometry.ts`와 관련 시험, 현대·기아 JSON/manifest, `scripts/build_showroom_demo.py`, 모델·후보·회전축·표면 검증 문서.
 - 메인 체크아웃(`docs/drop-llm-labeling`)의 미커밋 파일(이 worktree에는 없음): `docs/기획_결함선례.md`(6절에 정당성 소절 +39줄), 미추적 `docs/계획_P3_리랭커시험.md`(SHA-256 `edbb4d9e5201fc36b1824ceff84f05ccf98e9d4592d3003d88aacc5d9332693a` 유지), 미추적 `docs/발표대본_초안.md`(작성 시점 SHA-256 `766890c4b1d5d013c2493ed35e868cf8d985f00b32758d110ecbb3ca5e462737`). 이 파일들은 사용자가 정할 때까지 수정·삭제하지 않는다.
 - 실행: `cd frontend && npm run dev`, 쇼룸 `http://localhost:5173/#showroom`. Node는 `frontend/.nvmrc` 정본(24). 현재 PC의 사용 가능한 Node 24 경로는 `/Users/jihun/.npm/_npx/387698761821791d/node_modules/node/bin`이며 환경에 따라 달라진다. Python 검사 시 샌드박스 캐시 권한 문제는 `UV_CACHE_DIR=/private/tmp/lgcns-uv-cache`로 해결했다.
-- 모델은 gitignore인 `frontend/public/models/sonata.glb`(116,543,736바이트, 약 111MiB)·`sorento.glb`(18,780,960바이트)다. 원본은 Downloads의 `hyundai_sonata_2014 (1).glb`·`kia_sorento.glb`. 다른 기계에서는 README에 따라 별도 준비한다. 출처·CC BY 4.0 저작자·전체 지문은 README와 `public/data/vehicle-sources.json`에 있다. 옛 코나·트럭 자료는 보관용이며 현재 선택 차종이 아니다.
-- 운영 기록상 API는 `https://lg-cns-rag.vercel.app` Production, 운영 build `f1fe1843ed0f2c66`, 조회 전용 `rag_reader`, Storage 서빙 묶음 업로드·검증 완료(DEC-049~051). #63(호출 상한·CORS — 비밀 키 인증 없음, 사용자 결정 2026-10-13)과 배포 측정 후속 #103이 남는다. **2026-10-13 확인**: main = `1a669a4`(#111 병합, 그 앞 `528d114` #105·`ecc2c4a` #104). 열린 PR은 #113. 프런트 F 배포는 미실행이다.
+- 모델은 gitignore인 `frontend/public/models/sonata.glb`(**화면용 배포본** 44,211,620바이트 — 원본 116,543,736바이트에서 `frontend/scripts/strip-unused-texcoords.mjs`로 만든다, DEC-058)·`sorento.glb`(18,780,960바이트)다. 원본은 Downloads의 `hyundai_sonata_2014 (1).glb`(같은 폴더의 `hyundai_sonata_2014.glb` 127,615,412바이트는 다른 파일 — 스크립트가 거부)·`kia_sorento.glb`. `vehicle-sources.json`의 `sha256`은 배포본, 원본 지문은 `derivedFrom.from`. 다른 기계에서는 README에 따라 별도 준비한다. 출처·CC BY 4.0 저작자·전체 지문은 README와 `public/data/vehicle-sources.json`에 있다. 옛 코나·트럭 자료는 보관용이며 현재 선택 차종이 아니다.
+- 운영 기록상 API는 `https://lg-cns-rag.vercel.app` Production, 운영 build `f1fe1843ed0f2c66`, 조회 전용 `rag_reader`, Storage 서빙 묶음 업로드·검증 완료(DEC-049~051). #63(호출 상한·CORS — 비밀 키 인증 없음, 사용자 결정 2026-10-13)과 배포 측정 후속 #103이 남는다. (2026-10-13 당시 기록이던 main·열린 PR 서술은 위 첫 줄의 2026-10-14 상태로 대체 — 화면은 작업 F로 공개됐다.)
 - 기존 기록상 Actions는 중단 상태(DEC-040). PR 재개 시 최신 상태를 조회하고 `MERGE_PROTOCOL.md`를 따른다. 이전 세션의 병합 권한은 이어받지 않는다. 커밋·push·PR은 사용자 요청, 병합은 해당 PR 번호를 든 명시적 지시가 있어야 한다.
 - 평가 자료는 `data/processed/defect/`의 `time_eval_2026-10-10/`·`cause_quality_20261011/`·`cause_unknown_2026-10-09/`에 보관한 기록이 있다. 시점 평가 전달 판본 대조(할 일 48), 서버 데이터 드라이브 업로드(49), 할 일 52는 DEC-056으로 A·B가 취소되고 ② 규칙 정확도 채점(`score-rule`)만 남았다(DEC-056 영향 항목). Luna C(②) 표시자는 이승노(DEC-055)이며, 표시를 끝낼 때까지 안내서·시트·전달 메시지 외 저장소 전체를 보지 않는다(`docs/D파트_표시_안내.md` 지킬 것, 할 일 52 — 눈가림 노출 기록은 결과에 포함).
 
@@ -137,14 +137,14 @@ _갱신: 2026-10-13 — #113(LLM 사람 평가 제외, DEC-056) 병합(main `018
 
 ## Next Action
 
-1. **PR #117 리뷰·병합 → WAF 규칙 설정 → 배포 뒤 실측 → 작업 F** (2026-10-13 현재): PR #117은 자동 리뷰(Codex·review-agent) 여러 차수를 반영 중이다 — 처리 내역은 PR 코멘트(WAF 모든 경로·Default(429) 유지, Production 실측 절차, 앱 상한 실측, 시연 날 순서, 로컬 시연은 대체 수단). 병합은 사용자가 PR 번호를 들어 지시하고 게이트 G-01~09가 ✅일 때만. **DEC 번호**: #113(DEC-056)이 먼저 병합돼 #117은 DEC-057, 작업 F는 DEC-058로 밀렸다(2026-10-13 main 합침). 병합·재배포 뒤 사용자 계정 작업은 ① Vercel 대시보드에 WAF 규칙(모든 경로, 고정 창 60초, 한도 120, IP 키) ② WAF가 막은 429에 CORS 머리글이 붙는지와 Vercel에서 요청 경로가 `/search`로 잡히고 `VERCEL` 환경변수로 IP가 구분되는지 실측(`docs/배포_Vercel.md` 3-2절). 그다음 **작업 F가 발표 전 필수 경로**다 — 공개 주소 시연이라 화면 Vercel 배포, 배포 화면 주소를 `ALLOWED_ORIGINS`에 추가, 429 안내("잠시 뒤에 다시 시도해 주세요(429)")와 `Retry-After` 동안 [다시 시도] 비활성을 넣는다. #63에서 뺀 스키마 변경 2건은 할 일 56.
-2. F는 별도 요청 시 진행한다. 실제 모델 파일 포함·저작자 표시·API CORS·시연 환경을 확인한다. 쏘나타 약 111MiB와 쇼룸 JS 청크 경고는 남는 비용이며 이번 체크포인트에서 최적화·배포를 시작하지 않는다 — 배포 전에 Vercel 정적 파일 크기 한도에 걸리는지 공식 문서로 확인한다. **번호 주의**: F의 결정은 쓰기 직전 main의 다음 빈 번호를 쓴다(2026-10-13 기준 DEC-058 — DEC-054는 쇼룸 차종, DEC-055는 D 파트 복귀, DEC-056은 LLM 사람 평가 제외, DEC-057은 #63 호출 상한 결정이 썼다). `docs/design-system/codex/task-F-frontend-deploy.md`(3절)·`codex/README.md`는 이미 이렇게 고쳐 두었다(PR #111). 화면이 더는 읽지 않는 옛 트럭 자산(`public/data/recalls.json`·`silverado_parts.json`·`ram_parts.json`, `inspect-model-surfaces.mjs`의 트럭 대상, README 트럭 절)은 **보관한다**(사용자 결정 2026-10-13 — 지우지 않음, 다시 정할 때까지 그대로 둔다).
+1. **작업 F PR 리뷰·병합 → 화면 재배포 → 사용자 계정 작업** (2026-10-14): 화면은 이미 공개됐다(`lg-cns-rag-web`, 첫 배포가 자동으로 Production) — 이 PR의 429 화면 처리(DEC-058 ④)는 병합 뒤 `cd frontend && vercel deploy --prod`로 다시 배포해야 들어간다(쏘나타는 `scripts/strip-unused-texcoords.mjs`로 만든 배포본이어야 함 — `docs/배포_Vercel.md` 2절 런북). API는 `ALLOWED_ORIGINS` 추가 뒤 재배포했고 #117 호출 상한이 적용됐다(DEC-058 영향). 남은 사용자 계정 작업: Vercel WAF 규칙(모든 경로·60초·120회·IP·Default(429)), 시스템 환경변수 노출 확인, 앱 상한·WAF 실측과 DEC-057 기록(`docs/배포_Vercel.md` 3-2절), #118 후속. 모바일 390px 쇼룸에서 부품 분류 패널이 차량을 가린다(기존 배치 — 후속 #120).
+2. (완료 기록) 작업 F: 화면 별도 프로젝트·CLI 배포, 쏘나타 배포본(텍스처 좌표만 제거, 116.5 → 44.2MB — Vercel CLI 업로드 100MB 한도(문서는 소스 합계 기준) 실측), API CORS, 429 화면(DEC-058). 다음 DEC는 DEC-059. 화면이 더는 읽지 않는 옛 트럭 자산(`public/data/recalls.json`·`silverado_parts.json`·`ram_parts.json`, `inspect-model-surfaces.mjs`의 트럭 대상, README 트럭 절)은 **보관한다**(사용자 결정 2026-10-13 — 지우지 않음, 다시 정할 때까지 그대로 둔다). 보관 `.glb`는 `frontend/.vercelignore`가 배포에서 뺀다(#108).
 3. 프로젝트 후속: #63(호출 상한·CORS — 비밀 키 인증 없음, Next Action 1), #103(배포 측정), #53 원인 상태 문구 합의·#83 미보고 경계, #84·#87·#75~#78·#93·#95·#98은 최신 상태 조회 후 남은 범위만 처리한다. 화면 잠정 문구 구현과 사람 합의는 구별한다.
 4. P3: 시점 평가 전달본·원본 열 대조(48) 후 사람 표시를 늦어도 10/16까지, 10/17 채점·보고. 원인 품질 573 30건과 참고용 조사 요약 30건은 사람이 따로 표시·채점한다. D ②(원인 미확인 150건)는 돌려받은 시트를 전달본과 대조한 뒤 `cause_trials score-rule --sheet <시트>`로 채점하고, 출력 `rule_basis`가 DEC-056의 표시 전 규칙 지문과 같은지 확인한다(filled 150건 기준 참고 평가). `stated_unknown`은 그 표본 밖이다. 표시 질문을 만든 세션에서 AI가 정답을 표시하지 않는다.
 5. 사용자 후속은 서버 데이터 드라이브 업로드(49), 시연 컴퓨터 선정, #90 D 시트 전달(드라이브·디스코드 — 사용자; **전달 메시지 필수 항목**: zip sha256 전체, 질문은 이 채널로, PR #111 구독 해제는 `github.com/notifications/subscriptions`에서 PR을 열지 않고, 이슈 #90 알림 메일은 열지 말고 확인 응답도 이 채널로, ② 뒤 #90에 열람 여부 자기보고)과 10/15 중간 확인, #80 공지·시트 전달 정보다. #61은 박예원 10/14 목표로 기록돼 있다. 학습 마일스톤 ⑧은 ② 서빙 묶음 확인 질문 3개 채점 또는 ③ 서버 묶음 경로부터 재개하고, ③ 뒤 중간평가 학습지로 이어간다.
 
 ## Definition of Done
 
-이번 작업(#113): LLM 사람 평가 제외(DEC-056)를 기록하고, 리뷰 지적을 모두 처리해 병합 전 검증(`docs/MERGE_PROTOCOL.md`)을 통과한 뒤 PR 번호를 든 사용자 지시로 병합한다. #111(D 파트 시트 배정)은 병합됐고 시트 전달은 사용자가 저장소 밖으로 한다. 기존 할 일 1~55를 보존한다. 사용자 기획 파일(`docs/계획_P3_리랭커시험.md` 등)은 건드리지 않는다.
+이번 작업(#119): 작업 F(화면 Vercel 배포, DEC-058)를 기록하고, 리뷰 지적을 모두 처리해 병합 전 검증(`docs/MERGE_PROTOCOL.md`)을 통과한 뒤 PR 번호를 든 사용자 지시로 병합한다. 병합 뒤 화면을 다시 배포한다. #111·#113·#117은 병합됐고 D 파트 시트 전달은 사용자가 저장소 밖으로 한다. 기존 할 일 1~55를 보존한다. 사용자 기획 파일(`docs/계획_P3_리랭커시험.md` 등)은 건드리지 않는다.
 
 프로젝트 전체: `docs/기획_결함선례.md` 1~7절과 발표 전 점검이 실제 근거로 채워지고, 모든 수치가 원본 사본 조건을 밝혀 재현되며, 기준선 Hit@10 0.510 대비 before/after와 시점 평가(정답 있는 34문항 이상)의 후보 묶음 한정 Hit@k·하한을 따로 보고한다. 34문항 미만이면 미측정으로 표시한다(DEC-037). 원인 품질 표본과 함께 10/20 발표에서 보여 줄 수 있어야 한다.

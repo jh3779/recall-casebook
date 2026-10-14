@@ -1,17 +1,21 @@
 import type { Card, Cause, HealthResponse, ProvenanceData, SearchResponse } from "./search/types";
 
 export const API_BASE = (import.meta.env.VITE_API_BASE || "https://lg-cns-rag.vercel.app").replace(/\/+$/, "");
-export type ApiErrorKind = "validation" | "network" | "timeout" | "server" | "shape";
+export type ApiErrorKind = "validation" | "rate_limit" | "network" | "timeout" | "server" | "shape";
 export class ApiError extends Error {
   readonly kind: ApiErrorKind;
   readonly status?: number;
   readonly buildId?: string;
-  constructor(kind: ApiErrorKind, message: string, status?: number, buildId?: string) {
+  readonly retryAfter?: number; // 호출 상한(429)일 때 다시 보낼 수 있을 때까지 남은 초(DEC-057)
+  readonly retryAt?: number; // 그 초를 받은 시각 기준 마감(ms) — 화면이 남은 초를 셀 때 쓴다
+  constructor(kind: ApiErrorKind, message: string, status?: number, buildId?: string, retryAfter?: number) {
     super(message);
     this.name = "ApiError";
     this.kind = kind;
     this.status = status;
     this.buildId = buildId;
+    this.retryAfter = retryAfter;
+    this.retryAt = retryAfter === undefined ? undefined : Date.now() + retryAfter * 1000;
   }
 }
 const record = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -56,6 +60,12 @@ async function request<T>(path: string, init: RequestInit, guard: (v: unknown) =
         const detail = record(body) && Array.isArray(body.detail) ? body.detail[0] : null;
         const message = record(detail) && typeof detail.msg === "string" ? detail.msg.replace(/^Value error, /, "") : "질문을 다시 확인해 주세요";
         throw new ApiError("validation", message, 422);
+      }
+      if (response.status === 429) {
+        // 서버 상한은 IP당 1분이라 머리글이 없거나 이상하면 60초를 기다린다
+        const header = (response.headers.get("Retry-After") ?? "").trim();
+        const wait = /^\d+$/.test(header) && Number(header) > 0 ? Number(header) : 60; // "7junk"·"-3"·날짜 형식 같은 값은 60초
+        throw new ApiError("rate_limit", "호출이 너무 잦습니다. 잠시 뒤에 다시 시도해 주세요.", 429, undefined, wait);
       }
       throw new ApiError("server", `서버 오류가 났습니다 (${response.status})`, response.status);
     }

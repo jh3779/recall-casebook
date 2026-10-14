@@ -1,6 +1,6 @@
 # Vercel 배포 안내 (DEC-048)
 
-> 2026-10-12 기준(2026-10-13 갱신). **발표 시연은 공개 주소로 한다**(DEC-057 ④가 DEC-048 ①을 대체 — 시연 날 절차는 3-2절). 1절의 로컬 포트는 공개 주소가 막혔을 때의 대체 수단이다. 외부 배포는 **일단 Vercel**로 한다. 화면을 먼저 올리고(2절), API는 서빙 묶음(Supabase Storage)으로 발표 전에 옮긴다(3절). API는 **Hobby** 플랜 프로젝트 `lg-cns-rag`로 배포했다(3-1절) — Hobby는 비상업·개인 용도이고 팀 협업 기능은 Pro다.
+> 2026-10-12 기준(2026-10-14 갱신). 공개 화면 `https://lg-cns-rag-web.vercel.app`(2절)·공개 API `https://lg-cns-rag.vercel.app`(3-1절). **발표 시연은 공개 주소로 한다**(DEC-057 ④가 DEC-048 ①을 대체 — 시연 날 절차는 3-2절). 1절의 로컬 포트는 공개 주소가 막혔을 때의 대체 수단이다. 외부 배포는 **일단 Vercel**로 한다. 화면을 먼저 올리고(2절), API는 서빙 묶음(Supabase Storage)으로 발표 전에 옮긴다(3절). API는 **Hobby** 플랜 프로젝트 `lg-cns-rag`로 배포했다(3-1절) — Hobby는 비상업·개인 용도이고 팀 협업 기능은 Pro다.
 
 ## 1. 시연 — 로컬 포트 (대체 수단)
 
@@ -24,22 +24,50 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
 - 시작할 때 **Supabase 접속(인터넷)**이 필요하고(DB 명세·벡터 대조), 임베딩 모델 캐시가 없으면 모델(약 67MB)도 내려받는다 — **발표 전에 시연 장소 네트워크에서 한 번 띄워 둔다.**
 - CORS는 기본으로 `http://localhost:5173`만 허용한다(환경변수 `ALLOWED_ORIGINS`로 바꿈, DEC-050).
 
-## 2. 화면 배포 — Vercel (먼저)
+## 2. 화면 배포 — Vercel (작업 F, DEC-058)
 
-화면은 Vite로 만든 정적 사이트다. PR #60이 main에 병합된 뒤 진행한다.
+**지금 공개 화면: `https://lg-cns-rag-web.vercel.app`** (Vercel 프로젝트 `lg-cns-rag-web`, Hobby, 2026-10-14 첫 배포). API(`lg-cns-rag`)와 **별도 프로젝트**이고 **CLI 배포만** 한다 — Git 연동 배포에는 gitignore된 `public/models/*.glb`가 들어가지 않아 3D가 뜨지 않는다.
 
-| Vercel 프로젝트 설정 | 값 | 근거 |
-|---|---|---|
-| Root Directory | `frontend` | 화면 코드 위치(DEC-032) |
-| Framework Preset | Vite | `frontend/vite.config.ts` |
-| Build Command | `npm run build` (`tsc -b && vite build`) | `frontend/package.json` |
-| Output Directory | `dist` | Vite 기본값 |
-| Install Command | `npm ci` | 락 파일 그대로(AGENTS.md 4절) |
-| Node.js Version | 프로젝트 설정에서 **24.x** 선택 | Vercel은 `.nvmrc`를 읽지 않고 프로젝트 설정이나 `package.json` `engines.node`를 본다 — 팀 기준은 `frontend/.nvmrc`(24) |
+| 파일 | 하는 일 |
+|---|---|
+| `frontend/vercel.json` | `framework: vite`, `installCommand: npm ci`, `buildCommand: npm run build`, `outputDirectory: dist` |
+| `frontend/.vercelignore` | **허용 목록**(`/*` 뒤 `!…`) — `index.html`·`package*.json`·`.nvmrc`·`tsconfig*.json`·`vite.config.ts`·`vercel.json`·`src`·`public`, 모델은 화면이 부르는 `sonata.glb`·`sorento.glb`만(보관 트럭·코나 제외, #108). `node_modules`·`dist`·`.env*`는 올라가지 않는다. 시험 `frontend/src/vercelignore.test.ts` |
+| `frontend/package.json` `engines.node` | `24.x` — `engines.node`가 프로젝트 설정을 덮어쓴다(Vercel Node.js 버전 문서 — `.nvmrc`는 그 문서에 언급이 없어 쓰지 않는다). 지금 Vercel 기본값도 24.x라 고정 효과다 |
 
-- **선행 필수 — 3D 모델 파일**: #60 `frontend/README.md`는 `public/models/*.glb`(두 파일, 약 10.5MB·8.4MB)를 `.gitignore`에 넣고 드라이브에서 받게 한다. Git 연동 배포에는 이 파일이 들어가지 않아 공개 주소의 화면이 "3D 모델을 불러오지 못했습니다"에서 멈춘다. 배포 전에 넣는 방법을 정한다(빌드 때 내려받기 또는 Vercel CLI 배포 — 저장소 커밋은 1MB 넘는 파일을 막는 커밋 훅 때문에 안 된다) — 박성호 님과(#60 코멘트). CLI 배포는 `.gitignore`가 아니라 `.vercelignore`를 보므로, 쓰게 되면 `.vercelignore`로 올라갈 범위를 제한한다.
-- **환경변수에 키를 넣지 않는다.** `VITE_*` 값은 빌드 결과(브라우저)에 그대로 들어간다(AGENTS.md 7절, DEC-032). API 주소처럼 공개돼도 되는 값만 넣는다.
-- 배포 뒤 확인: 공개 주소에서 화면이 뜨고 `models/*.glb`가 200으로 받아지는지.
+**크기 한도 — 쏘나타는 줄여서 올린다**: Vercel 한도 문서는 Hobby CLI 배포의 **업로드 소스 합계 100MB**로 적는다(MB·MiB 중 어느 단위인지는 확인하지 못했다 — 아래 CLI 표시 크기는 MiB 값과 맞는다)(vercel.com/docs/limits "Static file uploads"). 실패 문구 `File size limit exceeded (100 MB)`로는 파일 하나 기준인지 합계 기준인지 가르지 못했다(2026-10-14 실측: 원본 쏘나타 116,543,736바이트가 든 업로드 129.8MiB(CLI 표시) → 실패). 어느 쪽이든 원본 쏘나타는 혼자 100MB를 넘는다. 지금 올리는 소스 합계는 약 61MiB(쏘나타 배포본 42.2MiB + 쏘렌토 17.9MiB + 코드)라 합계 기준이면 여유가 약 36MB뿐이다 — 모델·데이터를 허용 목록에 더하기 전에 합계를 잰다. 원본 쏘나타에는 재질이 쓰지 않는 텍스처 좌표(TEXCOORD) 속성이 정점마다 여러 벌 붙어 있어, 그것만 지운 배포본(44,211,620바이트)을 쓴다 — 스크립트는 출력을 다시 읽어 남은 정점 속성·인덱스 바이트와 재질 값·텍스처(이미지 지문·texCoord·샘플러)·재질·노드·메시 이름 목록을 원본과 대조하고, 출력 크기·SHA-256·지운 속성 수가 기록값과 같을 때만 쓴다(노드 변환은 `matrix`가 TRS로 다시 쓰여 float32 오차만큼 다를 수 있고 비교하지 않는다. 재질 확장이 있는 모델은 거부 — 이 모델 전용). 원본·배포본 지문은 `frontend/public/data/vehicle-sources.json`(`derivedFrom`)에 있다.
+
+**런북 (사람이 그대로 따라 한다, `frontend/`에서)**
+
+1. **3D 모델 준비** — 먼저 `npm ci`(스크립트가 개발 의존성 `@gltf-transform/core`를 쓴다). `frontend/README.md` "3D 모델 파일" 절대로 원본을 받아 쏘나타는 줄여서 둔다(원본은 116,543,736바이트 파일 — 내려받은 파일이 여럿이면 바이트 수로 고른다):
+   ```bash
+   SONATA_GLB="$HOME/Downloads/hyundai_sonata_2014 (1).glb"   # 받은 원본 쏘나타 경로로 바꾼다(116,543,736바이트 파일)
+   SORENTO_GLB="$HOME/Downloads/kia_sorento.glb"               # 받은 쏘렌토 경로로 바꾼다
+   node scripts/strip-unused-texcoords.mjs "$SONATA_GLB" public/models/sonata.glb   # 원본 지문이나 출력 지문(6e00b860…)이 기록값과 다르면 쓰지 않고 멈춘다
+   cp "$SORENTO_GLB" public/models/sorento.glb
+   shasum -a 256 public/models/sonata.glb public/models/sorento.glb
+   ```
+   쏘나타 `6e00b8603a84e95fac76c1c00f58157fdd21f0044b35f007aea0aecb53499345`(44,211,620바이트) · 쏘렌토 `fd39a70b9e34b1ce4a153ed890b5a2acfc10092bd84559e03c74ef59962c6470`(18,780,960바이트)여야 한다(`public/data/vehicle-sources.json`). 다른 `.glb`가 폴더에 있어도 `.vercelignore`가 막는다. 스크립트가 "기록된 배포본과 다르다"로 멈추면 `@gltf-transform/core` 판본이나 Node가 바뀐 것이다 — `npm ci`로 lock 판본을 맞춰 다시 하고, 그래도 다르면 새 출력이 원본과 대조를 통과했는지(같은 오류가 아니라 지문만 다른지) 사람이 확인한 뒤 스크립트의 `EXPECTED`와 `vehicle-sources.json`을 함께 고친다(DEC 기록).
+2. **프로젝트 연결**(처음 한 번, 이미 됨): `vercel project add lg-cns-rag-web && vercel link --yes --project lg-cns-rag-web`. `vercel link`가 `frontend/.gitignore`(`.vercel`·`.env*`)와 `frontend/.env.local`을 만든다 — `.gitignore`는 지운다(저장소 루트 `.gitignore`가 이미 `.vercel`·`.env.*`를 막고, 새 파일의 `.env*`는 추적 중인 `frontend/.env.example`과 어긋난다). `.env.local`은 열어 보지 않는다(루트 `.gitignore`가 막고 `.vercelignore` 허용 목록에도 없다).
+3. **환경변수(선택)**: 화면은 `VITE_API_BASE`가 없으면 `https://lg-cns-rag.vercel.app`을 부른다(`frontend/src/api.ts`). 바꿀 때만 `printf '<API 주소>' | vercel env add VITE_API_BASE production` — 빌드 결과(브라우저)에 들어가는 공개값이라 비밀값을 넣지 않는다(AGENTS.md 7절).
+4. **배포**: `vercel deploy --prod`. 업로드 소스는 약 61MiB(대부분 `.glb`) — 이미 올린 같은 파일은 건너뛰어 더 작게 표시될 수 있다(2026-10-14 2차 배포는 42.2MiB로 표시). 새 프로젝트의 **첫 배포는 `--prod` 없이도 Production에 붙는다**(2026-10-14 실제로 그랬다 — 공식 환경 문서: 새 프로젝트의 첫 배포는 항상 production). 배포 뒤 두 모델을 받아 1단계 지문과 대조한다:
+   ```bash
+   T=$(mktemp -d); for m in sonata sorento; do curl -s -o "$T/$m.glb" https://lg-cns-rag-web.vercel.app/models/$m.glb; done; shasum -a 256 "$T"/*.glb; curl -s -o /dev/null -w "보관 모델 %{http_code}(404여야 함)\n" https://lg-cns-rag-web.vercel.app/models/kona.glb; rm -rf "$T"
+   ```
+5. **API CORS 열기**(저장소 루트, API 프로젝트) — 먼저 루트로 나와 연결을 확인한다: `cd .. && cat .vercel/project.json`(`projectName`이 `lg-cns-rag`인지 — `lg-cns-rag-web`이면 멈춘다. 다르면 `vercel link --yes --project lg-cns-rag`). 그다음:
+   ```bash
+   printf 'https://lg-cns-rag-web.vercel.app,http://localhost:5173' | vercel env add ALLOWED_ORIGINS production
+   vercel deploy --prod      # 같은 SERVING_BUILD_ID — 환경변수는 서버가 시작할 때 한 번 읽으므로 재배포해야 적용된다
+   curl -s https://lg-cns-rag.vercel.app/health      # build_id f1fe1843ed0f2c66 그대로인지(첫 요청 13~16초)
+   curl -si -X OPTIONS https://lg-cns-rag.vercel.app/search -H "Origin: https://lg-cns-rag-web.vercel.app" \
+     -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type" | grep -i access-control-allow-origin
+   ```
+   localhost를 빼면 로컬 개발이 막힌다. 미리보기 배포 주소는 허용되지 않으니 그 주소의 검색 실패는 정상이다.
+6. **확인**: 공개 화면에서 예시 질문 한 건이 끝까지 되는지, 첫 화면 "데이터 판본"의 build가 `/health`와 같은지, 쇼룸이 뜨는지, 모바일 390px.
+
+**2026-10-14 실측 기록**(작업 F): 1차 `vercel deploy`는 원본 쏘나타 때문에 업로드 129.8MiB(CLI 표시) 뒤 `File size limit exceeded (100 MB)`로 실패 — 업로드 목록에 `node_modules`·보관 모델은 없었다(하위 폴더 `.vercelignore`가 읽힘). 줄인 쏘나타로 2차 배포 성공(업로드 표시 42.2MiB — 1차에서 올라간 쏘렌토 등은 건너뛴 것으로 보인다, 빌드 16초, 첫 배포라 Production `lg-cns-rag-web.vercel.app`에 붙음). 공개 주소에서 받은 두 모델 지문이 1단계 값과 같고 `kona.glb`·`.env.local`은 404. API는 `ALLOWED_ORIGINS` 추가 뒤 재배포 — `/health` build `f1fe1843ed0f2c66`(첫 요청 13.1초), 화면 주소의 사전 요청·검색 모두 200에 `access-control-allow-origin: https://lg-cns-rag-web.vercel.app`, 검색 응답에 `access-control-expose-headers: Retry-After`(#117 호출 상한도 이 재배포로 적용). 헤드리스 Chrome으로 공개 화면 첫 화면의 "데이터 판본"이 build `f1fe1843ed0f2c66`으로 뜨는 것을 확인했다. 모바일 390px 쇼룸에서는 부품 분류 패널이 차량을 가린다(기존 화면 배치 — 이 작업 밖, 후속 #120).
+
+- **환경변수에 키를 넣지 않는다.** `VITE_*` 값은 빌드 결과(브라우저)에 그대로 들어간다(AGENTS.md 7절, DEC-032).
+- 공개 화면의 검색도 API의 IP별 호출 상한(1분 60회, DEC-057)을 받는다. 화면은 앱 429에 남은 초를 보여 주고 그동안 [다시 시도]를 막는다(`frontend/src/search/Feedback.tsx`, DEC-057 ⑤) — 2026-10-14 첫 배포본에는 아직 없고 이 PR 병합 뒤 다시 배포하면 들어간다.
 
 ## 3. API 배포 — Vercel (서빙 묶음, 발표 전)
 
@@ -76,7 +104,7 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 | `vercel.json` | `framework: fastapi`(CLI로 만든 프로젝트는 프리셋이 비어 `app.py`를 함수로 못 찾는다), `regions: ["syd1"]`(운영 Supabase ap-southeast-2와 같은 지역), `maxDuration` 60(첫 요청 실측 13.2초 — 공개 상태에서 요청 하나가 함수를 오래 붙잡지 않게 실측에 맞춤) |
 | `.vercelignore` | CLI 배포는 로컬 폴더를 올린다. Vercel 기본 무시 목록에 `.env`·`.env.server`·`data/`가 없으므로 **필요한 것만 허용**한다(진입점·설정·`pyproject.toml`·`uv.lock`·`.python-version`·`server/`·`scripts/defect_precedent/`) |
 
-Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BUILD_ID=f1fe1843ed0f2c66` · `SUPABASE_URL` · `SERVER_DATABASE_URL`(`rag_reader`, Sensitive) · `UV_NO_CONFIG=1`(빌더 uv 0.10.11이 `required-version >=0.12.5`에 걸려서 — DEC-051 ④). `ALLOWED_ORIGINS`는 배포 화면이 생기면 넣는다(없으면 `http://localhost:5173`). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
+Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BUILD_ID=f1fe1843ed0f2c66` · `SUPABASE_URL` · `SERVER_DATABASE_URL`(`rag_reader`, Sensitive) · `UV_NO_CONFIG=1`(빌더 uv 0.10.11이 `required-version >=0.12.5`에 걸려서 — DEC-051 ④). `ALLOWED_ORIGINS=https://lg-cns-rag-web.vercel.app,http://localhost:5173`(2026-10-14 작업 F에서 추가하고 재배포 — 2절 실측 기록). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
 
 다시 배포: 저장소 루트에서 `vercel deploy --prod`(먼저 `vercel link --project lg-cns-rag` — `.vercel/`은 gitignore). 값 확인은 `vercel env ls production`(값은 숨김). 로그는 `vercel logs <배포 주소>`.
 
@@ -140,10 +168,10 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
    ok=0; if [ -z "$first" ]; then echo "실패 — 429가 한 번도 안 나옴(규칙 Action·한도·Publish 확인)"; elif grep -q "호출이 너무 잦습니다" "${first%.head}.body"; then echo "실패 — 앱 429임(WAF 한도가 앱보다 작은지 확인)"; else ok=1; echo "첫 WAF 429: $first"; grep -i "access-control-allow-origin" "$first" || echo "WAF 429에 CORS 머리글 없음"; fi; rm -rf "$T"; [ "$ok" -eq 1 ]
    ```
 4. 규칙을 원래대로(모든 경로·창 60초·한도 120·Default(429)) 되돌리고 Publish한 뒤 대시보드에서 값을 다시 확인한다.
-5. 결과(모든 경로 차단 여부, WAF 429의 CORS 머리글 있음/없음, 날짜)를 이 절과 DEC-057에 적는다. 머리글이 없으면 화면이 WAF 429를 '연결 실패(CORS)'로 안내하므로 작업 F에서 그 경우를 따로 안내한다.
+5. 결과(모든 경로 차단 여부, WAF 429의 CORS 머리글 있음/없음, 날짜)를 이 절과 DEC-057에 적는다. 머리글이 없으면 브라우저가 WAF 429의 본문을 읽지 못해 화면은 '서버에 연결하지 못했습니다(네트워크·CORS)'로 안내한다 — 화면의 429 안내(남은 초 표시)는 앱 429에만 나온다(작업 F, `frontend/src/search/Feedback.tsx`).
 
 **공개 주소로 시연하는 날 (DEC-057 ④)**
-1. **시연 전날까지**: 앱 상한을 올려야 하면 `RATE_LIMIT_PER_MINUTE`를 바꿔 다시 배포한다 — 환경변수 변경은 재배포가 필요하고 재배포는 새 인스턴스라 워밍업이 사라지므로 시연 당일에 하지 않는다. 화면(Vercel)에서 배포 주소가 CORS에 들어 있는지도 한 번 호출해 본다(작업 F 6단계에서 `ALLOWED_ORIGINS`에 추가).
+1. **시연 전날까지**: 앱 상한을 올려야 하면 `RATE_LIMIT_PER_MINUTE`를 바꿔 다시 배포한다 — 환경변수 변경은 재배포가 필요하고 재배포는 새 인스턴스라 워밍업이 사라지므로 시연 당일에 하지 않는다. 공개 화면(`https://lg-cns-rag-web.vercel.app`)에서 검색 한 건이 되는지도 본다(화면 주소는 `ALLOWED_ORIGINS`에 들어 있다 — 2절).
 2. 시연 날 WAF는 **Default(429) 그대로** 둔다 — Log로 바꾸면 폭주 안전망이 꺼진다. 시연장이 공유 IP라 상한이 걱정되면 전날까지 한도를 조정하거나, 공개 주소가 막히면 1절의 로컬 포트를 대체 수단으로 쓴다.
 3. **마지막 단계 — 시연 5분 전**: `curl -s https://lg-cns-rag.vercel.app/health`와 예시 검색 1회를 부른다 — 새 인스턴스가 서빙 묶음을 받아 시작하는 시간을 미리 쓴다. 중간에 인스턴스가 내려가면 첫 요청이 다시 느릴 수 있다(화면은 3초 뒤 '서버 시작 중' 안내, 60초 뒤 취소).
-4. 429 화면 처리(안내 문구와 `Retry-After` 동안 [다시 시도] 비활성)는 작업 F에서 한다 — 그 전에는 "서버 오류 (429)"로 보인다.
+4. 화면은 앱의 429에 "호출이 너무 잦습니다 (429)"와 남은 초를 보여 주고 `Retry-After` 동안 [다시 시도]를 막는다(작업 F, DEC-058). 이 화면 변경은 PR 병합 뒤 화면을 다시 배포해야 공개 주소에 들어간다(2절 4단계).

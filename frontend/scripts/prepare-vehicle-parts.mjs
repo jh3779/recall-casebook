@@ -7,6 +7,13 @@ globalThis.self = globalThis;
 // Node에서는 텍스처 픽셀을 해독하지 않는다. 대응표에는 이미지 정보가 필요 없다.
 globalThis.createImageBitmap = async () => ({ width: 1, height: 1, close() {} });
 const sources = {};
+// 배포본이 원본에서 만든 파일이면 원본 지문과 바꾼 내용을 함께 남긴다(CC BY 4.0 변경 표시, 작업 F·DEC-058)
+const DERIVED = {
+  "6e00b8603a84e95fac76c1c00f58157fdd21f0044b35f007aea0aecb53499345": {
+    from: { bytes: 116543736, sha256: "e3a9bf1e821ba553e23c51da3d7ac668a9a0e5678a9ba304fd329b4ae0355470" },
+    change: "참조되지 않는 텍스처 좌표(TEXCOORD) 속성 제거 — scripts/strip-unused-texcoords.mjs, 남은 정점 속성·인덱스 바이트와 재질 배정은 원본과 같음",
+  },
+};
 for (const key of ["sonata", "sorento"]) {
   const bytes = readFileSync(new URL(`../public/models/${key}.glb`, import.meta.url));
   const asset = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString()).asset;
@@ -53,7 +60,8 @@ for (const key of ["sonata", "sorento"]) {
     parts[m.name] = { title: [bone, material].filter(Boolean).join(" / "), defect, look };
   });
   writeFileSync(new URL(`../public/data/${key}_parts.json`, import.meta.url), JSON.stringify(parts, null, 2) + "\n");
-  sources[key] = { bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"), ...asset.extras };
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  sources[key] = { bytes: bytes.length, sha256, ...asset.extras, ...(DERIVED[sha256] ? { derivedFrom: DERIVED[sha256] } : {}) };
   console.log(`${key}: ${Object.keys(parts).length} meshes`);
 }
 writeFileSync(new URL("../public/data/vehicle-sources.json", import.meta.url), JSON.stringify(sources, null, 2) + "\n");
