@@ -1,5 +1,6 @@
-// 쏘나타 GLB의 참조되지 않는 텍스처 좌표(TEXCOORD_n)만 지운다 — Vercel 파일 하나 100MB 한도 때문(작업 F, DEC-058).
-// 위치·법선·인덱스·재질·텍스처·노드는 건드리지 않고, 지운 뒤 남은 속성·인덱스·재질이 원본과 바이트까지 같은지 대조한 뒤에만 쓴다.
+// 쏘나타 GLB의 참조되지 않는 텍스처 좌표(TEXCOORD_n)만 지운다 — Vercel CLI 업로드 100MB 한도 때문(작업 F, DEC-058).
+// 지운 뒤 남은 정점 속성·인덱스의 바이트와 프리미티브별 재질 배정(재질 이름)이 원본과 같을 때만 쓴다.
+// 이 모델 전용이다 — 재질 확장(KHR_texture_transform·clearcoat 등)은 이 스크립트가 등록하지 않아 읽고 쓰는 동안 사라질 수 있으므로 확장이 있는 파일은 거부한다.
 // 사용: node scripts/strip-unused-texcoords.mjs <원본 sonata GLB> public/models/sonata.glb
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -18,6 +19,8 @@ if (input.length !== SOURCE.bytes || sha !== SOURCE.sha256) throw new Error(`원
 const io = new NodeIO();
 const before = await io.readBinary(new Uint8Array(input));
 const doc = await io.readBinary(new Uint8Array(input));
+const extensions = JSON.parse(input.subarray(20, 20 + input.readUInt32LE(12)).toString()).extensionsUsed ?? [];
+if (extensions.length) throw new Error(`확장이 있는 GLB는 다루지 않는다: ${extensions.join(", ")}`);
 const usedSets = (material) =>
   new Set(SLOTS.filter((slot) => material?.[`get${slot}Texture`]()).map((slot) => material[`get${slot}TextureInfo`]().getTexCoord()));
 let removed = 0;

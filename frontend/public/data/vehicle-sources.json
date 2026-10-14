@@ -11,7 +11,7 @@
         "bytes": 116543736,
         "sha256": "e3a9bf1e821ba553e23c51da3d7ac668a9a0e5678a9ba304fd329b4ae0355470"
       },
-      "change": "참조되지 않는 텍스처 좌표(TEXCOORD) 속성 제거 — scripts/strip-unused-texcoords.mjs, 나머지 속성·인덱스·재질은 원본과 바이트 동일"
+      "change": "참조되지 않는 텍스처 좌표(TEXCOORD) 속성 제거 — scripts/strip-unused-texcoords.mjs, 남은 정점 속성·인덱스 바이트와 재질 배정은 원본과 같음"
     }
   },
   "sorento": {

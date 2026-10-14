@@ -9,7 +9,7 @@ export function Feedback({ loading, delayed, error, onRetry }: { loading?: boole
   if (!error) return null;
   if (error.kind === "rate_limit") return <RateLimited error={error} onRetry={onRetry} />;
   const title = {
-    validation: "질문을 다시 확인해 주세요 (422)", rate_limit: "호출이 너무 잦습니다 (429)", network: "서버에 연결하지 못했습니다",
+    validation: "질문을 다시 확인해 주세요 (422)", network: "서버에 연결하지 못했습니다",
     timeout: "응답이 60초 안에 오지 않았습니다", shape: "응답 형식이 예상과 다릅니다", server: `서버 오류가 났습니다 (${error.status})`,
   }[error.kind];
   const message = error.kind === "timeout" ? "서버가 깨어나는 중일 수 있습니다. 한 번 더 보내 주세요."
