@@ -63,8 +63,8 @@ async function request<T>(path: string, init: RequestInit, guard: (v: unknown) =
       }
       if (response.status === 429) {
         // 서버 상한은 IP당 1분이라 머리글이 없거나 이상하면 60초를 기다린다
-        const seconds = Number.parseInt(response.headers.get("Retry-After") ?? "", 10);
-        const wait = Number.isInteger(seconds) && seconds > 0 ? seconds : 60;
+        const header = (response.headers.get("Retry-After") ?? "").trim();
+        const wait = /^\d+$/.test(header) && Number(header) > 0 ? Number(header) : 60; // "7junk"·"-3"·날짜 형식 같은 값은 60초
         throw new ApiError("rate_limit", "호출이 너무 잦습니다. 잠시 뒤에 다시 시도해 주세요.", 429, undefined, wait);
       }
       throw new ApiError("server", `서버 오류가 났습니다 (${response.status})`, response.status);

@@ -92,6 +92,10 @@ it("429는 호출 상한 — Retry-After 초를 남긴다", async () => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "호출이 너무 잦습니다. 7초 뒤에 다시 시도해 주세요." }), { status: 429, headers: { "Retry-After": "7" } })));
   await expect(search("airbag")).rejects.toMatchObject({ kind: "rate_limit", status: 429, retryAfter: 7 });
 });
-it("429에 Retry-After가 없거나 이상하면 60초로 본다", async () => {
+it("429에 Retry-After가 없으면 60초로 본다", async () => {
   reply({}, 429); await expect(search("airbag")).rejects.toMatchObject({ kind: "rate_limit", retryAfter: 60 });
+});
+it.each(["7junk", "-3", "0", "1.5", "Wed, 21 Oct 2026 07:28:00 GMT"])("429의 Retry-After %s는 60초로 본다", async (value) => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 429, headers: { "Retry-After": value } })));
+  await expect(search("airbag")).rejects.toMatchObject({ kind: "rate_limit", retryAfter: 60 });
 });
