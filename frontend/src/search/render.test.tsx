@@ -60,4 +60,6 @@ it("호출 상한(429)은 기다릴 시간을 알리고 그동안 다시 시도�
   expect(alert).not.toMatch(/\d+초/);
   expect(markup).toContain('<p aria-hidden="true">7초 남음</p>');
   expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>다시 시도<span aria-hidden="true"> \(7\)<\/span><\/button>/);
+  // 끝났을 때 알릴 영역은 기다리는 동안에도 비어 있는 채로 먼저 있어야 한다(live 영역은 생긴 뒤의 변화만 읽힌다)
+  expect(markup).toContain('<p role="status" class="sr-only"></p>');
 });

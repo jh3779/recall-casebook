@@ -3,6 +3,12 @@
 > 먼저 [README.md](README.md)(공통 규칙)를 읽는다. 시작 조건: 작업 E(#105)와 **#63(호출 상한·CORS)**이 main에 병합됨. `git switch main && git pull && git switch -c chore/frontend-vercel-deploy`.
 > **Codex가 하는 것**: 배포 설정 파일·문서·런북(사람이 그대로 따라 할 명령 목록). **사람이 하는 것**: Vercel 로그인·프로젝트 생성·환경변수·실제 배포·API 재배포 — Codex 환경에는 Vercel 계정과 3D 모델 파일이 없다.
 
+
+> **실행 완료(2026-10-14, PR #119, DEC-058)** — 아래 1·2절은 **작업 전 계획**이다. 지금 따라 할 절차는 [`docs/배포_Vercel.md`](../../배포_Vercel.md) 2절 런북이다. 실행하며 계획과 달라진 것:
+> - `.vercelignore`는 `!public` 뒤 `public/models/*`를 다시 막고 `sonata.glb`·`sorento.glb`만 연다(보관 모델 제외, #108) — 아래 1절 "`public/models/*.glb`는 업로드에 들어가고"와 다르다.
+> - 원본 쏘나타(116,543,736바이트, `e3a9bf1e…`)는 Vercel CLI 업로드 100MB 한도에 걸려(약 135MB → 실패) 쓰이지 않는 텍스처 좌표만 지운 배포본(44,211,620바이트, `6e00b860…`)을 쓴다. 그래서 지문 대조 기준은 배포본이고 업로드는 약 61MiB다 — 아래 2절 1·4단계의 원본 지문·"약 135MB"는 옛 값이다.
+> - 배포본을 만드는 `@gltf-transform/core`를 개발 의존성으로 더해 lock이 바뀌었다 — 아래 1절 "의존성은 바꾸지 않으므로 lock은 그대로"와 다르다.
+> - 새 프로젝트의 첫 배포는 미리보기가 아니라 Production에 붙었다. 429 화면 처리(DEC-057 ⑤)도 이 작업에서 했다.
 ## 배경
 
 - API는 Vercel 프로젝트 `lg-cns-rag`(Production `https://lg-cns-rag.vercel.app`, 함수 지역 `syd1`)로 이미 배포돼 있다(`docs/배포_Vercel.md` 3-1절, DEC-051). 저장소 루트의 `.vercelignore`는 **API 전용 허용 목록**이라 `frontend/`를 올리지 않는다.
@@ -10,7 +16,7 @@
 - 화면은 **별도 Vercel 프로젝트**(예: `lg-cns-rag-web`)로, **CLI 배포만** 한다(Git 연동 배포는 gitignore된 `public/models/*.glb`가 빠져 3D가 안 뜬다).
 - 공개 API의 CORS 허용 주소(`ALLOWED_ORIGINS`)는 지금 비어 있어 기본값 `http://localhost:5173`만 허용된다. 배포 화면 주소를 넣고 **API를 다시 배포해야** 적용된다(서버가 시작할 때 한 번 읽음).
 
-## 1. 파일
+## 1. 파일 *(작업 전 계획 — 실행 결과는 위 머리말)*
 
 | 파일 | 내용 |
 |---|---|
@@ -19,7 +25,7 @@
 | `frontend/package.json` | `"engines": {"node": "24.x"}` 추가(Vercel은 `.nvmrc`를 읽지 않는다). 의존성은 바꾸지 않으므로 lock은 그대로여야 한다 — `npm install`이 lock을 바꾸면 그 변경만 함께 커밋 |
 | `frontend/src/vercelignore.test.ts` (새, 선택) | `.vercelignore` 첫 줄이 `/*`이고 허용 목록이 위와 같은지, `.env`·`dist`·`node_modules`가 허용되지 않는지 (API 쪽 `tests/test_vercel_entry.py`와 같은 취지) |
 
-## 2. 런북 — `docs/배포_Vercel.md` 2절을 고쳐 쓴다 (사람이 그대로 따라 할 명령)
+## 2. 런북 — `docs/배포_Vercel.md` 2절을 고쳐 쓴다 *(작업 전 계획 — 지금 따라 할 것은 그 2절)*
 
 다음 순서를 명령까지 적는다:
 

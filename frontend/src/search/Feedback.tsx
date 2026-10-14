@@ -34,7 +34,9 @@ function RateLimited({ error, onRetry }: { error: ApiError; onRetry?: () => void
   return <div className="feedback"><div className="err">
     <div role="alert"><h2>호출이 너무 잦습니다 (429)</h2>
       <p>같은 주소에서 1분에 보낼 수 있는 검색 수를 넘었습니다. 잠시 뒤에 다시 시도할 수 있습니다.</p></div>
-    {waiting ? <p aria-hidden="true">{left}초 남음</p> : <p role="status">이제 다시 시도할 수 있습니다.</p>}
+    {waiting && <p aria-hidden="true">{left}초 남음</p>}
+    {/* 알림 영역은 처음부터 비어 있는 채로 두고 글자만 채운다 — 이미 있는 live 영역의 변화만 화면 낭독기가 읽는다 */}
+    <p role="status" className={waiting ? "sr-only" : undefined}>{waiting ? "" : "이제 다시 시도할 수 있습니다."}</p>
     <div className="act"><button className="btn ghost small" disabled={waiting} onClick={onRetry}>다시 시도{waiting && <span aria-hidden="true"> ({left})</span>}</button></div>
   </div></div>;
 }
