@@ -193,10 +193,37 @@ class Evidence(Strict):
     text: str = Field(min_length=1)
 
 
+class CheckSource(Strict):
+    """근거를 읽은 573 보고서 판본 — 파일과 sha256으로 원본을 되짚는다."""
+
+    campaign: str
+    file: str
+    pdf_sha256: str
+    submission_date: str
+
+
 class CheckItem(Strict):
     item: Literal["same_part", "failure_mode", "remedy", "supplier", "cause_speaker"]
     label: str
     evidence: list[Evidence] = Field(min_length=1)
+
+
+class ProductionCheckItem(Strict):
+    """생산 기간 항목 — 읽은 573 보고서 판본(`source`)이 반드시 있어야 하고, 싣지 못한 블록 수(`omitted`)를 알린다(DEC-059).
+
+    다른 항목에는 이 두 칸이 올 수 없다(`item`으로 모델을 나눠 출처 없는 생산 기간이 응답으로 나가지 못하게 한다)."""
+
+    item: Literal["production_period"]
+    label: str
+    evidence: list[Evidence] = Field(min_length=1)
+    omitted: int = Field(default=0, ge=0)  # 한도(5개) 때문에 싣지 못한 블록 수
+    unread: int = Field(
+        default=0, ge=0
+    )  # 날짜까지 읽히지 않아 싣지 않은 블록 수(`NR - NR`·빈 값·한쪽만 있는 날짜)
+    source: CheckSource
+
+
+AnyCheckItem = Annotated[CheckItem | ProductionCheckItem, Field(discriminator="item")]
 
 
 class CauseSource(Strict):
@@ -276,7 +303,7 @@ class Card(Strict):
         Field(discriminator="status"),
     ]
     investigations: list[Investigation]
-    checklist: list[CheckItem]
+    checklist: list[AnyCheckItem]
 
 
 class SearchResponse(Strict):

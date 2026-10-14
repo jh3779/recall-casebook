@@ -34,11 +34,22 @@ export interface Investigation {
   open_date: string;
   close_date: string;
 }
-export interface CheckItem {
-  item: "same_part" | "failure_mode" | "remedy" | "supplier" | "cause_speaker";
+interface CheckBase {
   label: string;
   evidence: { field: string; text: string }[];
 }
+export interface PlainCheckItem extends CheckBase {
+  item: "same_part" | "failure_mode" | "remedy" | "supplier" | "cause_speaker";
+}
+/** 생산 기간 항목: 읽은 573 보고서 판본(`source`)이 반드시 있고, 싣지 못한 블록 수(`omitted`)를 알린다(최대 5개만 싣는다) */
+export interface ProductionCheckItem extends CheckBase {
+  item: "production_period";
+  omitted: number;
+  /** 날짜까지 읽히지 않아 싣지 않은 블록 수 */
+  unread: number;
+  source: { campaign: string; file: string; pdf_sha256: string; submission_date: string };
+}
+export type CheckItem = PlainCheckItem | ProductionCheckItem;
 export interface Card {
   rank: number;
   campno: string;

@@ -84,6 +84,7 @@ create table if not exists causes (
     supplier_names     text[] not null default '{}',
     supplier_countries text[] not null default '{}',
     new_form           boolean not null,
+    production_dates   jsonb not null default '[]',   -- 생산 기간 블록 목록 [{label, raw, start, end}] — raw는 원문 그대로, start·end는 YYYYMMDD 또는 빈 문자열 (DEC-059)
     pdfs               jsonb not null default '{}',   -- 판본 주소 → sha256
     resolution         text not null check (resolution in ('auto', 'manual', 'unresolved')),
     unresolved_reasons text[] not null default '{}',
@@ -91,6 +92,8 @@ create table if not exists causes (
     primary key (build_id, campaign)
 );
 create index if not exists causes_submission_date_idx on causes (build_id, submission_date);
+-- 2026-10-14 DEC-059: 이미 만들어진 causes 테이블(생산 기간 칸 추가 전)에도 칸을 더한다. 옛 build의 줄은 빈 목록('[]')으로 남는다
+alter table causes add column if not exists production_dates jsonb not null default '[]';
 -- 2026-10-11 DEC-047: 원인 칸의 "미보고·조사 중" 서술을 버리지 않고 stated_unknown으로 보존한다 — 이미 만든 테이블에도 허용 목록을 넓힌다
 alter table causes drop constraint if exists causes_cause_status_check;
 alter table causes add constraint causes_cause_status_check

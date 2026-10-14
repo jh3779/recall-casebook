@@ -81,6 +81,7 @@ TABLES = {
             "supplier_names",
             "supplier_countries",
             "new_form",
+            "production_dates",
             "pdfs",
             "resolution",
             "unresolved_reasons",
@@ -91,7 +92,7 @@ BUILD_COLS = [
     "build_id", "snapshot_date", "raw_manifest_sha256", "recalls_sha256", "eval_sha256", "causes_kind",
     "causes_file", "causes_sha256", "causes_rows", "causes_expected_rows", "causes_spec", "change_summary",
 ]  # fmt: skip
-JSON_COLS = ("pdfs", "change_summary", "causes_spec")
+JSON_COLS = ("pdfs", "production_dates", "change_summary", "causes_spec")
 
 
 def db_columns(table: str) -> list[str]:
@@ -115,6 +116,22 @@ def parse_compact(value, where: str) -> date:
 def parse_iso(value, where: str) -> date:
     """YYYY-MM-DD만 받는다."""
     return _parse(value, r"\d{4}-\d{2}-\d{2}", "%Y-%m-%d", where)
+
+
+def check_production_dates(blocks, where: str) -> None:
+    """생산 기간 블록은 `label·raw·start·end` 문자열 네 칸이고 날짜는 비었거나 YYYYMMDD(둘 다 있거나 둘 다 비어야 함)여야 한다."""
+    if not isinstance(blocks, list):
+        sys.exit(f"{where} production_dates가 목록이 아니다")
+    for b in blocks:
+        ok = (
+            isinstance(b, dict)
+            and set(b) == {"label", "raw", "start", "end"}
+            and all(isinstance(v, str) for v in b.values())
+            and all(b[k] == "" or re.fullmatch(r"\d{8}", b[k]) for k in ("start", "end"))
+            and bool(b["start"]) == bool(b["end"])
+        )
+        if not ok:
+            sys.exit(f"{where} production_dates의 블록 모양이 약속과 다르다: {b!r}")
 
 
 def read_jsonl(path: Path) -> list[dict]:
@@ -176,7 +193,7 @@ def causes_spec(data_dir: Path, kind: str, baseline: Path) -> dict:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     for key in (
         "kind", "rows", "file_sha256", "campaigns_sha256", "expected_campaigns_sha256", "expect_campaigns",
-        "failures", "failed_campaigns", "text_basis",
+        "failures", "failed_campaigns", "text_basis", "production_dates_basis",
     ):  # fmt: skip
         if key not in manifest:
             sys.exit(f"{MANIFEST_NAME}에 {key} 칸이 없다")
@@ -185,6 +202,13 @@ def causes_spec(data_dir: Path, kind: str, baseline: Path) -> dict:
     if not isinstance(manifest["text_basis"], str) or not manifest["text_basis"].strip():
         sys.exit(
             f"{MANIFEST_NAME}의 text_basis가 비어 있다 — 원인 글 정리 방식을 밝히지 못하는 원인 파일은 올리지 않는다(DEC-047)"
+        )
+    if (
+        not isinstance(manifest["production_dates_basis"], str)
+        or not manifest["production_dates_basis"].strip()
+    ):
+        sys.exit(
+            f"{MANIFEST_NAME}의 production_dates_basis가 비어 있다 — 생산 기간 판독 규칙을 밝히지 못하는 원인 파일은 올리지 않는다(DEC-059)"
         )
     # 칸이 아예 없는 것만 옛 명세(2026-10-12 이전 수집)로 본다 — 칸이 있는데 값이 이상하면 손상된 명세다
     if "recalls_sha256" in manifest and not (
@@ -299,9 +323,20 @@ def load_files(data_dir: Path, causes_kind: str, baseline: Path | None = None) -
                 f"{causes_file.name} {i}번째 줄 {c['campaign']}이 recalls의 어느 campno 앞 6자리와도 맞지 않는다"
             )
         sub = c["submission_date"]
+        # 전체본은 생산 기간 판독 규칙이 명세에 있어야만 올라오므로 줄에도 칸이 있어야 한다. 표본(기준 파일에 sha가 고정돼
+        # 다시 만들지 않는다)은 칸이 없으면 "읽지 않음"이 아니라 빈 목록으로 올린다.
+        if "production_dates" not in c and causes_kind == "full":
+            sys.exit(
+                f"{causes_file.name} {i}번째 줄 {c['campaign']}에 production_dates 칸이 없다 — 옛 규칙의 원인 파일이다"
+            )
+        check_production_dates(c.get("production_dates", []), f"{causes_file.name} {i}번째 줄")
         causes.append(
             {
-                **{k: c[k] for k in TABLES["causes"]["cols"] if k != "submission_date"},
+                **{
+                    k: c.get(k, []) if k == "production_dates" else c[k]
+                    for k in TABLES["causes"]["cols"]
+                    if k != "submission_date"
+                },
                 "submission_date": parse_compact(
                     sub, f"{causes_file.name} {i}번째 줄 submission_date"
                 )

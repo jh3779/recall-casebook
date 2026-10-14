@@ -222,6 +222,46 @@ def test_card_model_requires_fields_for_each_cause_status(cause):
         Card.model_validate({**card, "cause": cause})
 
 
+def test_card_model_requires_source_for_production_period_and_forbids_it_for_other_items():
+    from pydantic import ValidationError
+
+    from server.api import CARD_TEXT_SPEAKER, Card
+
+    card = {
+        "rank": 1, "campno": "24V001000", "maker": "m", "maker_group": "Kia", "received_date": "20240101",
+        "components": [], "defect": "", "consequence": "", "remedy": "", "dup_group": "24V001000",
+        "source": {"dataset": "NHTSA FLAT_RCL", "snapshot_date": "2026-10-06", "speaker": CARD_TEXT_SPEAKER},
+        "investigations": [], "cause": {"status": "no_573_report"},
+    }  # fmt: skip
+    evidence = [{"field": "573.production_dates", "text": "Jan 02, 2023 - Feb 03, 2023"}]
+    source = {
+        "campaign": "24V001",
+        "file": "f.PDF",
+        "pdf_sha256": "cd" * 32,
+        "submission_date": "20230201",
+    }
+    production = {"item": "production_period", "label": "생산 기간", "evidence": evidence}
+    Card.model_validate(
+        {**card, "checklist": [{**production, "source": source}]}
+    )  # 출처가 있으면 통과
+    for bad in (
+        production,  # 출처 없는 생산 기간
+        {**production, "source": None},
+        {**production, "source": source, "omitted": -1},
+        {**production, "source": source, "unread": -1},
+        {
+            "item": "same_part",
+            "label": "x",
+            "evidence": evidence,
+            "source": source,
+        },  # 다른 항목에는 출처 칸이 없다
+        {"item": "same_part", "label": "x", "evidence": evidence, "omitted": 2},
+        {"item": "same_part", "label": "x", "evidence": evidence, "unread": 1},
+    ):
+        with pytest.raises(ValidationError):
+            Card.model_validate({**card, "checklist": [bad]})
+
+
 def test_load_build_rejects_failure_reasons_that_do_not_match_failed_campaigns(tmp_path):
     with pytest.raises(BuildMismatch, match="failed_kinds"):
         load_build(_with_failure(tmp_path, {"22V003": "non_pdf_response"}))
@@ -645,11 +685,33 @@ def test_checklist_links_evidence_and_skips_items_without_it():
         remedy="Replace the inflator.",
     )
     filled = {"status": "filled"}
-    row = cause("24V001", supplier_names=["ARC Automotive"])
+    row = _row(supplier_names=["ARC Automotive"])
     inv = [{"action": "PE20001"}]
     items = {c["item"]: c["evidence"] for c in checklist(card, row, inv, filled)}
-    assert list(items) == ["same_part", "failure_mode", "remedy", "supplier", "cause_speaker"]
+    assert list(items) == [
+        "same_part",
+        "production_period",
+        "failure_mode",
+        "remedy",
+        "supplier",
+        "cause_speaker",
+    ]
     assert [e["field"] for e in items["same_part"]] == ["components"]
+    assert items["production_period"] == [
+        {
+            "field": "573.production_dates",
+            "text": "Vehicle 1: 2023-2023 FOO BAR | Jan 02, 2023 - Feb 03, 2023",
+        }
+    ]  # 머리글과 원문을 " | "로만 이었다
+    (production,) = [
+        c for c in checklist(card, row, inv, filled) if c["item"] == "production_period"
+    ]
+    assert production["source"] == {
+        "campaign": "24V001",
+        "file": "odi/rcl/2023/RCLRPT-24V001-0001.PDF",
+        "pdf_sha256": "cd" * 32,
+        "submission_date": "20230201",
+    }  # 읽은 보고서 판본을 되짚을 수 있다
     assert items["failure_mode"] == [
         {"field": "defect", "text": "Airbag inflator may rupture."}
     ]  # 결과 원문은 비어 빠짐
@@ -675,6 +737,80 @@ def test_checklist_links_evidence_and_skips_items_without_it():
     assert "supplier" not in {
         c["item"] for c in checklist(card, unresolved, [], {"status": "version_unresolved"})
     }
+
+
+def _row(**kw):
+    """실제 원인 행처럼 `pdfs`가 읽은 판본(`source_file`)의 sha256을 가진다."""
+    campaign = kw.pop("campaign", "24V001")
+    file = f"odi/rcl/2023/RCLRPT-{campaign}-0001.PDF"
+    return cause(campaign, pdfs={file: "cd" * 32}, **kw)
+
+
+def _block(n, label=None, raw=None, start="20230102", end="20230203"):
+    return {
+        "label": f"Vehicle {n}: 2023-2023 FOO BAR{n}" if label is None else label,
+        "raw": f"Jan {n:02d}, 2023 - Feb 03, 2023" if raw is None else raw,
+        "start": start,
+        "end": end,
+    }
+
+
+def _production(cause_row, cause_status="filled"):
+    from server.rag.checks import checklist
+
+    card = recall("24V001000")
+    return {c["item"]: c for c in checklist(card, cause_row, [], {"status": cause_status})}.get(
+        "production_period"
+    )
+
+
+def test_production_period_shows_first_five_blocks_and_counts_the_rest():
+    from server.rag.checks import PRODUCTION_SHOWN
+
+    row = _row(production_dates=[_block(n) for n in range(1, 9)])
+    item = _production(row)
+    assert PRODUCTION_SHOWN == 5
+    assert [e["text"].split(" | ")[0] for e in item["evidence"]] == [
+        f"Vehicle {n}: 2023-2023 FOO BAR{n}" for n in range(1, 6)
+    ]
+    assert item["omitted"] == 3  # 8블록 중 5개만 실었다
+    two = _production(_row(production_dates=[_block(1), _block(2)]))
+    assert len(two["evidence"]) == 2 and "omitted" not in two
+
+
+def test_production_period_text_without_label_is_the_raw_line_only():
+    row = _row(production_dates=[_block(1, label="", raw="DEC 07, 2007 - JAN 07, 2013")])
+    assert _production(row)["evidence"] == [
+        {"field": "573.production_dates", "text": "DEC 07, 2007 - JAN 07, 2013"}
+    ]
+
+
+def test_production_period_skips_unreadable_blocks_and_hides_item_when_none_is_readable():
+    unreadable = _block(2, raw="NR - NR", start="", end="")
+    row = _row(production_dates=[_block(1), unreadable])
+    item = _production(row)
+    assert len(item["evidence"]) == 1 and "omitted" not in item  # 한도 때문에 못 실은 것은 없다
+    assert (
+        item["unread"] == 1
+    )  # 날짜를 읽지 못해 뺀 블록은 개수를 알려 목록이 전부라고 믿지 않게 한다
+    assert "unread" not in _production(_row(production_dates=[_block(1)]))  # 다 읽혔으면 칸이 없다
+    only_bad = _row(production_dates=[unreadable])
+    assert _production(only_bad) is None
+
+
+def test_production_period_without_readable_blocks_does_not_touch_the_pdf_source():
+    # 싣을 근거가 없으면 출처(pdfs[source_file])를 읽지 않는다 — 생산 기간과 무관한 카드가 출처 칸 때문에 멈추지 않게
+    broken = cause("24V001", pdfs={}, production_dates=[_block(1, raw="NR - NR", start="", end="")])
+    assert _production(broken) is None
+    assert _production(cause("24V001", pdfs={}, production_dates=[])) is None
+
+
+def test_production_period_is_not_shown_for_unresolved_missing_or_old_rows():
+    base = _row(production_dates=[_block(1)])
+    assert _production({**base, "resolution": "unresolved"}) is None  # 판본을 정하지 못함
+    assert _production(None) is None  # 573 보고서 없음
+    old = {k: v for k, v in base.items() if k != "production_dates"}
+    assert _production(old) is None  # 생산 기간 판독 이전의 원인 행
 
 
 def test_verify_refuses_altered_investigation_summary_or_wrong_cause_flag_span():

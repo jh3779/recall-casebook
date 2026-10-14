@@ -84,6 +84,34 @@ _SUPPLIER_BLOCK = re.compile(
 )
 # "JUN 05, 2024", "NOV 18,2014", "Sep 14, 2015" 모두 있다
 _SUBMISSION = re.compile(r"Submission Date\s*:\s*([A-Za-z]{3})\s+(\d{1,2})\s*,\s*(\d{4})")
+# 생산 기간 — 차량·장비·타이어·어린이용품 블록마다 `Production Dates : <시작> - <종료>` 한 줄이 있다(옛 양식·새 양식 공통).
+# 블록 머리글은 번호가 붙은 `Vehicle 1 :`·`Brand / Trade 1 :`·`Tire Brand 1 :`·`Make 1 :`만 쓴다 — 번호 없는 옛 장비 양식은 라벨을 짐작하지 않는다.
+# 설명 글 속의 "Q5 : 30412" 같은 줄이 머리글로 잡히지 않게 이름을 이 넷으로 제한한다.
+_PRODUCTION_LINE = re.compile(r"^[ \t]*Production Dates[ \t]*:[ \t]*(.*?)[ \t]*$", re.I)
+_BLOCK_HEADER = re.compile(r"^[ \t]*(?:Vehicle|Brand / Trade|Tire Brand|Make) *\d+ *:.*$")
+_MONTHS = {
+    name: number
+    for number, names in enumerate(
+        (
+            ("jan", "january"),
+            ("feb", "february"),
+            ("mar", "march"),
+            ("apr", "april"),
+            ("may",),
+            ("jun", "june"),
+            ("jul", "july"),
+            ("aug", "august"),
+            ("sep", "sept", "september"),
+            ("oct", "october"),
+            ("nov", "november"),
+            ("dec", "december"),
+        ),
+        1,
+    )
+    for name in names
+}
+_ONE_DATE = r"([A-Za-z]{3,9})\s+(\d{1,2})\s*,\s*(\d{4})"
+_PRODUCTION_RANGE = re.compile(rf"^{_ONE_DATE}\s*[-\u2013\u2014]\s*{_ONE_DATE}$")
 # 원인 칸이 쪽을 넘으면 pdftotext가 쪽 꼬리말·머리말을 본문 사이에 끼운다. 새 쪽의 머리말은 쪽 경계 문자(\f) 바로 뒤에 오므로
 # (2026-10-12 전수 확인 — 줄 전체 규칙이 1,267개 캠페인을 놓친 이유가 이 \f였다) 그 자리의 머리말만 지운다(DEC-047, PR #82 Codex).
 # 지우는 것: ⓐ 49 CFR 꼬리말 문장 ⓑ \f 바로 뒤의 "Part 573 Safety Recall Report <번호>"(앞뒤 쪽 번호 포함) ⓒ 줄 전체가 머리말뿐인 줄
@@ -106,9 +134,51 @@ CAUSE_TEXT_BASIS = (
     "rclrpt-2026-10-12b; pdftotext-layout; page-header-footer-removed; whitespace-collapsed"
 )
 
+# 생산 기간 판독 규칙(DEC-059) — 블록마다 `Production Dates` 한 줄의 원문(`raw`)을 남기고, 정확히 `날짜 - 날짜`일 때만 시작·종료일을 채운다.
+# 판독 규칙을 바꿔 **출력이 달라지면** 판본을 올린다. 원인 파일 명세(causes.manifest.json)에 기록되고 `load_db`가 없으면 올리지 않는다.
+PRODUCTION_DATES_BASIS = "rclrpt-2026-10-14; production-dates-line-per-block; raw-kept-whitespace-collapsed; dates-only-for-exact-range"
+
+
+def _compact_date(month: str, day: str, year: str) -> str:
+    """ "Jun", "12", "2025" → "20250612". 월 이름을 모르거나 없는 날짜면 빈 문자열(짐작하지 않는다)."""
+    number = _MONTHS.get(month.lower())
+    if number is None:
+        return ""
+    try:
+        datetime(int(year), number, int(day))
+    except ValueError:
+        return ""
+    return f"{int(year):04d}{number:02d}{int(day):02d}"
+
+
+def parse_production_dates(flat: str) -> list[dict]:
+    """블록마다 `Production Dates` 한 줄을 원문 그대로(`raw`) 읽고, 정확히 `날짜 - 날짜`일 때만 시작·종료일을 채운다.
+
+    `label`은 같은 블록 안(앞선 생산 기간 줄 이후)에서 가장 가까운 번호 붙은 머리글 줄이다 — 없으면 비운다.
+    읽을 수 없는 값(NR, 한쪽만 있는 날짜, 줄이 잘린 글)도 `raw`를 남기고 날짜는 비운다. 이상해 보이는 값
+    (시작이 종료보다 늦음, 1900년 자리표시)은 고치지 않는다 — 원문이 그렇게 쓰여 있다(AGENTS.md 2-2).
+    """
+    blocks, label = [], ""
+    for line in flat.split("\n"):
+        if _BLOCK_HEADER.match(line):
+            label = line.strip()
+            continue
+        m = _PRODUCTION_LINE.match(line)
+        if not m:
+            continue
+        raw = m.group(1)
+        r = _PRODUCTION_RANGE.match(raw)
+        start = _compact_date(*r.group(1, 2, 3)) if r else ""
+        end = _compact_date(*r.group(4, 5, 6)) if r else ""
+        if not (start and end):  # 한쪽만 읽히면 짝이 맞지 않는 범위가 되므로 둘 다 비운다
+            start = end = ""
+        blocks.append({"label": label, "raw": raw, "start": start, "end": end})
+        label = ""
+    return blocks
+
 
 def parse_report(text: str) -> dict:
-    """pdftotext -layout 결과에서 제출일·원인·공급사를 뽑는다."""
+    """pdftotext -layout 결과에서 제출일·원인·공급사·생산 기간을 뽑는다."""
     flat = re.sub(r"[ \t]+", " ", text)
     m = _SUBMISSION.search(flat)
     submission = (
@@ -159,6 +229,7 @@ def parse_report(text: str) -> dict:
         "supplier_names": names,
         "supplier_countries": countries,
         "new_form": "Tier of Supplier" in flat,
+        "production_dates": parse_production_dates(flat),
     }
 
 
@@ -597,6 +668,7 @@ def run(
             "listing_campaigns": len(reports),
             "pdftotext": poppler_version,
             "text_basis": CAUSE_TEXT_BASIS,
+            "production_dates_basis": PRODUCTION_DATES_BASIS,
             "recalls_sha256": recalls_sha,
             "generated_at": datetime.now(UTC).isoformat(),
         }

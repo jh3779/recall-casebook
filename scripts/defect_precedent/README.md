@@ -1,7 +1,7 @@
 # 결함 선례 데이터·시험지 스크립트
 
 결함 선례 찾기 도우미(현행 팀 주제, DEC-030, 기획 `docs/기획_결함선례.md`)의 데이터·시험지·기준 점수를 만드는 스크립트다.
-원본과 결과물은 커밋하지 않는다 (`data/raw/`, `data/processed/`는 `.gitignore`). 기준 실행을 고정하는 작은 파일(`baseline_2026-10-06.json`은 회사명 반영 전 카드용, `baseline_2026-10-06_maker-aliases.json`는 반영한 카드용 — 원본·카드·시험지·573 판본의 sha256)만 커밋한다.
+원본과 결과물은 커밋하지 않는다 (`data/raw/`, `data/processed/`는 `.gitignore`). 기준 실행을 고정하는 작은 파일(`baseline_2026-10-06.json`은 회사명 반영 전 카드용, `baseline_2026-10-06_maker-aliases.json`는 반영한 카드용, `baseline_2026-10-06_production-dates.json`은 생산 기간 판독 규칙(DEC-059)으로 다시 만든 원인 파일용 — 원본·카드·시험지·573 판본의 sha256)만 커밋한다.
 
 > **재현 범위**: 2026-10-06 기준 점수(0.510)와 573 표본(10/6 첫 판독 205/95, 2026-10-12 규칙 205/83/12)은 **그날의 원본 사본이 있을 때만** 같은 값으로 다시 만들 수 있다. NHTSA는 같은 주소에 매일 새 파일을 덮어쓰고 옛 파일을 주지 않으며, 원본은 저장소에 커밋하지 않는다(AGENTS.md 7절). 사본은 **팀 구글 드라이브**에 `data/` 폴더 압축본(`data.zip` — `raw/nhtsa`·`raw/rclrpt`·`processed/defect`, 2026-10-07 보관)으로 둔다. 링크는 저장소에 적지 않는다 — 우지훈에게 받는다. 받은 사본이 같은지는 `bm25_baseline --baseline`(원본·카드·시험지)과 `rclrpt sample --baseline`(573 PDF)이 각각 sha256으로 확인한다. 사본이 없으면 `fetch`로 받은 새 원본에서 `--allow-drift`로 같은 질문 번호만 "재평가"할 수 있고, 그 값은 기준 점수와 다를 수 있다.
 
@@ -12,7 +12,7 @@ uv run python -m scripts.defect_precedent.nhtsa fetch          # NHTSA 원본 zi
 uv run python -m scripts.defect_precedent.nhtsa build          # recalls.jsonl · eval.jsonl (약 2초, 원본 sha256 검증 후)
 uv run python -m scripts.defect_precedent.bm25_baseline        # 기준 점수 Hit@1·3·5·10 (약 1분)
 uv run python -m scripts.defect_precedent.rclrpt sample 300    # 원본 보고서(Part 573) 무작위 표본 판독 (pdftotext 필요)
-uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06_maker-aliases.json --full  # 573 전수 확인(완성본·명세 필요, 하한~상한). `--full` 없이 돌리면 표본 추정.
+uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06_production-dates.json --full  # 573 전수 확인(완성본·명세 필요, 하한~상한). `--full` 없이 돌리면 표본 추정. **원인 파일 판본마다 기준 파일이 다르다** — 생산 기간을 읽는 새 `causes.jsonl`(sha256 b34edec908d5…, DEC-059)은 이 파일, 옛 `causes.jsonl`(06b0fe44990f…)은 `baseline_2026-10-06_maker-aliases.json`을 쓴다(다른 판본에는 "전수 결과가 기준 파일의 고정값과 다르다"로 멈춘다).
 uv run python -m scripts.defect_precedent.why_stats --baseline scripts/defect_precedent/baseline_2026-10-06_maker-aliases.json  # 기획 5절 "왜" 집계 (원인 표현·조사 요약·표본 추정·질문의 회사 이름 겹침, 추가 수집 없음)
 ```
 
@@ -46,7 +46,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 |---|---|---|
 | `recalls.jsonl` | 리콜 카드 1건 | `campno, maker, maker_group, raw_maker, components[], defect, consequence, remedy, received_date, recall_type, influenced_by, dup_group, snapshot_date` |
 | `eval.jsonl` | 시험 질문 1개 (조사 1건) | `action_no, question, open_date, gold_campnos[], set[]` (`all` · `since2010` · `rclrpt_range`) |
-| `causes_sample.jsonl` / `causes.jsonl` | 원본 보고서 1건 (최신 판본) | `campaign, versions, source_file, submission_date, cause_text, cause_status(filled/stated_unknown/empty/no_field — stated_unknown = 원인 칸이 미보고·조사 중 표현으로 시작하는 글, 원문 보존), supplier_names[], supplier_countries[], new_form, pdfs{판본: sha256}, resolution(auto/manual/unresolved), unresolved_reasons[]` |
+| `causes_sample.jsonl` / `causes.jsonl` | 원본 보고서 1건 (최신 판본) | `campaign, versions, source_file, submission_date, cause_text, cause_status(filled/stated_unknown/empty/no_field — stated_unknown = 원인 칸이 미보고·조사 중 표현으로 시작하는 글, 원문 보존), supplier_names[], supplier_countries[], new_form, production_dates[{label, raw, start, end}](573 `Production Dates` 줄을 블록마다 원문 그대로 — `raw`는 공백 정리만, `start`·`end`는 정확히 `날짜 - 날짜`일 때만 YYYYMMDD이고 아니면 빈 문자열, `label`은 번호 붙은 블록 머리글 또는 빈 문자열(PDF가 긴 머리글을 줄바꿈하면 **첫 줄에서 끊길 수 있다**, 길이와 무관하게 생긴다 — 쉼표·`&`·`;`로 끝나는 라벨 339블록(80자 미만도 60블록), 90자 이상은 고유 159개(두 집합은 57블록 겹침), 이어지는 줄은 붙이지 않음), 이상해 보이는 값은 고치지 않음, 전체본 명세의 `production_dates_basis`, DEC-059), pdfs{판본: sha256}, resolution(auto/manual/unresolved), unresolved_reasons[]` |
 | `causes_*_failures.jsonl` | 읽지 못한 리콜 1건 | `campaign, keys[], error` (받기·변환 실패, 기준 sha256 불일치 — "원인 칸 없음"과 구분) |
 | `build.json` | build 1회 | `raw_manifest_sha256, recalls_sha256, eval_sha256, maker_aliases_sha256, maker_aliases_draft_sha256, snapshot_date` — 카드·시험지가 어떤 원본과 어떤 회사명 대응표(확인본·대조한 초안)에서 나왔는지. `verify_build`가 기록된 칸을 모두 대조한다(옛 build.json에 없는 칸은 건너뜀, 초안 해시는 #45). build는 카드·시험지·build.json을 한 폴더에 만든 뒤 폴더째 교체하고, 이 단계가 만들지 않는 파일·하위 폴더(573 판독 결과, 시트, 벡터 사본 등)는 새 폴더로 옮겨 둔다 |
 
@@ -56,7 +56,7 @@ uv run python -m scripts.defect_precedent.rclrpt sample --baseline scripts/defec
 - `campaign`은 리콜 번호 앞 6자리(예: `24V412`)다. `recalls.jsonl`의 `campno`(예: `24V412000`) 앞 6자리와 잇는다.
 - 원본 보고서 판독: 수정본 중 `Submission Date`가 가장 늦은 판본을 쓴다(날짜 형식 `JUN 05, 2024` · `NOV 18,2014` · `Sep 14, 2015`를 모두 읽음). 날짜를 모르는 판본(글자 없는 이미지, 제출일 미판독)이 하나라도 있으면 최신판을 짐작하지 않고 `resolution = "unresolved"`로 두어 원인 칸 통계에서 뺀다. 사람이 이미지 판본을 열어 확인한 제출일은 `manual_submission_dates.json`(PDF 주소 → 제출일·sha256·확인 기록)에 적고, PDF sha256이 같을 때만 쓴다 (`resolution = "manual"`). 원인 칸 중간에 끼는 쪽 꼬리말("The information contained in this report…", "Page 3 of 5")은 지운다.
 
-## 기준값 (2026-10-06, `baseline_2026-10-06.json` · 회사명 반영 카드는 `baseline_2026-10-06_maker-aliases.json`, 점수 같음)
+## 기준값 (2026-10-06, `baseline_2026-10-06.json` · 회사명 반영 카드는 `baseline_2026-10-06_maker-aliases.json`, 점수 같음 · 생산 기간을 읽는 원인 파일의 전수 결과 지문은 `baseline_2026-10-06_production-dates.json`, 카드·점수 같음)
 
 | 항목 | 값 |
 |---|---|

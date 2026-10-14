@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 
 import pytest
 
@@ -423,9 +424,16 @@ def test_reproduces_the_full_573_numbers():
     manifest = why_stats.verify_causes(causes_path, nhtsa.OUT_DIR / "causes.manifest.json", causes)
     # 2026-10-12 판독 규칙의 완성본(DEC-047 — stated_unknown 원문 보존·본문 인용 머리말 보존). 10/7 완성본 d215ff583281…과
     # filled·실패·줄 수가 같아 수치는 그대로다
-    assert manifest["file_sha256"].startswith("06b0fe44990f")
+    # 원인 파일은 판독 규칙 판본마다 기준 파일이 따로 고정돼 있다 — 현재 파일은 그중 하나의 지문과 정확히 같아야 하고,
+    # 그 기준 파일의 고정값으로 대조한다(DEC-059: 생산 기간 판독 규칙 판본은 새 기준 파일 baseline_2026-10-06_production-dates.json)
+    baselines = {
+        "06b0fe44990f": "baseline_2026-10-06.json",
+        "b34edec908d5": "baseline_2026-10-06_production-dates.json",
+    }
+    version = manifest["file_sha256"][:12]
+    assert version in baselines, f"기준 파일이 고정하지 않은 원인 파일 판본: {version}"
     # 기준 파일에 고정한 전수 결과의 값(대상 목록·실패 목록·원인 파일·명세 파일 지문)과 같다
-    base_path = nhtsa.REPO_ROOT / "scripts/defect_precedent/baseline_2026-10-06.json"
+    base_path = nhtsa.REPO_ROOT / "scripts/defect_precedent" / baselines[version]
     base = json.loads(base_path.read_text(encoding="utf-8"))
     manifest_sha = hashlib.sha256((nhtsa.OUT_DIR / "causes.manifest.json").read_bytes()).hexdigest()
     assert "일치" in why_stats.full_baseline_check(base, manifest, manifest_sha, False)
@@ -470,6 +478,34 @@ def test_the_maker_aliases_baseline_differs_from_the_old_one_only_in_the_cards()
     assert new["build"]["maker_aliases_draft_sha256"] == nhtsa.sha256_aliases(
         nhtsa.MAKER_ALIASES_DRAFT
     )
+
+
+def test_the_production_dates_baseline_differs_from_the_maker_aliases_one_only_in_the_cause_file():
+    # DEC-059: 같은 원본·카드·시험지·573 표본 위에서 원인 파일(전수 결과)의 지문만 생산 기간 판독 규칙 판본으로 바뀐다
+    folder = nhtsa.REPO_ROOT / "scripts/defect_precedent"
+    old = json.loads(
+        (folder / "baseline_2026-10-06_maker-aliases.json").read_text(encoding="utf-8")
+    )
+    new = json.loads(
+        (folder / "baseline_2026-10-06_production-dates.json").read_text(encoding="utf-8")
+    )
+    for key in ("raw", "build", "eval_action_nos", "rclrpt_sample", "causes_sample", "expected"):
+        assert new[key] == old[key], key
+    changed = {k for k in new["causes_full"] if new["causes_full"][k] != old["causes_full"].get(k)}
+    assert changed == {"causes_sha256", "manifest_sha256", "production_dates_basis", "note"}
+    for key in (
+        "rows",
+        "failures",
+        "expect_campaigns",
+        "expected_campaigns_sha256",
+        "failed_campaigns_sha256",
+    ):
+        assert new["causes_full"][key] == old["causes_full"][key], (
+            key
+        )  # 줄 수·대상 목록·실패 목록은 그대로
+    assert new["causes_full"]["causes_sha256"] != old["causes_full"]["causes_sha256"]
+    assert re.fullmatch(r"[0-9a-f]{64}", new["causes_full"]["causes_sha256"])
+    assert re.fullmatch(r"[0-9a-f]{64}", new["causes_full"]["manifest_sha256"])
 
 
 @pytest.mark.skipif(

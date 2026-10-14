@@ -17,7 +17,7 @@ import pytest
 
 from scripts.ci.db_guard import is_local_test_db
 from scripts.defect_precedent import load_db
-from scripts.defect_precedent.rclrpt import CAUSE_TEXT_BASIS
+from scripts.defect_precedent.rclrpt import CAUSE_TEXT_BASIS, PRODUCTION_DATES_BASIS
 
 # ---------------------------------------------------------------------------
 # 작은 가짜 데이터 폴더
@@ -53,6 +53,14 @@ def cause(campaign, text="The gauge of the tube is insufficient.", **kw):
         "supplier_names": ["Alliance Aluminum"],
         "supplier_countries": ["United States"],
         "new_form": False,
+        "production_dates": [
+            {
+                "label": "Vehicle 1: 2023-2023 FOO BAR",
+                "raw": "Jan 02, 2023 - Feb 03, 2023",
+                "start": "20230102",
+                "end": "20230203",
+            }
+        ],
         "pdfs": {"odi/rcl/2023/RCLRPT-x.PDF": "ab" * 32},
         "resolution": "auto",
         "unresolved_reasons": [],
@@ -133,6 +141,7 @@ def write_full(d, cause_rows, **override):
         "listing_campaigns": len(cause_rows),
         "pdftotext": "pdftotext version 25.07.0",
         "text_basis": CAUSE_TEXT_BASIS,  # rclrpt all이 명세에 남기는 원인 글 정리 방식(DEC-047)
+        "production_dates_basis": PRODUCTION_DATES_BASIS,  # 생산 기간 판독 규칙(DEC-059)
         "generated_at": "2026-10-07T00:00:00+00:00",
         **override,
     }
@@ -338,6 +347,69 @@ def test_full_refuses_causes_collected_from_another_card_snapshot(tmp_path, caps
         write_full(d, rows, recalls_sha256=bad)
         with pytest.raises(SystemExit, match="sha256 값이 아니다"):
             load_db.load_files(d, "full", baseline)
+
+
+def test_full_refuses_a_manifest_without_production_dates_basis(tmp_path):
+    # 생산 기간 판독 규칙(DEC-059) 이전 명세는 올리지 않는다 — 규칙을 밝히지 못한 칸이 "없음"처럼 보이지 않게
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001"), cause("23V002")])
+    manifest = json.loads((d / "causes.manifest.json").read_text(encoding="utf-8"))
+    del manifest["production_dates_basis"]
+    (d / "causes.manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        load_db.load_files(d, "full", make_baseline(tmp_path))
+    assert "production_dates_basis 칸이 없다" in str(e.value)
+
+
+@pytest.mark.parametrize("basis", ["", "   ", 7, None])
+def test_full_refuses_an_empty_production_dates_basis(tmp_path, basis):
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001"), cause("23V002")], production_dates_basis=basis)
+    with pytest.raises(SystemExit, match="production_dates_basis가 비어 있다"):
+        load_db.load_files(d, "full", make_baseline(tmp_path))
+
+
+def test_full_refuses_a_cause_row_without_production_dates(tmp_path):
+    d = make_data_dir(tmp_path)
+    old = cause("24V001")
+    del old["production_dates"]
+    write_full(d, [old, cause("23V002")])
+    with pytest.raises(SystemExit, match="24V001에 production_dates 칸이 없다"):
+        load_db.load_files(d, "full", make_baseline(tmp_path))
+
+
+def test_sample_rows_without_production_dates_load_as_an_empty_list(tmp_path):
+    # 표본은 기준 파일에 sha가 고정돼 다시 만들지 않는다 — 칸이 없으면 빈 목록으로 올린다
+    old = cause("24V001")
+    del old["production_dates"]
+    d = make_data_dir(tmp_path, causes=[old])
+    loaded = load_db.load_files(d, "sample", make_baseline(tmp_path))
+    assert loaded["causes"][0]["production_dates"] == []
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"label": "", "raw": "x", "start": "20230102"},  # 칸이 모자람
+        {"label": "", "raw": "x", "start": "", "end": "", "extra": 1},  # 약속에 없는 칸
+        {"label": "", "raw": "x", "start": "20230102", "end": ""},  # 한쪽만 있음
+        {"label": "", "raw": "x", "start": "2023-01-02", "end": "2023-02-03"},  # YYYYMMDD가 아님
+        {"label": "", "raw": 5, "start": "", "end": ""},  # 문자열이 아님
+        "Jan 02, 2023 - Feb 03, 2023",  # 블록이 객체가 아님
+    ],
+)
+def test_full_refuses_a_malformed_production_dates_block(tmp_path, block):
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001", production_dates=[block]), cause("23V002")])
+    with pytest.raises(SystemExit, match="production_dates의 블록 모양이 약속과 다르다"):
+        load_db.load_files(d, "full", make_baseline(tmp_path))
+
+
+def test_full_refuses_production_dates_that_is_not_a_list(tmp_path):
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001", production_dates={"raw": "x"}), cause("23V002")])
+    with pytest.raises(SystemExit, match="production_dates가 목록이 아니다"):
+        load_db.load_files(d, "full", make_baseline(tmp_path))
 
 
 @pytest.mark.parametrize("basis", [None, "", "   ", 7])
@@ -900,6 +972,31 @@ def test_pg_has_no_command_that_deletes_builds(pgconn, tmp_path):
             "select column_name from information_schema.columns where table_name = 'data_builds'"
         ).fetchall()
     ]
+
+
+@pg
+def test_pg_production_dates_round_trip_as_the_same_blocks(pgconn, tmp_path):
+    baseline = make_baseline(tmp_path)
+    load(make_data_dir(tmp_path, "2026-10-06"), baseline=baseline)
+    (stored,) = pgconn.execute(
+        "select production_dates from causes where campaign = '24V001'"
+    ).fetchone()
+    assert (
+        stored == cause("24V001")["production_dates"]
+    )  # jsonb로 올렸다 읽어도 같은 블록(원문·날짜)
+
+
+@pg
+def test_pg_schema_adds_production_dates_to_a_causes_table_created_before_it_existed(
+    pgconn, tmp_path
+):
+    # 생산 기간 칸(DEC-059)을 더하기 전 스키마로 이미 올려 둔 build의 줄은 빈 목록으로 남는다
+    baseline = make_baseline(tmp_path)
+    load(make_data_dir(tmp_path, "2026-10-06"), baseline=baseline)
+    pgconn.execute("alter table causes drop column production_dates cascade")
+    load_db.main(["schema"])  # 칸과 그 칸을 쓰는 뷰가 다시 만들어진다
+    assert pgconn.execute("select production_dates from causes_latest").fetchall() == [([],)]
+    load_db.main(["schema"])  # 여러 번 적용해도 된다
 
 
 @pg
