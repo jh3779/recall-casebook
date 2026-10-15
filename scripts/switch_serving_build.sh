@@ -9,8 +9,9 @@
 #
 # 실패하면 이렇게 움직인다 — 환경변수와 공개 서버가 어긋난 채 끝나지 않게 한다:
 #   - 환경변수 변경 실패          → 배포하지 않고 이전 값으로 되돌린 뒤 멈춘다
-#   - 배포 실패                   → 이전 값으로 되돌린 뒤 멈춘다 (공개 서버는 이전 배포 그대로)
-#   - 배포 뒤 /health가 안 맞음   → 이전 값으로 되돌리고 다시 배포한 뒤 /health로 확인한다
+#   - 배포 명령 실패             → 이전 값으로 되돌리고 /health를 본다. 이전 build가 아니거나 읽히지 않으면 이전 build를 다시 배포한다 (명령이 실패해도 원격 배포는 올라갔을 수 있다)
+#   - 배포 뒤 /health가 안 맞음   → 위와 같다 (이전 값 복구 → 이전 build 다시 배포 → /health 확인)
+#   - 이전 값 복구가 실패          → 변수가 없는 채로 재배포하면 서버가 시작하지 못하므로 재배포하지 않고 대시보드 안내만 한다
 #   - 공개 서버가 이미 그 build   → 숨은 환경변수만 그 값으로 다시 맞춘다 (배포 없음)
 
 set -euo pipefail
@@ -96,18 +97,35 @@ read -r -p "SERVING_BUILD_ID를 $CUR_BUILD → $BUILD 로 바꿔 재배포할까
 
 restore_env() {
   echo "!! 환경변수를 이전 값 $CUR_BUILD 로 되돌린다"
-  set_env "$CUR_BUILD" || echo "!! 이전 값 복구도 실패했다 — 대시보드 Settings > Environment Variables에서 SERVING_BUILD_ID=$CUR_BUILD 를 직접 넣는다"
+  set_env "$CUR_BUILD" || { echo "!! 이전 값 복구에 실패했다 — 환경변수가 없는 채로 재배포하면 서버가 시작하지 못하므로 재배포하지 않는다. 대시보드 Settings > Environment Variables에서 SERVING_BUILD_ID=$CUR_BUILD 를 직접 넣는다"; return 1; }
+}
+
+# 새 build로 바꾸다 실패했을 때: 환경변수를 이전 값으로 복구하고, 공개 서버가 이전 build가 아니거나 읽히지 않으면
+# 이전 build를 다시 배포해 확인한다. 배포 명령이 실패해도 원격 배포가 이미 올라갔을 수 있어 공개 상태를 단정하지 않는다.
+recover() {
+  restore_env || return 1
+  if [ "$(health)" = "$CUR_BUILD $(expected "$CUR_BUILD")" ]; then
+    echo "공개 서버는 이전 build $CUR_BUILD 그대로입니다 (환경변수도 이전 값으로 복구)."
+    return 0
+  fi
+  echo "!! 공개 서버가 $CUR_BUILD 로 확인되지 않는다 — 이전 build를 다시 배포한다"
+  if deploy_and_verify "$CUR_BUILD"; then
+    echo "이전 build $CUR_BUILD 로 되돌렸습니다. 원인은 vercel logs 로 본다."
+  else
+    echo "!! 되돌린 배포도 $CUR_BUILD 로 확인되지 않았다 — 지금 바로 vercel logs 와 대시보드를 확인한다"
+    return 1
+  fi
 }
 
 if ! set_env "$BUILD"; then
   echo "!! 환경변수를 $BUILD 로 바꾸지 못했다 — 배포하지 않는다"
-  restore_env
+  restore_env || true
   exit 1
 fi
 
 if ! vercel deploy --prod; then
-  echo "!! 배포가 실패했다 — 공개 서버는 이전 배포($CUR_BUILD) 그대로다"
-  restore_env
+  echo "!! 배포 명령이 실패했다 — 원격에서 배포가 올라갔는지 알 수 없어 공개 /health로 확인한다"
+  recover || true
   exit 1
 fi
 
@@ -118,11 +136,6 @@ for _ in 1 2 3; do
   sleep "$SLEEP"
 done
 
-echo "!! 배포 뒤 /health가 $BUILD 로 확인되지 않았다 — $CUR_BUILD 로 되돌려 다시 배포한다"
-restore_env
-if deploy_and_verify "$CUR_BUILD"; then
-  echo "이전 build $CUR_BUILD 로 되돌렸습니다. 원인은 vercel logs 로 본다."
-else
-  echo "!! 되돌린 배포도 $CUR_BUILD 로 확인되지 않았다 — 지금 바로 vercel logs 와 대시보드를 확인한다"
-fi
+echo "!! 배포 뒤 /health가 $BUILD 로 확인되지 않았다 — $CUR_BUILD 로 되돌린다"
+recover || true
 exit 1

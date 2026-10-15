@@ -37,7 +37,7 @@ _갱신: 2026-10-14 — **생산 기간 확인 항목(PR #124, DEC-059) 병합(`
 
 2026-10-14 `git status --short`·`git diff --stat`·`git log -10`으로 확인:
 
-- origin/main = `0d05342`(#124 생산 기간 병합, 그 앞 `0a25f82` #119 작업 F, `de4d6fa` #117). 이 갱신은 브랜치 `docs/production-period-deployed`(PR #125, 문서만)에서 한다. 열린 PR: #125. 공개 서비스는 API `https://lg-cns-rag.vercel.app`(build `5e32c164b15a544a`)·화면 `https://lg-cns-rag-web.vercel.app`(429 처리·생산 기간 표시 포함 — 배포된 화면 번들에 "호출이 너무 잦습니다" 문구 확인)이 모두 2026-10-14 재배포 뒤 최신이다.
+- origin/main = `0d05342`(#124 생산 기간 병합, 그 앞 `0a25f82` #119 작업 F, `de4d6fa` #117). 이 갱신은 브랜치 `docs/production-period-deployed`(PR #125 — 문서와 운영 스크립트 `scripts/switch_serving_build.sh`·시험; 유형은 chore, 브랜치 이름만 처음 문서 전용이던 때의 `docs/`로 남음)에서 한다. 열린 PR: #125. 공개 서비스는 API `https://lg-cns-rag.vercel.app`(build `5e32c164b15a544a`)·화면 `https://lg-cns-rag-web.vercel.app`(429 처리·생산 기간 표시 포함 — 배포된 화면 번들에 "호출이 너무 잦습니다" 문구 확인)이 모두 2026-10-14 재배포 뒤 최신이다.
 - (완료 기록 — 이미 병합된 #105의) 주요 수정: `frontend/src/showroom/`, 컴포넌트·설정·스타일·리콜 처리, README·검사 도구·`.gitignore`. 새 파일: `estimatedParts.ts`·`vehicle.ts`·`geometry.ts`와 관련 시험, 현대·기아 JSON/manifest, `scripts/build_showroom_demo.py`, 모델·후보·회전축·표면 검증 문서.
 - 메인 체크아웃(`main`, `0d05342`)의 미커밋 파일(이 worktree에는 없음): 다른 세션의 발표 자료 작업(`.agent/HANDOFF.md`·`.agent/SESSION_LOG.md` 수정 — 할 일 58 포함, `docs/기획_결함선례.md` 6절 +39줄, 미추적 `docs/계획_P3_리랭커시험.md`·`docs/발표대본_초안.md`·`docs/발표_슬라이드_구성안.md`). **이 PR(#125)을 `git pull` 하면 HANDOFF·SESSION_LOG가 충돌한다** — `git stash` → `git pull` → `git stash pop` 뒤 양쪽(할 일 57의 완료 기록과 58) 모두 남긴다. 사용자가 정할 때까지 이 파일들은 수정·삭제하지 않는다. 추가 worktree `.claude/worktrees/feat-api-rate-limit`(옛 브랜치, #117 병합분)이 남아 있다 — 정리 여부는 사용자가 정한다.
 - 실행: `cd frontend && npm run dev`, 쇼룸 `http://localhost:5173/#showroom`. Node는 `frontend/.nvmrc` 정본(24). 현재 PC의 사용 가능한 Node 24 경로는 `/Users/jihun/.npm/_npx/387698761821791d/node_modules/node/bin`이며 환경에 따라 달라진다. Python 검사 시 샌드박스 캐시 권한 문제는 `UV_CACHE_DIR=/private/tmp/lgcns-uv-cache`로 해결했다.
@@ -132,7 +132,7 @@ _갱신: 2026-10-14 — **생산 기간 확인 항목(PR #124, DEC-059) 병합(`
 
 ## Relevant Files
 
-- `scripts/switch_serving_build.sh`, `tests/test_switch_serving_build.py`, `docs/배포_Vercel.md` 3-1a절 — 공개 API의 서빙 build 전환·되돌리기(DEC-059, 실패 경로 가짜 명령 시험 12건)
+- `scripts/switch_serving_build.sh`, `tests/test_switch_serving_build.py`, `docs/배포_Vercel.md` 3-1a절 — 공개 API의 서빙 build 전환·되돌리기(DEC-059, 실패 경로 가짜 명령 시험 14건)
 - `server/ratelimit.py`, `server/api.py`(`create_app`), `tests/test_rate_limit.py`, `docs/배포_Vercel.md` 3-2절, `.agent/DECISIONS.md` DEC-057 — #63 호출 상한(PR #117)
 - `docs/발표대본_초안.md`, `docs/계획_P3_리랭커시험.md`(둘 다 미추적), `~/Documents/학습노트/`(저장소 밖) — 발표·학습 자료
 - `frontend/README.md` — 실행·모델 설치·라이선스·데이터 재생성

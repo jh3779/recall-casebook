@@ -34,6 +34,7 @@ case "$1 $2" in
     printf '%s' "$v" > "$FAKE/env" ;;
   "deploy --prod")
     n=$(grep -c "^vercel deploy" "$FAKE/calls")
+    if [ -n "${PROMOTE_THEN_FAIL:-}" ] && [ "$n" -eq 1 ]; then cp "$FAKE/env" "$FAKE/live"; exit 1; fi
     [ -n "${FAIL_DEPLOY_FROM:-}" ] && [ "$n" -ge "$FAIL_DEPLOY_FROM" ] && exit 1
     printf '%s' "$(cat "$FAKE/env")" > "$FAKE/live" ;;
   *) exit 2 ;;
@@ -185,3 +186,20 @@ def test_env_rm_failure_is_tolerated_when_variable_is_missing(sandbox):
     (sandbox.fake / "env").unlink()
     r, s = sandbox(NEW)
     assert r.returncode == 0 and s["env"] == NEW and s["live"] == NEW
+
+
+@needs_bash
+def test_deploy_command_failure_after_remote_promotion_redeploys_old(sandbox):
+    """명령은 실패했지만 원격에서는 새 build가 올라간 경우 — 공개 서버를 이전 build로 되돌려 확인한다."""
+    r, s = sandbox(NEW, PROMOTE_THEN_FAIL="1")
+    assert r.returncode != 0
+    assert s["env"] == OLD and s["live"] == OLD and s["deploys"] == 2
+
+
+@needs_bash
+def test_old_value_restore_failure_never_triggers_a_redeploy(sandbox):
+    """이전 값을 못 넣었으면 변수 없이 재배포하지 않는다(변수가 없으면 서버가 시작하지 못한다)."""
+    r, s = sandbox(NEW, BAD_HEALTH=NEW, FAIL_ADD_FOR=OLD)
+    assert r.returncode != 0
+    assert s["deploys"] == 1
+    assert "재배포하지 않는다" in r.stdout
