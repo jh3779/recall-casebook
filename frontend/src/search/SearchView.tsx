@@ -6,6 +6,7 @@ import { Provenance } from "./Provenance";
 import { ResultList } from "./ResultList";
 import { SearchInput } from "./SearchInput";
 import { Welcome } from "./Welcome";
+import { RetrievalDashboard } from "./dashboard/RetrievalDashboard";
 import type { Card, HealthState, SearchResponse } from "./types";
 
 export default function SearchView({ health, draft, onShowroom }: { health: HealthState; draft: { question: string } | null; onShowroom: () => void }) {
@@ -16,6 +17,8 @@ export default function SearchView({ health, draft, onShowroom }: { health: Heal
   const [error, setError] = useState<ApiError>();
   const [delayed, setDelayed] = useState(false);
   const [mobileDetail, setMobileDetail] = useState(false);
+  const [resultMode, setResultMode] = useState<"precedents" | "dashboard">("precedents");
+  const [executedQuestion, setExecutedQuestion] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const requestRef = useRef<AbortController | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -39,11 +42,13 @@ export default function SearchView({ health, draft, onShowroom }: { health: Heal
     const controller = new AbortController();
     requestRef.current = controller;
     setQuestion(value);
+    setExecutedQuestion(value.trim());
     setState("loading");
     setResponse(null);
     setError(undefined);
     setDelayed(false);
     setMobileDetail(false);
+    setResultMode("precedents");
     timersRef.current = [setTimeout(() => setDelayed(true), 3000), setTimeout(() => controller.abort(), 60_000)];
     try {
       const result = await search(value, controller.signal);
@@ -83,10 +88,11 @@ export default function SearchView({ health, draft, onShowroom }: { health: Heal
     <Feedback loading={state === "loading"} delayed={delayed} error={state === "error" ? error : undefined} onRetry={() => run(question)} />
     {state === "done" && response && <>
       <p className="sr-only" role="status">선례 {response.customer_precedents.length + response.precedents.length}건을 찾았습니다</p>
-      <div ref={resultRef} className={`split${mobileDetail ? " mobile-detail" : ""}${selected ? "" : " empty"}`}>
+      <nav className="result-mode" aria-label="검색 결과 보기"><span>현재 검색 응답 · 검색 버튼을 누르면 갱신</span><button className={resultMode === "precedents" ? "on" : ""} aria-pressed={resultMode === "precedents"} onClick={() => setResultMode("precedents")}>선례 상세</button><button className={resultMode === "dashboard" ? "on" : ""} aria-pressed={resultMode === "dashboard"} onClick={() => setResultMode("dashboard")}>분석 대시보드</button></nav>
+      {resultMode === "dashboard" ? <RetrievalDashboard response={response} question={executedQuestion} /> : <div ref={resultRef} className={`split${mobileDetail ? " mobile-detail" : ""}${selected ? "" : " empty"}`}>
         <ResultList response={response} selected={selected} onSelect={(card) => { setSelected(card); setMobileDetail(true); }} />
         {selected ? <PrecedentDetail key={selected.campno} card={selected} response={response} onBack={back} /> : <div className="detail"><p>선례를 찾지 못했습니다. 부품 이름이나 고장 모습을 바꿔 다시 써 보세요.</p><Provenance data={response} question={response.question} /></div>}
-      </div>
+      </div>}
     </>}
   </main>;
 }

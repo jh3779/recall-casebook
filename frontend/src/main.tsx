@@ -8,6 +8,7 @@ import "@fontsource/jetbrains-mono/latin-600.css";
 import "./tokens.css";
 import "./styles.css";
 import "./search/search.css";
+import "./search/dashboard/dashboard.css";
 import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
