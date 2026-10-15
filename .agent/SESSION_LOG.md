@@ -216,3 +216,4 @@
 - 2026-10-15: PR #126 Codex(ca7d0bab)·review-agent(ca14f55) 반영 — Definition of Done을 #126 기준으로, bare 설정 원인 추정 삭제, 세션 기록 '커밋 없음' 표기, 갱신 순서의 stash를 .agent/ 두 파일 경로 지정으로·대조 결과 기록
 - 2026-10-15: PR #126 Codex(ca14f559)·review-agent(1065b8c) 반영 — 갱신 순서 ① bare 해제는 사용자 승인 뒤, ② 대조 목록에 SESSION_LOG 줄 추가, ③ 되돌리기 대신 항상 경로 지정 stash 후 확인하고 drop
 - 2026-10-15: PR #126 review-agent(86f51d5) 반영 — 갱신 순서 ① 승인 없으면 멈춤, core.bare 원인 추정(다른 세션 초안)·push 뒤 재확인, worktree 목록과 wt-ops 인계 초안 처리
+- 2026-10-15: PR #126 review-agent(eec19c9) 반영 — core.bare 시각을 커밋 09:19·push 09:25·설정 수정 10:05로 바로잡고, 메인 체크아웃 항목을 미커밋 파일·갱신 순서 ①~⑤·core.bare·worktree 하위 항목으로 나눔
