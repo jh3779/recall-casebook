@@ -1,0 +1,445 @@
+"""평가셋 재설계 도구 — 감사 시트·R2 누출 점검·R1 풀링 시트·지표 함수 (docs/계획_평가셋_재설계.md). 연구용, 서비스 코드가 아니다.
+
+사용법 (환경: EVAL_DATA=<recalls.jsonl·eval.jsonl이 든 폴더>, EVAL_OUT=<시트를 둘 폴더, 커밋하지 않음>):
+    uv run python -m scripts.defect_precedent.eval_v2 audit-sheet --n 100 --seed 20261016
+    uv run python -m scripts.defect_precedent.eval_v2 audit-score --sheet <표시한 시트>
+    uv run python -m scripts.defect_precedent.eval_v2 r2-counts
+    RETRIEVAL_CACHE=<벡터 캐시> uv run python -m scripts.defect_precedent.eval_v2 r1-pool --n-queries 40 --seed 20261016
+
+원칙 (평가가 재현율이 높게 나오도록 만들어지지 않게 — 과도학습 방지):
+- 질문·후보를 **검색 결과로 고르지 않는다.** 표본은 시드 고정 무작위이고, 고르는 규칙은 질문 글·카드 칸만 쓴다.
+- 표시는 사람만 하고(AGENTS.md 5-2) 시스템 이름·순위를 가린다. 시스템 대응표(`pool_key.json`)는 표시자에게 주지 않는다.
+- 일부러 틀린 후보(통제 후보)를 섞어 표시가 후한지 확인한다.
+- 자명한 기준선(키워드 한 줄)을 같이 재서, 지표가 그것보다 나을 때만 유효로 본다.
+- 이 도구는 정답을 만들지 않는다. 시트의 label 칸은 비어 있다.
+"""
+
+import argparse
+import csv
+import hashlib
+import json
+import math
+import os
+import random
+import re
+import sys
+from collections import Counter, defaultdict
+from pathlib import Path
+
+DATA = Path(os.environ.get("EVAL_DATA", "data/processed/defect_maker_v2"))
+OUT = Path(os.environ.get("EVAL_OUT", "data/processed/defect/eval_v2"))
+AUDIT_VALUES = {"yes", "no", "unsure"}
+REL_VALUES = {"0", "1", "2"}  # 2 = 같은 부품·같은 고장 방식, 1 = 같은 부품·다른 고장, 0 = 다른 부품
+
+
+# ---------- 지표 (순수 함수) ----------
+
+
+def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """비율의 Wilson 95% 구간."""
+    if n == 0:
+        return (0.0, 1.0)
+    p = k / n
+    d = 1 + z * z / n
+    c = p + z * z / (2 * n)
+    h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+    return (
+        max(0.0, (c - h) / d),
+        min(1.0, (c + h) / d),
+    )  # 부동소수점 오차로 0~1 밖으로 나가지 않게
+
+
+def hit_at_k(levels: list[int], k: int, min_level: int = 2) -> bool:
+    """순위대로 놓은 관련도(0·1·2)의 상위 k에 min_level 이상이 하나라도 있는가."""
+    return any(x >= min_level for x in levels[:k])
+
+
+def precision_at_k(levels: list[int], k: int, min_level: int = 1) -> float:
+    top = levels[:k]
+    return sum(x >= min_level for x in top) / len(top) if top else 0.0
+
+
+def ndcg_at_k(levels: list[int], k: int) -> float:
+    def dcg(xs):
+        return sum((2**x - 1) / math.log2(i + 2) for i, x in enumerate(xs[:k]))
+
+    ideal = dcg(sorted(levels, reverse=True))
+    return dcg(levels) / ideal if ideal else 0.0
+
+
+def sensitivity_at_specificity(
+    pos: list[float], neg: list[float], specificity: float
+) -> tuple[float, float]:
+    """점수가 높을수록 양성. 음성의 `specificity` 분위수를 임곗값으로 두고 (민감도, 임곗값)을 돌려준다."""
+    s = sorted(neg)
+    thr = s[min(len(s) - 1, int(math.ceil(specificity * len(s))) - 1)] if s else 0.0
+    return (sum(x > thr for x in pos) / len(pos) if pos else 0.0, thr)
+
+
+def auc(pos: list[float], neg: list[float]) -> float:
+    """양성이 음성보다 점수가 높을 확률(동점은 0.5)."""
+    if not pos or not neg:
+        return 0.5
+    ranked = sorted([(x, 1) for x in pos] + [(x, 0) for x in neg])
+    rank_sum, i = 0.0, 0
+    while i < len(ranked):
+        j = i
+        while j < len(ranked) and ranked[j][0] == ranked[i][0]:
+            j += 1
+        avg = (i + j + 1) / 2  # 1부터 세는 평균 순위
+        rank_sum += avg * sum(lab for _, lab in ranked[i:j])
+        i = j
+    return (rank_sum - len(pos) * (len(pos) + 1) / 2) / (len(pos) * len(neg))
+
+
+def keyword_control(texts_pos: list[str], texts_neg: list[str], pattern: str) -> dict:
+    """키워드 한 줄 기준선 — 결과가 요약문에 새어 있는지 보는 자명한 통제."""
+    rx = re.compile(pattern, re.I)
+    sp = sum(bool(rx.search(t)) for t in texts_pos)
+    sn = sum(bool(rx.search(t)) for t in texts_neg)
+    return {
+        "pattern": pattern,
+        "sensitivity": round(sp / len(texts_pos), 3),
+        "specificity": round(1 - sn / len(texts_neg), 3),
+        "pos_hits": sp,
+        "n_pos": len(texts_pos),
+        "neg_hits": sn,
+        "n_neg": len(texts_neg),
+    }
+
+
+# ---------- 입출력 ----------
+
+
+def _norm_date(s: str) -> str:
+    return re.sub(r"\D", "", s or "")[:8]
+
+
+def _read_jsonl(p: Path) -> list[dict]:
+    with p.open(encoding="utf-8") as f:
+        return [json.loads(x) for x in f if x.strip()]
+
+
+def _write_sheet(path: Path, header: list[str], rows: list[dict], meta: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=header)
+        w.writeheader()
+        w.writerows(rows)
+    meta["sheet_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    meta["rows"] = len(rows)
+    Path(str(path) + ".meta.json").write_text(
+        json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
+
+
+def category(card: dict) -> str:
+    return card["components"][0].split(":")[0].strip() if card["components"] else "UNKNOWN"
+
+
+# ---------- 749문항 감사 시트 ----------
+
+AUDIT_BASE = ("audit_id", "question", "gold_defect", "gold_consequence", "gold_n")
+AUDIT_HEADER = [*AUDIT_BASE, "row_sha256", "q_answerable", "gold_matches", "labeler_id", "note"]
+
+
+def _row_hash(base: dict) -> str:
+    return hashlib.sha256(json.dumps(base, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+
+def audit_rows(qs: list[dict], by_id: dict[str, dict], n: int, seed: int) -> list[dict]:
+    pick = random.Random(seed).sample(range(len(qs)), n)
+    rows = []
+    for i in pick:
+        q, g = qs[i], by_id[qs[i]["gold_campnos"][0]]
+        base = {
+            "audit_id": hashlib.sha256(f"{seed}:{q['action_no']}".encode()).hexdigest()[:8],
+            "question": q["question"],
+            "gold_defect": g["defect"],
+            "gold_consequence": g["consequence"],
+            "gold_n": str(len(q["gold_campnos"])),
+        }
+        rows.append(
+            {
+                **base,
+                "row_sha256": _row_hash(base),
+                "q_answerable": "",
+                "gold_matches": "",
+                "labeler_id": "",
+                "note": "",
+            }
+        )
+    random.Random(seed + 1).shuffle(rows)
+    return rows
+
+
+def cmd_audit_sheet(args) -> None:
+    cards = _read_jsonl(DATA / "recalls.jsonl")
+    qs = _read_jsonl(DATA / "eval.jsonl")
+    rows = audit_rows(qs, {c["campno"]: c for c in cards}, args.n, args.seed)
+    meta = {
+        "kind": "eval_audit",
+        "seed": args.seed,
+        "n": args.n,
+        "eval_sha256": hashlib.sha256((DATA / "eval.jsonl").read_bytes()).hexdigest(),
+        "recalls_sha256": hashlib.sha256((DATA / "recalls.jsonl").read_bytes()).hexdigest(),
+        "labels": {
+            "q_answerable": "질문 글만으로 어떤 부품·고장인지 가릴 수 있는가 (yes/no/unsure) — 정답 카드를 보기 전에 먼저 표시",
+            "gold_matches": "정답 카드(gold_defect)가 질문이 말하는 결함과 같은 부품·고장인가 (yes/no/unsure)",
+        },
+    }
+    out = OUT / "audit_sheet.csv"
+    _write_sheet(out, AUDIT_HEADER, rows, meta)
+    print(
+        f"감사 시트 {len(rows)}줄 → {out} (label 칸은 비어 있다 — 사람이 표시한다, AI는 표시하지 않는다)"
+    )
+
+
+def audit_summary(rows: list[dict]) -> dict:
+    """표시한 감사 시트의 요약 — 값 검사 + 비율과 Wilson 구간."""
+    bad = [
+        r["audit_id"]
+        for r in rows
+        if r["q_answerable"] not in AUDIT_VALUES or r["gold_matches"] not in AUDIT_VALUES
+    ]
+    if bad:
+        raise ValueError(f"허용 값(yes/no/unsure)이 아니거나 빈 줄: {bad[:5]}")
+    n = len(rows)
+    out = {"n": n, "labelers": sorted({r["labeler_id"] for r in rows})}
+    for col in ("q_answerable", "gold_matches"):
+        c = Counter(r[col] for r in rows)
+        out[col] = {
+            "counts": dict(c),
+            "no_share": round(c["no"] / n, 3),
+            "no_wilson95": tuple(round(x, 3) for x in wilson(c["no"], n)),
+        }
+    both = sum(r["q_answerable"] == "yes" and r["gold_matches"] == "yes" for r in rows)
+    out["valid_both_yes_share"] = round(both / n, 3)
+    out["valid_both_yes_wilson95"] = tuple(round(x, 3) for x in wilson(both, n))
+    return out
+
+
+def cmd_audit_score(args) -> None:
+    with open(args.sheet, encoding="utf-8-sig", newline="") as f:
+        rows = list(csv.DictReader(f))
+    for r in rows:  # 원본 칸이 바뀌지 않았는지
+        if _row_hash({k: r[k] for k in AUDIT_BASE}) != r["row_sha256"]:
+            sys.exit(f"원본 칸이 바뀌었다: {r['audit_id']}")
+    print(json.dumps(audit_summary(rows), ensure_ascii=False, indent=1))
+
+
+# ---------- R2 데이터·누출 점검 ----------
+
+
+def cmd_r2_counts(args) -> None:
+    from scripts.defect_precedent.nhtsa import INV_COLS, RAW_DIR, read_flat
+
+    inv: dict[str, dict] = {}
+    for r in read_flat(RAW_DIR / "FLAT_INV.zip", INV_COLS):
+        a = r["ACTION"].strip()
+        d = inv.setdefault(
+            a,
+            {
+                "o": _norm_date(r["ODATE"]),
+                "c": _norm_date(r["CDATE"]),
+                "s": r["SUMMARY"].strip(),
+                "linked": False,
+            },
+        )
+        d["linked"] = d["linked"] or bool(r["CAMPNO"].strip())
+    pe_ea = {a: d for a, d in inv.items() if re.match(r"(PE|EA)\d", a)}
+    out = {"investigations": len(inv), "pe_ea": len(pe_ea), "by_era": {}}
+    for name, (lo, hi) in {
+        "<2010": (0, 2010),
+        "2010-2019": (2010, 2020),
+        "2020+": (2020, 3000),
+    }.items():
+        xs = [d for d in pe_ea.values() if d["o"][:4].isdigit() and lo <= int(d["o"][:4]) < hi]
+        out["by_era"][name] = {
+            "n": len(xs),
+            "linked_to_recall": sum(d["linked"] for d in xs),
+            "closed_without_recall": sum((not d["linked"]) and bool(d["c"]) for d in xs),
+            "still_open_unlinked": sum((not d["linked"]) and not d["c"] for d in xs),
+        }
+    use = [
+        d
+        for d in pe_ea.values()
+        if d["c"] and len(d["s"]) >= 100 and "no summary" not in d["s"].lower()
+    ]
+    pos = [d["s"] for d in use if d["linked"]]
+    neg = [d["s"] for d in use if not d["linked"]]
+    out["closed_with_summary"] = {"pos": len(pos), "neg": len(neg)}
+    out["keyword_control"] = [
+        keyword_control(pos, neg, p)
+        for p in (
+            r"\brecall",
+            r"\brecall|campaign|573",
+            r"conduct a (safety )?recall|initiated a (safety )?recall|recalled|recalling",
+        )
+    ]
+    print(json.dumps(out, ensure_ascii=False, indent=1))
+    if args.out:
+        Path(args.out).write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+# ---------- R1 풀링 시트 ----------
+
+
+def pick_queries(cards: list[dict], n: int, seed: int, since: str = "20150101") -> list[dict]:
+    """검색 결과를 보지 않고 질문 카드를 고른다: 차량 리콜·최근·글 길이 80~600자, 부품 대분류를 돌아가며(분류당 최대 3개), 시드 고정."""
+    ok = [
+        c
+        for c in cards
+        if c["recall_type"] == "V"
+        and _norm_date(c["received_date"]) >= since
+        and 80 <= len(c["defect"]) <= 600
+    ]
+    by_cat: dict[str, list[dict]] = defaultdict(list)
+    for c in sorted(ok, key=lambda c: c["campno"]):
+        by_cat[category(c)].append(c)
+    rng = random.Random(seed)
+    for lst in by_cat.values():
+        rng.shuffle(lst)
+    cats = sorted(by_cat, key=lambda k: (-len(by_cat[k]), k))
+    picked, used = [], Counter()
+    while len(picked) < n and any(by_cat[k] for k in cats if used[k] < 3):
+        for k in cats:
+            if len(picked) < n and by_cat[k] and used[k] < 3:
+                picked.append(by_cat[k].pop())
+                used[k] += 1
+    return picked
+
+
+def build_pool(
+    query: dict,
+    systems: dict[str, list[str]],
+    by_id: dict[str, dict],
+    all_ids: list[str],
+    seed: int,
+    depth: int = 10,
+) -> tuple[list[dict], dict]:
+    """질문 카드 하나의 풀링 후보: 각 시스템의 (질문보다 먼저 접수·다른 중복 묶음인) 상위 depth + 통제 후보. 시스템 이름은 key에만 둔다."""
+    qd = _norm_date(query["received_date"])
+
+    def eligible(cid: str) -> bool:
+        c = by_id[cid]
+        return (
+            cid != query["campno"]
+            and _norm_date(c["received_date"]) < qd
+            and c["dup_group"] != query["dup_group"]
+        )
+
+    cand: dict[str, set[str]] = defaultdict(set)
+    for name, ranking in systems.items():
+        for cid in [x for x in ranking if eligible(x)][:depth]:
+            cand[cid].add(name)
+    rng = random.Random(f"{seed}:{query['campno']}")
+    qc = category(query)
+    pool = [i for i in all_ids if eligible(i)]
+    same = [i for i in pool if category(by_id[i]) == qc and i not in cand]
+    other = [i for i in pool if category(by_id[i]) != qc and i not in cand]
+    for cid in rng.sample(same, min(5, len(same))):
+        cand[cid].add("control_same_category")
+    for cid in rng.sample(other, min(3, len(other))):
+        cand[cid].add("control_other_category")
+    ids = sorted(cand)
+    rng.shuffle(ids)
+    rows = [
+        {
+            "candidate_id": hashlib.sha256(f"{seed}:{query['campno']}:{cid}".encode()).hexdigest()[
+                :8
+            ],
+            "candidate_defect": by_id[cid]["defect"],
+            "label": "",
+            "labeler_id": "",
+            "note": "",
+        }
+        for cid in ids
+    ]
+    key = {r["candidate_id"]: sorted(cand[cid]) for r, cid in zip(rows, ids, strict=True)}
+    return rows, key
+
+
+def cmd_r1_pool(args) -> None:
+    import numpy as np
+
+    from scripts.defect_precedent.bm25_baseline import BM25, tokenize
+    from scripts.defect_precedent.retrieval_compare import card_text, embed_cards, rrf
+
+    cards = _read_jsonl(DATA / "recalls.jsonl")
+    by_id = {c["campno"]: c for c in cards}
+    ids = [c["campno"] for c in cards]
+    queries = pick_queries(cards, args.n_queries, args.seed)
+    model, vecs, _, _ = embed_cards("BAAI/bge-small-en-v1.5", [card_text(c) for c in cards])
+    vecs = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
+    bm = BM25([tokenize(card_text(c)) for c in cards])
+    sheet, keys, qrows = [], {}, []
+    for qi, q in enumerate(queries):
+        qid = f"Q{qi + 1:03d}"
+        text = q["defect"]
+        b = [ids[i] for i in bm.top(tokenize(text), 300)]
+        v = np.array(list(model.query_embed([text])), dtype="float32")[0]
+        v /= np.linalg.norm(v)
+        d = [ids[i] for i in np.argsort(-(vecs @ v))[:300]]
+        rows, key = build_pool(
+            q, {"bm25": b, "dense": d, "rrf": rrf(b[:100], d[:100])}, by_id, ids, args.seed
+        )
+        for r in rows:
+            sheet.append({"query_id": qid, "query_text": text, **r})
+        keys[qid] = {"query_campno": q["campno"], "candidates": key}
+        qrows.append({"query_id": qid, "category": category(q), "n_candidates": len(rows)})
+    header = [
+        "query_id",
+        "query_text",
+        "candidate_id",
+        "candidate_defect",
+        "label",
+        "labeler_id",
+        "note",
+    ]
+    meta = {
+        "kind": "r1_pool",
+        "seed": args.seed,
+        "queries": qrows,
+        "label_guide": {
+            "2": "같은 부품이고 같은 고장 방식",
+            "1": "같은 부품이지만 다른 고장",
+            "0": "다른 부품",
+        },
+        "systems_in_pool": ["bm25", "dense", "rrf"],
+        "controls": ["control_same_category(5)", "control_other_category(3)"],
+        "recalls_sha256": hashlib.sha256((DATA / "recalls.jsonl").read_bytes()).hexdigest(),
+    }
+    _write_sheet(OUT / "r1_pool_sheet.csv", header, sheet, meta)
+    (OUT / "pool_key.json").write_text(
+        json.dumps(keys, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
+    print(
+        f"질문 {len(queries)}개, 후보 {len(sheet)}줄 → {OUT}/r1_pool_sheet.csv (시스템 대응표 pool_key.json은 표시자에게 주지 않는다)"
+    )
+
+
+def main(argv=None) -> None:
+    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    sub = p.add_subparsers(dest="cmd", required=True)
+    a = sub.add_parser("audit-sheet")
+    a.add_argument("--n", type=int, default=100)
+    a.add_argument("--seed", type=int, required=True)
+    s = sub.add_parser("audit-score")
+    s.add_argument("--sheet", required=True)
+    r = sub.add_parser("r2-counts")
+    r.add_argument("--out")
+    q = sub.add_parser("r1-pool")
+    q.add_argument("--n-queries", type=int, default=40)
+    q.add_argument("--seed", type=int, required=True)
+    args = p.parse_args(argv)
+    {
+        "audit-sheet": cmd_audit_sheet,
+        "audit-score": cmd_audit_score,
+        "r2-counts": cmd_r2_counts,
+        "r1-pool": cmd_r1_pool,
+    }[args.cmd](args)
+
+
+if __name__ == "__main__":
+    main()
