@@ -1,5 +1,7 @@
 """LLM 단독 기준선(`llm_only_baseline`) — API 없이 번호 가리기·번호 정리·채점 규칙만 본다."""
 
+import pytest
+
 from scripts.defect_precedent import llm_only_baseline as lb
 
 
@@ -34,27 +36,39 @@ def _q(action, gold):
     return {"action_no": action, "question": "q", "gold_campnos": gold}
 
 
-def test_score_counts_fabricated_hits_and_verbatim_causes():
-    campaigns = {"00V057", "01V001"}
-    causes = {"00V057": "The  retractor spring\nwas undersized."}
+def _cause(text, status="filled"):
+    return {"cause_status": status, "cause_text": text}
+
+
+def test_score_counts_fabricated_hits_and_cause_categories():
+    campaigns = {"00V057", "01V001", "02V002", "03V003"}
+    causes = {
+        "00V057": _cause("The  retractor spring\nwas undersized."),
+        "02V002": _cause("NR - still under investigation", "stated_unknown"),
+        "03V003": _cause("", "empty"),
+    }
     rows = [
         {
             "action_no": "A",
             "recalls": [
-                {"campno": "99V999000", "cause": "made up"},  # 데이터에 없는 캠페인 = 지어낸 번호
-                {
-                    "campno": "00V-057",
-                    "cause": "retractor spring was undersized.",
-                },  # 공백 정리 뒤 원문 그대로
+                {"campno": "99V999000", "cause": "made up"},  # 없는 캠페인 + 원인
+                {"campno": "00V-057", "cause": "retractor spring was undersized."},  # 원문 그대로
             ],
         },
-        {
-            "action_no": "B",
-            "recalls": [{"campno": "01V001000", "cause": "paraphrased cause"}],
-        },  # 573 원인 칸 없음
+        {"action_no": "B", "recalls": [{"campno": "01V001000", "cause": "x"}]},  # 573 보고서 없음
         {"action_no": "C", "recalls": []},  # 모른다고 함
         {"action_no": "D", "error": "RateLimitError: x"},
         {"action_no": "E", "recalls": [{"campno": "not a number", "cause": ""}]},
+        {
+            "action_no": "F",
+            "recalls": [
+                {
+                    "campno": "02V002000",
+                    "cause": "still under investigation",
+                },  # stated_unknown도 대조
+                {"campno": "03V003000", "cause": "y"},  # 573 원인 칸이 빔
+            ],
+        },
     ]
     qs = [
         _q("A", ["00V057000"]),
@@ -62,29 +76,72 @@ def test_score_counts_fabricated_hits_and_verbatim_causes():
         _q("C", ["00V057000"]),
         _q("D", ["00V057000"]),
         _q("E", ["00V057000"]),
+        _q("F", ["09V000000"]),
     ]
     s = lb.score_llm(rows, qs, campaigns, causes)
-    assert s["n"] == 5
-    assert s["hit@1"] == 0.0 and s["hit@3"] == 0.2  # A만 2위에서 맞힘
-    assert (s["ids"], s["bad_format"], s["fabricated"], s["q_with_fabricated"]) == (3, 1, 1, 1)
-    assert s["fabricated_rate"] == round(1 / 3, 3)
-    assert (s["causes_given"], s["cause_verbatim"], s["cause_no_573"], s["cause_not_in_573"]) == (
-        3,
-        1,
-        2,
-        0,
-    )
-    assert (s["answered"], s["abstained"], s["errors"]) == (3, 1, 1)
+    assert s["n"] == 6
+    assert s["hit@1"] == 0.0 and s["hit@3"] == round(1 / 6, 3)  # A만 2위에서 맞힘
+    assert (s["ids"], s["bad_format"], s["fabricated"], s["q_with_fabricated"]) == (5, 1, 1, 1)
+    assert s["fabricated_rate"] == 0.2
+    assert s["ids_gold"] == 1  # A의 00V057만 정답
+    got = {
+        k: s[k]
+        for k in (
+            "causes_given",
+            "cause_on_fabricated",
+            "cause_no_573_report",
+            "cause_573_empty",
+            "cause_checked",
+            "cause_verbatim",
+        )
+    }
+    assert got == {
+        "causes_given": 5,
+        "cause_on_fabricated": 1,
+        "cause_no_573_report": 1,
+        "cause_573_empty": 1,
+        "cause_checked": 2,
+        "cause_verbatim": 2,
+    }
+    assert (s["answered"], s["abstained"], s["errors"]) == (4, 1, 1)
 
 
-def test_score_cause_not_in_573_when_text_differs():
+def test_score_cause_checked_but_not_verbatim():
     s = lb.score_llm(
         [{"action_no": "A", "recalls": [{"campno": "00V057000", "cause": "spring too small"}]}],
         [_q("A", ["00V057000"])],
         {"00V057"},
-        {"00V057": "The retractor spring was undersized."},
+        {"00V057": _cause("The retractor spring was undersized.")},
     )
-    assert (s["cause_verbatim"], s["cause_not_in_573"], s["fabricated"]) == (0, 1, 0)
+    assert (s["cause_checked"], s["cause_verbatim"], s["fabricated"]) == (1, 0, 0)
+
+
+def _meta(n=1, inputs=None):
+    return {"n": n, "mask_re": lb.ID_RE.pattern, "inputs": inputs or {"eval_sha256": "e"}}
+
+
+def test_check_result_accepts_matching_result():
+    qs = {"A": {"question": "RECALL 00V057000 SEAT"}}
+    rows = [{"action_no": "A", "masked_question": f"RECALL {lb.MASK} SEAT"}]
+    lb.check_result(rows, _meta(), qs, {"eval_sha256": "e"})
+
+
+@pytest.mark.parametrize(
+    "rows,meta,inputs",
+    [
+        (
+            [{"action_no": "A", "masked_question": "Q"}],
+            _meta(),
+            {"eval_sha256": "other"},
+        ),  # 판본 다름
+        ([{"action_no": "A", "masked_question": "Q"}] * 2, _meta(2), {"eval_sha256": "e"}),  # 중복
+        ([{"action_no": "A", "masked_question": "Q"}], _meta(3), {"eval_sha256": "e"}),  # 줄 수
+        ([{"action_no": "A", "masked_question": "changed"}], _meta(), {"eval_sha256": "e"}),  # 질문
+    ],
+)
+def test_check_result_rejects_mismatch(rows, meta, inputs):
+    with pytest.raises(SystemExit):
+        lb.check_result(rows, meta, {"A": {"question": "Q"}}, inputs)
 
 
 def test_hit_rates_use_campaign_prefix():
@@ -93,3 +150,4 @@ def test_hit_rates_use_campaign_prefix():
         [["00V057001", "x"], ["y"] * 3 + ["05V100000"]],
     )
     assert (got["hit@1"], got["hit@3"], got["hit@5"], got["fabricated"]) == (0.5, 0.5, 1.0, 0)
+    assert (got["ids"], got["ids_gold"]) == (6, 2)

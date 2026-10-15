@@ -95,11 +95,7 @@ def run(model: str | None, effort: str | None, n: int | None, out: Path, workers
     model, effort = model_and_effort(model, effort)
     questions = read_jsonl(OUT_DIR / "eval.jsonl")[:n]
     masked = [mask_ids(q["question"]) for q in questions]
-    with ThreadPoolExecutor(workers) as ex:
-        answers = list(ex.map(lambda m: ask(model, effort, m), masked))
-    with out.open("w") as f:
-        for q, m, a in zip(questions, masked, answers, strict=True):
-            f.write(json.dumps({"action_no": q["action_no"], "masked_question": m, **a}) + "\n")
+    # 유료 호출 전에 입력 판본을 읽고 결과 자리를 만든다 — 호출을 다 하고 나서 기록에서 실패하지 않게
     meta = {
         "model": model,
         "reasoning_effort": effort,
@@ -108,7 +104,13 @@ def run(model: str | None, effort: str | None, n: int | None, out: Path, workers
         "mask_re": ID_RE.pattern,
         "inputs": provenance(),
     }
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.with_suffix(".meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1))
+    with ThreadPoolExecutor(workers) as ex:
+        answers = list(ex.map(lambda m: ask(model, effort, m), masked))
+    with out.open("w") as f:
+        for q, m, a in zip(questions, masked, answers, strict=True):
+            f.write(json.dumps({"action_no": q["action_no"], "masked_question": m, **a}) + "\n")
     in_tok = sum(a.get("in_tok", 0) for a in answers)
     out_tok = sum(a.get("out_tok", 0) for a in answers)
     p_in, p_out = PRICE.get(model, (0, 0))
@@ -129,10 +131,34 @@ def run(model: str | None, effort: str | None, n: int | None, out: Path, workers
     )
 
 
+def check_result(rows: list[dict], meta: dict, questions: dict[str, dict], inputs: dict) -> None:
+    """채점 전 대조 — 결과를 만든 입력 판본이 지금과 같고, 줄 수·문항이 맞고, 가린 질문이 기록된 규칙으로 다시 만든 것과
+    같아야 한다(다른 판본을 섞은 점수를 만들지 않는다, AGENTS.md 5-1). 하나라도 다르면 멈춘다."""
+    if meta.get("inputs") != inputs:
+        sys.exit(f"결과의 입력 판본 {meta.get('inputs')}이 지금 {inputs}과 다르다")
+    ids = [r["action_no"] for r in rows]
+    if len(rows) != meta.get("n") or len(set(ids)) != len(ids):
+        sys.exit(
+            f"결과 {len(rows)}줄(중복 {len(ids) - len(set(ids))})이 메타 n={meta.get('n')}과 맞지 않는다"
+        )
+    rule = re.compile(meta["mask_re"])
+    bad = [
+        a
+        for a in ids
+        if a not in questions
+        or rule.sub(MASK, questions[a]["question"])
+        != next(r for r in rows if r["action_no"] == a)["masked_question"]
+    ]
+    if bad:
+        sys.exit(f"가린 질문이 시험지·기록된 가리기 규칙과 다르다: {bad[:5]}")
+
+
 def score_llm(
-    rows: list[dict], questions: list[dict], campaigns: set[str], causes: dict[str, str]
+    rows: list[dict], questions: list[dict], campaigns: set[str], causes: dict[str, dict]
 ) -> dict:
-    """LLM 결과 채점. 지어낸 번호는 형식이 맞는 번호 중 데이터에 없는 캠페인의 비율."""
+    """LLM 결과 채점. 지어낸 번호는 형식이 맞는 번호 중 데이터에 없는 캠페인의 비율.
+    원인은 캠페인부터 가른다 — 없는 캠페인 / 573 보고서 없음 / 573 원인 칸이 빈 것 / 글이 있는 것(filled·stated_unknown —
+    stated_unknown도 원문 글을 보존한다, DEC-047). 글이 있으면 공백 정리 뒤 글자 대조한다."""
     gold = {q["action_no"]: {g[:6] for g in q["gold_campnos"]} for q in questions}
     hits = {k: 0 for k in KS}
     c = {
@@ -140,13 +166,16 @@ def score_llm(
         "abstained": 0,
         "errors": 0,
         "ids": 0,
+        "ids_gold": 0,
         "bad_format": 0,
         "fabricated": 0,
         "q_with_fabricated": 0,
         "causes_given": 0,
+        "cause_on_fabricated": 0,
+        "cause_no_573_report": 0,
+        "cause_573_empty": 0,
+        "cause_checked": 0,
         "cause_verbatim": 0,
-        "cause_not_in_573": 0,
-        "cause_no_573": 0,
     }
     for r in rows:
         if "error" in r or r.get("recalls") is None:
@@ -163,18 +192,24 @@ def score_llm(
             c["ids"] += 1
             camp = cid[:6]
             ranked.append(camp)
-            if camp not in campaigns:
+            c["ids_gold"] += camp in gold[r["action_no"]]
+            exists = camp in campaigns
+            if not exists:
                 c["fabricated"] += 1
                 fab_here = True
-            if rec["cause"].strip():
-                c["causes_given"] += 1
-                src = causes.get(camp)
-                if src is None:
-                    c["cause_no_573"] += 1
-                elif squash(rec["cause"]) in squash(src):
-                    c["cause_verbatim"] += 1
-                else:
-                    c["cause_not_in_573"] += 1
+            if not rec["cause"].strip():
+                continue
+            c["causes_given"] += 1
+            src = causes.get(camp)
+            if not exists:
+                c["cause_on_fabricated"] += 1
+            elif src is None:
+                c["cause_no_573_report"] += 1
+            elif not src["cause_text"].strip():
+                c["cause_573_empty"] += 1
+            else:
+                c["cause_checked"] += 1
+                c["cause_verbatim"] += squash(rec["cause"]) in squash(src["cause_text"])
         c["q_with_fabricated"] += fab_here
         for k in KS:
             hits[k] += bool(gold[r["action_no"]] & set(ranked[:k]))
@@ -206,26 +241,35 @@ def rrf_tops(queries: list[str]) -> tuple[list[list[str]], dict]:
 def hit_rates(questions: list[dict], tops: list[list[str]]) -> dict:
     """Hit@k — 캠페인 6자리 기준(LLM 채점과 같은 기준). 검색 결과는 모두 색인 안 번호라 지어낸 번호는 0."""
     hits = {k: 0 for k in KS}
+    ids = ids_gold = 0
     for q, top in zip(questions, tops, strict=True):
         g = {x[:6] for x in q["gold_campnos"]}
+        ids += len(top)
+        ids_gold += sum(t[:6] in g for t in top)
         for k in KS:
             hits[k] += bool(g & {t[:6] for t in top[:k]})
     n = len(questions)
-    return {"n": n, **{f"hit@{k}": round(hits[k] / n, 3) for k in KS}, "fabricated": 0}
+    return {
+        "n": n,
+        **{f"hit@{k}": round(hits[k] / n, 3) for k in KS},
+        "ids": ids,
+        "ids_gold": ids_gold,
+        "fabricated": 0,
+    }
 
 
 def score(path: Path) -> None:
     rows = read_jsonl(path)
+    meta_path = path.with_suffix(".meta.json")
+    if not meta_path.exists():
+        sys.exit(f"{meta_path}가 없다 — 결과를 만든 입력 판본을 확인할 수 없다")
     questions = {q["action_no"]: q for q in read_jsonl(OUT_DIR / "eval.jsonl")}
+    check_result(rows, json.loads(meta_path.read_text()), questions, provenance())
     qs = [questions[r["action_no"]] for r in rows]
     cards = read_jsonl(OUT_DIR / "recalls.jsonl")
     received = {c["campno"]: c["received_date"] for c in cards}
     campaigns = {c["campno"][:6] for c in cards}
-    causes = {
-        c["campaign"]: c["cause_text"]
-        for c in read_jsonl(OUT_DIR / "causes.jsonl")
-        if c["cause_status"] == "filled"
-    }
+    causes = {c["campaign"]: c for c in read_jsonl(OUT_DIR / "causes.jsonl")}
     masked_tops, emb = rrf_tops([r["masked_question"] for r in rows])
     raw_tops, _ = rrf_tops(
         [q["question"] for q in qs]
@@ -242,7 +286,13 @@ def score(path: Path) -> None:
         "other": lambda q: not gold_in(q),
         "post2014": lambda q: any(received.get(g, "") >= RCLRPT_FROM for g in q["gold_campnos"]),
     }
-    report = {"embedding": emb, "llm": {}, "ours_masked": {}, "ours_raw": {}}
+    report = {
+        "inputs": provenance(),
+        "embedding": emb,
+        "llm": {},
+        "ours_masked": {},
+        "ours_raw": {},
+    }
     for name, keep in subsets.items():
         idx = [i for i, q in enumerate(qs) if keep(q)]
         if not idx:  # 표본 시험에서는 비는 부분이 있다
