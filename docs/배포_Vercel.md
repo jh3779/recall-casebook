@@ -57,7 +57,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
    ```bash
    printf 'https://lg-cns-rag-web.vercel.app,http://localhost:5173' | vercel env add ALLOWED_ORIGINS production
    vercel deploy --prod      # 같은 SERVING_BUILD_ID — 환경변수는 서버가 시작할 때 한 번 읽으므로 재배포해야 적용된다
-   curl -s https://lg-cns-rag.vercel.app/health      # build_id f1fe1843ed0f2c66 그대로인지(첫 요청 13~16초)
+   curl -s https://lg-cns-rag.vercel.app/health      # build_id가 그대로인지(2026-10-14 당시 f1fe1843ed0f2c66, 생산 기간 재배포 뒤에는 5e32c164b15a544a; 첫 요청 13~16초)
    curl -si -X OPTIONS https://lg-cns-rag.vercel.app/search -H "Origin: https://lg-cns-rag-web.vercel.app" \
      -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type" | grep -i access-control-allow-origin
    ```
@@ -67,7 +67,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
 **2026-10-14 실측 기록**(작업 F): 1차 `vercel deploy`는 원본 쏘나타 때문에 업로드 129.8MiB(CLI 표시) 뒤 `File size limit exceeded (100 MB)`로 실패 — 업로드 목록에 `node_modules`·보관 모델은 없었다(하위 폴더 `.vercelignore`가 읽힘). 줄인 쏘나타로 2차 배포 성공(업로드 표시 42.2MiB — 1차에서 올라간 쏘렌토 등은 건너뛴 것으로 보인다, 빌드 16초, 첫 배포라 Production `lg-cns-rag-web.vercel.app`에 붙음). 공개 주소에서 받은 두 모델 지문이 1단계 값과 같고 `kona.glb`·`.env.local`은 404. API는 `ALLOWED_ORIGINS` 추가 뒤 재배포 — `/health` build `f1fe1843ed0f2c66`(첫 요청 13.1초), 화면 주소의 사전 요청·검색 모두 200에 `access-control-allow-origin: https://lg-cns-rag-web.vercel.app`, 검색 응답에 `access-control-expose-headers: Retry-After`(#117 호출 상한도 이 재배포로 적용). 헤드리스 Chrome으로 공개 화면 첫 화면의 "데이터 판본"이 build `f1fe1843ed0f2c66`으로 뜨는 것을 확인했다. 모바일 390px 쇼룸에서는 부품 분류 패널이 차량을 가린다(기존 화면 배치 — 이 작업 밖, 후속 #120).
 
 - **환경변수에 키를 넣지 않는다.** `VITE_*` 값은 빌드 결과(브라우저)에 그대로 들어간다(AGENTS.md 7절, DEC-032).
-- 공개 화면의 검색도 API의 IP별 호출 상한(1분 60회, DEC-057)을 받는다. 화면은 앱 429에 남은 초를 보여 주고 그동안 [다시 시도]를 막는다(`frontend/src/search/Feedback.tsx`, DEC-057 ⑤) — 2026-10-14 첫 배포본에는 아직 없고 이 PR 병합 뒤 다시 배포하면 들어간다.
+- 공개 화면의 검색도 API의 IP별 호출 상한(1분 60회, DEC-057)을 받는다. 화면은 앱 429에 남은 초를 보여 주고 그동안 [다시 시도]를 막는다(`frontend/src/search/Feedback.tsx`, DEC-057 ⑤) — 2026-10-14 첫 배포본에는 없었고 같은 날 PR #119 병합 뒤 화면을 다시 배포해 들어갔다(공개 화면 번들에 "호출이 너무 잦습니다" 문구가 있는 것을 확인).
 
 ## 3. API 배포 — Vercel (서빙 묶음, 발표 전)
 
@@ -96,7 +96,7 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 
 ### 3-1. 실제 배포 (2026-10-12, DEC-051)
 
-**지금 공개 주소: `https://lg-cns-rag.vercel.app`** (Vercel 프로젝트 `lg-cns-rag`, Hobby, 함수 지역 `syd1`). 사용자 결정으로 #63보다 먼저 Production에 올렸다(DEC-051 ①). 비밀 키 인증은 두지 않는다(DEC-057). 앱의 IP별 호출 상한(1분 60회)은 `server/ratelimit.py`로 구현됐고 **이 변경을 배포해야 적용된다**. WAF 규칙은 Vercel 대시보드에서 설정해야 하며, 설정 전에는 앱 상한만 있다(아래 3-2).
+**지금 공개 주소: `https://lg-cns-rag.vercel.app`** (Vercel 프로젝트 `lg-cns-rag`, Hobby, 함수 지역 `syd1`). 사용자 결정으로 #63보다 먼저 Production에 올렸다(DEC-051 ①). 비밀 키 인증은 두지 않는다(DEC-057). 앱의 IP별 호출 상한(1분 60회)은 `server/ratelimit.py`로 구현됐고 2026-10-14 작업 F의 API 재배포로 적용됐다(2절 실측 기록). WAF 규칙은 Vercel 대시보드에서 설정해야 하며, 설정 전에는 앱 상한만 있다(아래 3-2).
 
 | 파일 | 하는 일 |
 |---|---|
@@ -104,7 +104,7 @@ API는 지금 구조 그대로는 올리기 어렵다. 서버가 시작할 때 �
 | `vercel.json` | `framework: fastapi`(CLI로 만든 프로젝트는 프리셋이 비어 `app.py`를 함수로 못 찾는다), `regions: ["syd1"]`(운영 Supabase ap-southeast-2와 같은 지역), `maxDuration` 60(첫 요청 실측 13.2초 — 공개 상태에서 요청 하나가 함수를 오래 붙잡지 않게 실측에 맞춤) |
 | `.vercelignore` | CLI 배포는 로컬 폴더를 올린다. Vercel 기본 무시 목록에 `.env`·`.env.server`·`data/`가 없으므로 **필요한 것만 허용**한다(진입점·설정·`pyproject.toml`·`uv.lock`·`.python-version`·`server/`·`scripts/defect_precedent/`) |
 
-Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BUILD_ID=f1fe1843ed0f2c66` · `SUPABASE_URL` · `SERVER_DATABASE_URL`(`rag_reader`, Sensitive) · `UV_NO_CONFIG=1`(빌더 uv 0.10.11이 `required-version >=0.12.5`에 걸려서 — DEC-051 ④). `ALLOWED_ORIGINS=https://lg-cns-rag-web.vercel.app,http://localhost:5173`(2026-10-14 작업 F에서 추가하고 재배포 — 2절 실측 기록). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
+Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BUILD_ID=5e32c164b15a544a`(2026-10-14 생산 기간 재배포 — DEC-059; 이전 값 `f1fe1843ed0f2c66`은 되돌리기용, 되돌릴 때는 이 값을 다시 넣고 `vercel deploy --prod`) · `SUPABASE_URL` · `SERVER_DATABASE_URL`(`rag_reader`, Sensitive) · `UV_NO_CONFIG=1`(빌더 uv 0.10.11이 `required-version >=0.12.5`에 걸려서 — DEC-051 ④). `ALLOWED_ORIGINS=https://lg-cns-rag-web.vercel.app,http://localhost:5173`(2026-10-14 작업 F에서 추가하고 재배포 — 2절 실측 기록). 관리자 키(`DATABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`)는 넣지 않는다.
 
 다시 배포: 저장소 루트에서 `vercel deploy --prod`(먼저 `vercel link --project lg-cns-rag` — `.vercel/`은 gitignore). 값 확인은 `vercel env ls production`(값은 숨김). 로그는 `vercel logs <배포 주소>`.
 
@@ -119,6 +119,48 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 | 탐침 차이(macOS arm 벡터 ↔ Vercel Linux x86 재계산) | 최대 4.30e-04(콜드 스타트 네 번 모두 같음) → 묶음 경로만 허용 차이 1e-3(`CROSS_MACHINE_ATOL`, DEC-051 ②), 같은 기계는 1e-4. 서버는 통과해도 `탐침 최대 차이 …`를 로그에 남긴다 — `vercel logs <배포 주소> --json`으로 분포를 모아 다시 판단 |
 | 시작 최대 RSS | **901MB**(Hobby 2GB 안) — 서버가 시작 끝에 `시작 최대 RSS …MB`를 로그로 남긴다 |
 | 함수 크기 | Vercel이 출력하지 않아 **근사로 잼**: Linux x86 컨테이너(`python:3.12-slim`, uv 0.10.11)에 `uv.lock`대로 개발 의존성 없이 설치한 site-packages **약 208MB**(onnxruntime 63·numpy 57·pillow 14·tokenizers 12·psycopg 11MB 등) + 코드 약 2MB ≈ **210MB**(한도 500MB의 약 42%, Vercel 번들 최적화 전 값 — 실제 Vercel 산출물 크기는 미측정). 다시 잴 때: `pyproject.toml`·`uv.lock`·`.python-version`을 임시 폴더에 복사해 uv 공식 이미지로 `docker run --rm --platform linux/amd64 -v <폴더>:/src:ro ghcr.io/astral-sh/uv:0.10.11-python3.12-trixie-slim sh -c 'cp -r /src /w && cd /w && UV_NO_CONFIG=1 uv sync --frozen --no-dev -q && du -sm .venv/lib/python3.12/site-packages'` + `du -sh server scripts/defect_precedent`. (위 208MB는 2026-10-12 `python:3.12-slim` 일회용 컨테이너 안에서 uv 0.10.11을 `pip`으로 설치해 잰 값이다 — 저장소는 `pip install`을 쓰지 않으므로 다시 잴 때는 이 공식 이미지 명령을 쓴다. 같은 날 이 명령으로 재현하려 했으나 이 컴퓨터(Apple Silicon)에서 amd64 컨테이너가 시작되지 않아 확인하지 못했다 — #103) |
+
+### 3-1a. 서빙 build 바꾸기·되돌리기 (DEC-059 운영 반영 기록)
+
+서버가 띄우는 데이터는 Vercel 환경변수 `SERVING_BUILD_ID` 하나로 정해진다(코드 `server/` 변경 없이도 바뀐다). 묶음은 build마다 Storage와 `serving_bundles` 기록에 그대로 남아 있어(지우는 도구가 없다) 값만 바꿔 재배포하면 된다.
+
+| build | 묶음 sha256 | 내용 |
+|---|---|---|
+| `f1fe1843ed0f2c66` | `dd0efac013a47dd9cb5b303d4d7958724e9cba21254f4bb9bc6f7f87a190bc1a` | 2026-10-06 판본, 생산 기간 칸 없음(DEC-059 이전) |
+| `5e32c164b15a544a` | `b466430d989b55e1d623346f70461428b6ec83bfbb0508eff40bbf4d98c25127` | 같은 판본 + 573 생산 기간(DEC-059). 2026-10-14부터 공개 |
+
+**바꾸는 법 — 손 절차** (자동 스크립트는 아직 없다. 실패 경로를 모두 시험한 스크립트 초안이 브랜치 `chore/switch-serving-build`에 있고 별도 PR로 검토한다.) 아래 `<BUILD>`에 위 표의 build를 넣는다.
+
+**시작 전에 확인** — 이 절차의 `vercel deploy --prod`는 **지금 작업 폴더의 코드 전체**를 Production에 올린다(데이터 build만 바뀌는 게 아니다).
+- `git status --short`가 비어 있고 `git rev-parse HEAD`가 `git rev-parse origin/main`(`git fetch` 뒤)과 같은 **깨끗한 최신 main**에서만 한다. 아니면 멈춘다.
+- 저장소 루트가 `lg-cns-rag`에 연결돼 있는지 `cat .vercel/project.json`의 `projectName`으로 보고, 아니면 `vercel link --yes --project lg-cns-rag`.
+- `vercel whoami`가 계정을 돌려주는지(로그아웃 상태에서도 `/health`는 읽히므로 이것으로 로그인을 확인한다).
+
+**명령은 한 줄씩 실행하고 앞 줄이 성공했는지 본 뒤 다음 줄을 친다.** 여러 줄을 한꺼번에 붙여 넣지 않는다 — zsh은 같은 줄의 `# 설명`을 인수로 넘겨 실패하고, 중간에 실패해도 다음 줄이 계속 돈다(HANDOFF Failed Attempts). 명령 줄에 설명을 붙이지 않는다.
+
+0. 바꾸기 **전에** `curl -s https://lg-cns-rag.vercel.app/health`로 지금의 `build_id`·`bundle_sha256`을 적어 둔다 — 아래 "이전 값"이다.
+1. `vercel env rm SERVING_BUILD_ID production --yes`
+2. `printf '<BUILD>' | vercel env add SERVING_BUILD_ID production` — **실패하면 배포하지 말고** 아래 "실패했을 때"로 이전 값을 되돌린다. 값이 없으면 서버가 시작하지 않는다(`server/api.py:108-112`).
+3. `vercel deploy --prod`
+4. `curl -s https://lg-cns-rag.vercel.app/health` — 첫 요청 13~16초. `build_id`·`bundle_sha256`이 위 표와 같아야 끝이다.
+
+실패했을 때(**이전 값으로 되돌리기** — 처음 바꿀 때와 똑같이 지우고 → 넣고 → 배포한다. 새 값이 이미 들어 있으면 `env add`만으로는 교체되지 않는다):
+1. `vercel env rm SERVING_BUILD_ID production --yes` — **위 2(새 값 넣기)가 실패해 변수가 이미 없는 경우에는 이 줄을 건너뛰고 2부터 한다.** `vercel env ls production`에 `SERVING_BUILD_ID`가 보이면 있는 것이다. 지우기가 "변수가 없다"가 아닌 다른 이유(로그인·네트워크)로 실패하면 대시보드 Settings > Environment Variables에서 이전 값으로 직접 바꾼다.
+2. `printf '<이전 build>' | vercel env add SERVING_BUILD_ID production`
+3. `vercel deploy --prod`
+4. `curl -s https://lg-cns-rag.vercel.app/health` — `build_id`·`bundle_sha256`이 0번에서 적어 둔 이전 값과 같을 때만 복구 완료다.
+
+- 위 3(처음 배포)이 실패했어도 Vercel에서는 배포가 이어져 몇 분 뒤 새 build가 공개될 수 있다. 되돌린 뒤에도 대시보드 Deployments에서 **진행 중인 배포가 없어질 때까지** 몇 분 간격으로 4를 다시 보고, 새 build가 다시 보이면 복구 1~4를 한 번 더 한다.
+- 복구의 2(이전 값 넣기)가 성공하기 전에는 **재배포하지 않는다**(값이 없으면 서버가 시작하지 못한다). 2가 실패하면 대시보드 Settings > Environment Variables에서 직접 넣은 뒤 3~4를 한다.
+
+- `printf`로 넣는다(`echo`는 끝에 줄바꿈이 붙어 build 이름이 틀어진다).
+- `/health`의 `build_id`·`bundle_sha256`이 표와 다르면 바뀐 것이 아니다 — `vercel logs <배포 주소>`로 원인을 보고, 아래 확인을 건너뛰지 않는다.
+- 검색 확인: `POST /search`(질문 한 건)에서 `build_id`가 같고 카드가 나오는지. 생산 기간 항목(`checklist[].item == "production_period"`)은 `5e32…`에서만 붙고 `f1fe…`에서는 0개가 정상이다.
+- 화면은 되돌릴 필요가 없다(생산 기간 항목이 없는 응답도 그대로 그린다).
+
+**검증한 것(2026-10-14)**: 되돌릴 대상 `f1fe1843ed0f2c66` 묶음이 **현재 코드(`0d05342`)로** 기동한다 — 로컬 서버(`RAG_SOURCE=bundle SERVING_BUILD_ID=f1fe1843ed0f2c66`, 조회 전용 계정이 없어 로컬 개발용 `ALLOW_ADMIN_DB_FOR_SERVER=1`로 기동)에서 `/health`가 위 표의 sha256과 같고 `/search`가 200에 카드 11건·생산 기간 항목 0개. 즉 되돌린 뒤 서버가 못 뜨는 경우는 이 확인으로 배제했다. **확인하지 못한 것**: 진짜 Vercel에서 `f1fe…`로 되돌려 보지는 않았다(공개 서비스를 바꾸므로 — 같은 명령 순서는 2026-10-14 생산 기간 재배포에서 사용자가 실행해 성공). 시연 전 연습이 필요하면 사용자가 정해 한다.
+
+**언제 되돌리나(DEC-059 인터뷰 결정 ⑤)**: 10/16 밤까지 배포를 끝내고 10/17부터 동결한다. 동결 뒤 새 build에서 문제가 보이면 위 절차로 `f1fe…`로 되돌리고, 생산 기간 표시는 발표에서 뺀다.
 
 ### 3-2. 호출 상한과 시연 준비 (이슈 #63, DEC-057)
 
