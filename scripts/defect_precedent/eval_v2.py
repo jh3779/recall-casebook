@@ -317,7 +317,7 @@ def build_pool(
     all_ids: list[str],
     seed: int,
     depth: int = 10,
-) -> tuple[list[dict], dict]:
+) -> tuple[list[dict], dict, dict]:
     """질문 카드 하나의 풀링 후보: 각 시스템의 (질문보다 먼저 접수·다른 중복 묶음인) 상위 depth + 통제 후보. 시스템 이름은 key에만 둔다."""
     qd = _norm_date(query["received_date"])
 
@@ -361,7 +361,10 @@ def build_pool(
     key = {
         r["candidate_id"]: dict(sorted(cand[cid].items())) for r, cid in zip(rows, ids, strict=True)
     }
-    return rows, key
+    idmap = {
+        r["candidate_id"]: cid for r, cid in zip(rows, ids, strict=True)
+    }  # 표시자에게 주지 않는다 — 누수 진단용
+    return rows, key, idmap
 
 
 def cohen_kappa(a: list[str], b: list[str]) -> float:
@@ -513,6 +516,135 @@ def cmd_question_flags(args) -> None:
         Path(args.out).write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
+def lcs_run(a: list[str], b: list[str]) -> int:
+    """두 단어 목록의 가장 긴 연속 공통 구간(단어 수) — 베껴 쓴 정도."""
+    best = 0
+    prev = [0] * (len(b) + 1)
+    for x in a:
+        cur = [0] * (len(b) + 1)
+        for j, y in enumerate(b, start=1):
+            if x == y:
+                cur[j] = prev[j - 1] + 1
+                best = max(best, cur[j])
+        prev = cur
+    return best
+
+
+def paraphrase_metrics(src: str, para: str, tokenize, strip_brands) -> dict:
+    """바꿔 쓴 예상 질문의 기계 검사. 하드 실패 = 숫자 포함 · 브랜드 포함 · 6단어 미만/45단어 초과 · 원문과 연속 겹침 7단어 이상."""
+    cs = {w for w in tokenize(src) if w not in STOP and not w.isdigit() and len(w) > 2}
+    cp = {w for w in tokenize(para) if w not in STOP and not w.isdigit() and len(w) > 2}
+    words = len(para.split())
+    run = lcs_run(tokenize(src), tokenize(para))
+    reasons = []
+    if re.search(r"\d", para):
+        reasons.append("digit")
+    if strip_brands(para) != re.sub(r"\s+", " ", para).strip():
+        reasons.append("brand")
+    if words < 6 or words > 45:
+        reasons.append("length")
+    if run >= 7:
+        reasons.append("copy_run>=7")
+    return {
+        "words": words,
+        "jaccard": round(len(cs & cp) / len(cs | cp), 3) if cs | cp else 0.0,
+        "novel_token_share": round(len(cp - cs) / len(cp), 3) if cp else 0.0,
+        "longest_copy_run": run,
+        "hard_fail": reasons,
+    }
+
+
+def cmd_paraphrase_input(args) -> None:
+    cards = {c["campno"]: c for c in _read_jsonl(DATA / "recalls.jsonl")}
+    key = json.loads(Path(args.key).read_text(encoding="utf-8"))
+    rows = [
+        {"query_id": q, "source_text": cards[v["query_campno"]]["defect"]} for q, v in key.items()
+    ]
+    path = OUT / "expected_in.csv"
+    with path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["query_id", "source_text"])
+        w.writeheader()
+        w.writerows(rows)
+    print(f"{len(rows)}개 → {path} (생성 에이전트에는 이 두 열만 준다 — 후보·정답·검색 결과 없음)")
+
+
+def cmd_paraphrase_check(args) -> None:
+    from scripts.defect_precedent.bm25_baseline import tokenize
+    from scripts.defect_precedent.retrieval_compare import strip_brands
+
+    with (OUT / "expected_in.csv").open(encoding="utf-8", newline="") as f:
+        src = {r["query_id"]: r["source_text"] for r in csv.DictReader(f)}
+    got: dict[str, str] = {}
+    for p in args.outputs:
+        with open(p, encoding="utf-8", newline="") as f:
+            for r in csv.DictReader(f):
+                got[r["query_id"]] = r["question"].strip()
+    rows, fails = [], Counter()
+    for qid, s in src.items():
+        if qid not in got:
+            rows.append({"query_id": qid, "question": "", "hard_fail": "missing"})
+            fails["missing"] += 1
+            continue
+        m = paraphrase_metrics(s, got[qid], tokenize, strip_brands)
+        for r in m["hard_fail"]:
+            fails[r] += 1
+        rows.append(
+            {"query_id": qid, "question": got[qid], **m, "hard_fail": ";".join(m["hard_fail"])}
+        )
+    ok = [r for r in rows if not r["hard_fail"]]
+    out = OUT / "expected_check.csv"
+    with out.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows(rows)
+    summ = {
+        "n": len(rows),
+        "passed": len(ok),
+        "failures": dict(fails),
+        "failed_ids": [r["query_id"] for r in rows if r["hard_fail"]],
+        "mean_jaccard": round(sum(r["jaccard"] for r in ok) / len(ok), 3) if ok else None,
+        "mean_novel_token_share": round(sum(r["novel_token_share"] for r in ok) / len(ok), 3)
+        if ok
+        else None,
+        "mean_longest_copy_run": round(sum(r["longest_copy_run"] for r in ok) / len(ok), 2)
+        if ok
+        else None,
+    }
+    print(json.dumps(summ, ensure_ascii=False, indent=1))
+
+
+def leak_diagnostics(key: dict, by_id: dict[str, dict], idmaps: dict[str, dict], tokenize) -> dict:
+    """시스템별 상위 10의 같은 제조사 비율과 복사형 후보(질문 글과 내용 단어 Jaccard ≥ 0.6) 수 — 누수 점검."""
+    out: dict = {}
+    for sysname in ("bm25", "dense", "rrf"):
+        same = tot = copy = 0
+        for qid, q in key.items():
+            qc = by_id[q["query_campno"]]
+            qtok = {
+                w
+                for w in tokenize(qc["defect"])
+                if w not in STOP and not w.isdigit() and len(w) > 2
+            }
+            for cid, v in q["candidates"].items():
+                if sysname not in v:
+                    continue
+                c = by_id[idmaps[qid][cid]]
+                tot += 1
+                same += c["maker_group"] == qc["maker_group"] or c["maker"] == qc["maker"]
+                ctok = {
+                    w
+                    for w in tokenize(c["defect"])
+                    if w not in STOP and not w.isdigit() and len(w) > 2
+                }
+                copy += bool(qtok | ctok) and len(qtok & ctok) / len(qtok | ctok) >= 0.6
+        out[sysname] = {
+            "top10_slots": tot,
+            "same_maker_share": round(same / tot, 3) if tot else None,
+            "copy_like_share": round(copy / tot, 3) if tot else None,
+        }
+    return out
+
+
 def cmd_r1_pool(args) -> None:
     import numpy as np
 
@@ -523,23 +655,35 @@ def cmd_r1_pool(args) -> None:
     by_id = {c["campno"]: c for c in cards}
     ids = [c["campno"] for c in cards]
     queries = pick_queries(cards, args.n_queries, args.seed)
+    override: dict[str, str] = {}
+    if (
+        args.queries_file
+    ):  # 예상 질문: 검색 질의만 바꾸고 관련도 기준(시트의 query_text)은 원문 결함 글로 둔다
+        with open(args.queries_file, encoding="utf-8-sig", newline="") as f:
+            override = {
+                r["query_id"]: r["question"] for r in csv.DictReader(f) if r["question"].strip()
+            }
     model, vecs, _, _ = embed_cards("BAAI/bge-small-en-v1.5", [card_text(c) for c in cards])
     vecs = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
     bm = BM25([tokenize(card_text(c)) for c in cards])
-    sheet, keys, qrows = [], {}, []
+    sheet, keys, qrows, idmaps = [], {}, [], {}
     for qi, q in enumerate(queries):
         qid = f"Q{qi + 1:03d}"
         text = q["defect"]
-        b = [ids[i] for i in bm.top(tokenize(text), 300)]
-        v = np.array(list(model.query_embed([text])), dtype="float32")[0]
+        if args.queries_file and qid not in override:
+            continue  # 하드 실패로 빠진 질문
+        search_text = override.get(qid, text)
+        b = [ids[i] for i in bm.top(tokenize(search_text), 300)]
+        v = np.array(list(model.query_embed([search_text])), dtype="float32")[0]
         v /= np.linalg.norm(v)
         d = [ids[i] for i in np.argsort(-(vecs @ v))[:300]]
-        rows, key = build_pool(
+        rows, key, idmap = build_pool(
             q, {"bm25": b, "dense": d, "rrf": rrf(b[:100], d[:100])}, by_id, ids, args.seed
         )
         for r in rows:
             sheet.append({"query_id": qid, "query_text": text, **r})
         keys[qid] = {"query_campno": q["campno"], "candidates": key}
+        idmaps[qid] = idmap
         qrows.append({"query_id": qid, "category": category(q), "n_candidates": len(rows)})
     header = [
         "query_id",
@@ -563,13 +707,28 @@ def cmd_r1_pool(args) -> None:
         "controls": ["control_same_category(5)", "control_other_category(3)"],
         "recalls_sha256": hashlib.sha256((DATA / "recalls.jsonl").read_bytes()).hexdigest(),
     }
-    _write_sheet(OUT / "r1_pool_sheet.csv", header, sheet, meta)
-    (OUT / "pool_key.json").write_text(
+    prefix = args.prefix
+    (OUT / f"{prefix}pool_ids.json").write_text(json.dumps(idmaps, indent=1), encoding="utf-8")
+    meta["search_text"] = "expected_questions" if args.queries_file else "source_defect_text"
+    _write_sheet(OUT / f"{prefix}r1_pool_sheet.csv", header, sheet, meta)
+    (OUT / f"{prefix}pool_key.json").write_text(
         json.dumps(keys, ensure_ascii=False, indent=1), encoding="utf-8"
     )
     print(
-        f"질문 {len(queries)}개, 후보 {len(sheet)}줄 → {OUT}/r1_pool_sheet.csv (시스템 대응표 pool_key.json은 표시자에게 주지 않는다)"
+        f"질문 {len(keys)}개, 후보 {len(sheet)}줄 → {OUT}/{prefix}r1_pool_sheet.csv (시스템 대응표 {prefix}pool_key.json은 표시자에게 주지 않는다)"
     )
+
+
+def cmd_leak_check(args) -> None:
+    from scripts.defect_precedent.bm25_baseline import tokenize
+
+    by_id = {c["campno"]: c for c in _read_jsonl(DATA / "recalls.jsonl")}
+    res = {}
+    for name in args.prefix:
+        key = json.loads((OUT / f"{name}pool_key.json").read_text(encoding="utf-8"))
+        ids = json.loads((OUT / f"{name}pool_ids.json").read_text(encoding="utf-8"))
+        res[name or "source"] = leak_diagnostics(key, by_id, ids, tokenize)
+    print(json.dumps(res, ensure_ascii=False, indent=1))
 
 
 def main(argv=None) -> None:
@@ -589,9 +748,24 @@ def main(argv=None) -> None:
         "--sheet", action="append", required=True, help="표시한 시트(표시자마다 하나, 두 번까지)"
     )
     sc.add_argument("--key", required=True, help="pool_key.json (표시자에게는 주지 않은 파일)")
+    pi = sub.add_parser("paraphrase-input")
+    pi.add_argument("--key", required=True)
+    pc = sub.add_parser("paraphrase-check")
+    pc.add_argument(
+        "--outputs", nargs="+", required=True, help="생성 에이전트 출력 CSV(query_id,question)"
+    )
+    lk = sub.add_parser("leak-check")
+    lk.add_argument(
+        "--prefix",
+        nargs="+",
+        default=[""],
+        help="풀 파일 접두사(원문 질문은 빈 문자열, 예상 질문은 exp_)",
+    )
     q = sub.add_parser("r1-pool")
     q.add_argument("--n-queries", type=int, default=40)
     q.add_argument("--seed", type=int, required=True)
+    q.add_argument("--queries-file", help="예상 질문 CSV(query_id,question) — 검색 질의만 바꾼다")
+    q.add_argument("--prefix", default="", help="출력 파일 접두사")
     args = p.parse_args(argv)
     {
         "audit-sheet": cmd_audit_sheet,
@@ -600,6 +774,9 @@ def main(argv=None) -> None:
         "r1-pool": cmd_r1_pool,
         "r1-score": cmd_r1_score,
         "question-flags": cmd_question_flags,
+        "paraphrase-input": cmd_paraphrase_input,
+        "paraphrase-check": cmd_paraphrase_check,
+        "leak-check": cmd_leak_check,
     }[args.cmd](args)
 
 

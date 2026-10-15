@@ -1,5 +1,7 @@
 """평가셋 재설계 도구(eval_v2)의 순수 함수 시험 — 합성 입력만 쓴다."""
 
+import re
+
 import pytest
 
 from scripts.defect_precedent.eval_v2 import (
@@ -12,8 +14,11 @@ from scripts.defect_precedent.eval_v2 import (
     cohen_kappa,
     hit_at_k,
     keyword_control,
+    lcs_run,
+    leak_diagnostics,
     merge_labels,
     ndcg_at_k,
+    paraphrase_metrics,
     pick_queries,
     precision_at_k,
     question_flags,
@@ -118,7 +123,7 @@ def test_build_pool_is_blind_time_valid_and_has_controls():
     by_id = {c["campno"]: c for c in cards}
     ids = [c["campno"] for c in cards]
     systems = {"bm25": ids[:20], "dense": ids[10:30], "rrf": ids[5:25]}
-    rows, key = build_pool(query, systems, by_id, ids, seed=1)
+    rows, key, idmap = build_pool(query, systems, by_id, ids, seed=1)
     assert rows and set(rows[0]) == {
         "candidate_id",
         "candidate_defect",
@@ -205,3 +210,54 @@ def test_question_flags_count_objective_properties_only():
         and f["zero_content_overlap_with_gold"] == 1
     )
     assert f["any_flag"] == 1 and f["n"] == 2
+
+
+def test_lcs_run_counts_longest_contiguous_overlap():
+    assert lcs_run("a b c d e".split(), "x b c d y".split()) == 3
+    assert lcs_run("a b".split(), "c d".split()) == 0
+
+
+def test_paraphrase_hard_fail_rules():
+    tok = lambda t: re.findall(r"[a-z0-9]+", t.lower())  # noqa: E731
+    strip = lambda t: re.sub(r"\bford\b", " ", t, flags=re.I).replace("  ", " ").strip()  # noqa: E731
+    src = "the front brake caliper may leak fluid because the seal is damaged during assembly"
+    good = "brake fluid leaks from a caliper seal that was damaged in production"
+    assert paraphrase_metrics(src, good, tok, strip)["hard_fail"] == []
+    assert (
+        "digit"
+        in paraphrase_metrics(
+            src, "caliper seal leak after 3 weeks of normal driving here", tok, strip
+        )["hard_fail"]
+    )
+    assert (
+        "brand"
+        in paraphrase_metrics(
+            src, "Ford brake caliper seal leaks fluid after assembly work", tok, strip
+        )["hard_fail"]
+    )
+    assert "length" in paraphrase_metrics(src, "brake leak", tok, strip)["hard_fail"]
+    copy = "the front brake caliper may leak fluid because the seal is damaged"
+    assert "copy_run>=7" in paraphrase_metrics(src, copy, tok, strip)["hard_fail"]
+
+
+def test_leak_diagnostics_same_maker_and_copy_like_candidates():
+    tok = lambda t: re.findall(r"[a-z0-9]+", t.lower())  # noqa: E731
+    q = {
+        **card(1, defect="brake caliper seal leak fluid assembly damaged "),
+        "maker": "A",
+        "maker_group": "A",
+    }
+    same = {
+        **card(2, defect="brake caliper seal leak fluid assembly damaged "),
+        "maker": "A",
+        "maker_group": "A",
+    }
+    other = {
+        **card(3, defect="airbag inflator rupture shrapnel deployment "),
+        "maker": "B",
+        "maker_group": "B",
+    }
+    by_id = {c["campno"]: c for c in (q, same, other)}
+    key = {"Q1": {"query_campno": "C001", "candidates": {"h1": {"bm25": 1}, "h2": {"bm25": 2}}}}
+    r = leak_diagnostics(key, by_id, {"Q1": {"h1": "C002", "h2": "C003"}}, tok)
+    assert r["bm25"]["same_maker_share"] == 0.5 and r["bm25"]["copy_like_share"] == 0.5
