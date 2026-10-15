@@ -132,6 +132,7 @@ _갱신: 2026-10-14 — **생산 기간 확인 항목(PR #124, DEC-059) 병합(`
 
 ## Relevant Files
 
+- `scripts/switch_serving_build.sh`, `tests/test_switch_serving_build.py`, `docs/배포_Vercel.md` 3-1a절 — 공개 API의 서빙 build 전환·되돌리기(DEC-059, 실패 경로 가짜 명령 시험 12건)
 - `server/ratelimit.py`, `server/api.py`(`create_app`), `tests/test_rate_limit.py`, `docs/배포_Vercel.md` 3-2절, `.agent/DECISIONS.md` DEC-057 — #63 호출 상한(PR #117)
 - `docs/발표대본_초안.md`, `docs/계획_P3_리랭커시험.md`(둘 다 미추적), `~/Documents/학습노트/`(저장소 밖) — 발표·학습 자료
 - `frontend/README.md` — 실행·모델 설치·라이선스·데이터 재생성
