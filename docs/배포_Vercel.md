@@ -138,14 +138,20 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 
 **명령은 한 줄씩 실행하고 앞 줄이 성공했는지 본 뒤 다음 줄을 친다.** 여러 줄을 한꺼번에 붙여 넣지 않는다 — zsh은 같은 줄의 `# 설명`을 인수로 넘겨 실패하고, 중간에 실패해도 다음 줄이 계속 돈다(HANDOFF Failed Attempts). 명령 줄에 설명을 붙이지 않는다.
 
+0. 바꾸기 **전에** `curl -s https://lg-cns-rag.vercel.app/health`로 지금의 `build_id`·`bundle_sha256`을 적어 둔다 — 아래 "이전 값"이다.
 1. `vercel env rm SERVING_BUILD_ID production --yes`
-2. `printf '<BUILD>' | vercel env add SERVING_BUILD_ID production` — **실패하면 배포하지 말고** 이전 값(바꾸기 전 `/health`의 build)을 같은 명령으로 다시 넣는다. 값이 없으면 서버가 시작하지 않는다(`server/api.py:108-112`).
+2. `printf '<BUILD>' | vercel env add SERVING_BUILD_ID production` — **실패하면 배포하지 말고** 아래 "실패했을 때"로 이전 값을 되돌린다. 값이 없으면 서버가 시작하지 않는다(`server/api.py:108-112`).
 3. `vercel deploy --prod`
 4. `curl -s https://lg-cns-rag.vercel.app/health` — 첫 요청 13~16초. `build_id`·`bundle_sha256`이 위 표와 같아야 끝이다.
 
-실패했을 때:
-- 3이 실패하거나 4가 표와 다르면 2의 명령으로 `SERVING_BUILD_ID`를 **이전 값**으로 되돌리고 `vercel deploy --prod`를 다시 하고 4로 확인한다. 3이 실패했어도 Vercel에서는 배포가 이어져 몇 분 뒤 새 build가 공개될 수 있으니, 되돌린 뒤에도 몇 분 간격으로 4를 다시 보고 대시보드 Deployments에서 진행 중인 배포가 없는지 본다.
-- 이전 값을 넣는 데 실패하면 재배포하지 말고 대시보드 Settings > Environment Variables에서 직접 넣는다.
+실패했을 때(**이전 값으로 되돌리기** — 처음 바꿀 때와 똑같이 지우고 → 넣고 → 배포한다. 새 값이 이미 들어 있으면 `env add`만으로는 교체되지 않는다):
+1. `vercel env rm SERVING_BUILD_ID production --yes`
+2. `printf '<이전 build>' | vercel env add SERVING_BUILD_ID production`
+3. `vercel deploy --prod`
+4. `curl -s https://lg-cns-rag.vercel.app/health` — `build_id`·`bundle_sha256`이 0번에서 적어 둔 이전 값과 같을 때만 복구 완료다.
+
+- 위 3(처음 배포)이 실패했어도 Vercel에서는 배포가 이어져 몇 분 뒤 새 build가 공개될 수 있다. 되돌린 뒤에도 대시보드 Deployments에서 **진행 중인 배포가 없어질 때까지** 몇 분 간격으로 4를 다시 보고, 새 build가 다시 보이면 복구 1~4를 한 번 더 한다.
+- 복구의 2가 실패하면 재배포하지 말고(값이 없으면 서버가 시작하지 못한다) 대시보드 Settings > Environment Variables에서 직접 넣은 뒤 3~4를 한다.
 
 - `printf`로 넣는다(`echo`는 끝에 줄바꿈이 붙어 build 이름이 틀어진다).
 - `/health`의 `build_id`·`bundle_sha256`이 표와 다르면 바뀐 것이 아니다 — `vercel logs <배포 주소>`로 원인을 보고, 아래 확인을 건너뛰지 않는다.
