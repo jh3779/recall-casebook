@@ -46,9 +46,12 @@ LG CNS AI Campus RAG 팀 프로젝트 — **결함 선례 찾기 도우미** (DE
 **자유롭게 한다**
 - 파일 읽기, `git status`·`git log`·`git diff`, `uv run ruff check`·`ruff format --check`·`pytest`
 - 문서·코드 수정 (요청 범위 안에서)
+- (한시, ~2026-10-20, AGENTS.md 6-1) 담당 파트 밖 파일 수정 — 요청 범위 안이면 가능, PR 본문에 영향 파트를 적고 담당자에게 알린다
+- (한시, ~2026-10-20, AGENTS.md 6-1 8번) 조사·테스트의 외부 근거 사용 — 출처·"외부" 표시를 달고, 서비스 경로는 제외
 
 **요청받았을 때만 한다** (AGENTS.md 6절)
 - 커밋, push, PR 생성
+  - (한시, ~2026-10-20, AGENTS.md 6-1) 사용자가 "진행"이라고 한 범위의 **작업 브랜치 커밋**은 요청 없이 가능. push·PR 생성은 그대로 요청 시에만, main 커밋·amend·rebase는 계속 금지
 - 병합: 사용자가 그 PR의 병합을 명시적으로 지시하고 `MERGE_PROTOCOL.md` 게이트가 전부 ✅일 때만 `gh pr merge <N> --squash`
 - force push: 요청 시에만 `--force-with-lease`
 
