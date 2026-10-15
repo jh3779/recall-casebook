@@ -159,11 +159,18 @@ def check_result(rows: list[dict], meta: dict, questions: dict[str, dict], input
 
 
 def score_llm(
-    rows: list[dict], questions: list[dict], campaigns: set[str], causes: dict[str, dict]
+    rows: list[dict],
+    questions: list[dict],
+    campaigns: dict[str, str],
+    causes: dict[str, dict],
+    unreadable: dict[str, str],
 ) -> dict:
-    """LLM 결과 채점. 지어낸 번호는 형식이 맞는 번호 중 데이터에 없는 캠페인의 비율.
-    원인은 캠페인부터 가른다 — 없는 캠페인 / 573 보고서 없음 / 573 원인 칸이 빈 것 / 글이 있는 것(filled·stated_unknown —
-    stated_unknown도 원문 글을 보존한다, DEC-047). 글이 있으면 공백 정리 뒤 글자 대조한다."""
+    """LLM 결과 채점. 지어낸 번호는 형식이 맞는 번호 중 데이터에 없는 캠페인의 비율(`campaigns`: 캠페인 → 접수일).
+    원인은 서버와 같은 함수(`server.rag.causes.cause_573`)로 상태를 가른다 — 573 보고서 없음(범위 밖) / 판독 실패 /
+    상태 미확인 / 판본 미확정 / 원인 칸 빔 / 글이 있는 것(filled·stated_unknown — stated_unknown도 원문을 보존한다,
+    DEC-047). 판본이 확정되고 글이 있는 것만 공백 정리 뒤 글자 대조한다."""
+    from server.rag.causes import cause_573
+
     gold = {q["action_no"]: {g[:6] for g in q["gold_campnos"]} for q in questions}
     hits = {k: 0 for k in KS}
     c = {
@@ -177,11 +184,12 @@ def score_llm(
         "q_with_fabricated": 0,
         "causes_given": 0,
         "cause_on_fabricated": 0,
-        "cause_no_573_report": 0,
-        "cause_573_empty": 0,
         "cause_checked": 0,
         "cause_verbatim": 0,
+        "cause_checked_on_gold": 0,  # 정답 리콜에 붙인 원인 — 원문을 옮기는 능력에 가장 가까운 분모
+        "cause_verbatim_on_gold": 0,
     }
+    status_counts: dict[str, int] = {}
     for r in rows:
         if "error" in r or r.get("recalls") is None:
             c["errors"] += 1
@@ -197,26 +205,26 @@ def score_llm(
             c["ids"] += 1
             camp = cid[:6]
             ranked.append(camp)
-            c["ids_gold"] += camp in gold[r["action_no"]]
-            exists = camp in campaigns
-            if not exists:
+            is_gold = camp in gold[r["action_no"]]
+            c["ids_gold"] += is_gold
+            if camp not in campaigns:
                 c["fabricated"] += 1
                 fab_here = True
             if not rec["cause"].strip():
                 continue
             c["causes_given"] += 1
-            src = causes.get(camp)
-            if not exists:
+            if camp not in campaigns:
                 c["cause_on_fabricated"] += 1
-            elif src is None:
-                # 원인 행 없음 — 2026-10-15 결과에서는 전부 접수 2014-08-20 이전(573 범위 밖). 서비스는 범위 안의 판독 실패·
-                # 상태 미확인을 따로 나눈다(DEC-042 ③) — 재채점 대상이 늘면 그 사유도 나눈다
-                c["cause_no_573_report"] += 1
-            elif not src["cause_text"].strip():
-                c["cause_573_empty"] += 1
-            else:
-                c["cause_checked"] += 1
-                c["cause_verbatim"] += squash(rec["cause"]) in squash(src["cause_text"])
+                continue
+            got = cause_573({"campno": camp, "received_date": campaigns[camp]}, causes, unreadable)
+            status_counts[got["status"]] = status_counts.get(got["status"], 0) + 1
+            if "text" not in got:
+                continue
+            hit = squash(rec["cause"]) in squash(got["text"])
+            c["cause_checked"] += 1
+            c["cause_verbatim"] += hit
+            c["cause_checked_on_gold"] += is_gold
+            c["cause_verbatim_on_gold"] += is_gold and hit
         c["q_with_fabricated"] += fab_here
         for k in KS:
             hits[k] += bool(gold[r["action_no"]] & set(ranked[:k]))
@@ -225,6 +233,7 @@ def score_llm(
         "n": n,
         **{f"hit@{k}": round(hits[k] / n, 3) for k in KS},
         **c,
+        "cause_status": dict(sorted(status_counts.items())),
         "fabricated_rate": round(c["fabricated"] / c["ids"], 3) if c["ids"] else None,
     }
 
@@ -275,8 +284,18 @@ def score(path: Path) -> None:
     qs = [questions[r["action_no"]] for r in rows]
     cards = read_jsonl(OUT_DIR / "recalls.jsonl")
     received = {c["campno"]: c["received_date"] for c in cards}
-    campaigns = {c["campno"][:6] for c in cards}
-    causes = {c["campaign"]: c for c in read_jsonl(OUT_DIR / "causes.jsonl")}
+    campaigns: dict[str, str] = {}
+    for card in cards:  # 캠페인 → 가장 이른 접수일(573 범위 판단에 쓴다, 서버 카드와 같은 값)
+        camp = card["campno"][:6]
+        campaigns[camp] = min(campaigns.get(camp, card["received_date"]), card["received_date"])
+    manifest = json.loads((OUT_DIR / "causes.manifest.json").read_text())
+    causes = {  # 서버 build와 같이 원인 명세의 정리 방식을 붙인다(server/rag/build.py, DEC-047)
+        c["campaign"]: {**c, "text_basis": manifest.get("text_basis")}
+        for c in read_jsonl(OUT_DIR / "causes.jsonl")
+    }
+    unreadable = dict(
+        manifest.get("failed_kinds") or {}
+    )  # 서버 build와 같은 출처(server/rag/build.py)
     masked_tops, emb = rrf_tops([r["masked_question"] for r in rows])
     raw_tops, _ = rrf_tops(
         [q["question"] for q in qs]
@@ -305,7 +324,7 @@ def score(path: Path) -> None:
         if not idx:  # 표본 시험에서는 비는 부분이 있다
             continue
         sub = [qs[i] for i in idx]
-        report["llm"][name] = score_llm([rows[i] for i in idx], sub, campaigns, causes)
+        report["llm"][name] = score_llm([rows[i] for i in idx], sub, campaigns, causes, unreadable)
         report["ours_masked"][name] = hit_rates(sub, [masked_tops[i] for i in idx])
         report["ours_raw"][name] = hit_rates(sub, [raw_tops[i] for i in idx])
     out = path.with_suffix(".score.json")

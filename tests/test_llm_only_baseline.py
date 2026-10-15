@@ -36,26 +36,54 @@ def _q(action, gold):
     return {"action_no": action, "question": "q", "gold_campnos": gold}
 
 
-def _cause(text, status="filled"):
-    return {"cause_status": status, "cause_text": text}
-
-
-def test_score_counts_fabricated_hits_and_cause_categories():
-    campaigns = {"00V057", "01V001", "02V002", "03V003"}
-    causes = {
-        "00V057": _cause("The  retractor spring\nwas undersized."),
-        "02V002": _cause("NR - still under investigation", "stated_unknown"),
-        "03V003": _cause("", "empty"),
+def _cause(campaign, text, status="filled", resolution="auto"):
+    return {
+        "campaign": campaign,
+        "cause_status": status,
+        "cause_text": text,
+        "resolution": resolution,
+        "source_file": "f.pdf",
+        "pdfs": {"f.pdf": "0" * 64},
+        "submission_date": "20200101",
+        "text_basis": "t",
     }
+
+
+OLD, NEW = "20000101", "20200101"  # 573 수집 범위(2014-08-20) 밖·안
+
+
+def test_score_counts_fabricated_hits_and_cause_status_like_the_server():
+    campaigns = {
+        "00V057": NEW,
+        "01V001": OLD,
+        "02V002": NEW,
+        "03V003": NEW,
+        "04V004": NEW,
+        "05V005": NEW,
+        "06V006": NEW,
+    }
+    causes = {
+        "00V057": _cause("00V057", "The  retractor spring\nwas undersized."),
+        "02V002": _cause("02V002", "NR - still under investigation", "stated_unknown"),
+        "03V003": _cause("03V003", "", "empty"),
+        "05V005": _cause("05V005", "Weld was weak.", resolution="unresolved"),
+    }
+    unreadable = {"06V006": "scan_only"}
     rows = [
         {
             "action_no": "A",
             "recalls": [
                 {"campno": "99V999000", "cause": "made up"},  # 없는 캠페인 + 원인
-                {"campno": "00V-057", "cause": "retractor spring was undersized."},  # 원문 그대로
+                {
+                    "campno": "00V-057",
+                    "cause": "retractor spring was undersized.",
+                },  # 정답, 원문 그대로
             ],
         },
-        {"action_no": "B", "recalls": [{"campno": "01V001000", "cause": "x"}]},  # 573 보고서 없음
+        {
+            "action_no": "B",
+            "recalls": [{"campno": "01V001000", "cause": "x"}],
+        },  # 범위 밖 = 573 보고서 없음
         {"action_no": "C", "recalls": []},  # 모른다고 함
         {"action_no": "D", "error": "RateLimitError: x"},
         {"action_no": "E", "recalls": [{"campno": "not a number", "cause": ""}]},
@@ -66,43 +94,42 @@ def test_score_counts_fabricated_hits_and_cause_categories():
                     "campno": "02V002000",
                     "cause": "still under investigation",
                 },  # stated_unknown도 대조
-                {"campno": "03V003000", "cause": "y"},  # 573 원인 칸이 빔
+                {"campno": "03V003000", "cause": "y"},  # 원인 칸 빔
+                {"campno": "04V004000", "cause": "z"},  # 범위 안인데 원인 행 없음 = 상태 미확인
+                {"campno": "05V005000", "cause": "Weld was weak."},  # 판본 미확정 — 대조하지 않음
+                {"campno": "06V006000", "cause": "w"},  # 판독 실패
             ],
         },
     ]
     qs = [
-        _q("A", ["00V057000"]),
-        _q("B", ["05V100000"]),
-        _q("C", ["00V057000"]),
-        _q("D", ["00V057000"]),
-        _q("E", ["00V057000"]),
-        _q("F", ["09V000000"]),
+        _q(a, g)
+        for a, g in [
+            ("A", ["00V057000"]),
+            ("B", ["05V100000"]),
+            ("C", ["00V057000"]),
+            ("D", ["00V057000"]),
+            ("E", ["00V057000"]),
+            ("F", ["09V000000"]),
+        ]
     ]
-    s = lb.score_llm(rows, qs, campaigns, causes)
-    assert s["n"] == 6
+    s = lb.score_llm(rows, qs, campaigns, causes, unreadable)
     assert s["hit@1"] == 0.0 and s["hit@3"] == round(1 / 6, 3)  # A만 2위에서 맞힘
-    assert (s["ids"], s["bad_format"], s["fabricated"], s["q_with_fabricated"]) == (5, 1, 1, 1)
-    assert s["fabricated_rate"] == 0.2
-    assert s["ids_gold"] == 1  # A의 00V057만 정답
-    got = {
-        k: s[k]
-        for k in (
-            "causes_given",
-            "cause_on_fabricated",
-            "cause_no_573_report",
-            "cause_573_empty",
-            "cause_checked",
-            "cause_verbatim",
-        )
+    assert (s["ids"], s["ids_gold"], s["bad_format"], s["fabricated"]) == (8, 1, 1, 1)
+    assert s["cause_status"] == {
+        "cause_empty": 1,
+        "filled": 1,
+        "no_573_report": 1,
+        "report_status_unknown": 1,
+        "report_unreadable": 1,
+        "stated_unknown": 1,
+        "version_unresolved": 1,
     }
-    assert got == {
-        "causes_given": 5,
-        "cause_on_fabricated": 1,
-        "cause_no_573_report": 1,
-        "cause_573_empty": 1,
-        "cause_checked": 2,
-        "cause_verbatim": 2,
-    }
+    assert (s["causes_given"], s["cause_on_fabricated"]) == (8, 1)
+    assert (s["cause_checked"], s["cause_verbatim"]) == (
+        2,
+        2,
+    )  # filled 00V057 + stated_unknown 02V002
+    assert (s["cause_checked_on_gold"], s["cause_verbatim_on_gold"]) == (1, 1)
     assert (s["answered"], s["abstained"], s["errors"]) == (4, 1, 1)
 
 
@@ -110,8 +137,9 @@ def test_score_cause_checked_but_not_verbatim():
     s = lb.score_llm(
         [{"action_no": "A", "recalls": [{"campno": "00V057000", "cause": "spring too small"}]}],
         [_q("A", ["00V057000"])],
-        {"00V057"},
-        {"00V057": _cause("The retractor spring was undersized.")},
+        {"00V057": NEW},
+        {"00V057": _cause("00V057", "The retractor spring was undersized.")},
+        {},
     )
     assert (s["cause_checked"], s["cause_verbatim"], s["fabricated"]) == (1, 0, 0)
 
