@@ -145,13 +145,13 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 4. `curl -s https://lg-cns-rag.vercel.app/health` — 첫 요청 13~16초. `build_id`·`bundle_sha256`이 위 표와 같아야 끝이다.
 
 실패했을 때(**이전 값으로 되돌리기** — 처음 바꿀 때와 똑같이 지우고 → 넣고 → 배포한다. 새 값이 이미 들어 있으면 `env add`만으로는 교체되지 않는다):
-1. `vercel env rm SERVING_BUILD_ID production --yes`
+1. `vercel env rm SERVING_BUILD_ID production --yes` — **위 2(새 값 넣기)가 실패해 변수가 이미 없는 경우에는 이 줄을 건너뛰고 2부터 한다.** `vercel env ls production`에 `SERVING_BUILD_ID`가 보이면 있는 것이다. 지우기가 "변수가 없다"가 아닌 다른 이유(로그인·네트워크)로 실패하면 대시보드 Settings > Environment Variables에서 이전 값으로 직접 바꾼다.
 2. `printf '<이전 build>' | vercel env add SERVING_BUILD_ID production`
 3. `vercel deploy --prod`
 4. `curl -s https://lg-cns-rag.vercel.app/health` — `build_id`·`bundle_sha256`이 0번에서 적어 둔 이전 값과 같을 때만 복구 완료다.
 
 - 위 3(처음 배포)이 실패했어도 Vercel에서는 배포가 이어져 몇 분 뒤 새 build가 공개될 수 있다. 되돌린 뒤에도 대시보드 Deployments에서 **진행 중인 배포가 없어질 때까지** 몇 분 간격으로 4를 다시 보고, 새 build가 다시 보이면 복구 1~4를 한 번 더 한다.
-- 복구의 2가 실패하면 재배포하지 말고(값이 없으면 서버가 시작하지 못한다) 대시보드 Settings > Environment Variables에서 직접 넣은 뒤 3~4를 한다.
+- 복구의 2(이전 값 넣기)가 성공하기 전에는 **재배포하지 않는다**(값이 없으면 서버가 시작하지 못한다). 2가 실패하면 대시보드 Settings > Environment Variables에서 직접 넣은 뒤 3~4를 한다.
 
 - `printf`로 넣는다(`echo`는 끝에 줄바꿈이 붙어 build 이름이 틀어진다).
 - `/health`의 `build_id`·`bundle_sha256`이 표와 다르면 바뀐 것이 아니다 — `vercel logs <배포 주소>`로 원인을 보고, 아래 확인을 건너뛰지 않는다.
