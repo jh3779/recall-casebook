@@ -204,6 +204,8 @@ def score_llm(
             if not exists:
                 c["cause_on_fabricated"] += 1
             elif src is None:
+                # 원인 행 없음 — 2026-10-15 결과에서는 전부 접수 2014-08-20 이전(573 범위 밖). 서비스는 범위 안의 판독 실패·
+                # 상태 미확인을 따로 나눈다(DEC-042 ③) — 재채점 대상이 늘면 그 사유도 나눈다
                 c["cause_no_573_report"] += 1
             elif not src["cause_text"].strip():
                 c["cause_573_empty"] += 1
