@@ -131,6 +131,11 @@ def test_score_counts_fabricated_hits_and_cause_status_like_the_server():
     )  # filled 00V057 + stated_unknown 02V002
     assert (s["cause_checked_on_gold"], s["cause_verbatim_on_gold"]) == (1, 1)
     assert (s["answered"], s["abstained"], s["errors"]) == (4, 1, 1)
+    assert s["cause_check_by_status"] == {
+        "filled": {"checked": 1, "verbatim": 1, "on_gold": 1, "verbatim_on_gold": 1},
+        "stated_unknown": {"checked": 1, "verbatim": 1, "on_gold": 0, "verbatim_on_gold": 0},
+    }
+    assert s["hit@1_answered"] == 0.0  # 답한 4문항 중 1위 정답 없음
 
 
 def test_score_cause_checked_but_not_verbatim():

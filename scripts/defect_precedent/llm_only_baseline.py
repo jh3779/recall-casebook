@@ -190,6 +190,9 @@ def score_llm(
         "cause_verbatim_on_gold": 0,
     }
     status_counts: dict[str, int] = {}
+    # 대조한 원인을 상태별로 — stated_unknown 원문은 "NR" 같은 짧은 글이라 원인 문장이 그대로 들어갈 수 없다(구조상 불일치)
+    detail: dict[str, dict[str, int]] = {}
+    hit1_answered = 0
     for r in rows:
         if "error" in r or r.get("recalls") is None:
             c["errors"] += 1
@@ -221,11 +224,19 @@ def score_llm(
             if "text" not in got:
                 continue
             hit = squash(rec["cause"]) in squash(got["text"])
+            d = detail.setdefault(
+                got["status"], {"checked": 0, "verbatim": 0, "on_gold": 0, "verbatim_on_gold": 0}
+            )
+            d["checked"] += 1
+            d["verbatim"] += hit
+            d["on_gold"] += is_gold
+            d["verbatim_on_gold"] += is_gold and hit
             c["cause_checked"] += 1
             c["cause_verbatim"] += hit
             c["cause_checked_on_gold"] += is_gold
             c["cause_verbatim_on_gold"] += is_gold and hit
         c["q_with_fabricated"] += fab_here
+        hit1_answered += bool(recs) and bool(gold[r["action_no"]] & set(ranked[:1]))
         for k in KS:
             hits[k] += bool(gold[r["action_no"]] & set(ranked[:k]))
     n = len(rows)
@@ -234,6 +245,9 @@ def score_llm(
         **{f"hit@{k}": round(hits[k] / n, 3) for k in KS},
         **c,
         "cause_status": dict(sorted(status_counts.items())),
+        "cause_check_by_status": dict(sorted(detail.items())),
+        # 답한(빈 목록이 아닌) 문항만 분모로 본 Hit@1 — 빈 목록은 지시문이 허용한 행동이라 따로 본다
+        "hit@1_answered": round(hit1_answered / c["answered"], 3) if c["answered"] else None,
         "fabricated_rate": round(c["fabricated"] / c["ids"], 3) if c["ids"] else None,
     }
 
