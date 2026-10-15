@@ -51,7 +51,7 @@ LG CNS AI Campus RAG 팀 프로젝트 — **결함 선례 찾기 도우미** (DE
 
 **요청받았을 때만 한다** (AGENTS.md 6절)
 - 커밋, push, PR 생성
-  - (한시, ~2026-10-20, AGENTS.md 6-1) 사용자가 "진행"이라고 한 범위의 **작업 브랜치 커밋**은 요청 없이 가능. push·PR 생성은 그대로 요청 시에만, main 커밋은 계속 금지, 이미 push한 커밋의 amend·rebase도 금지(DEC-035)
+  - (한시, ~2026-10-20, AGENTS.md 6-1) 그 세션을 연 팀원이 "진행"이라고 확인한 범위의 **작업 브랜치 커밋**(main·타인 소유 브랜치 제외)은 요청 없이 가능. push·PR 생성은 그대로 요청 시에만, main 커밋은 계속 금지, 이미 push한 커밋의 amend·rebase도 금지(DEC-035)
 - 병합: 사용자가 그 PR의 병합을 명시적으로 지시하고 `MERGE_PROTOCOL.md` 게이트가 전부 ✅일 때만 `gh pr merge <N> --squash`
 - force push: 요청 시에만 `--force-with-lease`
 
