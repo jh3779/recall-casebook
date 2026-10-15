@@ -434,6 +434,122 @@ def r1_score(labels: dict[tuple[str, str], int], key: dict) -> dict:
     return out
 
 
+def exact_mcnemar(a_wins: int, b_wins: int) -> float:
+    """짝 이진 결과의 exact McNemar 양측 p값(동률 문항 제외)."""
+    n = a_wins + b_wins
+    if n == 0:
+        return 1.0
+    tail = sum(math.comb(n, i) for i in range(min(a_wins, b_wins) + 1)) / (2**n)
+    return min(1.0, 2 * tail)
+
+
+def paired_permutation_p(differences: list[float], seed: int, samples: int = 100_000) -> float:
+    """평균 차이의 양측 paired sign-flip permutation p값.
+
+    20개 이하는 모든 부호 조합을 열거하고, 그보다 크면 고정 시드 Monte Carlo를 쓴다.
+    """
+    diffs = [x for x in differences if abs(x) > 1e-15]
+    if not diffs:
+        return 1.0
+    observed = abs(sum(diffs) / len(diffs))
+    if len(diffs) <= 20:
+        extreme = 0
+        total = 1 << len(diffs)
+        for mask in range(total):
+            mean = sum(x if mask & (1 << i) else -x for i, x in enumerate(diffs)) / len(diffs)
+            extreme += abs(mean) >= observed - 1e-15
+        return extreme / total
+    rng = random.Random(seed)
+    extreme = 0
+    for _ in range(samples):
+        mean = sum(x if rng.getrandbits(1) else -x for x in diffs) / len(diffs)
+        extreme += abs(mean) >= observed - 1e-15
+    return (extreme + 1) / (samples + 1)
+
+
+def holm_adjust(pvalues: dict[str, float]) -> dict[str, float]:
+    """가족 내 다중 비교를 위한 Holm 보정 p값."""
+    ordered = sorted(pvalues, key=pvalues.get)
+    adjusted: dict[str, float] = {}
+    running = 0.0
+    m = len(ordered)
+    for i, name in enumerate(ordered):
+        running = max(running, min(1.0, (m - i) * pvalues[name]))
+        adjusted[name] = round(running, 6)
+    return adjusted
+
+
+def _r1_per_query(labels: dict[tuple[str, str], int], key: dict) -> dict[str, dict[str, dict]]:
+    names = sorted(
+        s
+        for s in {s for q in key.values() for v in q["candidates"].values() for s in v}
+        if not s.startswith("control")
+    )
+    out: dict[str, dict[str, dict]] = {name: {} for name in names}
+    for name in names:
+        for qid, q in key.items():
+            ranked = sorted((v[name], cid) for cid, v in q["candidates"].items() if name in v)
+            if not ranked:
+                continue
+            levels = [labels.get((qid, cid), 0) for _, cid in ranked]
+            out[name][qid] = {
+                "hit@10": int(hit_at_k(levels, 10)),
+                "ndcg@10": ndcg_at_k(levels, 10),
+                "precision@10_level2": precision_at_k(levels, 10, min_level=2),
+            }
+    return out
+
+
+def r1_significance(
+    labels: dict[tuple[str, str], int], key: dict, seed: int = 20261016, samples: int = 100_000
+) -> dict:
+    """같은 질문의 시스템 점수를 paired 검정하고 지표별 3개 쌍 비교를 Holm 보정한다."""
+    per = _r1_per_query(labels, key)
+    names = sorted(per)
+    pairs: dict[str, dict] = {}
+    raw_by_metric: dict[str, dict[str, float]] = defaultdict(dict)
+    for ai, a in enumerate(names):
+        for b in names[ai + 1 :]:
+            pair_name = f"{a}_vs_{b}"
+            qids = sorted(set(per[a]) & set(per[b]))
+            pair = {"queries": len(qids)}
+            ah = [per[a][q]["hit@10"] for q in qids]
+            bh = [per[b][q]["hit@10"] for q in qids]
+            a_wins = sum(x > y for x, y in zip(ah, bh, strict=True))
+            b_wins = sum(y > x for x, y in zip(ah, bh, strict=True))
+            p_hit = exact_mcnemar(a_wins, b_wins)
+            pair["hit@10"] = {
+                "difference": round((sum(ah) - sum(bh)) / len(qids), 3) if qids else None,
+                "a_wins": a_wins,
+                "b_wins": b_wins,
+                "p_raw": round(p_hit, 6),
+            }
+            raw_by_metric["hit@10"][pair_name] = p_hit
+            for metric in ("ndcg@10", "precision@10_level2"):
+                diffs = [per[a][q][metric] - per[b][q][metric] for q in qids]
+                p_value = paired_permutation_p(diffs, seed=seed, samples=samples)
+                pair[metric] = {
+                    "difference": round(sum(diffs) / len(diffs), 3) if diffs else None,
+                    "p_raw": round(p_value, 6),
+                }
+                raw_by_metric[metric][pair_name] = p_value
+            pairs[pair_name] = pair
+    for metric, values in raw_by_metric.items():
+        adjusted = holm_adjust(values)
+        for pair_name, p_value in adjusted.items():
+            pairs[pair_name][metric]["p_holm"] = p_value
+    return {
+        "method": {
+            "hit@10": "exact McNemar, two-sided",
+            "continuous": f"paired sign-flip permutation, two-sided, samples={samples}",
+            "multiplicity": "Holm correction within each metric family",
+            "alpha": 0.05,
+            "seed": seed,
+        },
+        "pairs": pairs,
+    }
+
+
 def agreement_report(a: dict[tuple[str, str], int], b: dict[tuple[str, str], int]) -> dict:
     """두 검수자의 표시 일치도 — 겹친 후보에서 정확 일치·kappa·한쪽이 더 후한 비율(체계적 후함)."""
     keys = sorted(set(a) & set(b))
@@ -484,6 +600,37 @@ def merge_labels(sheets: list[list[dict]]) -> tuple[dict[tuple[str, str], int], 
     return {k: v for k, v in merged.items() if v is not None}, info
 
 
+def combine_label_rows(template: list[dict], shards: list[list[dict]]) -> list[dict]:
+    """질문 범위가 겹치지 않는 표시 시트를 원본 행 순서로 합치고 누락·중복을 거부한다."""
+    expected = {(r["query_id"], r["candidate_id"]) for r in template}
+    labels: dict[tuple[str, str], dict] = {}
+    for shard in shards:
+        for row in shard:
+            key = (row["query_id"], row["candidate_id"])
+            if key not in expected:
+                raise ValueError(f"unknown label row: {key}")
+            if key in labels:
+                raise ValueError(f"duplicate label row: {key}")
+            if row.get("label") not in REL_VALUES:
+                raise ValueError(f"invalid or empty label: {key}")
+            labels[key] = row
+    missing = sorted(expected - set(labels))
+    if missing:
+        raise ValueError(f"missing label rows: {len(missing)} (first={missing[0]})")
+    out = []
+    for row in template:
+        key = (row["query_id"], row["candidate_id"])
+        marked = labels[key]
+        merged = dict(row)
+        merged.update(
+            label=marked["label"],
+            labeler_id=marked.get("labeler_id", ""),
+            note=marked.get("note", ""),
+        )
+        out.append(merged)
+    return out
+
+
 def cmd_r1_agree(args) -> None:
     def load_labels(path: str) -> dict[tuple[str, str], int]:
         with open(path, encoding="utf-8-sig", newline="") as f:
@@ -494,6 +641,23 @@ def cmd_r1_agree(args) -> None:
             agreement_report(load_labels(args.a), load_labels(args.b)), ensure_ascii=False, indent=1
         )
     )
+
+
+def cmd_r1_combine(args) -> None:
+    with open(args.template, encoding="utf-8-sig", newline="") as f:
+        template = list(csv.DictReader(f))
+    shards = []
+    for path in args.sheet:
+        with open(path, encoding="utf-8-sig", newline="") as f:
+            shards.append(list(csv.DictReader(f)))
+    rows = combine_label_rows(template, shards)
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(template[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"combined {len(rows)} labeled rows → {out}")
 
 
 def cmd_r1_score(args) -> None:
@@ -513,6 +677,19 @@ def cmd_r1_score(args) -> None:
         "note": "통제 후보 검사나 kappa(두 명일 때)가 미달이면 점수를 쓰지 않는다 — 평가 설계 5절",
     }
     print(json.dumps(res, ensure_ascii=False, indent=1))
+
+
+def cmd_r1_significance(args) -> None:
+    with open(args.sheet, encoding="utf-8-sig", newline="") as f:
+        labels, _ = merge_labels([list(csv.DictReader(f))])
+    key = json.loads(Path(args.key).read_text(encoding="utf-8"))
+    print(
+        json.dumps(
+            r1_significance(labels, key, seed=args.seed, samples=args.samples),
+            ensure_ascii=False,
+            indent=1,
+        )
+    )
 
 
 STOP = {
@@ -792,11 +969,20 @@ def main(argv=None) -> None:
     ag = sub.add_parser("r1-agree")
     ag.add_argument("--a", required=True)
     ag.add_argument("--b", required=True)
+    co = sub.add_parser("r1-combine")
+    co.add_argument("--template", required=True)
+    co.add_argument("--sheet", action="append", required=True)
+    co.add_argument("--out", required=True)
     sc = sub.add_parser("r1-score")
     sc.add_argument(
         "--sheet", action="append", required=True, help="표시한 시트(표시자마다 하나, 두 번까지)"
     )
     sc.add_argument("--key", required=True, help="pool_key.json (표시자에게는 주지 않은 파일)")
+    sg = sub.add_parser("r1-significance")
+    sg.add_argument("--sheet", required=True, help="주 검수자의 표시 시트")
+    sg.add_argument("--key", required=True, help="pool_key.json")
+    sg.add_argument("--seed", type=int, default=20261016)
+    sg.add_argument("--samples", type=int, default=100_000)
     pi = sub.add_parser("paraphrase-input")
     pi.add_argument("--key", required=True)
     pc = sub.add_parser("paraphrase-check")
@@ -822,7 +1008,9 @@ def main(argv=None) -> None:
         "r2-counts": cmd_r2_counts,
         "r1-pool": cmd_r1_pool,
         "r1-score": cmd_r1_score,
+        "r1-significance": cmd_r1_significance,
         "r1-agree": cmd_r1_agree,
+        "r1-combine": cmd_r1_combine,
         "question-flags": cmd_question_flags,
         "paraphrase-input": cmd_paraphrase_input,
         "paraphrase-check": cmd_paraphrase_check,

@@ -13,17 +13,22 @@ from scripts.defect_precedent.eval_v2 import (
     audit_summary,
     build_pool,
     cohen_kappa,
+    combine_label_rows,
+    exact_mcnemar,
     hit_at_k,
+    holm_adjust,
     keyword_control,
     lcs_run,
     leak_diagnostics,
     merge_labels,
     ndcg_at_k,
+    paired_permutation_p,
     paraphrase_metrics,
     pick_queries,
     precision_at_k,
     question_flags,
     r1_score,
+    r1_significance,
     sensitivity_at_specificity,
     wilson,
 )
@@ -287,3 +292,57 @@ def test_agreement_report_overlap_kappa_and_generosity_direction():
     assert r["overlap"] == 3 and r["exact_agreement"] == round(2 / 3, 3)
     assert r["a_more_generous"] == round(1 / 3, 3) and r["b_more_generous"] == 0.0
     assert agreement_report({}, b) == {"overlap": 0}
+
+
+def test_exact_mcnemar_and_holm_adjustment():
+    assert exact_mcnemar(0, 0) == 1.0
+    assert exact_mcnemar(3, 0) == 0.25
+    assert exact_mcnemar(5, 5) == 1.0
+    adjusted = holm_adjust({"a": 0.01, "b": 0.03, "c": 0.04})
+    assert adjusted == {"a": 0.03, "b": 0.06, "c": 0.06}
+
+
+def test_paired_permutation_is_deterministic_and_detects_no_difference():
+    assert paired_permutation_p([0.0, 0.0, 0.0], seed=7) == 1.0
+    first = paired_permutation_p([1.0] * 21, seed=7, samples=2000)
+    second = paired_permutation_p([1.0] * 21, seed=7, samples=2000)
+    assert first == second
+    assert first < 0.01
+
+
+def test_r1_significance_reports_paired_effects_and_holm_values():
+    key = {
+        f"Q{i}": {
+            "query_campno": f"C{i}",
+            "candidates": {
+                "a": {"bm25": 1, "rrf": 2},
+                "b": {"bm25": 2, "rrf": 1},
+            },
+        }
+        for i in range(1, 5)
+    }
+    labels = {(f"Q{i}", "a"): 2 for i in range(1, 5)} | {(f"Q{i}", "b"): 0 for i in range(1, 5)}
+    result = r1_significance(labels, key, seed=11, samples=1000)
+    pair = result["pairs"]["bm25_vs_rrf"]
+    assert pair["queries"] == 4
+    assert pair["hit@10"]["difference"] == 0.0
+    assert pair["hit@10"]["p_raw"] == 1.0
+    assert pair["ndcg@10"]["difference"] > 0
+    assert pair["ndcg@10"]["p_holm"] <= 1.0
+
+
+def test_combine_label_rows_requires_exactly_one_label_per_template_row():
+    template = [
+        {"query_id": "Q1", "candidate_id": "a", "label": "", "labeler_id": "", "note": ""},
+        {"query_id": "Q2", "candidate_id": "b", "label": "", "labeler_id": "", "note": ""},
+    ]
+    shards = [
+        [{**template[0], "label": "2", "labeler_id": "A1"}],
+        [{**template[1], "label": "0", "labeler_id": "A2"}],
+    ]
+    combined = combine_label_rows(template, shards)
+    assert [r["label"] for r in combined] == ["2", "0"]
+    with pytest.raises(ValueError, match="missing"):
+        combine_label_rows(template, shards[:1])
+    with pytest.raises(ValueError, match="duplicate"):
+        combine_label_rows(template, [shards[0], shards[0], shards[1]])
