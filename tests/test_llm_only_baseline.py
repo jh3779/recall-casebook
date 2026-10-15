@@ -184,3 +184,27 @@ def test_hit_rates_use_campaign_prefix():
     )
     assert (got["hit@1"], got["hit@3"], got["hit@5"], got["fabricated"]) == (0.5, 0.5, 1.0, 0)
     assert (got["ids"], got["ids_gold"]) == (6, 2)
+
+
+def test_bad_format_keeps_its_rank_slot():
+    s = lb.score_llm(
+        [
+            {
+                "action_no": "A",
+                "recalls": [{"campno": "bad", "cause": ""}, {"campno": "00V057000", "cause": ""}],
+            }
+        ],
+        [_q("A", ["00V057000"])],
+        {"00V057": NEW},
+        {},
+        {},
+    )
+    assert (s["hit@1"], s["hit@3"]) == (0.0, 1.0)  # 1위 형식 오류·2위 정답 = Hit@1 실패
+
+
+def test_check_manifest_rejects_changed_failed_kinds():
+    raw = b'{"failed_kinds": {"06V006": "scan_only"}}'
+    expected = lb.hashlib.sha256(raw).hexdigest()
+    assert lb.check_manifest(raw, expected) == expected
+    with pytest.raises(SystemExit):
+        lb.check_manifest(b'{"failed_kinds": {}}', expected)

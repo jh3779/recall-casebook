@@ -13,6 +13,7 @@
 """
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -204,6 +205,7 @@ def score_llm(
             cid = norm_campno(rec["campno"])
             if cid is None:
                 c["bad_format"] += 1
+                ranked.append(None)  # 형식 오류도 순위 한 자리를 차지한다 — 뒤 후보를 당기지 않는다
                 continue
             c["ids"] += 1
             camp = cid[:6]
@@ -288,6 +290,19 @@ def hit_rates(questions: list[dict], tops: list[list[str]]) -> dict:
     }
 
 
+BASELINE = Path(__file__).with_name("baseline_2026-10-06_production-dates.json")
+
+
+def check_manifest(raw: bytes, expected: str) -> str:
+    """원인 명세 전체 지문 — `failed_kinds`(판독 실패 목록)가 원인 상태를 가르므로 기준 파일 값과 다르면 채점하지 않는다."""
+    got = hashlib.sha256(raw).hexdigest()
+    if got != expected:
+        sys.exit(
+            f"causes.manifest.json 지문 {got[:16]}이 기준 파일({BASELINE.name})의 {expected[:16]}과 다르다"
+        )
+    return got
+
+
 def score(path: Path) -> None:
     rows = read_jsonl(path)
     meta_path = path.with_suffix(".meta.json")
@@ -302,7 +317,11 @@ def score(path: Path) -> None:
     for card in cards:  # 캠페인 → 가장 이른 접수일(573 범위 판단에 쓴다, 서버 카드와 같은 값)
         camp = card["campno"][:6]
         campaigns[camp] = min(campaigns.get(camp, card["received_date"]), card["received_date"])
-    manifest = json.loads((OUT_DIR / "causes.manifest.json").read_text())
+    raw_manifest = (OUT_DIR / "causes.manifest.json").read_bytes()
+    manifest_sha = check_manifest(
+        raw_manifest, json.loads(BASELINE.read_text())["causes_full"]["manifest_sha256"]
+    )
+    manifest = json.loads(raw_manifest)
     causes = {  # 서버 build와 같이 원인 명세의 정리 방식을 붙인다(server/rag/build.py, DEC-047)
         c["campaign"]: {**c, "text_basis": manifest.get("text_basis")}
         for c in read_jsonl(OUT_DIR / "causes.jsonl")
@@ -327,11 +346,13 @@ def score(path: Path) -> None:
         "post2014": lambda q: any(received.get(g, "") >= RCLRPT_FROM for g in q["gold_campnos"]),
     }
     report = {
-        "inputs": provenance(),
+        "inputs": {**provenance(), "causes_manifest_sha256": manifest_sha[:16]},
         "embedding": emb,
         "llm": {},
         "ours_masked": {},
         "ours_raw": {},
+        # LLM이 답한(빈 목록이 아닌) 문항에서만 잰 우리 검색 — LLM의 hit@1_answered와 같은 문항 집합
+        "ours_masked_on_llm_answered": {},
     }
     for name, keep in subsets.items():
         idx = [i for i, q in enumerate(qs) if keep(q)]
@@ -341,6 +362,11 @@ def score(path: Path) -> None:
         report["llm"][name] = score_llm([rows[i] for i in idx], sub, campaigns, causes, unreadable)
         report["ours_masked"][name] = hit_rates(sub, [masked_tops[i] for i in idx])
         report["ours_raw"][name] = hit_rates(sub, [raw_tops[i] for i in idx])
+        ans = [i for i in idx if rows[i].get("recalls")]
+        if ans:
+            report["ours_masked_on_llm_answered"][name] = hit_rates(
+                [qs[i] for i in ans], [masked_tops[i] for i in ans]
+            )
     out = path.with_suffix(".score.json")
     out.write_text(json.dumps(report, ensure_ascii=False, indent=1))
     print(json.dumps(report, ensure_ascii=False, indent=1))
