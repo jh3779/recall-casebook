@@ -129,22 +129,22 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 | `f1fe1843ed0f2c66` | `dd0efac013a47dd9cb5b303d4d7958724e9cba21254f4bb9bc6f7f87a190bc1a` | 2026-10-06 판본, 생산 기간 칸 없음(DEC-059 이전) |
 | `5e32c164b15a544a` | `b466430d989b55e1d623346f70461428b6ec83bfbb0508eff40bbf4d98c25127` | 같은 판본 + 573 생산 기간(DEC-059). 2026-10-14부터 공개 |
 
-**바꾸는 법** — 저장소 루트에서 한다(Vercel CLI 로그인 필요, 접속 정보는 읽지도 출력하지도 않는다). 아래 `<BUILD>`에 위 표의 build를 넣는다.
+**바꾸는 법 — 스크립트 `scripts/switch_serving_build.sh`** (저장소 루트가 `lg-cns-rag`에 연결돼 있어야 한다: `.vercel/project.json`의 `projectName` 확인, 아니면 `vercel link --yes --project lg-cns-rag`. Vercel CLI 로그인 필요, 접속 정보는 읽지도 출력하지도 않는다). 터미널에 명령을 여러 줄 붙여 넣지 말고 **파일로 실행**한다 — zsh은 같은 줄의 `# 설명`을 인수로 넘겨 실패하고, 중간에 실패해도 다음 줄이 계속 돈다(HANDOFF Failed Attempts).
 
 ```bash
-cat .vercel/project.json                  # projectName이 lg-cns-rag인지 — 아니면 멈추고 vercel link --yes --project lg-cns-rag
-vercel env rm SERVING_BUILD_ID production --yes
-printf '<BUILD>' | vercel env add SERVING_BUILD_ID production
-vercel deploy --prod                      # 환경변수는 서버가 시작할 때 한 번 읽으므로 재배포해야 적용된다
-curl -s https://lg-cns-rag.vercel.app/health   # 첫 요청 13~16초. build_id와 bundle_sha256이 위 표와 같아야 한다
+bash scripts/switch_serving_build.sh f1fe1843ed0f2c66 --check
+bash scripts/switch_serving_build.sh f1fe1843ed0f2c66
 ```
 
+- 첫 줄 `--check`는 아무것도 바꾸지 않는다(프로젝트 연결·현재 공개 build와 묶음 sha256이 위 표와 같은지·바꿀 수 있는지만 본다). 둘째 줄이 확인(`y`)을 받은 뒤 실제로 바꾼다. 인수는 위 표의 build 둘 중 하나만 받는다(되돌릴 때 `f1fe…`, 다시 올릴 때 `5e32…`). 새 build를 쓰려면 스크립트의 `expected` 표와 위 표를 함께 고친다.
+- 하는 일: `SERVING_BUILD_ID` 삭제 → 추가 → `vercel deploy --prod` → `/health`를 최대 3번(10초 간격) 확인해 build·묶음 sha256이 표와 같을 때만 성공으로 끝낸다. 삭제·추가 중 하나가 실패하면 배포하지 않고 **현재 값으로 복구**를 시도한 뒤 멈춘다(복구도 실패하면 대시보드에서 직접 넣으라고 안내한다). `set -euo pipefail`이라 한 단계라도 실패하면 거기서 멈춘다.
+- 스크립트를 쓸 수 없을 때의 손 절차(한 줄씩 실행하고 앞 줄이 성공했는지 보고 다음 줄을 친다, 설명은 명령 줄에 붙이지 않는다): `vercel env rm SERVING_BUILD_ID production --yes` → `printf '<BUILD>' | vercel env add SERVING_BUILD_ID production` → `vercel deploy --prod` → `curl -s https://lg-cns-rag.vercel.app/health`(첫 요청 13~16초, `build_id`·`bundle_sha256`이 표와 같아야 한다). 환경변수 추가가 실패하면 **배포하지 말고** 이전 값을 다시 넣는다 — 값이 없으면 서버가 시작하지 않는다(`server/api.py:108-112`).
 - `printf`로 넣는다(`echo`는 끝에 줄바꿈이 붙어 build 이름이 틀어진다).
 - `/health`의 `build_id`·`bundle_sha256`이 표와 다르면 바뀐 것이 아니다 — `vercel logs <배포 주소>`로 원인을 보고, 아래 확인을 건너뛰지 않는다.
 - 검색 확인: `POST /search`(질문 한 건)에서 `build_id`가 같고 카드가 나오는지. 생산 기간 항목(`checklist[].item == "production_period"`)은 `5e32…`에서만 붙고 `f1fe…`에서는 0개가 정상이다.
 - 화면은 되돌릴 필요가 없다(생산 기간 항목이 없는 응답도 그대로 그린다).
 
-**검증한 것(2026-10-14)**: 되돌릴 대상 `f1fe1843ed0f2c66` 묶음이 **현재 코드(`0d05342`)로** 기동한다 — 로컬 서버(`RAG_SOURCE=bundle SERVING_BUILD_ID=f1fe1843ed0f2c66`, 조회 전용 계정이 없어 로컬 개발용 `ALLOW_ADMIN_DB_FOR_SERVER=1`로 기동)에서 `/health`가 위 표의 sha256과 같고 `/search`가 200에 카드 11건·생산 기간 항목 0개. 즉 되돌린 뒤 서버가 못 뜨는 경우는 이 확인으로 배제했다. 확인하지 못한 것: 실제 Vercel에서 `f1fe…`로 되돌려 보지는 않았다(공개 서비스를 바꾸므로 시연 전 연습이 필요하면 사용자가 정해 한다).
+**검증한 것(2026-10-14)**: 스크립트의 `--check`를 공개 서비스에 실행해 현재 build·sha256 판독과 "이미 그 build"·"바꿀 수 있음" 분기를 확인했다(아무것도 바꾸지 않음). **실제로 바꾸는 부분(환경변수 삭제·추가·재배포·복구)은 이 스크립트로 실행해 보지 않았다** — 같은 명령 순서는 2026-10-14 생산 기간 재배포에서 사용자가 실행해 성공했다.  되돌릴 대상 `f1fe1843ed0f2c66` 묶음이 **현재 코드(`0d05342`)로** 기동한다 — 로컬 서버(`RAG_SOURCE=bundle SERVING_BUILD_ID=f1fe1843ed0f2c66`, 조회 전용 계정이 없어 로컬 개발용 `ALLOW_ADMIN_DB_FOR_SERVER=1`로 기동)에서 `/health`가 위 표의 sha256과 같고 `/search`가 200에 카드 11건·생산 기간 항목 0개. 즉 되돌린 뒤 서버가 못 뜨는 경우는 이 확인으로 배제했다. 확인하지 못한 것: 실제 Vercel에서 `f1fe…`로 되돌려 보지는 않았다(공개 서비스를 바꾸므로 시연 전 연습이 필요하면 사용자가 정해 한다).
 
 **언제 되돌리나(DEC-059 인터뷰 결정 ⑤)**: 10/16 밤까지 배포를 끝내고 10/17부터 동결한다. 동결 뒤 새 build에서 문제가 보이면 위 절차로 `f1fe…`로 되돌리고, 생산 기간 표시는 발표에서 뺀다.
 
