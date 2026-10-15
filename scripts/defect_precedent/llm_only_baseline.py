@@ -105,6 +105,10 @@ def run(model: str | None, effort: str | None, n: int | None, out: Path, workers
         "mask_re": ID_RE.pattern,
         "inputs": provenance(),
     }
+    if (
+        out.exists() or out.with_suffix(".meta.json").exists()
+    ):  # 옛 결과에 새 메타가 짝지어지지 않게
+        sys.exit(f"{out} 또는 그 .meta.json이 이미 있다 — 새 경로로 실행한다")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.with_suffix(".meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1))
     with ThreadPoolExecutor(workers) as ex:
