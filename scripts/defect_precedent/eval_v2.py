@@ -329,19 +329,21 @@ def build_pool(
             and c["dup_group"] != query["dup_group"]
         )
 
-    cand: dict[str, set[str]] = defaultdict(set)
+    cand: dict[str, dict[str, int]] = defaultdict(
+        dict
+    )  # 후보 → {시스템 이름: 순위(1부터, 통제 후보는 0)}
     for name, ranking in systems.items():
-        for cid in [x for x in ranking if eligible(x)][:depth]:
-            cand[cid].add(name)
+        for rank, cid in enumerate([x for x in ranking if eligible(x)][:depth], start=1):
+            cand[cid][name] = rank
     rng = random.Random(f"{seed}:{query['campno']}")
     qc = category(query)
     pool = [i for i in all_ids if eligible(i)]
     same = [i for i in pool if category(by_id[i]) == qc and i not in cand]
     other = [i for i in pool if category(by_id[i]) != qc and i not in cand]
     for cid in rng.sample(same, min(5, len(same))):
-        cand[cid].add("control_same_category")
+        cand[cid]["control_same_category"] = 0
     for cid in rng.sample(other, min(3, len(other))):
-        cand[cid].add("control_other_category")
+        cand[cid]["control_other_category"] = 0
     ids = sorted(cand)
     rng.shuffle(ids)
     rows = [
@@ -356,8 +358,159 @@ def build_pool(
         }
         for cid in ids
     ]
-    key = {r["candidate_id"]: sorted(cand[cid]) for r, cid in zip(rows, ids, strict=True)}
+    key = {
+        r["candidate_id"]: dict(sorted(cand[cid].items())) for r, cid in zip(rows, ids, strict=True)
+    }
     return rows, key
+
+
+def cohen_kappa(a: list[str], b: list[str]) -> float:
+    """두 표시자의 일치도(Cohen kappa). 같은 길이의 값 목록."""
+    n = len(a)
+    if n == 0:
+        return 0.0
+    po = sum(x == y for x, y in zip(a, b, strict=True)) / n
+    ca, cb = Counter(a), Counter(b)
+    pe = sum(ca[v] * cb[v] for v in set(ca) | set(cb)) / (n * n)
+    return 1.0 if pe == 1 else (po - pe) / (1 - pe)
+
+
+def r1_score(labels: dict[tuple[str, str], int], key: dict) -> dict:
+    """표시된 풀링 시트를 시스템별로 채점한다. labels[(질문, 후보)] = 0·1·2, 없으면 표시 안 됨.
+    통제 후보 검사와 표시된 비율(judged coverage)을 함께 낸다 — 표시가 후하거나 비어 있으면 점수를 믿지 않는다."""
+    names = {s for q in key.values() for v in q["candidates"].values() for s in v}
+    systems = sorted(s for s in names if not s.startswith("control"))
+    out: dict = {"systems": {}, "controls": {}}
+    for name, thr, limit in (
+        ("control_other_category", 1, 0.05),
+        ("control_same_category", 2, 0.15),
+    ):
+        got = [
+            labels.get((qid, cid))
+            for qid, q in key.items()
+            for cid, v in q["candidates"].items()
+            if name in v
+        ]
+        done = [x for x in got if x is not None]
+        out["controls"][
+            name
+        ] = {  # 다른 분류가 관련(≥1), 같은 분류가 같은 고장(2)으로 표시되면 후한 표시
+            "labeled": len(done),
+            "of": len(got),
+            "generous_rate": round(sum(x >= thr for x in done) / len(done), 3) if done else None,
+            "limit": limit,
+        }
+    for name in systems:
+        hits, ndcgs, precs, judged, total, nq = 0, [], [], 0, 0, 0
+        for qid, q in key.items():
+            ranked = sorted((v[name], cid) for cid, v in q["candidates"].items() if name in v)
+            if not ranked:
+                continue
+            nq += 1
+            total += len(ranked)
+            levels = [labels.get((qid, cid)) for _, cid in ranked]
+            judged += sum(x is not None for x in levels)
+            lv = [x or 0 for x in levels]
+            hits += hit_at_k(lv, 10)
+            ndcgs.append(ndcg_at_k(lv, 10))
+            precs.append(precision_at_k(lv, 10))
+        out["systems"][name] = {
+            "queries": nq,
+            "hit@10": round(hits / nq, 3) if nq else None,
+            "hit@10_wilson95": tuple(round(x, 3) for x in wilson(hits, nq)),
+            "ndcg@10": round(sum(ndcgs) / len(ndcgs), 3) if ndcgs else None,
+            "precision@10": round(sum(precs) / len(precs), 3) if precs else None,
+            "judged_coverage": round(judged / total, 3) if total else None,
+        }
+    return out
+
+
+def merge_labels(sheets: list[list[dict]]) -> tuple[dict[tuple[str, str], int], dict]:
+    """표시자별 시트를 합친다. 두 표시자가 다르게 표시한 후보는 채점에서 빼고(의견 불일치) 일치도를 낸다."""
+    per = []
+    for rows in sheets:
+        d = {}
+        for r in rows:
+            if r["label"] != "":
+                if r["label"] not in REL_VALUES:
+                    raise ValueError(f"허용 값(0/1/2)이 아님: {r['query_id']}/{r['candidate_id']}")
+                d[(r["query_id"], r["candidate_id"])] = int(r["label"])
+        per.append(d)
+    merged: dict[tuple[str, str], int | None] = {}
+    for d in per:
+        for k, v in d.items():
+            merged[k] = v if merged.get(k, v) == v else None
+    disputed = sum(v is None for v in merged.values())
+    info: dict = {
+        "labelers": len(sheets),
+        "labeled": [len(d) for d in per],
+        "disputed_excluded": disputed,
+    }
+    if len(per) == 2:
+        both = sorted(set(per[0]) & set(per[1]))
+        info["overlap"] = len(both)
+        info["kappa"] = (
+            round(cohen_kappa([str(per[0][k]) for k in both], [str(per[1][k]) for k in both]), 3)
+            if both
+            else None
+        )
+    return {k: v for k, v in merged.items() if v is not None}, info
+
+
+def cmd_r1_score(args) -> None:
+    sheets = []
+    for path in args.sheet:
+        with open(path, encoding="utf-8-sig", newline="") as f:
+            sheets.append(list(csv.DictReader(f)))
+    key = json.loads(Path(args.key).read_text(encoding="utf-8"))
+    labels, info = merge_labels(sheets)
+    res = {"labeling": info, **r1_score(labels, key)}
+    res["valid_gates"] = {
+        "kappa_ok": (info.get("kappa") or 0) >= 0.6 if len(sheets) == 2 else None,
+        "controls_ok": all(
+            c["generous_rate"] is not None and c["generous_rate"] < c["limit"]
+            for c in res["controls"].values()
+        ),
+        "note": "통제 후보 검사나 kappa(두 명일 때)가 미달이면 점수를 쓰지 않는다 — 평가 설계 5절",
+    }
+    print(json.dumps(res, ensure_ascii=False, indent=1))
+
+
+STOP = {
+    *"the a an of and or to in on for that this is was were be by with as at from it its has have had which not no are than into".split(),
+    *"odi nhtsa investigation opened summary complaints reports vehicles vehicle".split(),
+}
+
+
+def question_flags(qs: list[dict], by_id: dict[str, dict], tokenize) -> dict:
+    """749문항의 객관 플래그 — 코드로 센 것이고 사람 표시가 아니다(무효 규모의 대략을 보는 용도, 문항을 거르는 데 쓰지 않는다)."""
+    flags: Counter = Counter()
+    for q in qs:
+        words = [
+            w for w in tokenize(q["question"]) if w not in STOP and not w.isdigit() and len(w) > 2
+        ]
+        g = by_id[q["gold_campnos"][0]]
+        gwords = set(tokenize(g["defect"] + " " + g["consequence"] + " " + g["remedy"]))
+        short, low, zero = len(q["question"]) < 100, len(words) < 8, not (set(words) & gwords)
+        flags["short_lt100"] += short
+        flags["low_content_lt8_words"] += low
+        flags["zero_content_overlap_with_gold"] += zero
+        flags["see_attached"] += "attach" in q["question"].lower()
+        flags["any_flag"] += short or low or zero
+    n = len(qs)
+    return {"n": n, **flags, **{f"{k}_share": round(v / n, 3) for k, v in flags.items()}}
+
+
+def cmd_question_flags(args) -> None:
+    from scripts.defect_precedent.bm25_baseline import tokenize
+
+    cards = _read_jsonl(DATA / "recalls.jsonl")
+    res = question_flags(
+        _read_jsonl(DATA / "eval.jsonl"), {c["campno"]: c for c in cards}, tokenize
+    )
+    print(json.dumps(res, ensure_ascii=False, indent=1))
+    if args.out:
+        Path(args.out).write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 def cmd_r1_pool(args) -> None:
@@ -429,6 +582,13 @@ def main(argv=None) -> None:
     s.add_argument("--sheet", required=True)
     r = sub.add_parser("r2-counts")
     r.add_argument("--out")
+    f = sub.add_parser("question-flags")
+    f.add_argument("--out")
+    sc = sub.add_parser("r1-score")
+    sc.add_argument(
+        "--sheet", action="append", required=True, help="표시한 시트(표시자마다 하나, 두 번까지)"
+    )
+    sc.add_argument("--key", required=True, help="pool_key.json (표시자에게는 주지 않은 파일)")
     q = sub.add_parser("r1-pool")
     q.add_argument("--n-queries", type=int, default=40)
     q.add_argument("--seed", type=int, required=True)
@@ -438,6 +598,8 @@ def main(argv=None) -> None:
         "audit-score": cmd_audit_score,
         "r2-counts": cmd_r2_counts,
         "r1-pool": cmd_r1_pool,
+        "r1-score": cmd_r1_score,
+        "question-flags": cmd_question_flags,
     }[args.cmd](args)
 
 

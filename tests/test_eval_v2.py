@@ -9,11 +9,15 @@ from scripts.defect_precedent.eval_v2 import (
     audit_rows,
     audit_summary,
     build_pool,
+    cohen_kappa,
     hit_at_k,
     keyword_control,
+    merge_labels,
     ndcg_at_k,
     pick_queries,
     precision_at_k,
+    question_flags,
+    r1_score,
     sensitivity_at_specificity,
     wilson,
 )
@@ -132,3 +136,72 @@ def test_build_pool_is_blind_time_valid_and_has_controls():
     assert query["campno"] not in cand_ids
     assert all(by_id[c]["received_date"] < query["received_date"] for c in cand_ids)
     assert rows == build_pool(query, systems, by_id, ids, seed=1)[0]
+
+
+def test_cohen_kappa_perfect_chance_and_empty():
+    assert cohen_kappa(["2", "1", "0"], ["2", "1", "0"]) == 1.0
+    assert cohen_kappa(["1", "1", "0", "0"], ["1", "0", "1", "0"]) == pytest.approx(0.0)
+    assert cohen_kappa([], []) == 0.0
+
+
+def _key():
+    return {
+        "Q1": {
+            "query_campno": "C1",
+            "candidates": {
+                "a": {"bm25": 1, "rrf": 2},
+                "b": {"bm25": 2},
+                "c": {"rrf": 1},
+                "x": {"control_other_category": 0},
+                "y": {"control_same_category": 0},
+            },
+        }
+    }
+
+
+def test_r1_score_per_system_controls_and_judged_coverage():
+    labels = {("Q1", "a"): 2, ("Q1", "b"): 0, ("Q1", "c"): 1, ("Q1", "x"): 0, ("Q1", "y"): 1}
+    r = r1_score(labels, _key())
+    assert r["systems"]["bm25"]["hit@10"] == 1.0 and r["systems"]["rrf"]["hit@10"] == 1.0
+    assert r["systems"]["bm25"]["judged_coverage"] == 1.0
+    assert r["controls"]["control_other_category"]["generous_rate"] == 0.0
+    # 표시가 후하면(다른 분류 통제 후보를 관련으로 표시) 비율에 드러난다
+    generous = {**labels, ("Q1", "x"): 2}
+    assert r1_score(generous, _key())["controls"]["control_other_category"]["generous_rate"] == 1.0
+    # 표시 안 된 후보는 점수에서 0으로 세되 표시된 비율이 낮아진다 — 빈 시트가 점수를 부풀리지 못한다
+    sparse = r1_score({("Q1", "a"): 2}, _key())
+    assert sparse["systems"]["bm25"]["judged_coverage"] == 0.5
+
+
+def test_merge_labels_excludes_disagreement_and_reports_kappa():
+    def sheet(vals):
+        return [{"query_id": "Q1", "candidate_id": c, "label": v} for c, v in vals.items()]
+
+    merged, info = merge_labels(
+        [sheet({"a": "2", "b": "1", "c": "0"}), sheet({"a": "2", "b": "0", "c": "0"})]
+    )
+    assert ("Q1", "b") not in merged and merged[("Q1", "a")] == 2
+    assert info["disputed_excluded"] == 1 and info["overlap"] == 3
+    with pytest.raises(ValueError):
+        merge_labels([sheet({"a": "3"})])
+
+
+def test_question_flags_count_objective_properties_only():
+    tok = lambda t: t.lower().replace(".", " ").split()  # noqa: E731
+    cards = {
+        "G": {"defect": "brake hose leaks fluid", "consequence": "crash", "remedy": "replace hose"}
+    }
+    qs = [
+        {"question": "DD", "gold_campnos": ["G"]},
+        {
+            "question": "brake hose leaks fluid and the driver reported reduced braking performance repeatedly during winter testing",
+            "gold_campnos": ["G"],
+        },
+    ]
+    f = question_flags(qs, cards, tok)
+    assert (
+        f["short_lt100"] == 1
+        and f["low_content_lt8_words"] == 1
+        and f["zero_content_overlap_with_gold"] == 1
+    )
+    assert f["any_flag"] == 1 and f["n"] == 2
