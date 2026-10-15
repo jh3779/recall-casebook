@@ -404,7 +404,7 @@ def r1_score(labels: dict[tuple[str, str], int], key: dict) -> dict:
             "limit": limit,
         }
     for name in systems:
-        hits, ndcgs, precs, judged, total, nq = 0, [], [], 0, 0, 0
+        hits, ndcgs, precs, precs2, judged, total, nq = 0, [], [], [], 0, 0, 0
         for qid, q in key.items():
             ranked = sorted((v[name], cid) for cid, v in q["candidates"].items() if name in v)
             if not ranked:
@@ -417,15 +417,39 @@ def r1_score(labels: dict[tuple[str, str], int], key: dict) -> dict:
             hits += hit_at_k(lv, 10)
             ndcgs.append(ndcg_at_k(lv, 10))
             precs.append(precision_at_k(lv, 10))
+            precs2.append(precision_at_k(lv, 10, min_level=2))
         out["systems"][name] = {
             "queries": nq,
             "hit@10": round(hits / nq, 3) if nq else None,
             "hit@10_wilson95": tuple(round(x, 3) for x in wilson(hits, nq)),
             "ndcg@10": round(sum(ndcgs) / len(ndcgs), 3) if ndcgs else None,
-            "precision@10": round(sum(precs) / len(precs), 3) if precs else None,
+            "precision@10_level2": round(sum(precs2) / len(precs2), 3)
+            if precs2
+            else None,  # 주 지표
+            "precision@10": round(sum(precs) / len(precs), 3)
+            if precs
+            else None,  # 부품만 같아도 포함 — 보조
             "judged_coverage": round(judged / total, 3) if total else None,
         }
     return out
+
+
+def agreement_report(a: dict[tuple[str, str], int], b: dict[tuple[str, str], int]) -> dict:
+    """두 검수자의 표시 일치도 — 겹친 후보에서 정확 일치·kappa·한쪽이 더 후한 비율(체계적 후함)."""
+    keys = sorted(set(a) & set(b))
+    if not keys:
+        return {"overlap": 0}
+    la, lb = [a[k] for k in keys], [b[k] for k in keys]
+    exact = sum(x == y for x, y in zip(la, lb, strict=True)) / len(keys)
+    return {
+        "overlap": len(keys),
+        "exact_agreement": round(exact, 3),
+        "kappa": round(cohen_kappa([str(x) for x in la], [str(y) for y in lb]), 3),
+        "a_more_generous": round(sum(x > y for x, y in zip(la, lb, strict=True)) / len(keys), 3),
+        "b_more_generous": round(sum(y > x for x, y in zip(la, lb, strict=True)) / len(keys), 3),
+        "level2_rate_a": round(sum(x == 2 for x in la) / len(keys), 3),
+        "level2_rate_b": round(sum(y == 2 for y in lb) / len(keys), 3),
+    }
 
 
 def merge_labels(sheets: list[list[dict]]) -> tuple[dict[tuple[str, str], int], dict]:
@@ -458,6 +482,18 @@ def merge_labels(sheets: list[list[dict]]) -> tuple[dict[tuple[str, str], int], 
             else None
         )
     return {k: v for k, v in merged.items() if v is not None}, info
+
+
+def cmd_r1_agree(args) -> None:
+    def load_labels(path: str) -> dict[tuple[str, str], int]:
+        with open(path, encoding="utf-8-sig", newline="") as f:
+            return merge_labels([list(csv.DictReader(f))])[0]
+
+    print(
+        json.dumps(
+            agreement_report(load_labels(args.a), load_labels(args.b)), ensure_ascii=False, indent=1
+        )
+    )
 
 
 def cmd_r1_score(args) -> None:
@@ -530,6 +566,12 @@ def lcs_run(a: list[str], b: list[str]) -> int:
     return best
 
 
+CAUSE_RE = re.compile(
+    r"\b(due to|caused by|because|resulting from|results? from|as a result of|root cause|attributed to|stems? from)\b",
+    re.I,
+)
+
+
 def paraphrase_metrics(src: str, para: str, tokenize, strip_brands) -> dict:
     """바꿔 쓴 예상 질문의 기계 검사. 하드 실패 = 숫자 포함 · 브랜드 포함 · 6단어 미만/45단어 초과 · 원문과 연속 겹침 7단어 이상."""
     cs = {w for w in tokenize(src) if w not in STOP and not w.isdigit() and len(w) > 2}
@@ -545,6 +587,10 @@ def paraphrase_metrics(src: str, para: str, tokenize, strip_brands) -> dict:
         reasons.append("length")
     if run >= 7:
         reasons.append("copy_run>=7")
+    if CAUSE_RE.search(
+        para
+    ):  # 부품은 입력이지만 원인은 찾아야 할 출력 — 질문에 원인이 들어가면 답을 알려 주는 질문
+        reasons.append("cause_expression")
     return {
         "words": words,
         "jaccard": round(len(cs & cp) / len(cs | cp), 3) if cs | cp else 0.0,
@@ -743,6 +789,9 @@ def main(argv=None) -> None:
     r.add_argument("--out")
     f = sub.add_parser("question-flags")
     f.add_argument("--out")
+    ag = sub.add_parser("r1-agree")
+    ag.add_argument("--a", required=True)
+    ag.add_argument("--b", required=True)
     sc = sub.add_parser("r1-score")
     sc.add_argument(
         "--sheet", action="append", required=True, help="표시한 시트(표시자마다 하나, 두 번까지)"
@@ -773,6 +822,7 @@ def main(argv=None) -> None:
         "r2-counts": cmd_r2_counts,
         "r1-pool": cmd_r1_pool,
         "r1-score": cmd_r1_score,
+        "r1-agree": cmd_r1_agree,
         "question-flags": cmd_question_flags,
         "paraphrase-input": cmd_paraphrase_input,
         "paraphrase-check": cmd_paraphrase_check,

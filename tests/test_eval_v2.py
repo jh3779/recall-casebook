@@ -7,6 +7,7 @@ import pytest
 from scripts.defect_precedent.eval_v2 import (
     AUDIT_BASE,
     _row_hash,
+    agreement_report,
     auc,
     audit_rows,
     audit_summary,
@@ -261,3 +262,28 @@ def test_leak_diagnostics_same_maker_and_copy_like_candidates():
     key = {"Q1": {"query_campno": "C001", "candidates": {"h1": {"bm25": 1}, "h2": {"bm25": 2}}}}
     r = leak_diagnostics(key, by_id, {"Q1": {"h1": "C002", "h2": "C003"}}, tok)
     assert r["bm25"]["same_maker_share"] == 0.5 and r["bm25"]["copy_like_share"] == 0.5
+
+
+def test_paraphrase_rejects_cause_expression_in_the_question():
+    tok = lambda t: re.findall(r"[a-z0-9]+", t.lower())  # noqa: E731
+    strip = lambda t: t  # noqa: E731
+    src = "the caliper seal is damaged and brake fluid leaks out of the front hydraulic assembly"
+    ok = "brake fluid leaks near a front caliper and the pedal feels soft under braking"
+    bad = "brake fluid leaks near a front caliper because the seal was damaged during assembly work"
+    assert paraphrase_metrics(src, ok, tok, strip)["hard_fail"] == []
+    assert "cause_expression" in paraphrase_metrics(src, bad, tok, strip)["hard_fail"]
+
+
+def test_r1_score_reports_level2_precision_separately_from_part_only_precision():
+    key = {"Q1": {"query_campno": "C1", "candidates": {"a": {"bm25": 1}, "b": {"bm25": 2}}}}
+    r = r1_score({("Q1", "a"): 2, ("Q1", "b"): 1}, key)["systems"]["bm25"]
+    assert r["precision@10"] == 1.0 and r["precision@10_level2"] == 0.5
+
+
+def test_agreement_report_overlap_kappa_and_generosity_direction():
+    a = {("Q1", "x"): 2, ("Q1", "y"): 1, ("Q1", "z"): 0, ("Q1", "only_a"): 2}
+    b = {("Q1", "x"): 2, ("Q1", "y"): 0, ("Q1", "z"): 0}
+    r = agreement_report(a, b)
+    assert r["overlap"] == 3 and r["exact_agreement"] == round(2 / 3, 3)
+    assert r["a_more_generous"] == round(1 / 3, 3) and r["b_more_generous"] == 0.0
+    assert agreement_report({}, b) == {"overlap": 0}
