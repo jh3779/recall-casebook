@@ -99,3 +99,18 @@
 .ed-link { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--accent-2); text-decoration: underline; cursor: pointer; }
 .ed-map tr.off td { color: var(--ink-3); }
 .fp-cell.off { background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f3f3f3 6px, #f3f3f3 12px); }
+/* 선례 근거 묶음 초안 (DEC-065) */
+.dp { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; margin-top: 8px; display: grid; gap: 8px; }
+.dp-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.dp-head .btn { margin-left: auto; }
+.dr { display: grid; gap: 8px; }
+.dg { border: 1px solid var(--line); border-left: 4px solid var(--accent-2); border-radius: 8px; padding: 8px 12px; background: var(--bg-1); display: grid; gap: 6px; }
+.dg-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.dg-head .pick { margin-left: auto; }
+.dg-list { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.dq { list-style: none; margin-left: -18px; display: grid; gap: 2px; }
+.dq-field { font-size: 11px; font-weight: 600; color: var(--ink-3); }
+.dq-text { font-family: var(--font-source); font-size: var(--fs-source); line-height: 1.55; quotes: none; overflow-wrap: anywhere; }
+.dq-text::before, .dq-text::after { content: none; }
+.dr-degraded { background: var(--cause-stated-bg); border: 1px solid var(--cause-stated-line); border-radius: var(--radius-s); padding: 6px 10px; margin: 0; }
+.dq-box { border-left-color: var(--ink-3); }

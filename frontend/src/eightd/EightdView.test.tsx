@@ -42,3 +42,13 @@ it("적용할 단계 선택이 있고 기본은 전체 적용이며 D2·D4만 �
   expect(markup).toMatch(/aria-pressed="false"[^>]*>D2·D4만<\/button>/);
   expect(markup).not.toContain("적용 안 함");
 });
+it("선례 근거 묶음 초안 버튼은 D2·D4에만, 검색 결과와 담은 선례가 있을 때만 나온다", () => {
+  const withDraft = renderToStaticMarkup(<EightdView cards={picked} response={response} onBack={() => {}} />);
+  expect(withDraft.match(/선례 근거 묶음 초안/g)).toHaveLength(2);
+  expect(withDraft.match(/묶음 초안 만들기/g)).toHaveLength(2);
+  const section = (n: number) => withDraft.split(`id="ed-h-${n}"`)[1].split("</section>")[0];
+  for (const n of [2, 4]) expect(section(n)).toContain("묶음 초안 만들기");
+  for (const n of [3, 5, 7]) expect(section(n)).not.toContain("묶음 초안");
+  expect(renderToStaticMarkup(<EightdView cards={picked} response={null} onBack={() => {}} />)).not.toContain("묶음 초안");
+  expect(renderToStaticMarkup(<EightdView cards={[]} response={response} onBack={() => {}} />)).not.toContain("묶음 초안 만들기");
+});

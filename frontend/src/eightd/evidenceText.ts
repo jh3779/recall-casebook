@@ -5,9 +5,9 @@ import { hasCauseText, type Card, type ProductionCheckItem, type SearchResponse 
 export type EvidenceStep = "2" | "3" | "4" | "5";
 
 export const isoDate = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-const header = (card: Card) => `[타사 선례 ${card.campno} · ${card.maker} · 접수 ${isoDate(card.received_date)}]`;
+export const header = (card: Card) => `[타사 선례 ${card.campno} · ${card.maker} · 접수 ${isoDate(card.received_date)}]`;
 const flatSource = (card: Card) => `— 말한 주체: ${card.source.speaker} · ${card.source.dataset} 스냅샷 ${card.source.snapshot_date}`;
-const file573 = (s: { file: string; submission_date: string; pdf_sha256: string }) => `출처: ${s.file} · 제출일 ${isoDate(s.submission_date)} · sha256 ${s.pdf_sha256.slice(0, 12)}…`;
+export const file573 = (s: { file: string; submission_date: string; pdf_sha256: string }) => `출처: ${s.file} · 제출일 ${isoDate(s.submission_date)} · sha256 ${s.pdf_sha256.slice(0, 12)}…`;
 const productionItem = (card: Card) => card.checklist.find((item): item is ProductionCheckItem => item.item === "production_period");
 export const supplierName = (card: Card) => card.checklist.find((item) => item.item === "supplier")?.evidence[0]?.text;
 

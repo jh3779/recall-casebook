@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Card, SearchResponse } from "../search/types";
 import { ALL_STEPS, composeDocument, CORE_STEPS, evidenceFooter, insertBlock, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
 import { DocxError, inspectDocx, patchDocx, type Place } from "./docxPatch";
+import { DraftPanel } from "./DraftPanel";
 import { EvidenceCard } from "./EvidenceCard";
 import { FormPreview } from "./FormPreview";
 import { resultsBlock, type EvidenceStep } from "./evidenceText";
@@ -89,6 +90,7 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
     if (!(step in HINT) || !cards.length) return null;
     return <details className="ed-ref"><summary><span>선례 참고 열기 <span className="ed-opt">선택</span></span><span className={`ed-cnt${insertedCount(step) ? " on" : ""}`}>넣음 {insertedCount(step)}건</span></summary>
       <p className="note">{HINT[step]} 넣기를 누르기 전에는 본문에 아무것도 들어가지 않습니다.</p>
+      {response && (step === "2" || step === "4") && <DraftPanel step={step === "2" ? "d2" : "d4"} question={response.question} cards={cards} inserted={inserted} onToggle={(id, block) => toggle(step, id, block)} />}
       {cards.map((card) => <EvidenceCard key={card.campno} step={step as EvidenceStep} card={card} customer={customers.has(card.campno)} inserted={inserted[`${step}|${card.campno}`] !== undefined} onToggle={(block) => toggle(step, card.campno, block)} />)}
     </details>;
   };
