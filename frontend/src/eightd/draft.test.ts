@@ -61,5 +61,6 @@ it("초안 응답의 build가 검색 응답과 다르면 같은 서버 판본이
   expect(sameBuild(r("aaa"), r("bbb"))).toBe(false);
   expect(sameBuild(r("aaa"), null)).toBe(true);
   expect(sameBuild(r("aaa", "x"), r("aaa", "y"))).toBe(false); // build_id가 같아도 묶음(형식 판본)이 다르면 다른 판본
-  expect(sameBuild(r("aaa", "x"), r("aaa", null))).toBe(true); // 한쪽에 없으면 build_id만 본다
+  expect(sameBuild(r("aaa", "x"), r("aaa", null))).toBe(false); // 한쪽만 지문이 있으면 다른 서버에서 나온 것으로 본다(리뷰 지적)
+  expect(sameBuild(r("aaa", null), r("aaa", null))).toBe(true); // 묶음 없이 띄운 로컬 서버는 양쪽 모두 null
 });
