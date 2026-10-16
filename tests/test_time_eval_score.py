@@ -1063,3 +1063,82 @@ def test_cli_score_refuses_recheck_sheets_with_agreed_label_on_one_side_only(tmp
     ]
     with pytest.raises(SystemExit, match="한 사람 시트에만"):
         ts.main([*args, str(c), "--agreement", *agr])
+
+
+def _dec066_args(tmp_path, a_rows, c_rows):
+    """DEC-066 회차: 재확인 R1~R3은 A(L-A1)·C(L-C1) 둘 다, Q4는 A 한 사람. --agreement 없이 사유만 넘긴다."""
+    q, base = _recheck_setup(tmp_path)
+    a = write_sheet(tmp_path / "a066.csv", [*a_rows, row("Q4", "A", "yes")])
+    c = write_sheet(tmp_path / "c066.csv", [{**r, "labeler_id": "L-C1"} for r in c_rows])
+    head = base[: base.index("--sheets")]
+    return [*head, "--sheets", str(a), str(c), "--pilot-agreement-skipped", "DEC-066"]
+
+
+def test_cli_score_dec066_same_labels_need_no_agreed_label(tmp_path, capsys):
+    """DEC-066: 재확인 3문항에서 두 사람의 label이 같으면 agreed_label 없이 그 label을 쓴다 — 일치율 미측정을 남긴다."""
+    same = [row(r, "A", "yes") for r in ("R1", "R2", "R3")]
+    ts.main(_dec066_args(tmp_path, same, same))
+    out = json.loads(capsys.readouterr().out)
+    checks = out["checks"]
+    assert checks["double_label_scope"] == ts.DEC066_SCOPE and checks["agreements"] == []
+    assert (
+        checks["pilot_agreement"] == "미측정(DEC-066)" and checks["recheck_split_candidates"] == 0
+    )
+    assert out["limitations"] == [ts.DEC066_LIMIT.format(n=0)] and out["labeled_questions"] == 4
+
+
+def test_cli_score_dec066_split_candidate_needs_agreed_label_on_both_sheets_and_a_reason(
+    tmp_path, capsys
+):
+    """갈린 후보는 합의값(우지훈 결정)이 두 시트 모두에 같게, 합의 이유(note)와 함께 있어야 한다(DEC-066 ③)."""
+    a_rows = [row("R1", "A", "yes"), row("R2", "A", "yes"), row("R3", "A", "yes")]
+    c_rows = [row("R1", "A", "no"), row("R2", "A", "yes"), row("R3", "A", "yes")]
+    with pytest.raises(SystemExit, match="표시가 서로 다르다"):
+        ts.main(_dec066_args(tmp_path, a_rows, c_rows))
+    one_side = [row("R1", "A", "no", agreed_label="yes", note="합의: 우지훈 결정"), *c_rows[1:]]
+    with pytest.raises(SystemExit, match="한 사람 시트에만"):
+        ts.main(_dec066_args(tmp_path, a_rows, one_side))
+    a_ok = [row("R1", "A", "yes", agreed_label="yes"), *a_rows[1:]]
+    no_note = [row("R1", "A", "no", agreed_label="yes"), *c_rows[1:]]
+    with pytest.raises(SystemExit, match="합의 이유"):
+        ts.main(_dec066_args(tmp_path, a_ok, no_note))
+    ts.main(_dec066_args(tmp_path, a_ok, one_side))
+    out = json.loads(capsys.readouterr().out)
+    assert out["checks"]["recheck_split_candidates"] == 1
+    assert out["limitations"] == [ts.DEC066_LIMIT.format(n=1)]
+
+
+def test_cli_score_dec066_recheck_questions_need_two_labelers(tmp_path):
+    """재확인 문항을 한 사람만 표시했으면 멈춘다(DEC-066 ②) — 시트에 아예 없어도 멈춘다."""
+    same = [row(r, "A", "yes") for r in ("R1", "R2", "R3")]
+    with pytest.raises(SystemExit, match="두 사람의 label이 없다"):
+        ts.main(_dec066_args(tmp_path, same, same[:2]))
+
+
+def test_cli_score_dec066_refuses_overwriting_matching_labels(tmp_path):
+    """두 사람의 label이 같은 후보에 다른 agreed_label을 적으면 멈춘다 — 같은 label을 그대로 쓴다(DEC-066 ③)."""
+    a_rows = [
+        row("R1", "A", "yes", agreed_label="no"),
+        row("R2", "A", "yes"),
+        row("R3", "A", "yes"),
+    ]
+    c_rows = [
+        row("R1", "A", "yes", agreed_label="no"),
+        row("R2", "A", "yes"),
+        row("R3", "A", "yes"),
+    ]
+    with pytest.raises(SystemExit, match="다른 agreed_label"):
+        ts.main(_dec066_args(tmp_path, a_rows, c_rows))
+
+
+def test_cli_score_needs_exactly_one_of_agreement_or_dec066(tmp_path):
+    """--agreement와 --pilot-agreement-skipped는 하나만 — 둘 다 없거나 둘 다 주면 멈춘다. 사유 값은 DEC-066만 받는다."""
+    same = [row(r, "A", "yes") for r in ("R1", "R2", "R3")]
+    args = _dec066_args(tmp_path, same, same)
+    without = args[: args.index("--pilot-agreement-skipped")]
+    with pytest.raises(SystemExit):
+        ts.main(without)
+    with pytest.raises(SystemExit):
+        ts.main([*args, "--agreement", agreement_file(tmp_path, "pilot", True)])
+    with pytest.raises(SystemExit):
+        ts.main([*without, "--pilot-agreement-skipped", "other"])

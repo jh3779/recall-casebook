@@ -14,6 +14,9 @@
     uv run python -m scripts.defect_precedent.time_eval_score score \
         --candidates <candidates_main.json> [<candidates_<대체 회차>.json> ...] --sheets <시트1.csv> [<시트2.csv> ...] \
         --agreement <agreement_pilot.json> [<agreement_recheck.json>] [--partial]
+    # DEC-066(2026-10-16): 예비 일치 확인을 하지 않은 회차 — --agreement 대신 사유를 적는다. 재확인 3문항만 두 사람 표시를 검사한다
+    uv run python -m scripts.defect_precedent.time_eval_score score \
+        --candidates <candidates_main.json> --sheets <시트1.csv> [<시트2.csv> ...] --pilot-agreement-skipped DEC-066
 
 규칙(이 도구 작성자가 정답 표시 결과를 보기 전인 2026-10-11에 DEC-037 ⑦·안내서 4·5절을 그대로 옮겨 고정 — 결과를 보고 고치지 않는다):
 - 점수에 쓰는 표시 = `agreed_label`이 있으면 그것, 없으면 `label`. 한 후보에 서로 다른 `label`이 둘 이상인데 `agreed_label`이
@@ -29,6 +32,11 @@
 - 시트가 숨긴 후보 파일과 같은 묶음인지(문항·후보 번호가 정확히 같은지), 표시 값이 yes/no/unsure인지, 표시한 줄에
   `labeler_id`가 있는지, 같은 문항의 같은 `dup_group`에 다른 표시가 없는지 먼저 확인하고 어긋나면 멈춘다.
 - 표시가 빈 후보가 있으면 멈춘다 — `--partial`이면 그 문항을 빼고 중간 결과로 표시한다(최종 보고에 쓰지 않는다).
+
+사후 변경(2026-10-16, DEC-066 — 이슈 #143, 예비 시트 한 장을 받은 뒤의 변경): 위 규칙의 점수 계산(Hit@k·하한·Wilson·
+McNemar·부트스트랩·34문항 기준)은 바꾸지 않았다. `score`에 `--pilot-agreement-skipped DEC-066` 입력을 더했다 — 예비 일치
+확인(agreement)을 하지 않은 회차에서 이중 표시 검사 범위를 재확인 3문항으로 정하고(`check_rechecked_dec066`), 갈리지 않은
+후보는 같은 `label`을 그대로 쓰며(`agreed_label` 요구 완화), 결과 파일에 "일치율 미측정"과 갈린 후보 수·채점 보고 한계를 남긴다.
 """
 
 import argparse
@@ -307,6 +315,53 @@ def require_resolved(g: dict, name: str) -> None:
         )
 
 
+DEC066 = "DEC-066"
+DEC066_SCOPE = "재확인 3문항(DEC-066 — 예비 일치 확인 생략, 일치율 미측정)"
+DEC066_LIMIT = (  # DEC-066 영향 항목의 채점 보고 한계 문구(고정) — {n}은 재확인 3문항에서 두 사람의 label이 갈린 후보 수
+    "표시자 간 일치율 미측정 — 예비 시트 한 장(완성본)을 받은 뒤 절차를 바꿨다. 작성자(B)는 그 시트의 값 종류와 같은 "
+    "`dup_group` 안 일치 여부만 확인했고(규칙 변경 결정 전), 값별 개수와 어느 후보가 `yes`인지는 보지 않았다. "
+    "재확인 3문항의 갈린 후보({n}건)는 검색을 만든 채점자가 정했다"
+)
+
+
+def check_rechecked_dec066(merged: dict, recheck: set[str]) -> int:
+    """DEC-066: 재확인 3문항은 두 사람이 모두 표시하고, label이 갈린 후보만 합의값(우지훈 결정)을 두 시트에 같게 적는다 —
+    갈리지 않은 후보는 같은 label을 그대로 쓴다(agreed_label 없어도 됨). 갈린 후보 수를 돌려준다."""
+    flag = "DEC-066 재확인 3문항"
+    rows = {k: m for k, m in merged.items() if k[0] in recheck}
+    missing_q = sorted(recheck - {k[0] for k in rows})
+    if missing_q:
+        sys.exit(f"두 사람이 표시해야 할 문항 {missing_q[:3]}이 시트에 없다({flag})")
+    single = sorted(k for k, m in rows.items() if len(m["labelers"]) < 2)
+    if single:
+        sys.exit(
+            f"두 사람이 표시해야 할 문항의 후보 {single[:3]} 등 {len(single)}개에 두 사람의 label이 없다({flag}, 안내서 4절)"
+        )
+    split = sorted(k for k, m in rows.items() if len(set(m["labels"])) > 1)
+    # 갈린 후보에 합의값이 없으면 merge_labels가 이미 멈춘다. 합의값은 두 시트 모두에 같은 값으로 있어야 한다.
+    one_side = sorted(k for k in split if not rows[k]["labelers"] <= rows[k]["agreed_by"])
+    if one_side:
+        sys.exit(
+            f"label이 갈린 후보 {one_side[:3]} 등 {len(one_side)}개에 합의값이 한 사람 시트에만 있다 — 두 시트 모두에 같은 agreed_label을 적는다({flag})"
+        )
+    no_reason = sorted(k for k in split if not rows[k]["notes"])
+    if no_reason:
+        sys.exit(
+            f"label이 갈린 후보 {no_reason[:3]} 등 {len(no_reason)}개에 합의 이유(note)가 없다({flag})"
+        )
+    # 갈리지 않은 후보에 다른 합의값을 적으면 두 사람의 같은 판단을 덮어쓴다 — 같은 label을 그대로 쓰는 규칙과 어긋난다
+    overwritten = sorted(
+        k
+        for k, m in rows.items()
+        if k not in split and m["agreed"] and m["agreed"] != set(m["labels"])
+    )
+    if overwritten:
+        sys.exit(
+            f"두 사람의 label이 같은 후보 {overwritten[:3]}에 다른 agreed_label이 있다 — 같은 label을 그대로 쓴다({flag})"
+        )
+    return len(split)
+
+
 def double_label_scope(
     agreements: list[dict],
     items: list[dict],
@@ -502,12 +557,17 @@ def main(argv: list[str] | None = None) -> None:
     )
     sc.add_argument("--sheets", type=Path, nargs="+", required=True)
     sc.add_argument("--partial", action="store_true", help="표시가 빈 문항을 빼고 중간 결과로 낸다")
-    sc.add_argument(
+    how = sc.add_mutually_exclusive_group(required=True)
+    how.add_argument(
         "--agreement",
         type=Path,
         nargs="+",
-        required=True,
         help="agreement 결과 파일 — 예비(pilot), 예비가 미달이면 재확인(recheck)도. 이중 표시 검사 범위를 여기서 정한다",
+    )
+    how.add_argument(
+        "--pilot-agreement-skipped",
+        choices=[DEC066],
+        help="예비 일치 확인을 하지 않은 회차(DEC-066) — 재확인 3문항만 두 사람 표시를 검사하고 일치율 미측정으로 남긴다",
     )
     sc.add_argument(
         "--questions", type=Path, default=QUESTIONS, help="질문 파일(재확인 문항을 정함)"
@@ -555,12 +615,18 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(f"후보 파일들에 같은 문항이 두 번 있다 {dup[:3]} — 회차마다 다른 문항이어야 한다")
     merged = merge_labels([read_sheet(s) for s in a.sheets])
     check_against_candidates(merged, items)
-    agreements = [json.loads(g.read_text(encoding="utf-8")) for g in a.agreement]
-    scope, must_double = double_label_scope(
-        agreements, items, a.questions, cands, {sha256_of(c) for c in a.candidates}
-    )
-    if must_double:
-        check_rechecked(merged, must_double, f"이중 표시 범위: {scope}")
+    n_split = None
+    if a.pilot_agreement_skipped:
+        agreements: list[dict] = []
+        scope, must_double = DEC066_SCOPE, phase_actions("recheck", a.questions)
+        n_split = check_rechecked_dec066(merged, must_double)
+    else:
+        agreements = [json.loads(g.read_text(encoding="utf-8")) for g in a.agreement]
+        scope, must_double = double_label_scope(
+            agreements, items, a.questions, cands, {sha256_of(c) for c in a.candidates}
+        )
+        if must_double:
+            check_rechecked(merged, must_double, f"이중 표시 범위: {scope}")
     questions, skipped = per_question(merged, items, a.partial)
     dirty = [c["set"] for c in cands if (c.get("code") or {}).get("dirty")]
     # 표시가 덜 끝났거나(--partial로 문항 제외) 커밋하지 않은 코드로 만든 후보를 썼으면(--partial일 때만 허용) 중간 결과다 —
@@ -578,10 +644,16 @@ def main(argv: list[str] | None = None) -> None:
         "double_label_scope": scope,
         "agreements": [
             {"file": str(g), "sha256": sha256_of(g), "phase": d["phase"], "pass": d["pass"]}
-            for g, d in zip(a.agreement, agreements, strict=True)
+            for g, d in zip(a.agreement or [], agreements, strict=True)
         ],
+        "pilot_agreement": "미측정(DEC-066)"
+        if a.pilot_agreement_skipped
+        else "agreement 결과로 확인",
         "partial": a.partial,
     }
+    if a.pilot_agreement_skipped:
+        out["checks"]["recheck_split_candidates"] = n_split
+        out["limitations"] = [DEC066_LIMIT.format(n=n_split)]
     out["inputs"] = {
         "candidates": [
             {"file": str(c), "sha256": sha256_of(c), "set": cand["set"], "code": cand.get("code")}
