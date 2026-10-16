@@ -60,6 +60,14 @@ export function CaseDetail({ card, response, onRemove }: { card: Card; response:
         <Report source={supplier.source} />
       </div>}
     </section>}
+    {card.investigations.length > 0 && <section className="cb-block">
+      <h4>NHTSA defect investigation <small>{card.investigations.length} linked, summary verbatim</small></h4>
+      {card.investigations.map((inv) => <div key={inv.action} className="cb-check-item">
+        <h5><span className="cb-mono">{inv.action}</span> · <span lang="en">{inv.subject}</span></h5>
+        <p className="cb-byline">Said by <b lang={langOf(inv.speaker)}>{inv.speaker}</b> · {inv.action} · opened {fmtDate(inv.open_date)} · closed {inv.close_date ? fmtDate(inv.close_date) : "no record"}</p>
+        <p className="cb-src-text" lang="en">{inv.summary}</p>
+      </div>)}
+    </section>}
     <p className="cb-muted cb-prov">build {response.build_id} · snapshot {response.snapshot_date}{response.bundle_sha256 ? ` · bundle ${response.bundle_sha256.slice(0, 12)}…` : ""}</p>
   </article>;
 }

@@ -94,7 +94,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
       <div className="cb-case-name">
         <label htmlFor="cb-case">Case name</label>
         <input id="cb-case" value={caseInput} maxLength={80} onChange={(e) => setCaseInput(e.target.value)} onBlur={commitCase} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) commitCase(); }} placeholder="e.g. Sorento rear camera, Oct" aria-describedby="cb-case-hint" />
-        <small id="cb-case-hint" className="cb-muted">Changing the name switches to that case's notes.</small>
+        <small id="cb-case-hint" className="cb-muted">Changing the name switches to that case's notes. The name is also stored in this browser — avoid real project names.</small>
       </div>
       <span className="cb-health" role="status">{typeof health === "object" ? `build ${health.build_id} · snapshot ${health.snapshot_date}` : health === "loading" ? "Checking server…" : "Server version unavailable"}</span>
     </header>
