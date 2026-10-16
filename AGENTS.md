@@ -8,7 +8,7 @@
 
 1. `.agent/HANDOFF.md` — 지금 어디까지 했고 다음에 뭘 하나
 2. `.agent/PROJECT_CONTEXT.md` — 프로젝트 목표·팀·제약
-3. `docs/기획_결함선례.md` — 무엇을 왜 만드는가 (1절 문제 정의·해결 범위, 5절 설계·주의할 점, 6절 시험지·기준선). 데이터·시험지·기준 점수 재현은 `scripts/defect_precedent/README.md`. 이전 주제 문서(온보딩 RAG `docs/기획v1.md`, Compliance AI `docs/기획.md`)는 참고용으로 남아 있다 (`.agent/DECISIONS.md` DEC-010·DEC-030).
+3. `docs/기획_결함선례.md` — 무엇을 왜 만드는가 (1절 문제 정의·해결 범위, 5절 설계·주의할 점, 6절 시험지·기준선). 데이터·시험지·기준 점수 재현은 `scripts/defect_precedent/README.md`. 이전 주제 문서(온보딩 RAG `docs/archive/기획v1.md`, Compliance AI `docs/archive/기획.md`)는 참고용으로 남아 있다 (`.agent/DECISIONS.md` DEC-010·DEC-030).
 4. 작업 영역에 따라: `docs/시작하기.md`(전체 셋팅·작업 흐름), `CONTRIBUTING.md`(git·PR), `docs/개발환경.md`(uv 상세), `docs/MERGE_PROTOCOL.md`(병합 전 검증)
 
 작업 전에 `git status --short`로 남의 변경이 있는지 본다. 이해하지 못한 변경은 덮어쓰지 않는다.

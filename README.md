@@ -6,14 +6,14 @@ LG CNS AI Campus RAG 팀 프로젝트 — **결함 선례 찾기 도우미** (DE
 같은 부품의 다른 회사 선례와 그 원인 서술을 **원문 그대로, 리콜 번호와 함께** 찾아 주는 RAG 서비스. 판정("리콜 대상입니다")은 하지 않는다. <!-- principle-ok: 금지 문구 인용 -->
 
 > 기획 상세: [`docs/기획_결함선례.md`](docs/기획_결함선례.md). 데이터·시험지·기준 점수 재현: [`scripts/defect_precedent/README.md`](scripts/defect_precedent/README.md).
-> 이전 주제 문서 — 온보딩 RAG [`docs/기획v1.md`](docs/기획v1.md)(DEC-010), Compliance AI [`docs/기획.md`](docs/기획.md) — 는 참고용이다.
+> 이전 주제 문서 — 온보딩 RAG [`docs/archive/기획v1.md`](docs/archive/기획v1.md)(DEC-010), Compliance AI [`docs/archive/기획.md`](docs/archive/기획.md) — 는 참고용이다.
 
 ## 지금 어디까지 왔나
 
 - **주제**: 결함 선례 찾기 도우미 (DEC-030, 2026-10-06 전환). 데이터는 NHTSA 공개 리콜 30,350건·결함 조사 5,349건과 리콜 원본 보고서(Part 573, 원인·공급사 칸).
 - **역할**: A 데이터·시험지 박예원 · B RAG 우지훈 · C 검사·화면·발표 박성호 · D 근거·품질 확인 이승노 (이슈 #24).
 - **기준선**: 시험 문제 749개(정부가 기록한 조사 → 리콜, 대리 평가)에서 단순 검색 Hit@10 0.510. 재현 방법은 [`scripts/defect_precedent/README.md`](scripts/defect_precedent/README.md).
-- **일정**: 발표 2026-10-20, 10/8~10 준비, 개발 10/12~14. 파트별 일정·역할은 이슈 #24, 할 일·위험은 [`.agent/HANDOFF.md`](.agent/HANDOFF.md). ([`docs/진행계획.md`](docs/진행계획.md)는 이전 주제(온보딩) 기준이라 참고용이다 — 결함 선례 기준 개정은 HANDOFF 할 일.)
+- **일정**: 발표 2026-10-20, 10/8~10 준비, 개발 10/12~14. 파트별 일정·역할은 이슈 #24, 할 일·위험은 [`.agent/HANDOFF.md`](.agent/HANDOFF.md). ([`docs/archive/진행계획.md`](docs/archive/진행계획.md)는 이전 주제(온보딩) 기준이라 참고용이다 — 결함 선례 기준 개정은 HANDOFF 할 일.)
 - **지금 할 일·열린 결정**은 [`.agent/HANDOFF.md`](.agent/HANDOFF.md)에 있다. 이슈 대신 이 문서가 할 일 목록을 가진다.
 
 ## 데이터 받기
@@ -53,7 +53,7 @@ AI 에이전트로 작업할 때의 규칙은 [`AGENTS.md`](AGENTS.md)에 있다
 
 | 경로 | 용도 |
 |---|---|
-| `docs/` | 기획(`기획_결함선례.md` — 현행, DEC-030 / 이전 주제 `기획v1.md`·`기획.md`)·진행계획(이전 주제 기준, 개정 예정)·개발환경·병합 전 검증 프로토콜(`MERGE_PROTOCOL.md`) 등 문서 |
+| `docs/` | 기획(`기획_결함선례.md` — 현행, DEC-030 / 이전 주제 `archive/기획v1.md`·`archive/기획.md`)·제품 요구 `PRD.md`·데이터 구조 `ERD.md`·개발환경·병합 전 검증 프로토콜(`MERGE_PROTOCOL.md`) 등 문서 |
 | `tests/` | pytest 테스트 |
 | `AGENTS.md` · `CLAUDE.md` | AI 에이전트 행동강령 (원본은 AGENTS.md) |
 | `.claude/settings.json` | Claude Code 팀 공유 권한 설정 |
