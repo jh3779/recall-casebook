@@ -30,6 +30,7 @@ export interface DraftResponse {
   ungrouped: DraftItem[];
   questions: string[];
   rejected: Record<string, number>;
+  relocated?: number; // 공백만 달라 원문 구간으로 되짚은 인용 수 — 싣는 글자는 원문 것
 }
 
 const FIELD_LABEL = { defect: "결함", consequence: "결과", cause: "원인 원문" } as const;

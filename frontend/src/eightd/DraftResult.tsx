@@ -35,6 +35,7 @@ export function DraftResult({ result, cards, inserted, onToggle }: { result: Dra
     })}
     {result.groups.length > 0 && result.ungrouped.length > 0 && <p className="note">묶이지 않은 원문 {result.ungrouped.length}건은 위 "선례 참고"의 카드에서 직접 넣을 수 있습니다.</p>}
     {dropped.length > 0 && <p className="note">서버가 원문과 대조해 버린 항목: {dropped.map(([k, n]) => `${REJECTED[k] ?? k} ${n}건`).join(" · ")}.</p>}
+    {(result.relocated ?? 0) > 0 && <p className="note">공백만 달라 원문 구간으로 되짚은 인용 {result.relocated}건(싣는 글자는 원문 그대로).</p>}
     {result.questions.length > 0 && <article className="dg dq-box" aria-label="확인 질문">
       <header className="dg-head"><span className="tag">도구가 만든 고정 문장</span><b>확인 질문</b>{toggleBtn("draft:q", questionsBlock(result.questions), "확인 질문을 본문에 넣기")}</header>
       <ol className="dg-list">{result.questions.map((q) => <li key={q}>{q}</li>)}</ol>

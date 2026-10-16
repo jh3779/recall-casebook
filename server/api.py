@@ -395,6 +395,9 @@ class DraftResponse(Strict):
     ungrouped: list[DraftItem]  # 묶이지 않은 원문 전체 — 꺼짐·실패일 때도 원문 목록으로 쓴다
     questions: list[str]
     rejected: dict[str, int]
+    relocated: int = Field(
+        default=0, ge=0
+    )  # 공백만 달라 원문 구간으로 되짚은 인용 수 — 글자는 원문 것
 
 
 def card_view(state: RagState, campno: str, rank: int) -> dict:

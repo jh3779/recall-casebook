@@ -39,6 +39,11 @@ it("서버가 원문과 대조해 버린 인용이 있으면 수를 알린다", 
   expect(render({ ...base, rejected: { not_in_source: 2, bad_title: 0 } })).toContain("원문에 없어서 2건");
   expect(render(base)).not.toContain("버린 항목");
 });
+it("공백만 달라 되짚은 인용이 있으면 수를 알리고 없으면 말하지 않는다", () => {
+  expect(render({ ...base, relocated: 2 })).toContain("공백만 달라 원문 구간으로 되짚은 인용 2건");
+  expect(render({ ...base, relocated: 0 })).not.toContain("되짚은 인용");
+  expect(render(base)).not.toContain("되짚은 인용");
+});
 it("묶이지 않은 원문이 있으면 카드에서 직접 넣을 수 있다고 알린다", () => {
   expect(render({ ...base, ungrouped: [item, item] })).toContain("묶이지 않은 원문 2건");
 });

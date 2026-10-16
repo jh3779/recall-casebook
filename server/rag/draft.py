@@ -42,6 +42,9 @@ VERDICT_RE = re.compile(
     re.I,
 )
 
+# 제목은 "~라고 적은 선례" 꼴이어야 한다 — 원문이 말한 것을 말한 그대로 설명하는 문장만 허용하고, 원인·결과를 사실처럼 단정하는 제목을 막는다
+TITLE_FORMAT_RE = re.compile(r"(적은|서술한|언급한) 선례$")
+
 SCHEMA = {
     "type": "object",
     "properties": {
@@ -77,7 +80,10 @@ SCHEMA = {
 COMMON_RULES = (
     "You organize quotes taken from NHTSA recall records. The input is a list of sources, each with an id and a text. "
     "Group the sources whose wording says similar things. For each group give a short title in Korean (at most 40 "
-    "characters) that only describes what the quoted wording says, for example 'OO라고 적은 선례'. "
+    "characters) that ONLY reports what the quoted wording says and MUST end with '적은 선례' (for example "
+    "'납땜 플럭스가 오염됐을 수 있다고 적은 선례'). A title must keep the same level of certainty as its sources: if the "
+    "sources say may, could, possible or suspected, the title says '~일 수 있다고'; never turn a possibility into a fact and "
+    "never write a cause-and-effect conclusion such as '~로 인한 ~' in a title. "
     "For each group return the quotes: each quote is a continuous part of one source text copied EXACTLY, character for "
     "character (do not change capitalization, spelling, punctuation or spacing; do not shorten with '...'; do not "
     "translate). Prefer whole sentences. Use each source in at most one group. Sources that fit no group go to 'ungrouped' "
@@ -200,8 +206,12 @@ def item(src: Source, start: int, end: int) -> dict:
 
 
 def title_ok(title: str) -> bool:
+    t = title.strip()
     return (
-        0 < len(title.strip()) <= MAX_TITLE and "\n" not in title and not VERDICT_RE.search(title)
+        0 < len(t) <= MAX_TITLE
+        and "\n" not in t
+        and bool(TITLE_FORMAT_RE.search(t))
+        and not VERDICT_RE.search(t)
     )
 
 
@@ -210,6 +220,9 @@ def assemble(sources: list[Source], parsed: dict) -> dict:
     by_id = {s.id: s for s in sources}
     used: set[str] = set()
     rejected = {"unknown_source": 0, "not_in_source": 0, "duplicate_source": 0, "bad_title": 0}
+    relocated = (
+        0  # LLM이 공백만 바꿔 돌려줘 원문 구간으로 되짚은 인용 수(싣는 글자는 언제나 원문 것)
+    )
     groups = []
     for g in parsed.get("groups", []):
         items = []
@@ -226,6 +239,7 @@ def assemble(sources: list[Source], parsed: dict) -> dict:
                 rejected["not_in_source"] += 1
                 continue
             used.add(src.id)
+            relocated += src.text.find(q["text"]) < 0
             items.append(item(src, *span))
         if not items:
             continue
@@ -235,7 +249,7 @@ def assemble(sources: list[Source], parsed: dict) -> dict:
             title = f"묶음 {len(groups) + 1}"
         groups.append({"title": title, "items": items})
     ungrouped = [item(s, 0, len(s.text)) for s in sources if s.id not in used]
-    return {"groups": groups, "ungrouped": ungrouped, "rejected": rejected}
+    return {"groups": groups, "ungrouped": ungrouped, "rejected": rejected, "relocated": relocated}
 
 
 def questions_for(step: str, sources: list[Source]) -> list[str]:
@@ -325,7 +339,12 @@ def generate(
         "model": None,
         "degraded": None,
     }
-    empty = {"groups": [], "ungrouped": [item(s, 0, len(s.text)) for s in sources], "rejected": {}}
+    empty = {
+        "groups": [],
+        "ungrouped": [item(s, 0, len(s.text)) for s in sources],
+        "rejected": {},
+        "relocated": 0,
+    }
     if not sources:
         return {**base, **empty}, None
     if llm is None:

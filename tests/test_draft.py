@@ -179,22 +179,22 @@ def test_assemble_rejects_unknown_sources_and_a_source_used_twice_and_drops_empt
     payload = {
         "groups": [
             {
-                "title": "a",
+                "title": "a를 적은 선례",
                 "quotes": [
                     {"source_id": "S1", "text": "The circuit board may short circuit"},
                     {"source_id": "S9", "text": "x"},
                 ],
             },
             {
-                "title": "b",
+                "title": "b를 적은 선례",
                 "quotes": [{"source_id": "S1", "text": "loss of power steering assist"}],
             },
-            {"title": "c", "quotes": []},
+            {"title": "c를 적은 선례", "quotes": []},
         ],
         "ungrouped": [],
     }
     out = draft.assemble(srcs2(), payload)
-    assert [g["title"] for g in out["groups"]] == ["a"]
+    assert [g["title"] for g in out["groups"]] == ["a를 적은 선례"]
     assert out["rejected"] == {
         "unknown_source": 1,
         "not_in_source": 0,
@@ -233,7 +233,13 @@ def test_verdict_or_overlong_titles_are_replaced_with_a_neutral_one(title):
 
 
 @pytest.mark.parametrize(
-    "title", ["회로 단락을 적은 선례", "납땜 플럭스 오염 표현(2건)", "원인을 밝히지 않은 표현"]
+    "title",
+    [
+        "회로 단락을 적은 선례",
+        "납땜 플럭스가 오염됐을 수 있다고 적은 선례",
+        "원인을 밝히지 않았다고 적은 선례",
+        "파열을 서술한 선례",
+    ],
 )
 def test_neutral_descriptive_titles_pass(title):
     assert draft.title_ok(title)
@@ -297,7 +303,7 @@ def test_generate_d4_groups_cause_quotes_and_adds_the_unknown_question_only_when
                     ],
                 },
                 {
-                    "title": "원인을 밝히지 않은 표현",
+                    "title": "원인을 밝히지 않았다고 적은 선례",
                     "quotes": [{"source_id": "S2", "text": "N/A"}],
                 },
             ],
@@ -308,7 +314,7 @@ def test_generate_d4_groups_cause_quotes_and_adds_the_unknown_question_only_when
     assert out["model"] == "gpt-6-luna-x" and used.input_tokens == 100
     assert [g["title"] for g in out["groups"]] == [
         "납땜 플럭스 오염을 적은 선례",
-        "원인을 밝히지 않은 표현",
+        "원인을 밝히지 않았다고 적은 선례",
     ]
     assert (
         out["groups"][1]["items"][0]["cause_status"] == "stated_unknown"
@@ -449,3 +455,49 @@ def test_prompt_lists_every_source_with_its_id_and_the_task_for_the_step():
         text
         == "Sources:\n\n[S1] campno=24V412000 field=defect\ntext one\n\n[S2] campno=24V412000 field=consequence\ntext two"
     )
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "공급업체 공정 품질 편차로 인한 씰 누유",
+        "PCB 제조 중 오염된 플럭스",
+        "원인이 보고되지 않음",
+        "습기 유입과 ABS 회로 단락 가능성",
+    ],
+)
+def test_titles_without_the_wording_frame_are_replaced_even_if_they_sound_neutral(title):
+    """실제 표본(2026-10-16)에서 원문의 "possible"·"could"가 빠진 "~로 인한 ~" 제목이 나왔다 — "~적은 선례" 꼴만 허용한다."""
+    assert not draft.title_ok(title)
+    out = draft.assemble(
+        srcs2(),
+        {
+            "groups": [
+                {
+                    "title": title,
+                    "quotes": [{"source_id": "S1", "text": "The circuit board may short circuit"}],
+                }
+            ],
+            "ungrouped": [],
+        },
+    )
+    assert out["groups"][0]["title"] == "묶음 1" and out["rejected"]["bad_title"] == 1
+
+
+def test_assemble_counts_quotes_re_anchored_because_only_whitespace_differed():
+    payload = {
+        "groups": [
+            {
+                "title": "t를 적은 선례",
+                "quotes": [
+                    {"source_id": "S1", "text": "vehicles. The circuit board"},
+                    {"source_id": "S2", "text": CONSEQ},
+                ],
+            }
+        ],
+        "ungrouped": [],
+    }
+    assert (
+        draft.assemble(srcs2(), payload)["relocated"] == 1
+    )  # S1만 이중 공백이 달랐고 S2는 글자 그대로
+    assert draft.assemble(srcs2(), {"groups": [], "ungrouped": []})["relocated"] == 0
