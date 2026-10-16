@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { adoptNotes, clearNotes, isUnsaved, loadNotes, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, noteKey, saveNote, storageProblem, UNNAMED_MARK, type StorageLike } from "./notes";
+import { adoptNotes, applyNote, clearNotes, isUnsaved, loadNotes, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, noteKey, saveNote, storageProblem, UNNAMED_MARK, type StorageLike } from "./notes";
 
 function memory(): StorageLike & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -137,4 +137,17 @@ it("노트 칸 손실 경고: 이름이 있는데 저장소가 막혔거나 저�
   expect(storageProblem("A", true, true)).toBe(true);
   expect(storageProblem("A", true, false)).toBe(false);
   expect(storageProblem("", false, false)).toBe(false);
+});
+it("메모를 모두 지웠는데 저장소에서 지우지 못하면 화면 값을 되돌린다", () => {
+  const stuck: StorageLike = { length: 1, key: () => "casebook.note.v1|Case%20A|1", getItem: () => "저장된 글", setItem: () => {}, removeItem: () => { throw new Error("blocked"); } };
+  const r = applyNote(stuck, "Case A", { "1": "저장된 글" }, "1", "");
+  expect(r).toEqual({ notes: { "1": "저장된 글" }, saved: false, deleteFailed: true });
+});
+it("저장소 삭제가 되면 화면에서도 지우고, 이름이 없으면 저장소 없이 화면만 바꾼다", () => {
+  const s = memory();
+  saveNote(s, "Case A", "1", "글");
+  expect(applyNote(s, "Case A", { "1": "글", "2": "다른 글" }, "1", "")).toEqual({ notes: { "2": "다른 글" }, saved: true, deleteFailed: false });
+  expect(loadNotes(s, "Case A")).toEqual({});
+  expect(applyNote(s, "", { "1": "글" }, "1", "")).toEqual({ notes: {}, saved: false, deleteFailed: false });
+  expect(applyNote(null, "Case A", {}, "1", "새 글")).toEqual({ notes: { "1": "새 글" }, saved: false, deleteFailed: false });
 });

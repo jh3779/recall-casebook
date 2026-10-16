@@ -7,7 +7,7 @@ import { CaseList } from "./CaseList";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
-import { adoptNotes, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, saveNote, storageProblem } from "./notes";
+import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
 /**
  * Recall Casebook. for Engineer (DEC-067) — 선례를 체크하면 원인 원문이 근거로 쌓이고, 선례별 메모와 원인 묶기를 오른쪽에 둔다.
@@ -71,13 +71,10 @@ export default function CasebookView({ health }: { health: HealthState }) {
     } finally { clearTimeout(timer); }
   }
   function changeNote(campno: string, text: string) {
-    setNotes((memory) => {
-      const next = { ...memory };
-      if (text) next[campno] = text; else delete next[campno];
-      return next;
-    });
-    const saved = saveNote(storage, caseName, campno, text);
-    if (caseName && storage) setUnsavedNotes((prev) => nextUnsaved(prev, campno, saved));
+    const r = applyNote(storage, caseName, notes, campno, text);
+    setNotes(r.notes);
+    if (caseName && storage) setUnsavedNotes((prev) => nextUnsaved(prev, campno, r.saved));
+    setCopyMessage(r.deleteFailed ? "Could not delete the saved note — it may remain in this browser." : "");
   }
   async function copyAll() {
     try { await navigator.clipboard.writeText(notesText(checked, notes)); setCopyMessage("Copied."); }

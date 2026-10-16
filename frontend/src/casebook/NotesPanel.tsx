@@ -1,4 +1,5 @@
 import type { Card } from "../search/types";
+import { notesText } from "./notes";
 
 /** 선례별 메모 — 서버·LLM에 보내지 않는다. 사건 이름이 있으면 이 브라우저에 저장한다 */
 export function NotesPanel({ cards, notes, onChange, caseName, persistent, storageBlocked, onCopy, onClear, copyMessage }: {
@@ -19,7 +20,7 @@ export function NotesPanel({ cards, notes, onChange, caseName, persistent, stora
       <textarea maxLength={10000} value={notes[card.campno] ?? ""} onChange={(e) => onChange(card.campno, e.target.value)} rows={4} placeholder="Your note on this precedent" />
     </label>)}
     <div className="cb-actions">
-      <button type="button" className="cb-btn ghost" onClick={onCopy} disabled={!Object.values(notes).some((t) => t.trim())}>Copy all notes</button>
+      <button type="button" className="cb-btn ghost" onClick={onCopy} disabled={!notesText(cards, notes)}>Copy all notes</button>
       <button type="button" className="cb-btn ghost" onClick={onClear} disabled={!Object.keys(notes).length}>Clear notes of this case</button>
       <span role="status" className="cb-muted">{copyMessage}</span>
     </div>

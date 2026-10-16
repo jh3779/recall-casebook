@@ -100,3 +100,16 @@ export const isUnsaved = (caseName: string, notes: Readonly<Record<string, strin
 export const losesNotesOnSwitch = (caseName: string, notes: Readonly<Record<string, string>>, saveFailed: boolean, hasStorage: boolean): boolean => !!caseName && hasText(notes) && (saveFailed || !hasStorage);
 /** 노트 칸이 "저장됨" 대신 손실 경고를 보여야 하는가 */
 export const storageProblem = (caseName: string, hasStorage: boolean, saveFailed: boolean): boolean => (!!caseName && !hasStorage) || saveFailed;
+
+/**
+ * 메모 한 칸의 입력을 화면과 저장소에 반영한다. 글을 모두 지웠는데 저장소에서 지우지 못했으면(저장소 차단·권한 변경) 화면 값을 되돌린다 —
+ * 칸은 비어 보이는데 새로고침하면 지운 글이 되살아나는 것을 막는다. `deleteFailed`가 true면 호출하는 쪽이 그 사실을 알린다.
+ */
+export function applyNote(storage: StorageLike | null, caseName: string, notes: Readonly<Record<string, string>>, campno: string, text: string): { notes: Record<string, string>; saved: boolean; deleteFailed: boolean } {
+  const saved = saveNote(storage, caseName, campno, text);
+  const persists = !!storage && !!normalizeCaseName(caseName);
+  if (!text && persists && !saved && notes[campno]) return { notes: { ...notes }, saved: false, deleteFailed: true };
+  const next = { ...notes };
+  if (text) next[campno] = text; else delete next[campno];
+  return { notes: next, saved, deleteFailed: false };
+}

@@ -39,7 +39,7 @@ it("목록은 체크한 선례를 눌린 상태로 보인다", () => {
 });
 it("메모 칸은 사건 이름이 없으면 잃을 수 있다고 알리고 서버로 보내지 않는다고 밝힌다", () => {
   const props = { cards: [cards[0]], caseName: "Case A", notes: {}, onChange: () => {}, storageBlocked: false, onCopy: () => {}, onClear: () => {}, copyMessage: "" };
-  expect(renderToStaticMarkup(<NotesPanel {...props} persistent={false} />)).toContain("lost on reload");
+  expect(renderToStaticMarkup(<NotesPanel {...props} caseName="" persistent={false} />)).toContain("No case name");
   const saved = renderToStaticMarkup(<NotesPanel {...props} persistent />);
   expect(saved).toContain("Saved in this browser under “Case A”. Never sent to the server or an LLM");
   expect(renderToStaticMarkup(<NotesPanel {...props} persistent storageBlocked />)).toContain("could not save the notes");
@@ -118,4 +118,9 @@ it("stated_unknown 묶음 인용에는 '원인을 모른다는 뜻이 아니다'
   if (!unknown) return;
   const markup = renderToStaticMarkup(<GroupResult result={{ ...draftBase, groups: [{ title: "t", items: [item(unknown)] }] }} cards={cards} />);
   expect(markup).toContain("does not mean the cause is unknown");
+});
+it("체크한 선례의 메모가 없으면 전체 복사 버튼이 꺼져 있다(저장소에서 불러온 다른 선례 메모만 있어도)", () => {
+  const base = { cards: [cards[0]], caseName: "Case A", onChange: () => {}, persistent: true, storageBlocked: false, onCopy: () => {}, onClear: () => {}, copyMessage: "" };
+  expect(renderToStaticMarkup(<NotesPanel {...base} notes={{ other: "다른 선례 메모" }} />)).toMatch(/<button[^>]*disabled[^>]*>Copy all notes/);
+  expect(renderToStaticMarkup(<NotesPanel {...base} notes={{ [cards[0].campno]: "이 선례 메모" }} />)).not.toMatch(/<button[^>]*disabled[^>]*>Copy all notes/);
 });
