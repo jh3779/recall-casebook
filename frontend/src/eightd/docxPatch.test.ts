@@ -32,8 +32,37 @@ it("라벨로 8D 단계를 가른다 — DEFINE THE PROBLEM CAUSE는 원인(4), 
 it("글이 run 사이에서 끊긴 라벨도 읽고, 인식한 칸 위치를 표·행·열로 알려 준다", async () => {
   const zip = new JSZip(); zip.file("word/document.xml", form());
   const view = await inspectDocx(await zip.generateAsync({ type: "blob" }));
-  expect(view.steps).toEqual([{ step: 2, table: 2, row: 2, col: 2 }, { step: 3, table: 2, row: 3, col: 2 }, { step: 4, table: 2, row: 4, col: 2 }]);
+  expect(view.matches).toEqual({ 2: [{ table: 2, row: 2, col: 2 }], 3: [{ table: 2, row: 3, col: 2 }], 4: [{ table: 2, row: 4, col: 2 }] });
+  expect(view.cells).toContainEqual({ table: 1, row: 2, col: 2, label: "SUBJECT", guess: null }); // 단계 라벨이 아닌 칸도 직접 고를 수 있게 후보에 든다
+  expect(view.cells).toContainEqual({ table: 2, row: 4, col: 2, label: "DISCIPLINE 4 DEFINE THE PROBLEM CAUSE", guess: 4 });
   expect(view.subject).toBe(true);
+});
+// 같은 단계 라벨이 두 번 나오는 양식 — 문서 번호 칸("Problem Report No.")이 진짜 문제 기술 칸보다 앞에 있다
+const twoProblems = () => doc(tbl(
+  tr(tc(p("Supplier Problem Report No.")), tc(p("SPR-1"))),
+  tr(tc(p("Problem Description")), tc(p())),
+  tr(tc(p("Root Cause")), tc(p()))));
+it("라벨이 맞은 칸이 여럿이면 짐작하지 않고 넣지 않으며 ambiguous로 알린다(DEC-064 보완)", () => {
+  const r = patchDocumentXml(twoProblems(), content({ 2: [{ text: "내용" }], 4: [{ text: "원인" }] }));
+  expect(r.ambiguous).toEqual([2]);
+  expect(r.filled).toEqual([4]);
+  expect(r.xml).not.toContain("내용");
+  expect(r.xml).toContain("원인");
+});
+it("사용자가 고른 칸이 라벨 인식보다 우선한다 — 후보가 여럿이어도, 라벨이 없는 칸이어도 넣는다", () => {
+  const r = patchDocumentXml(twoProblems(), content({ 2: [{ text: "내용" }] }, { cells: { 2: { table: 1, row: 2, col: 2 } } }));
+  expect(r.filled).toEqual([2]);
+  expect(r.ambiguous).toEqual([]);
+  expect(r.xml.indexOf("내용")).toBeGreaterThan(r.xml.indexOf("Problem Description"));
+  expect(r.xml.indexOf("내용")).toBeLessThan(r.xml.indexOf("Root Cause"));
+  const free = patchDocumentXml(twoProblems(), content({ 3: [{ text: "봉쇄" }] }, { cells: { 3: { table: 1, row: 1, col: 2 } } })); // "Supplier Problem Report No." 옆 칸
+  expect(free.filled).toEqual([3]);
+  expect(free.xml.indexOf("봉쇄")).toBeGreaterThan(free.xml.indexOf("SPR-1"));
+});
+it("고른 칸이 문서에 없으면 다른 칸으로 바꿔 넣지 않고 missing으로 알린다", () => {
+  const r = patchDocumentXml(twoProblems(), content({ 2: [{ text: "내용" }] }, { cells: { 2: { table: 9, row: 1, col: 2 } } }));
+  expect(r.missing).toEqual([2]);
+  expect(r.xml).not.toContain("내용");
 });
 it("칸 끝에 문단을 덧붙이고, 덧붙인 글 밖은 원본과 바이트가 같다", () => {
   const xml = form();

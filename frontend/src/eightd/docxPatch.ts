@@ -50,21 +50,33 @@ const ORDER: [number, RegExp][] = [
 export const stepOfLabel = (text: string): number | null => (text.length > 0 && text.length <= 120 ? ORDER.find(([, re]) => re.test(text))?.[0] ?? null : null);
 
 export interface Place { table: number; row: number; col: number }
-interface Target extends Place { cell: Cell; tableEnd: number }
-interface Recognition { steps: Map<number, Target>; subject?: Target }
+/** 라벨 칸 바로 오른쪽의 내용 칸 — label은 그 라벨 글, guess는 라벨이 가리키는 단계(없으면 null) */
+interface Target extends Place { cell: Cell; tableEnd: number; label: string; guess: number | null }
+/** cells: 라벨이 있는 모든 내용 칸(사용자가 직접 고를 수 있는 후보), matches: 단계별로 라벨이 맞은 칸들 */
+interface Recognition { cells: Target[]; matches: Map<number, Target[]>; subject?: Target }
 
 function recognize(xml: string): Recognition {
-  const steps = new Map<number, Target>();
+  const cellsOut: Target[] = [];
+  const matches = new Map<number, Target[]>();
   let subject: Target | undefined;
   scan(xml).forEach((table, ti) => table.rows.forEach((cells, ri) => cells.forEach((label, ci) => {
     const cell = cells[ci + 1];
-    if (!cell) return;
-    const target: Target = { table: ti + 1, row: ri + 1, col: ci + 2, cell, tableEnd: table.end };
+    if (!cell || !label.text) return;
+    const guess = stepOfLabel(label.text);
+    const target: Target = { table: ti + 1, row: ri + 1, col: ci + 2, cell, tableEnd: table.end, label: label.text, guess };
+    cellsOut.push(target);
     if (/^subject\b/i.test(label.text)) subject ??= target;
-    const step = stepOfLabel(label.text);
-    if (step !== null && !steps.has(step)) steps.set(step, target);
+    if (guess !== null) matches.set(guess, [...(matches.get(guess) ?? []), target]);
   })));
-  return { steps, subject };
+  return { cells: cellsOut, matches, subject };
+}
+
+const samePlace = (a: Place, b: Place) => a.table === b.table && a.row === b.row && a.col === b.col;
+/** 단계의 칸 — 사용자가 고른 칸이 우선이고, 고르지 않았으면 라벨이 맞은 칸이 하나뿐일 때만 자동으로 정한다(후보가 여럿이면 짐작하지 않는다) */
+function resolve(found: Recognition, step: number, chosen?: Place): { target?: Target; ambiguous?: boolean } {
+  if (chosen) return { target: found.cells.find((c) => samePlace(c, chosen)) };
+  const matched = found.matches.get(step) ?? [];
+  return matched.length === 1 ? { target: matched[0] } : matched.length > 1 ? { ambiguous: true } : {};
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -88,20 +100,24 @@ function cellEdit(xml: string, cell: Cell, paras: ParaSpec[]): Edit {
   return !cell.text && tmpl ? { at: tmpl.start, remove: tmpl.end - tmpl.start, insert } : { at: cell.close, remove: 0, insert };
 }
 
-export interface ExportContent { subject: string; steps: Record<number, ParaSpec[]>; footer: string | null }
-export interface PatchResult { xml: string; filled: number[]; missing: number[] }
+/** cells: 사용자가 단계마다 직접 고른 칸(DEC-064 보완) — 있으면 라벨 인식보다 우선한다 */
+export interface ExportContent { subject: string; steps: Record<number, ParaSpec[]>; footer: string | null; cells?: Record<number, Place> }
+/** missing: 칸을 못 찾은 단계, ambiguous: 라벨이 맞은 칸이 여럿인데 고르지 않아 넣지 않은 단계 */
+export interface PatchResult { xml: string; filled: number[]; missing: number[]; ambiguous: number[] }
 
-/** 단계별 글을 인식한 칸에 덧붙인다. 글이 있는데 칸을 못 찾은 단계는 missing */
+/** 단계별 글을 칸에 덧붙인다. 글이 있는데 칸을 못 찾았거나(missing) 후보가 여럿인데 고르지 않은(ambiguous) 단계는 넣지 않는다 */
 export function patchDocumentXml(xml: string, content: ExportContent): PatchResult {
   const found = recognize(xml);
   const edits: Edit[] = [];
   const filled: number[] = [];
   const missing: number[] = [];
+  const ambiguous: number[] = [];
   let tableEnd: number | undefined;
   for (const [key, paras] of Object.entries(content.steps)) {
     const step = Number(key);
     if (!paras.length) continue;
-    const target = found.steps.get(step);
+    const { target, ambiguous: many } = resolve(found, step, content.cells?.[step]);
+    if (many) { ambiguous.push(step); continue; }
     if (!target) { missing.push(step); continue; }
     edits.push(cellEdit(xml, target.cell, paras));
     filled.push(step);
@@ -111,7 +127,7 @@ export function patchDocumentXml(xml: string, content: ExportContent): PatchResu
   if (content.footer && tableEnd !== undefined) edits.push({ at: tableEnd, remove: 0, insert: `<w:p><w:r><w:rPr><w:sz w:val="16"/></w:rPr><w:t xml:space="preserve">${esc(content.footer)}</w:t></w:r></w:p>` });
   let out = xml;
   for (const e of edits.sort((a, b) => b.at - a.at)) out = out.slice(0, e.at) + e.insert + out.slice(e.at + e.remove);
-  return { xml: out, filled: filled.sort((a, b) => a - b), missing: missing.sort((a, b) => a - b) };
+  return { xml: out, filled: filled.sort((a, b) => a - b), missing: missing.sort((a, b) => a - b), ambiguous: ambiguous.sort((a, b) => a - b) };
 }
 
 async function open(file: Blob) {
@@ -122,11 +138,26 @@ async function open(file: Blob) {
   return { zip, xml: await entry.async("string") };
 }
 
+/** 사용자가 고를 수 있는 칸 하나 — label은 그 칸 왼쪽 라벨 글, guess는 라벨이 가리키는 단계(없으면 null) */
+export interface Candidate extends Place { label: string; guess: number | null }
+export interface Inspection {
+  /** 라벨이 있는 모든 칸(문서 순서) — 단계 칸을 직접 고를 때의 목록 */
+  cells: Candidate[];
+  /** 단계마다 라벨이 맞은 칸. 하나면 자동으로 넣고, 둘 이상이면 사용자가 고를 때까지 넣지 않는다 */
+  matches: Record<number, Place[]>;
+  subject: boolean;
+}
+
 /** 올린 파일에서 8D 단계별 칸 위치를 찾아 화면에 보여 줄 목록으로 */
-export async function inspectDocx(file: Blob): Promise<{ steps: ({ step: number } & Place)[]; subject: boolean }> {
+export async function inspectDocx(file: Blob): Promise<Inspection> {
   const { xml } = await open(file);
   const found = recognize(xml);
-  return { steps: [...found.steps].map(([step, t]) => ({ step, table: t.table, row: t.row, col: t.col })).sort((a, b) => a.step - b.step), subject: !!found.subject };
+  const at = ({ table, row, col }: Target): Place => ({ table, row, col });
+  return {
+    cells: found.cells.map((t) => ({ ...at(t), label: t.label, guess: t.guess })),
+    matches: Object.fromEntries([...found.matches].map(([step, ts]) => [step, ts.map(at)])),
+    subject: !!found.subject,
+  };
 }
 
 /** 원본 파일은 그대로 두고 word/document.xml만 바꾼 새 .docx를 만든다 — 다른 파트(스타일·머리글·그림 등)는 손대지 않는다 */
