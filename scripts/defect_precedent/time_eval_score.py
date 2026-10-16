@@ -17,6 +17,7 @@
     # DEC-066(2026-10-16): 예비 일치 확인을 하지 않은 회차 — --agreement 대신 사유를 적는다. 재확인 3문항만 두 사람 표시를 검사한다
     uv run python -m scripts.defect_precedent.time_eval_score score \
         --candidates <candidates_main.json> --sheets <시트1.csv> [<시트2.csv> ...] --pilot-agreement-skipped DEC-066
+    #   대체 문항을 추가해 질문 파일이 갱신됐으면 --questions <본 회차 main 후보를 만든 원래 질문 파일>(추가 전에 해시와 함께 보관)
 
 규칙(이 도구 작성자가 정답 표시 결과를 보기 전인 2026-10-11에 DEC-037 ⑦·안내서 4·5절을 그대로 옮겨 고정 — 결과를 보고 고치지 않는다):
 - 점수에 쓰는 표시 = `agreed_label`이 있으면 그것, 없으면 `label`. 한 후보에 서로 다른 `label`이 둘 이상인데 `agreed_label`이
