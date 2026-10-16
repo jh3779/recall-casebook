@@ -1,6 +1,5 @@
-import { STEPS, type Step } from "./document";
+import { shortLabel, STEPS, type Step } from "./document";
 
-const shortLabel = (label: string) => label.split(" — ")[0];
 /** 칸 안의 글 — 칸에 쓴 글 그대로, 여러 칸이 한 단계에 있으면 칸 이름을 굵게 앞에 붙인다(실제 .docx 삽입 결과와 같은 모양) */
 function cell(step: Step, values: Record<string, string>) {
   return step.fields.flatMap((f) => {

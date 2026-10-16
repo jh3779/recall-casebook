@@ -77,3 +77,12 @@
 .fp-note { font-size: 11px; color: #4a4a4a; margin: 0 0 8px; }
 .fp-foot { font-size: 10px; color: #7e7e7e; border-top: 1px solid #d9d9d9; padding-top: 4px; }
 @media (max-width: 767px) { .fp-page { padding: 14px 12px; font-size: 12px; } .fp-c1 { width: 36%; } .fp-m1 { width: 26%; } .fp-table th { font-size: 10.5px; padding: 4px 5px; } .ed-tabs { margin-left: 0; } }
+.ed-file { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); padding: 10px 14px; display: grid; gap: 8px; }
+.ed-file-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.ed-file input[type=file] { font: inherit; font-size: var(--fs-s); max-width: 100%; }
+.ed-fn { font-family: var(--font-id); background: var(--accent-soft); border-radius: 6px; padding: 1px 8px; overflow-wrap: anywhere; }
+.ed-err { margin: 0; color: var(--ink); background: var(--cause-stated-bg); border: 1px solid var(--cause-stated-line); border-radius: var(--radius-s); padding: 6px 10px; font-size: var(--fs-s); }
+.ed-map { border-collapse: collapse; width: 100%; font-size: var(--fs-s); }
+.ed-map th { text-align: left; font-size: var(--fs-xs); color: var(--ink-3); padding: 4px 8px; border-bottom: 1px solid var(--line-strong); }
+.ed-map td { padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.ed-ok { color: var(--accent); font-weight: 600; }

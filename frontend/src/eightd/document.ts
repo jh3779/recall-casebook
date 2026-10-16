@@ -15,6 +15,19 @@ export const STEPS: Step[] = [
   { n: 8, name: "CLOSE", fields: [{ key: "d8_received", label: "CAR Received" }, { key: "d8_review", label: "Review" }, { key: "d8_approval", label: "Approval" }] },
 ];
 
+export const shortLabel = (label: string) => label.split(" — ")[0];
+
+/** 양식 칸에 들어갈 한 문단 — prefix는 칸이 여럿인 단계에서 굵게 붙는 칸 이름 */
+export interface ParaSpec { prefix?: string; text: string }
+/** 한 단계의 칸 글을 문단(줄 단위)으로 — 칸이 여럿이면 각 칸 첫 줄 앞에 칸 이름을 붙인다(양식 미리보기와 같은 모양) */
+export function stepParagraphs(step: Step, values: Record<string, string>): ParaSpec[] {
+  return step.fields.flatMap((f) => {
+    const value = values[f.key]?.trim();
+    if (!value) return [];
+    return value.split("\n").map((text, i) => ({ text, ...(i === 0 && step.fields.length > 1 ? { prefix: `${shortLabel(f.label)}: ` } : {}) }));
+  });
+}
+
 /** 선례 인용이 들어가는 칸 — D4는 "근본 원인" 칸 하나뿐이고, 그 안에서 머리줄로만 자사 글과 구분된다(DEC-064 알려진 한계 ④) */
 export const TARGET: Record<string, string> = { "2": "d2", "3": "d3", "4": "d4_root", "5": "d5", "7": "d7" };
 

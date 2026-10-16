@@ -27,3 +27,10 @@ it("담은 선례만 단계별 참고에 나오고, 넣기 전에는 본문이 �
 it("검색 결과가 있으면 D7에 표 참고가 나온다", () => {
   expect(renderToStaticMarkup(<EightdView cards={[]} response={response} onBack={() => {}} />)).toContain("표를 텍스트로 본문에 넣기");
 });
+it("내 8D 파일을 올리기 전에는 내려받기가 꺼져 있고 파일이 서버로 가지 않는다고 알린다", () => {
+  const markup = renderToStaticMarkup(<EightdView cards={[]} response={null} onBack={() => {}} />);
+  expect(markup).toContain('type="file"');
+  expect(markup).toContain("accept=\".docx,");
+  expect(markup).toContain("파일은 이 기기 밖으로 나가지 않고 원본은 바뀌지 않습니다");
+  expect(markup).toMatch(/<button[^>]*disabled=""[^>]*title="위에서 내 8D 파일\(\.docx\)을 올리면 켜집니다"[^>]*>원본 서식 그대로 내려받기 \(\.docx\)<\/button>/);
+});
