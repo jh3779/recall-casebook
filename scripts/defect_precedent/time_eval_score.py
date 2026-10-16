@@ -36,7 +36,7 @@
 사후 변경(2026-10-16, DEC-066 — 이슈 #143, 예비 시트 한 장을 받은 뒤의 변경): 위 규칙의 점수 계산(Hit@k·하한·Wilson·
 McNemar·부트스트랩·34문항 기준)은 바꾸지 않았다. `score`에 `--pilot-agreement-skipped DEC-066` 입력을 더했다 — 예비 일치
 확인(agreement)을 하지 않은 회차에서 이중 표시 검사 범위를 재확인 3문항으로 정하고(`check_rechecked_dec066`), 갈리지 않은
-후보는 같은 `label`을 그대로 쓰며(`agreed_label` 요구 완화), 갈린 후보는 두 시트에 같은 합의값과 note "합의: 우지훈 결정"(정확히 일치)을 요구하고, 갈리지 않은 후보의 합의값과 재확인 3문항 밖의 합의값·두 사람 표시는 막으며, 재확인 범위는 고정 3문항(PE12017·PE11022·PE18009)과 후보 파일의 질문 판본에 대조하고, 결과 파일에 "일치율 미측정"과 갈린 후보 수·채점 보고 한계를 남긴다.
+후보는 같은 `label`을 그대로 쓰며(`agreed_label` 요구 완화), 갈린 후보는 두 시트에 같은 합의값과 note "합의: 우지훈 결정"(정확히 일치)을 요구하고, 갈리지 않은 후보의 합의값과 재확인 3문항 밖의 합의값·두 사람 표시는 막으며, 재확인 범위는 고정 3문항(PE12017·PE11022·PE18009)과 본 회차(main) 후보 파일의 질문 판본에 대조하고(대체 회차 후보는 질문 파일 해시가 달라도 된다), 결과 파일에 "일치율 미측정"과 갈린 후보 수·채점 보고 한계를 남긴다.
 """
 
 import argparse
@@ -635,10 +635,13 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(
                 f"질문 파일 main 앞 3문항 {sorted(must_double)}이 DEC-066 재확인 3문항 {sorted(DEC066_RECHECK)}과 다르다"
             )
+        # 재확인 3문항은 본 회차(main) 후보에 있으므로 그 후보를 만든 질문 파일과만 대조한다 — 대체 회차는 질문 파일을
+        # 갱신해 만들어져 해시가 다른 것이 정상이다(⑦(c), SAME_BUILD_KEYS 주석)
         q_sha = sha256_of(a.questions)
-        if any(c.get("questions_sha256") != q_sha for c in cands):
+        mains = [c for c in cands if c.get("set") == "main"]
+        if not mains or any(c.get("questions_sha256") != q_sha for c in mains):
             sys.exit(
-                "--questions 파일이 후보 파일을 만든 질문 파일(questions_sha256)과 다르다(DEC-066)"
+                "--questions 파일이 본 회차(main) 후보 파일을 만든 질문 파일(questions_sha256)과 다르거나 main 후보가 없다(DEC-066)"
             )
         n_split = check_rechecked_dec066(merged, must_double)
     else:

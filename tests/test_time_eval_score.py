@@ -1205,3 +1205,28 @@ def test_cli_score_needs_exactly_one_of_agreement_or_dec066(tmp_path, dec066):
         ts.main([*args, "--agreement", agreement_file(tmp_path, "pilot", True)])
     with pytest.raises(SystemExit):
         ts.main([*without, "--pilot-agreement-skipped", "other"])
+
+
+def test_cli_score_dec066_accepts_replacement_round_built_from_an_updated_questions_file(
+    tmp_path, capsys, dec066
+):
+    """대체 회차 후보는 질문 파일을 갱신해 만들어져 해시가 다르다 — 본 회차(main) 후보만 --questions와 대조한다(DEC-037 ⑦(b)(c))."""
+    same = [row(r, "A", "yes") for r in ("R1", "R2", "R3")]
+    extra = [row("Q4", "A", "yes"), row("X1", "A", "yes")]
+    _, _, args = _dec066_files(tmp_path, same, same, a_extra=extra)
+    alt = tmp_path / "candidates_alt1.json"
+    alt_items = items(("X1", {"A": {"bm25": 1}}))
+    alt.write_text(
+        json.dumps({**_cand("alt1"), "questions_sha256": "갱신본", "items": alt_items}),
+        encoding="utf-8",
+    )
+    i = args.index("--questions")
+    ts.main([*args[:i], str(alt), *args[i:]])  # --candidates main alt1
+    assert json.loads(capsys.readouterr().out)["labeled_questions"] == 5
+    cand = tmp_path / "candidates_main.json"
+    meta = json.loads(cand.read_text(encoding="utf-8"))
+    cand.write_text(json.dumps({**meta, "set": "alt0"}), encoding="utf-8")
+    with pytest.raises(
+        SystemExit, match="main 후보가 없다"
+    ):  # 본 회차(main) 후보가 없으면 대조할 판본이 없다
+        ts.main([*args[:i], str(alt), *args[i:]])
