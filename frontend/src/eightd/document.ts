@@ -51,23 +51,29 @@ export function removeBlock(value: string, block: string): string | null {
 }
 
 /**
- * 같은 작업에 선례 목록이 바뀌어 돌아왔을 때, 더는 담지 않은 선례의 인용을 본문에서 걷어 낸다(리뷰 지적 — 화면에서 뺄 버튼이 없는 인용이 남지 않게).
- * 인용 머리줄의 리콜 번호로 판단하고, D7 검색 결과 표와 고정 확인 질문은 선례에 매이지 않아 남긴다. 사용자가 고쳐 자동으로 못 빼는 글은 blocked로 알린다.
+ * 선례 목록이나 검색 결과가 바뀌어 돌아왔을 때, 더는 담지 않은 선례의 인용을 본문에서 걷어 낸다(리뷰 지적 — 화면에서 뺄 버튼이 없는 인용이 남지 않게).
+ * 인용 머리줄의 리콜 번호로 판단한다(번호 모양을 가정하지 않는다). dropUnlinked면 선례에 매이지 않은 글(D7 검색 결과 표·고정 확인 질문)도 걷어 낸다 — 질문이 바뀐 경우.
+ * 걷어 낸 인용이 있으면 고정 확인 질문도 함께 걷어 낸다(그 인용에서 나온 질문일 수 있다). 사용자가 고쳐 자동으로 못 빼는 글은 blocked로 알리고 넣은 목록에서만 뺀다(칸의 글은 그대로).
  */
-export function pruneInserted(values: Record<string, string>, inserted: Record<string, string>, keep: ReadonlySet<string>): { values: Record<string, string>; inserted: Record<string, string>; removed: string[]; blocked: string[] } {
+export function pruneInserted(values: Record<string, string>, inserted: Record<string, string>, keep: ReadonlySet<string>, dropUnlinked = false): { values: Record<string, string>; inserted: Record<string, string>; removed: string[]; blocked: string[] } {
   const nextValues = { ...values };
   const nextInserted = { ...inserted };
   const removed: string[] = [];
   const blocked: string[] = [];
-  for (const [key, block] of Object.entries(inserted)) {
-    const refs = [...block.matchAll(/\[타사 선례 (\d{2}[A-Z]\d{6})/g)].map((m) => m[1]);
-    if (!refs.length || refs.every((c) => keep.has(c))) continue;
+  const drop = (key: string, block: string) => {
     const field = TARGET[key.split("|")[0]];
     const next = field ? removeBlock(nextValues[field] ?? "", block) : null;
-    if (next === null) { blocked.push(key); continue; }
-    nextValues[field] = next;
     delete nextInserted[key];
+    if (next === null) { blocked.push(key); return; }
+    nextValues[field] = next;
     removed.push(key);
+  };
+  for (const [key, block] of Object.entries(inserted)) {
+    const refs = [...block.matchAll(/\[타사 선례 ([^\s·\]]+)/g)].map((m) => m[1]);
+    if (refs.length ? !refs.every((c) => keep.has(c)) : dropUnlinked) drop(key, block);
+  }
+  if (removed.length || blocked.length) {
+    for (const [key, block] of Object.entries(nextInserted)) if (key.endsWith("|draft:q")) drop(key, block);
   }
   return { values: nextValues, inserted: nextInserted, removed, blocked };
 }

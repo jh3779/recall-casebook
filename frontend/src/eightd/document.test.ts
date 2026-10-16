@@ -63,7 +63,7 @@ it("단계별로 넣은 것만 접두사를 떼어 돌려준다 — 묶음 화�
 });
 
 const blockOf = (campno: string) => `[타사 선례 ${campno} · 회사 · 접수 2020-01-05]\n(결함) "원문 ${campno}"`;
-it("같은 작업에 선례 목록이 바뀌면 담지 않은 선례의 인용만 본문에서 걷어 내고, 선례에 매이지 않은 글은 남긴다", () => {
+it("선례 목록만 바뀌면 담지 않은 선례의 인용과 확인 질문을 걷어 내고, 검색 결과 표와 사용자가 쓴 글은 남긴다", () => {
   let values: Record<string, string> = {};
   const inserted: Record<string, string> = {};
   for (const [key, field, block] of [["2|20V000001", "d2", blockOf("20V000001")], ["2|20V000002", "d2", blockOf("20V000002")], ["7|table", "d7", "표"], ["4|draft:q", "d4_root", "[확인 질문 — 도구가 만든 고정 문장]\n① 가"]] as const) {
@@ -72,11 +72,11 @@ it("같은 작업에 선례 목록이 바뀌면 담지 않은 선례의 인용�
   }
   values.d2 = `내가 쓴 글\n\n${values.d2}`;
   const r = pruneInserted(values, inserted, new Set(["20V000001"])); // 000002는 더는 담지 않음
-  expect(r.removed).toEqual(["2|20V000002"]);
+  expect(r.removed).toEqual(["2|20V000002", "4|draft:q"]); // 인용을 걷어 냈으니 그 묶음에서 나왔을 수 있는 고정 확인 질문도 함께(리뷰 지적)
   expect(r.values.d2).toContain("20V000001");
   expect(r.values.d2).not.toContain("20V000002");
   expect(r.values.d2).toContain("내가 쓴 글");
-  expect(Object.keys(r.inserted).sort()).toEqual(["2|20V000001", "4|draft:q", "7|table"]);
+  expect(Object.keys(r.inserted).sort()).toEqual(["2|20V000001", "7|table"]);
   expect(r.blocked).toEqual([]);
 });
 it("사용자가 고쳐 더는 그대로 없는 인용은 자동으로 못 빼고 blocked로 알린다", () => {
@@ -84,5 +84,26 @@ it("사용자가 고쳐 더는 그대로 없는 인용은 자동으로 못 빼�
   const r = pruneInserted({ d2: "내가 고친 글" }, inserted, new Set());
   expect(r.blocked).toEqual(["2|20V000002"]);
   expect(r.values.d2).toBe("내가 고친 글");
-  expect(r.inserted).toEqual(inserted);
+});
+
+it("리콜 번호 모양을 가정하지 않는다 — 21V00F000처럼 실제 데이터에 있는 모양도 걷어 낸다(리뷰 지적)", () => {
+  const block = blockOf("21V00F000");
+  const r = pruneInserted({ d2: insertBlock("", block) }, { "2|21V00F000": block }, new Set());
+  expect(r.removed).toEqual(["2|21V00F000"]);
+  expect(r.values.d2).toBe("");
+});
+it("질문이 바뀌면(dropUnlinked) 선례에 매이지 않은 D7 표도 걷어 내고, 선례를 걷어 냈으면 고정 확인 질문도 함께 걷는다", () => {
+  const inserted = { "2|20V000002": blockOf("20V000002"), "7|table": "표", "4|draft:q": "[확인 질문 — 도구가 만든 고정 문장]\n① 가" };
+  const values = { d2: insertBlock("", inserted["2|20V000002"]), d7: "표", d4_root: insertBlock("", inserted["4|draft:q"]) };
+  const same = pruneInserted(values, inserted, new Set()); // 질문 그대로: 인용과 그 확인 질문만
+  expect(Object.keys(same.inserted)).toEqual(["7|table"]);
+  const changed = pruneInserted(values, inserted, new Set(), true); // 질문이 바뀜: 표까지
+  expect(changed.inserted).toEqual({});
+  expect(changed.values.d7).toBe("");
+});
+it("직접 고쳐 못 뺀 인용은 넣은 목록에서는 빼서 개수·꼬리줄이 사실과 맞게 하고, 칸의 글은 그대로 둔다", () => {
+  const r = pruneInserted({ d2: "내가 고친 글" }, { "2|20V000002": blockOf("20V000002") }, new Set());
+  expect(r.blocked).toEqual(["2|20V000002"]);
+  expect(r.inserted).toEqual({});
+  expect(r.values.d2).toBe("내가 고친 글");
 });
