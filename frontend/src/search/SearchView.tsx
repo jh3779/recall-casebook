@@ -10,7 +10,7 @@ import { SearchInput } from "./SearchInput";
 import { Welcome } from "./Welcome";
 import type { Card, HealthState, SearchResponse } from "./types";
 
-export default function SearchView({ health, draft, onShowroom, onWrite8d }: { health: HealthState; draft: { question: string } | null; onShowroom: () => void; onWrite8d?: (cards: readonly Card[], response: SearchResponse | null, fresh?: boolean) => void }) {
+export default function SearchView({ health, draft, onShowroom, onWrite8d }: { health: HealthState; draft: { question: string } | null; onShowroom: () => void; onWrite8d?: (cards: readonly Card[], response: SearchResponse | null, fresh?: { question: string }) => void }) {
   const [question, setQuestion] = useState(draft?.question ?? "");
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [response, setResponse] = useState<SearchResponse | null>(null);
@@ -83,7 +83,7 @@ export default function SearchView({ health, draft, onShowroom, onWrite8d }: { h
   const canPick = !!onWrite8d;
   return <main className={`view-search${canPick && state === "done" && picked.length ? " has-picks" : ""}`}>
     <h1 className="sr-only">선례 검색</h1>
-    <SearchInput question={question} onChange={setQuestion} onSearch={run} loading={state === "loading"} inputRef={inputRef} extra={onWrite8d && <button type="button" className="write-plain" onClick={() => onWrite8d([], response, true)}>선례 없이 8D 작성하기 →</button>} />
+    <SearchInput question={question} onChange={setQuestion} onSearch={run} loading={state === "loading"} inputRef={inputRef} extra={onWrite8d && <button type="button" className="write-plain" onClick={() => onWrite8d([], response, { question })}>선례 없이 8D 작성하기 →</button>} />
     {state === "idle" && <Welcome health={health} onExample={run} onShowroom={onShowroom} />}
     <Feedback loading={state === "loading"} delayed={delayed} error={state === "error" ? error : undefined} onRetry={() => run(question)} />
     {state === "done" && response && <>

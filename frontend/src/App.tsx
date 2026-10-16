@@ -38,7 +38,7 @@ export default function App() {
   return <div className="app-shell">
     <AppBar view={view} onView={navigate} health={server} />
     <div hidden={view !== "search"}><SearchView key={draft?.key ?? 0} health={server} draft={draft} onShowroom={() => navigate("showroom")} onWrite8d={(cards, response, fresh) => { setEightd((prev) => nextEightdInput(prev, cards, response, fresh)); navigate("8d"); }} /></div>
-    <div hidden={view !== "8d"}><EightdView fresh={eightd.fresh} cards={eightd.cards} response={eightd.response} onBack={() => navigate("search")} /></div>
+    <div hidden={view !== "8d"}><EightdView fresh={eightd.fresh} freshQuestion={eightd.freshQuestion} cards={eightd.cards} response={eightd.response} onBack={() => navigate("search")} /></div>
     {view === "showroom" && <ShowroomBoundary><Suspense fallback={<div className="showroom-fallback" role="status">3D 쇼룸 불러오는 중…</div>}><ShowroomView onSearch={(question) => { setDraft((old) => ({ question, key: (old?.key ?? 0) + 1 })); navigate("search"); }} /></Suspense></ShowroomBoundary>}
   </div>;
 }

@@ -34,9 +34,10 @@ it("응답 없이 열면(검색 중·실패) 마지막 응답을 유지하고, �
   expect(nextEightdInput(prev, [], other).response).toBe(other);
   expect(nextEightdInput({ cards: [], response: null, fresh: 0 }, [], null).response).toBeNull();
 });
-it("선례 없이 새로 시작(fresh)을 누를 때만 fresh 번호가 올라가 화면이 이전 글을 어떻게 할지 묻게 한다", () => {
+it("선례 없이 새로 시작(fresh)을 누를 때만 fresh 번호가 올라가고 그때 입력창의 질문을 SUBJECT 기본값으로 넘긴다", () => {
   const prev = { cards: [], response, fresh: 3 };
-  expect(nextEightdInput(prev, [], response, true).fresh).toBe(4);
-  expect(nextEightdInput(prev, [], response).fresh).toBe(3);
-  expect(nextEightdInput(prev, [], null, true).response).toBe(response); // 응답이 비어도 마지막 응답은 유지
+  expect(nextEightdInput(prev, [], response, { question: "  new brake question  " })).toMatchObject({ fresh: 4, freshQuestion: "new brake question" });
+  expect(nextEightdInput(prev, [], response)).toMatchObject({ fresh: 3, freshQuestion: undefined });
+  expect(nextEightdInput(prev, [], null, { question: "" }).response).toBe(response); // 응답이 비어도 마지막 응답은 유지, 빈 입력은 질문 없음
+  expect(nextEightdInput(prev, [], null, { question: "" }).freshQuestion).toBeUndefined();
 });

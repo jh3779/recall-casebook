@@ -26,7 +26,7 @@ function download(blob: Blob, name: string) {
 const rowsFor = (value: string) => Math.min(40, Math.max(3, value.split("\n").reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 90)), 0) + 1));
 
 /** 8D 작성 화면 — 선례는 기본으로 어디에도 들어가지 않고, 사용자가 "본문에 텍스트로 넣기"를 누른 인용만 해당 칸에 평문으로 들어간다(DEC-064) */
-export default function EightdView({ cards, response, fresh = 0, onBack }: { cards: readonly Card[]; response: SearchResponse | null; fresh?: number; onBack: () => void }) {
+export default function EightdView({ cards, response, fresh = 0, freshQuestion, onBack }: { cards: readonly Card[]; response: SearchResponse | null; fresh?: number; freshQuestion?: string; onBack: () => void }) {
   const [subjectInput, setSubjectInput] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [inserted, setInserted] = useState<Record<string, string>>({});
@@ -63,7 +63,7 @@ export default function EightdView({ cards, response, fresh = 0, onBack }: { car
     setValues({}); setInserted({}); setDocx(null); setChoice({}); setApplied(ALL_STEPS); setSubjectInput(null); setDocxError(""); setStale(null);
     setMessage("이전 작업을 비우고 새로 시작했습니다.");
   }
-  const subject = subjectInput ?? response?.question ?? "";
+  const subject = subjectInput ?? freshQuestion ?? response?.question ?? "";
   const customers = new Set(response?.customer_precedents.map((c) => c.campno));
   const insertedCount = (step: string) => Object.keys(inserted).filter((k) => k.startsWith(`${step}|`)).length;
   const appliedInserted = Object.keys(inserted).filter((k) => applied.has(Number(k.split("|")[0]))).length;
