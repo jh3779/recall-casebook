@@ -9,6 +9,7 @@ import "./tokens.css";
 import "./styles.css";
 import "./search/search.css";
 import "./eightd/eightd.css";
+import "./casebook/casebook.css";
 import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
