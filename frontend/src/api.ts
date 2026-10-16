@@ -1,3 +1,4 @@
+import type { DraftResponse, DraftStep } from "./eightd/draft";
 import type { Card, Cause, HealthResponse, ProvenanceData, SearchResponse } from "./search/types";
 
 export const API_BASE = (import.meta.env.VITE_API_BASE || "https://lg-cns-rag.vercel.app").replace(/\/+$/, "");
@@ -49,6 +50,16 @@ function isProvenance(v: unknown): v is ProvenanceData & Record<string, unknown>
 }
 const isSearch = (v: unknown): v is SearchResponse => isProvenance(v) && typeof v.question === "string"
   && arrayOf(v.customer_precedents, isCard) && arrayOf(v.precedents, isCard);
+const isDraftItem = (v: unknown) => record(v) && strings(v, ["campno", "quote", "speaker"]) && Number.isInteger(v.start) && Number.isInteger(v.end)
+  && ["defect", "consequence", "cause"].includes(String(v.field)) && String(v.quote).length > 0
+  && (v.field === "cause"
+    ? (v.cause_status === "filled" || v.cause_status === "stated_unknown") && record(v.cause_source)
+      && strings(v.cause_source, ["campaign", "file", "pdf_sha256", "submission_date", "text_basis"])
+    : typeof v.dataset === "string" && typeof v.snapshot_date === "string"); // 말한 주체·출처 없는 인용은 받지 않는다(서비스 원칙 2)
+const isDraft = (v: unknown): v is DraftResponse => record(v) && strings(v, ["build_id", "snapshot_date", "question"]) && nullableString(v.bundle_sha256) && ["d2", "d4"].includes(String(v.step))
+  && v.titles_generated === true && nullableString(v.model) && (v.degraded === null || v.degraded === "disabled" || v.degraded === "llm_failed")
+  && arrayOf(v.groups, (g) => record(g) && typeof g.title === "string" && g.title.length > 0 && Array.isArray(g.items) && g.items.length > 0 && g.items.every(isDraftItem))
+  && arrayOf(v.ungrouped, isDraftItem) && arrayOf(v.questions, (q) => typeof q === "string") && record(v.rejected);
 const isHealth = (v: unknown): v is HealthResponse => isProvenance(v) && Number.isInteger(v.cards) && Number(v.cards) >= 0;
 
 async function request<T>(path: string, init: RequestInit, guard: (v: unknown) => v is T): Promise<T> {
@@ -58,7 +69,9 @@ async function request<T>(path: string, init: RequestInit, guard: (v: unknown) =
       if (response.status === 422) {
         const body: unknown = await response.json().catch(() => null);
         const detail = record(body) && Array.isArray(body.detail) ? body.detail[0] : null;
-        const message = record(detail) && typeof detail.msg === "string" ? detail.msg.replace(/^Value error, /, "") : "질문을 다시 확인해 주세요";
+        const message = record(detail) && typeof detail.msg === "string" ? detail.msg.replace(/^Value error, /, "")
+          : record(body) && typeof body.detail === "string" ? body.detail // 서버가 문장으로 준 거절 사유(예: 검색 결과 밖 리콜 번호)
+          : "질문을 다시 확인해 주세요";
         throw new ApiError("validation", message, 422);
       }
       if (response.status === 429) {
@@ -87,3 +100,6 @@ export const search = (question: string, signal?: AbortSignal) => request("/sear
   method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }), signal,
 }, isSearch);
 export const health = (signal?: AbortSignal) => request("/health", { signal }, isHealth);
+export const draft = (question: string, campnos: string[], step: DraftStep, signal?: AbortSignal) => request("/draft", {
+  method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, campnos, step }), signal,
+}, isDraft);

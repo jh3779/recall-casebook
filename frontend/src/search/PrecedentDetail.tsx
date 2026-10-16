@@ -2,13 +2,14 @@ import { fmtDate } from "../recalls";
 import { CauseBlock } from "./CauseBlock";
 import { Checklist } from "./Checklist";
 import { InvestigationBlock } from "./InvestigationBlock";
+import { PickToggle } from "./PickToggle";
 import { Provenance } from "./Provenance";
 import type { Card, SearchResponse } from "./types";
-export function PrecedentDetail({ card, response, onBack }: { card: Card; response: SearchResponse; onBack?: () => void }) {
+export function PrecedentDetail({ card, response, onBack, picked, onPick }: { card: Card; response: SearchResponse; onBack?: () => void; picked?: boolean; onPick?: () => void }) {
   return <article className="detail" aria-label={`리콜 ${card.campno} 상세`}>
     <button className="btn ghost mobile-back" onClick={onBack}>← 목록</button>
     <header className="d-head" tabIndex={-1} id="detail-heading">
-      <div className="row"><span className="tag">전체 순위 {card.rank}</span><h2 className="campno">{card.campno}</h2></div>
+      <div className="row"><span className="tag">전체 순위 {card.rank}</span><h2 className="campno">{card.campno}</h2>{onPick && <PickToggle card={card} picked={!!picked} onToggle={onPick} />}</div>
       <div className="row"><span className="who">{card.maker}{card.maker_group && card.maker_group !== card.maker && ` (${card.maker_group})`}</span><span className="note">접수 {fmtDate(card.received_date)}</span></div>
       <div className="parts">{card.components.map((part, i) => <span className="chip-part" key={i}>{part}</span>)}</div>
     </header>
