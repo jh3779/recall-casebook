@@ -27,6 +27,8 @@ export default function CasebookView({ health }: { health: HealthState }) {
   const saveFailed = unsavedNotes.size > 0;
   const storage = useMemo(() => browserStorage(), []);
   const request = useRef<AbortController | null>(null);
+  const caseRef = useRef(caseName); // 검색이 오래 걸리는 동안 사건 이름이 붙으면 낡은 이름으로 화면 메모를 비우지 않게
+  useEffect(() => { caseRef.current = caseName; }, [caseName]);
   useEffect(() => () => request.current?.abort(), []);
 
   // 사건 이름 없이 적은 메모가 있으면 새로고침·탭 닫기 전에 잃는다고 알린다
@@ -42,12 +44,13 @@ export default function CasebookView({ health }: { health: HealthState }) {
     const name = normalizeCaseName(caseInput);
     setCaseInput(name);
     if (name === caseName) return;
-    if (saveFailed && !confirm("Some notes could not be saved and will be lost if you switch cases. Switch anyway?")) { setCaseInput(caseName); return; }
+    const losing = !!caseName && Object.values(notes).some((t) => t.trim()) && (saveFailed || !storage); // 저장되지 않은 메모가 있는 사건을 떠난다
+    if (losing && !confirm("Notes that are not saved in this browser will be lost if you switch cases. Switch anyway?")) { setCaseInput(caseName); return; }
     setCaseName(name);
     // 이름 없이 적은 메모만 첫 사건 이름으로 옮긴다 — 다른 사건 이름이 붙어 있던 메모가 새 사건에 섞이지 않게
-    const next = name ? adoptNotes(storage, name, caseName ? {} : notes) : { notes: {}, saved: true };
+    const next = name ? adoptNotes(storage, name, caseName ? {} : notes) : { notes: {}, saved: true, failed: [] as string[] };
     setNotes(next.notes);
-    setUnsavedNotes(!!storage && !!name && !next.saved ? new Set(Object.keys(next.notes)) : new Set());
+    setUnsavedNotes(!!storage && !!name ? new Set(next.failed) : new Set());
   }
   async function run() {
     const value = question.trim();
@@ -61,7 +64,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
     try {
       const result = await search(value, controller.signal);
       if (request.current !== controller) return;
-      if (!caseName) setNotes({}); // 이름 없는 메모는 새 결과가 실제로 온 뒤에 비운다(검색이 실패하면 메모를 잃지 않게)
+      if (!caseRef.current) setNotes({}); // 이름 없는 메모는 새 결과가 실제로 온 뒤에 비운다(검색이 실패하면 메모를 잃지 않게)
       setResponse(result); setState("done");
     } catch (e) {
       if (request.current !== controller) return;
@@ -94,7 +97,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
       <div className="cb-brand"><span className="cb-brand-mark" aria-hidden="true" /><h1>Recall Casebook.<small> for Engineer</small></h1></div>
       <label className="cb-case-name">
         <span>Case name</span>
-        <input value={caseInput} maxLength={80} onChange={(e) => setCaseInput(e.target.value)} onBlur={commitCase} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) commitCase(); }} placeholder="e.g. Sorento rear camera, Oct" aria-describedby="cb-case-hint" />
+        <input value={caseInput} maxLength={80} onChange={(e) => setCaseInput(e.target.value)} onBlur={commitCase} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) commitCase(); }} placeholder="e.g. Sorento rear camera, Oct" aria-describedby="cb-case-hint" />
         <small id="cb-case-hint" className="cb-muted">Changing the name switches to that case's notes.</small>
       </label>
       <span className="cb-health" role="status">{typeof health === "object" ? `build ${health.build_id} · snapshot ${health.snapshot_date}` : health === "loading" ? "Checking server…" : "Server version unavailable"}</span>

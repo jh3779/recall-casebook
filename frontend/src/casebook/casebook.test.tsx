@@ -6,6 +6,7 @@ import { CaseDetail } from "./CaseDetail";
 import { CaseList } from "./CaseList";
 import CasebookView from "./CasebookView";
 import { AppBar } from "../AppBar";
+import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
 
 const response = fixture as SearchResponse;
@@ -67,6 +68,9 @@ it("케이스북 화면 문구에 영어 판정·단정 표현이 없다", () =>
   const forbidden = /applies|verdict|is_?applicable|recall[_\s-]?required|root\s+cause\s+is\b|is\s+the\s+cause\b|will\s+be\s+recalled/i; // principle-ok: 판정 문구가 화면에 없는지 검사하는 금지 패턴
   const texts = [
     renderToStaticMarkup(<CasebookView health="loading" />),
+    renderToStaticMarkup(<CaseList response={response} checked={[]} onToggle={() => {}} />),
+    renderToStaticMarkup(<GroupPanel question="airbag" build={response} cards={cards} />),
+    renderToStaticMarkup(<GroupPanel question="airbag" build={response} cards={[]} />),
     renderToStaticMarkup(<NotesPanel cards={[cards[0]]} caseName="Case A" notes={{}} onChange={() => {}} persistent storageBlocked={false} onCopy={() => {}} onClear={() => {}} copyMessage="" />),
     ...cards.map((card) => renderToStaticMarkup(<CaseDetail card={card} response={response} onRemove={() => {}} />)),
   ];

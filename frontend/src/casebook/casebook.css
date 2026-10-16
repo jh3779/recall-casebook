@@ -1,7 +1,7 @@
 /* Recall Casebook. for Engineer — 현대자동차 CI 전용색(Hyundai Blue·Sand·Active Blue·Active Red)만 쓴다. 밝은 테마 하나, 이 화면 안에만 적용 */
 .view-casebook {
   --cb-blue: #002c5f; --cb-active: #00aad2; --cb-red: #e63312; --cb-sand: #e4dcd3; --cb-light: #f6f3f2; --cb-sky: #aacae6; --cb-gold: #a36b4f;
-  --cb-ink: #000; --cb-ink-2: #4d4d4d; --cb-ink-3: #666;
+  --cb-red-text: #b32410; /* 경고 글자용 — Active Red(#e63312)는 흰 바탕 작은 글씨 대비가 4.3:1이라 글자에는 더 진한 값 */ --cb-ink: #000; --cb-ink-2: #4d4d4d; --cb-ink-3: #666;
   color: var(--cb-ink); background: #fff; min-height: calc(100dvh - var(--app-bar-height, 60px));
   font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, var(--font-ui);
   display: grid; gap: 14px; padding: 18px 28px 40px; align-content: start;
@@ -24,8 +24,8 @@
 .cb-btn.ghost { background: #fff; color: var(--cb-blue); border: 1.5px solid var(--cb-blue); padding: 6px 12px; }
 .cb-link { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; color: var(--cb-blue); text-decoration: underline; cursor: pointer; }
 .cb-muted { color: var(--cb-ink-3); font-size: 12.5px; }
-.cb-muted.warn, .cb-note-state.warn { color: var(--cb-red); }
-.cb-error { color: var(--cb-red); margin: 0; font-size: 14px; }
+.cb-muted.warn, .cb-note-state.warn { color: var(--cb-red-text); }
+.cb-error { color: var(--cb-red-text); margin: 0; font-size: 14px; }
 .cb-empty { margin: 8px 0; color: var(--cb-ink-2); background: var(--cb-light); border-radius: 10px; padding: 16px; font-size: 14px; }
 .cb-mono, .cb-id { font-family: var(--font-id); }
 .cb-tag { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--cb-light); color: var(--cb-ink-2); vertical-align: middle; }

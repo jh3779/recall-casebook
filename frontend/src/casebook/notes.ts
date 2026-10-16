@@ -69,18 +69,18 @@ export const UNNAMED_MARK = "[Written before the case was named]";
 /**
  * 사건 이름을 정했을 때: 저장돼 있던 그 사건의 메모를 불러오고, 이름 없이 화면에만 적어 둔 메모는 저장소에 옮긴다.
  * 같은 리콜에 서로 다른 글이 있으면 어느 쪽도 버리지 않고 저장된 글 뒤에 이름 없이 쓴 글을 이어 붙인다(`UNNAMED_MARK`).
- * `saved`가 false면 저장소에 쓰지 못한 것이 있다 — 화면 메모는 그대로 돌려주고 호출하는 쪽이 경고한다.
+ * `failed`는 저장소에 쓰지 못한 리콜 번호, `saved`가 false면 하나라도 못 쓴 것이다 — 화면 메모는 그대로 돌려주고 호출하는 쪽이 경고한다.
  */
-export function adoptNotes(storage: StorageLike | null, caseName: string, memory: Readonly<Record<string, string>>): { notes: Record<string, string>; saved: boolean } {
+export function adoptNotes(storage: StorageLike | null, caseName: string, memory: Readonly<Record<string, string>>): { notes: Record<string, string>; saved: boolean; failed: string[] } {
   const stored = loadNotes(storage, caseName);
   const notes: Record<string, string> = { ...memory, ...stored };
   for (const [campno, text] of Object.entries(memory)) {
     const kept = stored[campno];
     if (kept && text.trim() && !sameNote(kept, text)) notes[campno] = `${kept}\n\n${UNNAMED_MARK}\n${text}`;
   }
-  let saved = !!storage && !!normalizeCaseName(caseName);
-  for (const [campno, text] of Object.entries(notes)) if (stored[campno] !== text && !saveNote(storage, caseName, campno, text)) saved = false;
-  return { notes, saved };
+  const failed: string[] = [];
+  for (const [campno, text] of Object.entries(notes)) if (stored[campno] !== text && !saveNote(storage, caseName, campno, text)) failed.push(campno); // 이미 저장돼 있던 메모는 실패로 세지 않는다
+  return { notes, saved: !!storage && !!normalizeCaseName(caseName) && !failed.length, failed };
 }
 
 /**

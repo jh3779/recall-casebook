@@ -51,7 +51,7 @@ it("사건 이름을 정하면 저장된 메모를 불러오고 화면에만 있
   expect(notes).toEqual({ "1": "저장된 글", "2": "새 메모" });
   expect(saved).toBe(true);
   expect(loadNotes(s, "Case A")).toEqual({ "1": "저장된 글", "2": "새 메모" });
-  expect(adoptNotes(null, "Case A", { "3": "x" })).toEqual({ notes: { "3": "x" }, saved: false });
+  expect(adoptNotes(null, "Case A", { "3": "x" })).toEqual({ notes: { "3": "x" }, saved: false, failed: ["3"] });
 });
 it("같은 리콜에 서로 다른 글이 있으면 어느 쪽도 버리지 않고 이어 붙인다", () => {
   const s = memory();
@@ -64,7 +64,7 @@ it("같은 리콜에 서로 다른 글이 있으면 어느 쪽도 버리지 않�
 });
 it("저장소가 쓰기에 실패하면 saved가 false이고 화면 메모는 그대로 돌려준다", () => {
   const full: StorageLike = { length: 0, key: () => null, getItem: () => null, removeItem: () => {}, setItem: () => { throw new Error("QuotaExceededError"); } };
-  expect(adoptNotes(full, "Case A", { "1": "글" })).toEqual({ notes: { "1": "글" }, saved: false });
+  expect(adoptNotes(full, "Case A", { "1": "글" })).toEqual({ notes: { "1": "글" }, saved: false, failed: ["1"] });
 });
 it("사건 이름에 |가 있어도 다른 사건의 메모가 섞이거나 함께 지워지지 않는다", () => {
   const s = memory();
@@ -106,4 +106,12 @@ it("80자에서 이모지가 잘려도 사건 이름 처리가 예외를 던지�
   expect(() => loadNotes(s, name)).not.toThrow();
   expect(saveNote(s, name, "1", "글")).toBe(true);
   expect(loadNotes(s, name)).toEqual({ "1": "글" });
+});
+it("이미 저장돼 있던 메모는 새 글의 저장 실패로 미저장에 들지 않는다", () => {
+  const stored = new Map([["casebook.note.v1|Case%20A|1", "저장된 글"]]);
+  const flaky: StorageLike = {
+    get length() { return stored.size; }, key: (i) => [...stored.keys()][i] ?? null, getItem: (k) => stored.get(k) ?? null, removeItem: () => {},
+    setItem: () => { throw new Error("QuotaExceededError"); },
+  };
+  expect(adoptNotes(flaky, "Case A", { "2": "새 메모" })).toEqual({ notes: { "1": "저장된 글", "2": "새 메모" }, saved: false, failed: ["2"] });
 });
