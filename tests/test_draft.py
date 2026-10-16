@@ -150,9 +150,8 @@ def test_assemble_uses_source_characters_even_when_the_llm_changed_whitespace():
         "ungrouped": [],
     }
     out = draft.assemble(srcs2(), payload)
-    assert (
-        out["groups"][0]["items"][0]["quote"] == "vehicles.  The circuit board"
-    )  # 이중 공백은 원문 그대로
+    # 문장 경계까지 넓힌 온전한 문장들이 원문 글자 그대로(이중 공백 포함) 나간다 — 부분 인용 확장은 아래 시험
+    assert out["groups"][0]["items"][0]["quote"] == DEFECT
 
 
 @pytest.mark.parametrize(
@@ -501,3 +500,73 @@ def test_assemble_counts_quotes_re_anchored_because_only_whitespace_differed():
         draft.assemble(srcs2(), payload)["relocated"] == 1
     )  # S1만 이중 공백이 달랐고 S2는 글자 그대로
     assert draft.assemble(srcs2(), {"groups": [], "ungrouped": []})["relocated"] == 0
+
+
+TEXT = "It was not found. The part may have failed. Then nothing happened."
+
+
+@pytest.mark.parametrize(
+    ("quote", "expected"),
+    [
+        (
+            "have failed",
+            "The part may have failed.",
+        ),  # 문장 한가운데 — "may"가 빠진 조각을 문장으로 넓힌다
+        ("not found", "It was not found."),
+        ("The part may have failed.", "The part may have failed."),  # 이미 온전한 문장
+        ("Then", "Then nothing happened."),
+    ],
+)
+def test_partial_quotes_are_widened_to_whole_sentences_so_qualifiers_cannot_be_dropped(
+    quote, expected
+):
+    """리뷰 지적(PR #141) — 글자만 같으면 받던 인용이 "may"·"not" 같은 한정어를 뺀 뒷부분일 수 있었다."""
+    src = Source("S1", "24V412000", "defect", TEXT, {"speaker": SPEAKER})
+    out = draft.assemble(
+        [src],
+        {"groups": [{"title": "t를 적은 선례", "quotes": [{"source_id": "S1", "text": quote}]}]},
+    )
+    it = out["groups"][0]["items"][0]
+    assert it["quote"] == expected == TEXT[it["start"] : it["end"]]
+
+
+def test_widening_without_sentence_end_marks_goes_to_the_whole_text_and_keeps_quotes_balanced():
+    assert draft.expand_to_sentences("no punctuation here at all", 3, 8) == (0, 26)
+    y = 'He said "stop." Then left.'
+    i = y.index("stop")
+    assert y[slice(*draft.expand_to_sentences(y, i, i + 4))] == 'He said "stop."'
+    assert draft.expand_to_sentences(TEXT, 0, len(TEXT)) == (0, len(TEXT))
+
+
+def test_the_key_never_appears_in_repr_of_config_or_llm_callable():
+    cfg = draft.DraftConfig(True, "sk-secret", draft.DEFAULT_MODEL, draft.DEFAULT_EFFORT, 6)
+    assert "sk-secret" not in repr(cfg)
+    assert "sk-secret" not in repr(cfg.llm())
+
+
+def test_a_connection_cut_while_reading_the_body_degrades_instead_of_failing_the_request():
+    import http.client
+
+    class Cut:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            raise http.client.IncompleteRead(b"partial")
+
+    with pytest.raises(LlmError) as e:
+        draft.call_llm("r", "i", api_key="sk-secret", opener=lambda req, timeout: Cut())
+    assert e.value.kind == "network" and "sk-secret" not in str(e.value)
+    out, used = draft.generate(
+        "d2", [card()], lambda *_: (_ for _ in ()).throw(LlmError("network"))
+    )
+    assert out["degraded"] == "llm_failed" and used is None
+
+
+def test_a_json_response_that_is_not_an_object_is_a_format_error():
+    with pytest.raises(LlmError) as e:
+        draft.call_llm("r", "i", api_key="k", opener=lambda req, timeout: Resp([1, 2]))
+    assert e.value.kind == "format"

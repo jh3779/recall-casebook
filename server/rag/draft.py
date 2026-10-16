@@ -9,6 +9,7 @@
 - 호출은 표준 라이브러리만 쓴다(런타임 의존성을 늘리지 않는다). 키는 서버 환경변수 `OPENAI_API_KEY`뿐이고 응답·오류에 싣지 않는다.
 """
 
+import http.client
 import json
 import os
 import re
@@ -17,7 +18,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
-from functools import partial
+from dataclasses import field as dc_field
 
 STEPS = ("d2", "d4")
 MAX_CARDS = 6  # 한 번에 보내는 선례 수 상한 — 입력 크기와 비용을 막는다
@@ -194,6 +195,30 @@ def locate(text: str, quote: str) -> tuple[int, int] | None:
     return index[j], index[j + len(q) - 1] + 1
 
 
+_SENT_END = re.compile(r"[.!?][\"')\]]*(?=\s|$)")
+
+
+def expand_to_sentences(text: str, start: int, end: int) -> tuple[int, int]:
+    """인용 구간을 문장 경계까지 넓힌다 — LLM이 문장 한가운데를 잘라 "may"·"not" 같은 한정어를 뺀 채 뒷부분만 돌려줘도,
+    화면에는 언제나 온전한 문장(들)이 원문 글자 그대로 나간다. 문장 끝 표시(. ! ? 뒤 공백)가 없으면 원문 끝까지 간다."""
+    s0 = 0
+    for m in _SENT_END.finditer(text, 0, start):
+        if m.end() <= start:
+            s0 = m.end()
+    while s0 < start and text[s0].isspace():
+        s0 += 1
+    e0 = end
+    already_final = (
+        end > 0
+        and bool(_SENT_END.search(text, max(0, end - 4), end))
+        and (end == len(text) or text[end].isspace())
+    )
+    if not already_final:
+        m = _SENT_END.search(text, end)
+        e0 = m.end() if m else len(text)
+    return s0, e0
+
+
 def item(src: Source, start: int, end: int) -> dict:
     return {
         "campno": src.campno,
@@ -240,7 +265,7 @@ def assemble(sources: list[Source], parsed: dict) -> dict:
                 continue
             used.add(src.id)
             relocated += src.text.find(q["text"]) < 0
-            items.append(item(src, *span))
+            items.append(item(src, *expand_to_sentences(src.text, *span)))
         if not items:
             continue
         title = str(g.get("title", "")).strip()
@@ -299,10 +324,12 @@ def call_llm(
             raw = json.loads(resp.read())
     except urllib.error.HTTPError as e:
         raise LlmError("http", f"status {e.code}") from None
-    except (urllib.error.URLError, TimeoutError, OSError):
-        raise LlmError("network") from None
+    except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException):
+        raise LlmError("network") from None  # 응답 본문을 읽다 끊긴 경우(IncompleteRead 등)도 포함
     except ValueError:
         raise LlmError("format", "응답이 JSON이 아니다") from None
+    if not isinstance(raw, dict):
+        raise LlmError("format", "응답 JSON의 최상위가 객체가 아니다")
     if raw.get("status") not in (None, "completed"):
         raise LlmError("incomplete", str(raw.get("status")))
     text = None
@@ -365,7 +392,9 @@ class DraftConfig:
     """`POST /draft` 설정 — 기본은 꺼짐이다. 켜려면 `DRAFT_ENABLED=1`과 서버 환경변수 `OPENAI_API_KEY`가 모두 있어야 한다."""
 
     enabled: bool = False
-    api_key: str = ""
+    api_key: str = dc_field(
+        default="", repr=False
+    )  # 로그·테스트 실패 출력에 찍혀도 키가 보이지 않게
     model: str = DEFAULT_MODEL
     effort: str = DEFAULT_EFFORT
     limit: int = DEFAULT_LIMIT  # IP당 1분 호출 수 — 유료 호출이라 /search보다 훨씬 낮다
@@ -396,4 +425,11 @@ class DraftConfig:
     def llm(self) -> Callable[[str, str], LlmResult] | None:
         if not self.enabled:
             return None
-        return partial(call_llm, api_key=self.api_key, model=self.model, effort=self.effort)
+        key, model, effort = self.api_key, self.model, self.effort
+
+        def llm(
+            instructions: str, input_text: str
+        ) -> LlmResult:  # partial은 repr에 키가 나오므로 닫힘 함수로 감싼다
+            return call_llm(instructions, input_text, api_key=key, model=model, effort=effort)
+
+        return llm

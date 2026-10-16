@@ -155,3 +155,38 @@ it("Word 파일이 아니면 DocxError로 알린다", async () => {
   await expect(patchDocx(await build({ "a.txt": "x" }), content({}))).rejects.toThrow("word/document.xml");
   await expect(inspectDocx(new Blob(["x"]))).rejects.toBeInstanceOf(DocxError);
 });
+
+// ---- 리뷰 지적(PR #141) 재현 시험 ----
+const imgCell = tc('<w:p><w:r><w:drawing><wp:inline>IMG-STAMP</wp:inline></w:drawing></w:r></w:p>');
+const withCell = (cell: string) => doc(tbl(tr(tc(p("PROBLEM DESCRIPTION")), cell), tr(tc(p("DEFINE THE PROBLEM CAUSE")), tc(p()))));
+it("그림·필드가 든 칸은 빈 칸으로 보고 지우지 않고 칸 끝에 덧붙인다", () => {
+  const r = patchDocumentXml(withCell(imgCell), content({ 2: [{ text: "내용" }] }));
+  expect(r.filled).toEqual([2]);
+  expect(r.xml).toContain("IMG-STAMP");
+  expect(r.xml.indexOf("내용")).toBeGreaterThan(r.xml.indexOf("IMG-STAMP"));
+  const field = tc('<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> FORMTEXT </w:instrText></w:r></w:p>');
+  const f = patchDocumentXml(withCell(field), content({ 2: [{ text: "내용" }] }));
+  expect(f.xml).toContain("FORMTEXT");
+});
+it("진짜 빈 문단(빈 run·서식만 든 것 포함)은 그 자리를 채운다", () => {
+  const empty = tc('<w:p><w:pPr><w:pStyle w:val="CellText"/></w:pPr><w:r><w:rPr><w:b/></w:rPr></w:r></w:p>');
+  const r = patchDocumentXml(withCell(empty), content({ 2: [{ text: "내용" }] }));
+  expect(r.xml.split("<w:p>").length).toBe(withCell(empty).split("<w:p>").length); // 문단 수 그대로 — 빈 문단을 바꿨다
+  expect(r.xml).toContain("내용");
+});
+it("두 단계가 같은 칸을 고르면 뒤 단계는 넣지 않고 conflict로 알려 파일이 깨지지 않는다", () => {
+  const xml = doc(tbl(tr(tc(p("PROBLEM DESCRIPTION")), tc(p()))));
+  const same = { table: 1, row: 1, col: 2 };
+  const r = patchDocumentXml(xml, content({ 2: [{ text: "AAA" }], 4: [{ text: "BBB" }] }, { cells: { 2: same, 4: same } }));
+  expect(r.filled).toEqual([2]);
+  expect(r.conflict).toEqual([4]);
+  expect(r.xml).toContain("AAA");
+  expect(r.xml).not.toContain("BBB");
+  expect(r.xml).not.toMatch(/<\/w:p>w:r>/); // 열린 꺾쇠가 사라진 깨진 조각이 없다
+  expect((r.xml.match(/<w:p>/g) ?? []).length).toBe((r.xml.match(/<\/w:p>/g) ?? []).length);
+});
+it("XML에 넣을 수 없는 제어 문자는 빼고 탭·줄바꿈은 남긴다", () => {
+  const r = patchDocumentXml(withCell(tc(p())), content({ 2: [{ text: "a\u0001b\u0008c\td" }] }));
+  expect(r.xml).toContain("abc\td");
+  expect([...r.xml].some((ch) => { const c = ch.charCodeAt(0); return (c < 9) || c === 11 || c === 12 || (c > 13 && c < 32); })).toBe(false);
+});

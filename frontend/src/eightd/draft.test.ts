@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import fixture from "../search/__fixtures__/search_airbag.json";
 import { hasCauseText, type SearchResponse } from "../search/types";
-import { groupBlock, questionsBlock, quoteBlock, type DraftItem } from "./draft";
+import { groupBlock, groupId, questionsBlock, quoteBlock, type DraftItem } from "./draft";
 
 const response = fixture as SearchResponse;
 const cards = [...response.customer_precedents, ...response.precedents];
@@ -34,14 +34,21 @@ it("카드를 못 찾아도 번호는 남기고 출처 줄을 지우지 않는�
   expect(block.split("\n")[0]).toBe(`[타사 선례 ${cards[0].campno}]`);
   expect(block).toContain("— 말한 주체:");
 });
-it("묶음은 첫 줄에 제목이 도구가 붙인 것임을 밝히고 인용마다 머리·꼬리줄을 유지한다", () => {
+it("묶음을 본문에 넣을 때 도구가 붙인 제목은 빼고 인용마다 머리·꼬리줄을 유지한다(리뷰 지적 — 제목은 의역이라 한정어가 빠질 수 있다)", () => {
   const block = groupBlock({ title: "회로 단락을 적은 선례", items: [d2item(cards[0]), d2item(cards[1])] }, cards);
-  const [first, ...rest] = block.split("\n\n");
-  expect(first).toBe("〈묶음 — 도구가 붙인 제목: 회로 단락을 적은 선례〉");
-  expect(rest).toHaveLength(2);
-  expect(rest[0]).toContain(cards[0].campno);
-  expect(rest[1]).toContain(cards[1].campno);
-  expect(rest.every((r) => r.startsWith("[타사 선례 ") && r.includes("— 말한 주체:"))).toBe(true);
+  expect(block).not.toContain("회로 단락을 적은 선례");
+  expect(block).not.toContain("도구가 붙인 제목");
+  const parts = block.split("\n\n");
+  expect(parts).toHaveLength(2);
+  expect(parts[0]).toContain(cards[0].campno);
+  expect(parts[1]).toContain(cards[1].campno);
+  expect(parts.every((r) => r.startsWith("[타사 선례 ") && r.includes("— 말한 주체:"))).toBe(true);
+});
+it("묶음 이름은 내용에서 만들어 같은 순번에 다른 묶음이 와도 달라진다", () => {
+  const a = { title: "가", items: [d2item(cards[0])] };
+  expect(groupId(a)).toBe(groupId({ ...a }));
+  expect(groupId(a)).not.toBe(groupId({ title: "나", items: a.items }));
+  expect(groupId(a)).not.toBe(groupId({ title: "가", items: [d2item(cards[1])] }));
 });
 it("확인 질문은 고정 문장임을 밝히고 번호를 붙인다", () => {
   expect(questionsBlock(["가", "나"])).toBe("[확인 질문 — 도구가 만든 고정 문장]\n① 가\n② 나");

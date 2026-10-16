@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import fixture from "../search/__fixtures__/search_airbag.json";
 import type { SearchResponse } from "../search/types";
-import { questionsBlock, type DraftItem, type DraftResponse } from "./draft";
+import { groupId, questionsBlock, type DraftItem, type DraftResponse } from "./draft";
 import { DraftResult } from "./DraftResult";
 
 const response = fixture as SearchResponse;
@@ -24,7 +24,7 @@ it("묶음 제목은 도구가 붙인 제목으로 표시하고 인용은 글자
 it("묶음과 확인 질문에 본문에 넣기 버튼이 있고 넣은 것은 누른 상태로 보인다", () => {
   expect(render(base)).toContain("이 묶음을 본문에 넣기");
   expect(render(base)).toContain("확인 질문을 본문에 넣기");
-  const on = render(base, { "draft:g0": "x", "draft:q": questionsBlock(base.questions) });
+  const on = render(base, { [groupId(base.groups[0])]: "x", "draft:q": questionsBlock(base.questions) });
   expect(on.match(/본문에 넣음 ✓ \(다시 누르면 뺌\)/g)).toHaveLength(2);
   expect(on).toContain('aria-pressed="true"');
 });

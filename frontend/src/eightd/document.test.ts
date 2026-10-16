@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { ALL_STEPS, composeDocument, CORE_STEPS, insertBlock, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
+import { ALL_STEPS, composeDocument, CORE_STEPS, insertBlock, insertedFor, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
 
 const prov = { build_id: "abc123", snapshot_date: "2026-10-06" };
 it("빈 칸에는 그대로, 글이 있으면 한 줄 띄우고 덧붙인다", () => {
@@ -53,4 +53,11 @@ it("칸이 여럿인 단계의 파일 문단은 칸 이름이 첫 줄에만 붙�
   const d4 = STEPS.find((st) => st.n === 4)!;
   expect(stepParagraphs(d4, { d4_escape: "a\nb", d4_root: "c" })).toEqual([{ prefix: "Escape Cause: ", text: "a" }, { text: "b" }, { prefix: "Root Cause: ", text: "c" }]);
   expect(stepParagraphs(STEPS.find((st) => st.n === 2)!, { d2: " x " })).toEqual([{ text: "x" }]);
+});
+
+it("단계별로 넣은 것만 접두사를 떼어 돌려준다 — 묶음 화면이 자기 이름으로 찾는다(리뷰 지적: 접두사가 붙은 채로 내려가 '넣음' 표시가 안 켜졌다)", () => {
+  const inserted = { "2|draft:gabc": "x", "2|20V001000": "y", "4|draft:gabc": "z", "7|table": "t" };
+  expect(insertedFor(inserted, "2")).toEqual({ "draft:gabc": "x", "20V001000": "y" });
+  expect(insertedFor(inserted, "4")).toEqual({ "draft:gabc": "z" });
+  expect(insertedFor(inserted, "5")).toEqual({});
 });

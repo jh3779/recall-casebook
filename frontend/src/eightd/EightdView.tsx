@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Card, SearchResponse } from "../search/types";
-import { ALL_STEPS, composeDocument, CORE_STEPS, evidenceFooter, insertBlock, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
+import { ALL_STEPS, composeDocument, CORE_STEPS, evidenceFooter, insertBlock, insertedFor, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
 import { DocxError, inspectDocx, patchDocx, type Inspection, type Place } from "./docxPatch";
 import { DraftPanel } from "./DraftPanel";
 import { EvidenceCard } from "./EvidenceCard";
@@ -74,7 +74,7 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
       const r = await patchDocx(docx.file, { subject, steps, footer: appliedInserted && response ? evidenceFooter(response) : null, cells: choice });
       const name = `${docx.file.name.replace(/\.docx$/i, "")}_${appliedInserted ? "선례삽입" : "작성"}.docx`;
       download(r.blob, name);
-      setMessage(`${name} 파일을 내려받았습니다. 적용한 단계: ${stepLabel([...applied].sort((a, b) => a - b))}. 칸에 넣은 단계: ${r.filled.length ? stepLabel(r.filled) : "없음(쓴 글이 없습니다)"}.${r.missing.length ? ` 파일에서 칸을 찾지 못해 넣지 못한 단계: ${stepLabel(r.missing)} — 칸을 고르거나 "파일 글 복사"로 직접 붙여 넣어 주세요.` : ""}${r.ambiguous.length ? ` 후보 칸이 여럿이라 넣지 않은 단계: ${stepLabel(r.ambiguous)} — 위 표에서 칸을 고른 뒤 다시 내려받아 주세요.` : ""}`);
+      setMessage(`${name} 파일을 내려받았습니다. 적용한 단계: ${stepLabel([...applied].sort((a, b) => a - b))}. 칸에 넣은 단계: ${r.filled.length ? stepLabel(r.filled) : "없음(쓴 글이 없습니다)"}.${r.missing.length ? ` 파일에서 칸을 찾지 못해 넣지 못한 단계: ${stepLabel(r.missing)} — 칸을 고르거나 "파일 글 복사"로 직접 붙여 넣어 주세요.` : ""}${r.ambiguous.length ? ` 후보 칸이 여럿이라 넣지 않은 단계: ${stepLabel(r.ambiguous)} — 위 표에서 칸을 고른 뒤 다시 내려받아 주세요.` : ""}${r.conflict.length ? ` 다른 단계와 같은 칸을 골라 넣지 않은 단계: ${stepLabel(r.conflict)} — 단계마다 다른 칸을 골라 주세요.` : ""}`);
     } catch (e) { setMessage(e instanceof DocxError ? e.message : "파일을 만들지 못했습니다"); }
     finally { setBusy(false); }
   }
@@ -91,7 +91,7 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
     if (!(step in HINT) || !cards.length) return null;
     return <details className="ed-ref"><summary><span>선례 참고 열기 <span className="ed-opt">선택</span></span><span className={`ed-cnt${insertedCount(step) ? " on" : ""}`}>넣음 {insertedCount(step)}건</span></summary>
       <p className="note">{HINT[step]} 넣기를 누르기 전에는 본문에 아무것도 들어가지 않습니다.</p>
-      {response && (step === "2" || step === "4") && <DraftPanel step={step === "2" ? "d2" : "d4"} question={response.question} cards={cards} inserted={inserted} onToggle={(id, block) => toggle(step, id, block)} />}
+      {response && (step === "2" || step === "4") && <DraftPanel key={`${step}|${response.question}|${cards.map((c) => c.campno).join(",")}`} step={step === "2" ? "d2" : "d4"} question={response.question} cards={cards} inserted={insertedFor(inserted, step)} onToggle={(id, block) => toggle(step, id, block)} />}
       {cards.map((card) => <EvidenceCard key={card.campno} step={step as EvidenceStep} card={card} customer={customers.has(card.campno)} inserted={inserted[`${step}|${card.campno}`] !== undefined} onToggle={(block) => toggle(step, card.campno, block)} />)}
     </details>;
   };

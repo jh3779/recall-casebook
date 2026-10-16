@@ -19,13 +19,15 @@ export function FileMap({ view, choice, applied, onChoose }: { view: Inspection;
       : auto.length === 1 ? <span className="ed-ok">자동 인식 ✓ {where(auto[0])}</span>
       : auto.length > 1 ? <span className="ed-warn" role="alert">후보 {auto.length}곳 — 아래에서 칸을 고르기 전에는 이 단계 글을 넣지 않습니다</span>
       : <span className="note">찾지 못함 — 아래에서 칸을 고를 수 있습니다</span>;
+    // 다른 단계가 이미 쓰는 칸(직접 고른 칸, 또는 라벨이 하나뿐이라 자동으로 정해진 칸)은 고르지 못하게 한다 — 두 단계가 한 칸에 겹쳐 들어가지 않게
+    const takenByOther = new Set(STEPS.filter((o) => o.n !== st.n).flatMap((o) => { const p = choice[o.n] ?? (view.matches[o.n]?.length === 1 ? view.matches[o.n][0] : undefined); return p ? [keyOf(p)] : []; }));
     const ordered = [...view.cells.filter((c) => c.guess === st.n), ...view.cells.filter((c) => c.guess !== st.n)];
     return <tr key={st.n} className={on ? "" : "off"}>
       <td>D{st.n} {st.name}{on ? "" : " (적용 안 함)"}</td>
       <td>{on ? <>{status}
         <select aria-label={`D${st.n} 칸 고르기`} value={mine ? keyOf(mine) : ""} onChange={(e) => { const c = view.cells.find((x) => keyOf(x) === e.target.value); onChoose(st.n, c ? { table: c.table, row: c.row, col: c.col } : null); }}>
           <option value="">자동(라벨로 인식)</option>
-          {ordered.map((c) => <option key={keyOf(c)} value={keyOf(c)}>표 {c.table} · {c.row}행 · “{short(c.label)}”{c.guess === st.n ? " — 라벨이 맞음" : ""}</option>)}
+          {ordered.map((c) => <option key={keyOf(c)} value={keyOf(c)} disabled={takenByOther.has(keyOf(c))}>표 {c.table} · {c.row}행 · “{short(c.label)}”{c.guess === st.n ? " — 라벨이 맞음" : ""}{takenByOther.has(keyOf(c)) ? " — 다른 단계가 사용 중" : ""}</option>)}
         </select></> : <span className="note">—</span>}</td>
     </tr>;
   })}</tbody></table>;

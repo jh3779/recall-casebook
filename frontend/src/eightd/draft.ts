@@ -44,10 +44,17 @@ export function quoteBlock(item: DraftItem, card: Card | undefined): string {
     : `— 말한 주체: ${item.speaker} · ${item.dataset} 스냅샷 ${item.snapshot_date}`);
   return lines.join("\n");
 }
-/** 묶음 하나 — 제목은 도구가 붙인 문장이라 첫 줄에 그렇게 밝힌다 */
+/** 묶음 하나를 본문에 넣을 평문으로 — **도구가 붙인 제목은 본문에 넣지 않는다**(제목은 원문의 의역이라 한정어가 빠질 수 있고, 서류에는 원문 인용만 들어간다. 제목은 화면에서 묶음을 읽는 용도) */
 export function groupBlock(group: DraftGroup, cards: readonly Card[]): string {
   const byId = new Map(cards.map((c) => [c.campno, c]));
-  return [`〈묶음 — 도구가 붙인 제목: ${group.title}〉`, ...group.items.map((item) => quoteBlock(item, byId.get(item.campno)))].join("\n\n");
+  return group.items.map((item) => quoteBlock(item, byId.get(item.campno))).join("\n\n");
+}
+/** 묶음의 이름 — 제목·인용 위치에서 만든다. 같은 순번에 다른 묶음이 와도(다시 묶기) 같은 이름이 되지 않게 한다 */
+export function groupId(group: DraftGroup): string {
+  const seed = `${group.title}|${group.items.map((i) => `${i.campno}:${i.field}:${i.start}-${i.end}`).join(",")}`;
+  let h = 5381;
+  for (let i = 0; i < seed.length; i++) h = ((h << 5) + h + seed.charCodeAt(i)) | 0;
+  return `draft:g${(h >>> 0).toString(36)}`;
 }
 const CIRCLED = "①②③④⑤⑥⑦⑧⑨";
 export const questionsBlock = (questions: readonly string[]): string =>

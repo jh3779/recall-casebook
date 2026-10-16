@@ -1,6 +1,6 @@
 import { fmtDate } from "../recalls";
 import type { Card } from "../search/types";
-import { groupBlock, questionsBlock, type DraftItem, type DraftResponse } from "./draft";
+import { groupBlock, groupId, questionsBlock, type DraftItem, type DraftResponse } from "./draft";
 
 const FIELD = { defect: "결함", consequence: "결과", cause: "원인 원문" } as const;
 const REJECTED: Record<string, string> = { not_in_source: "원문에 없어서", unknown_source: "출처가 맞지 않아서", duplicate_source: "겹쳐서", bad_title: "제목이 판정 표현에 걸려 제목만" };
@@ -27,7 +27,7 @@ export function DraftResult({ result, cards, inserted, onToggle }: { result: Dra
     {result.degraded && <p className="note dr-degraded" role="status">{DEGRADED[result.degraded]} 묶음 없이 아래 "선례 참고"의 원문 카드를 쓰세요.</p>}
     {!result.degraded && !result.groups.length && !result.ungrouped.length && <p className="note">이 단계에 쓸 원문이 있는 선례가 없습니다{result.step === "d4" ? "(원인 원문이 있는 선례만 묶습니다)" : ""}.</p>}
     {result.groups.map((group, i) => {
-      const id = `draft:g${i}`;
+      const id = groupId(group);
       return <article className="dg" key={id} aria-label={`묶음 ${i + 1}`}>
         <header className="dg-head"><span className="tag">도구가 붙인 제목 · 원문 아님</span><b>{group.title}</b><span className="note">{group.items.length}건</span>{toggleBtn(id, groupBlock(group, cards), "이 묶음을 본문에 넣기")}</header>
         <ul className="dg-list">{group.items.map((item) => <Quote key={`${item.campno}-${item.field}`} item={item} card={byId.get(item.campno)} />)}</ul>

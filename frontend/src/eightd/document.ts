@@ -21,6 +21,9 @@ export const CORE_STEPS: ReadonlySet<number> = new Set([2, 4]);
 export const toggleStep = (applied: ReadonlySet<number>, n: number): Set<number> => { const next = new Set(applied); if (!next.delete(n)) next.add(n); return next; };
 export const sameSteps = (a: ReadonlySet<number>, b: ReadonlySet<number>) => a.size === b.size && [...a].every((n) => b.has(n));
 
+/** 이 단계에서 넣은 것만, 단계 접두사("2|")를 뗀 이름으로 — 묶음 화면이 자기 이름(draft:…)으로 찾는다 */
+export const insertedFor = (inserted: Readonly<Record<string, string>>, step: string): Record<string, string> =>
+  Object.fromEntries(Object.entries(inserted).filter(([k]) => k.startsWith(`${step}|`)).map(([k, v]) => [k.slice(step.length + 1), v]));
 export const shortLabel = (label: string) => label.split(" — ")[0];
 
 /** 양식 칸에 들어갈 한 문단 — prefix는 칸이 여럿인 단계에서 굵게 붙는 칸 이름 */
