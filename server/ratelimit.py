@@ -1,6 +1,6 @@
 """IP별 호출 상한 (이슈 #63) — 비밀 키 없이 공개 API를 지키는 앱 쪽 장치.
 
-- `POST /search`만 센다. `/health`와 CORS 사전 요청(OPTIONS)은 세지 않는다.
+- 기본은 `POST /search`만 센다(`route`로 다른 경로를 따로 센다 — `POST /draft`는 유료 호출이라 별도 상한). `/health`와 CORS 사전 요청(OPTIONS)은 세지 않는다.
 - 최근 `window`초 안의 호출이 `limit`번이면 429와 `Retry-After`를 낸다. 상한에 걸린 호출은 세지 않아 기다리면 풀린다.
 - 서버리스는 인스턴스마다 메모리가 따로라 인스턴스 수만큼 상한이 느슨해진다 → 폭주는 Vercel WAF 규칙이 막는다
   (앱 60/분보다 느슨한 안전망, `docs/배포_Vercel.md`).
@@ -80,11 +80,11 @@ def client_ip(request: Request) -> str:
 
 
 class RateLimitMiddleware:
-    def __init__(self, app: ASGIApp, limiter: RateLimiter):
-        self.app, self.limiter = app, limiter
+    def __init__(self, app: ASGIApp, limiter: RateLimiter, route: tuple[str, str] = LIMITED_ROUTE):
+        self.app, self.limiter, self.route = app, limiter, route
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] == "http" and (scope["method"], scope["path"]) == LIMITED_ROUTE:
+        if scope["type"] == "http" and (scope["method"], scope["path"]) == self.route:
             wait = self.limiter.hit(client_ip(Request(scope)))
             if wait:
                 response = JSONResponse(
