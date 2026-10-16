@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, search } from "../api";
 import { Feedback } from "./Feedback";
+import { PickBar } from "./PickBar";
+import { isPicked, togglePick } from "./picks";
 import { PrecedentDetail } from "./PrecedentDetail";
 import { Provenance } from "./Provenance";
 import { ResultList } from "./ResultList";
@@ -8,11 +10,12 @@ import { SearchInput } from "./SearchInput";
 import { Welcome } from "./Welcome";
 import type { Card, HealthState, SearchResponse } from "./types";
 
-export default function SearchView({ health, draft, onShowroom }: { health: HealthState; draft: { question: string } | null; onShowroom: () => void }) {
+export default function SearchView({ health, draft, onShowroom, onWrite8d }: { health: HealthState; draft: { question: string } | null; onShowroom: () => void; onWrite8d?: (cards: readonly Card[], response: SearchResponse | null) => void }) {
   const [question, setQuestion] = useState(draft?.question ?? "");
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [response, setResponse] = useState<SearchResponse | null>(null);
   const [selected, setSelected] = useState<Card>();
+  const [picked, setPicked] = useState<Card[]>([]);
   const [error, setError] = useState<ApiError>();
   const [delayed, setDelayed] = useState(false);
   const [mobileDetail, setMobileDetail] = useState(false);
@@ -41,6 +44,7 @@ export default function SearchView({ health, draft, onShowroom }: { health: Heal
     setQuestion(value);
     setState("loading");
     setResponse(null);
+    setPicked([]);
     setError(undefined);
     setDelayed(false);
     setMobileDetail(false);
@@ -76,17 +80,19 @@ export default function SearchView({ health, draft, onShowroom }: { health: Heal
     setMobileDetail(false);
     requestAnimationFrame(() => resultRef.current?.querySelector<HTMLElement>(".item[aria-pressed=true]")?.focus());
   }
-  return <main className="view-search">
+  const canPick = !!onWrite8d;
+  return <main className={`view-search${canPick && state === "done" && picked.length ? " has-picks" : ""}`}>
     <h1 className="sr-only">선례 검색</h1>
-    <SearchInput question={question} onChange={setQuestion} onSearch={run} loading={state === "loading"} inputRef={inputRef} />
+    <SearchInput question={question} onChange={setQuestion} onSearch={run} loading={state === "loading"} inputRef={inputRef} extra={onWrite8d && <button type="button" className="write-plain" onClick={() => onWrite8d([], response)}>선례 없이 8D 작성하기 →</button>} />
     {state === "idle" && <Welcome health={health} onExample={run} onShowroom={onShowroom} />}
     <Feedback loading={state === "loading"} delayed={delayed} error={state === "error" ? error : undefined} onRetry={() => run(question)} />
     {state === "done" && response && <>
       <p className="sr-only" role="status">선례 {response.customer_precedents.length + response.precedents.length}건을 찾았습니다</p>
       <div ref={resultRef} className={`split${mobileDetail ? " mobile-detail" : ""}${selected ? "" : " empty"}`}>
-        <ResultList response={response} selected={selected} onSelect={(card) => { setSelected(card); setMobileDetail(true); }} />
-        {selected ? <PrecedentDetail key={selected.campno} card={selected} response={response} onBack={back} /> : <div className="detail"><p>선례를 찾지 못했습니다. 부품 이름이나 고장 모습을 바꿔 다시 써 보세요.</p><Provenance data={response} question={response.question} /></div>}
+        <ResultList response={response} selected={selected} onSelect={(card) => { setSelected(card); setMobileDetail(true); }} picked={picked} onPick={canPick ? (card) => setPicked((list) => togglePick(list, card)) : undefined} />
+        {selected ? <PrecedentDetail key={selected.campno} card={selected} response={response} onBack={back} picked={isPicked(picked, selected)} onPick={canPick ? () => setPicked((list) => togglePick(list, selected)) : undefined} /> : <div className="detail"><p>선례를 찾지 못했습니다. 부품 이름이나 고장 모습을 바꿔 다시 써 보세요.</p><Provenance data={response} question={response.question} /></div>}
       </div>
+      {onWrite8d && picked.length > 0 && <PickBar picked={picked} onRemove={(card) => setPicked((list) => togglePick(list, card))} onWrite={() => onWrite8d(picked, response)} />}
     </>}
   </main>;
 }

@@ -1,0 +1,43 @@
+import type { ProvenanceData } from "../search/types";
+
+export interface Field { key: string; label: string; hint?: string }
+export interface Step { n: number; name: string; fields: Field[] }
+
+/** 예시 8D 양식(영문 8D 순서). 실제 고객사 양식 맞춤은 다음 단계(DEC-064) */
+export const STEPS: Step[] = [
+  { n: 1, name: "TEAM", fields: [{ key: "team_chair", label: "CHAIR PERSON" }, { key: "team_members", label: "MEMBERS" }] },
+  { n: 2, name: "PROBLEM DESCRIPTION", fields: [{ key: "d2", label: "Problem Description — 우리 건의 불량 사실", hint: "6하 원칙, 계량 가능한 표현(건수·일시·장소·조건)" }] },
+  { n: 3, name: "CONTAINMENT ACTION", fields: [{ key: "d3", label: "Containment Action — 우리 건의 잠정 조치", hint: "누가·언제·어떻게, 선별 범위" }] },
+  { n: 4, name: "DEFINE THE PROBLEM CAUSE", fields: [{ key: "d4_escape", label: "Escape Cause — 탐지 못 한 이유" }, { key: "d4_root", label: "Root Cause — 우리 건의 근본 원인", hint: "서비스는 이 칸을 채우거나 제안하지 않습니다" }] },
+  { n: 5, name: "PERMANENT ACTION", fields: [{ key: "d5", label: "Permanent Action — 우리 건의 상용 조치", hint: "개선의 종류·시기·방법" }] },
+  { n: 6, name: "VERIFICATION OF EFFECTIVENESS", fields: [{ key: "d6", label: "Verification — 효과 검증", hint: "계량한 검증 결과" }] },
+  { n: 7, name: "PREVENTIVE RECURRENCE", fields: [{ key: "d7", label: "Preventive Recurrence — 우리 건의 수평 전개", hint: "4M 기준으로 다른 제품 점검, 표준화" }] },
+  { n: 8, name: "CLOSE", fields: [{ key: "d8_received", label: "CAR Received" }, { key: "d8_review", label: "Review" }, { key: "d8_approval", label: "Approval" }] },
+];
+
+/** 선례 인용이 들어가는 칸 — D4는 "근본 원인" 칸 하나뿐이고, 그 안에서 머리줄로만 자사 글과 구분된다(DEC-064 알려진 한계 ④) */
+export const TARGET: Record<string, string> = { "2": "d2", "3": "d3", "4": "d4_root", "5": "d5", "7": "d7" };
+
+/** 칸 끝에 한 줄 띄우고 덧붙인다 */
+export function insertBlock(value: string, block: string): string {
+  return (value.trim() ? `${value.replace(/\s+$/, "")}\n\n` : "") + block;
+}
+/** 넣었던 글을 뺀다. 사용자가 그 글을 고쳐 더는 그대로 없으면 null(자동으로 못 뺀다) */
+export function removeBlock(value: string, block: string): string | null {
+  if (!value.includes(block)) return null;
+  return value.replace(`\n\n${block}`, "").replace(block, "").trim();
+}
+
+/** 선례를 하나라도 넣었을 때 문서 끝에 붙는 근거 데이터 한 줄 */
+export const evidenceFooter = (prov: Pick<ProvenanceData, "build_id" | "snapshot_date">) => `※ 선례 근거 데이터: build ${prov.build_id} · 스냅샷 ${prov.snapshot_date} · 대괄호 [타사 선례 …] 글은 타사 공개 원문이며 자사 사실이 아닙니다.`;
+
+/** 파일 본문에 들어갈 글 — 칸에 쓴 글만 그대로. 선례를 하나라도 넣었으면 근거 데이터 한 줄을 끝에 붙인다 */
+export function composeDocument({ subject, values, withEvidence, prov }: { subject: string; values: Record<string, string>; withEvidence: boolean; prov: Pick<ProvenanceData, "build_id" | "snapshot_date"> | null }): string {
+  const out = [`8D REPORT\nSUBJECT: ${subject}\n`];
+  for (const step of STEPS) {
+    const parts = step.fields.flatMap((f) => (values[f.key]?.trim() ? [`${f.label}\n${values[f.key].trim()}`] : []));
+    out.push(`DISCIPLINE ${step.n} · ${step.name}\n${parts.length ? parts.join("\n\n") : "(미작성)"}\n`);
+  }
+  if (withEvidence && prov) out.push(evidenceFooter(prov));
+  return out.join("\n");
+}
