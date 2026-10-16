@@ -29,7 +29,8 @@ export function DraftResult({ result, cards, inserted, onToggle }: { result: Dra
     {result.groups.map((group, i) => {
       const id = groupId(group);
       return <article className="dg" key={id} aria-label={`묶음 ${i + 1}`}>
-        <header className="dg-head"><span className="tag">도구가 붙인 제목 · 원문 아님</span><b>{group.title}</b><span className="note">{group.items.length}건</span>{toggleBtn(id, groupBlock(group, cards), "이 묶음을 본문에 넣기")}</header>
+        <header className="dg-head"><b>묶음 {i + 1}</b><span className="note">{group.items.length}건</span>{toggleBtn(id, groupBlock(group, cards), "이 묶음을 본문에 넣기")}</header>
+        <details className="dg-title"><summary className="note">도구가 붙인 제목 보기 (원문 아님 · 참고용)</summary><p className="note">{group.title}</p></details>
         <ul className="dg-list">{group.items.map((item) => <Quote key={`${item.campno}-${item.field}`} item={item} card={byId.get(item.campno)} />)}</ul>
       </article>;
     })}

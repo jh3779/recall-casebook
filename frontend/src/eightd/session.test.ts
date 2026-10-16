@@ -29,8 +29,14 @@ it("한쪽에 검색 결과가 없으면(선례 없이 쓰던 작업·검색 실
   expect(workChanged(null, null)).toBe(false);
 });
 it("응답 없이 열면(검색 중·실패) 마지막 응답을 유지하고, 새 응답이 있으면 새것으로 바꾼다", () => {
-  const prev = { cards: [], response };
+  const prev = { cards: [], response, fresh: 0 };
   expect(nextEightdInput(prev, [], null).response).toBe(response);
   expect(nextEightdInput(prev, [], other).response).toBe(other);
-  expect(nextEightdInput({ cards: [], response: null }, [], null).response).toBeNull();
+  expect(nextEightdInput({ cards: [], response: null, fresh: 0 }, [], null).response).toBeNull();
+});
+it("선례 없이 새로 시작(fresh)을 누를 때만 fresh 번호가 올라가 화면이 이전 글을 어떻게 할지 묻게 한다", () => {
+  const prev = { cards: [], response, fresh: 3 };
+  expect(nextEightdInput(prev, [], response, true).fresh).toBe(4);
+  expect(nextEightdInput(prev, [], response).fresh).toBe(3);
+  expect(nextEightdInput(prev, [], null, true).response).toBe(response); // 응답이 비어도 마지막 응답은 유지
 });

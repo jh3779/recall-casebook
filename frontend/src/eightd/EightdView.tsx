@@ -26,7 +26,7 @@ function download(blob: Blob, name: string) {
 const rowsFor = (value: string) => Math.min(40, Math.max(3, value.split("\n").reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 90)), 0) + 1));
 
 /** 8D 작성 화면 — 선례는 기본으로 어디에도 들어가지 않고, 사용자가 "본문에 텍스트로 넣기"를 누른 인용만 해당 칸에 평문으로 들어간다(DEC-064) */
-export default function EightdView({ cards, response, onBack }: { cards: readonly Card[]; response: SearchResponse | null; onBack: () => void }) {
+export default function EightdView({ cards, response, fresh = 0, onBack }: { cards: readonly Card[]; response: SearchResponse | null; fresh?: number; onBack: () => void }) {
   const [subjectInput, setSubjectInput] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [inserted, setInserted] = useState<Record<string, string>>({});
@@ -41,7 +41,8 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
   // 사용자가 쓴 글·올린 파일은 지우지 않고 비울지 묻는다(session.ts). props가 바뀔 때 렌더 중에 상태를 맞추는 React 권장 방식
   const [seen, setSeen] = useState({ cards, response });
   const [anchor, setAnchor] = useState(response); // 마지막으로 본 검색 결과(검색 실패로 null이 와도 기억)
-  const [stale, setStale] = useState(false);
+  const [stale, setStale] = useState<"question" | "fresh" | null>(null);
+  const [seenFresh, setSeenFresh] = useState(fresh);
   if (seen.cards !== cards || seen.response !== response) {
     const changed = workChanged(anchor, response);
     setSeen({ cards, response });
@@ -51,10 +52,15 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
       setValues(r.values); setInserted(r.inserted);
       setMessage(`담지 않은 선례의 인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요(타사 원문이면 출처 줄이 붙지 않으니 지우는 것을 권장합니다).` : ""}`);
     }
-    if (changed && (Object.values(r.values).some((v) => v.trim()) || docx)) setStale(true);
+    if (changed && (Object.values(r.values).some((v) => v.trim()) || docx)) setStale("question");
+  }
+  // "선례 없이 8D 작성하기"를 새로 눌렀으면, 이전에 쓴 글·올린 파일이 있을 때 비울지 묻는다
+  if (seenFresh !== fresh) {
+    setSeenFresh(fresh);
+    if (Object.values(values).some((v) => v.trim()) || docx) setStale("fresh");
   }
   function startOver() {
-    setValues({}); setInserted({}); setDocx(null); setChoice({}); setApplied(ALL_STEPS); setSubjectInput(null); setDocxError(""); setStale(false);
+    setValues({}); setInserted({}); setDocx(null); setChoice({}); setApplied(ALL_STEPS); setSubjectInput(null); setDocxError(""); setStale(null);
     setMessage("이전 작업을 비우고 새로 시작했습니다.");
   }
   const subject = subjectInput ?? response?.question ?? "";
@@ -123,7 +129,7 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
       <button type="button" className="btn ghost" onClick={onBack}>← 선례 찾기로</button>
       {cards.length ? <><span className="note">8D 근거로 담은 선례 {cards.length}건</span>{cards.map((c) => <span className="ed-chip campno" key={c.campno}>{c.campno}</span>)}</> : <span className="note">담은 선례 없음 — 선례 없이 작성합니다</span>}
     </div>
-    {stale && <p className="ed-err" role="alert">질문이 바뀌었습니다. 이전 질문의 선례 인용과 검색 결과 표는 본문에서 뺐지만, 이전에 쓴 글{docx ? "과 올린 파일" : ""}은 남아 있습니다 — SUBJECT 칸도 확인해 주세요. <button type="button" className="ed-link" onClick={startOver}>이전 작업 비우고 새로 시작</button> · <button type="button" className="ed-link" onClick={() => setStale(false)}>이어서 쓰기</button></p>}
+    {stale && <p className="ed-err" role="alert">{stale === "fresh" ? "새로 시작했지만" : "질문이 바뀌었습니다. 이전 질문의 선례 인용과 검색 결과 표는 본문에서 뺐지만,"} 이전에 쓴 글{docx ? "과 올린 파일" : ""}은 남아 있습니다 — SUBJECT 칸도 확인해 주세요. <button type="button" className="ed-link" onClick={startOver}>이전 작업 비우고 새로 시작</button> · <button type="button" className="ed-link" onClick={() => setStale(null)}>이어서 쓰기</button></p>}
     <p className="ed-intro"><b>기본은 선례 없이 작성하는 빈 양식입니다.</b> {cards.length ? <>칸 아래 "선례 참고 열기"에는 앞 화면에서 담은 선례만 나오고, <b>"본문에 텍스트로 넣기"를 누른 인용만</b> 그 칸에 평문으로 들어갑니다. 들어간 글은 일반 문서 글처럼 고치거나 지울 수 있고, </> : <>선례를 참고하려면 "← 선례 찾기로" 돌아가 선례를 담고 다시 오면 됩니다. </>}서비스는 어떤 칸도 스스로 채우지 않습니다.</p>
     <section className="ed-file" aria-label="내 8D 파일">
       <div className="ed-file-head"><b>내 8D 파일(.docx)</b><span className="ed-opt">선택</span><span className="note">올리면 그 파일의 칸 끝에 쓴 글을 덧붙인 새 파일로 내려받습니다. 파일은 이 기기 밖으로 나가지 않고 원본은 바뀌지 않습니다.</span></div>
