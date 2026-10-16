@@ -36,7 +36,7 @@
 사후 변경(2026-10-16, DEC-066 — 이슈 #143, 예비 시트 한 장을 받은 뒤의 변경): 위 규칙의 점수 계산(Hit@k·하한·Wilson·
 McNemar·부트스트랩·34문항 기준)은 바꾸지 않았다. `score`에 `--pilot-agreement-skipped DEC-066` 입력을 더했다 — 예비 일치
 확인(agreement)을 하지 않은 회차에서 이중 표시 검사 범위를 재확인 3문항으로 정하고(`check_rechecked_dec066`), 갈리지 않은
-후보는 같은 `label`을 그대로 쓰며(`agreed_label` 요구 완화), 갈린 후보는 두 시트에 같은 합의값과 note "합의: 우지훈 결정"을 요구하고, 재확인 3문항 밖의 합의값은 막으며, 결과 파일에 "일치율 미측정"과 갈린 후보 수·채점 보고 한계를 남긴다.
+후보는 같은 `label`을 그대로 쓰며(`agreed_label` 요구 완화), 갈린 후보는 두 시트에 같은 합의값과 note "합의: 우지훈 결정"(정확히 일치)을 요구하고, 갈리지 않은 후보의 합의값과 재확인 3문항 밖의 합의값·두 사람 표시는 막으며, 재확인 범위는 고정 3문항(PE12017·PE11022·PE18009)과 후보 파일의 질문 판본에 대조하고, 결과 파일에 "일치율 미측정"과 갈린 후보 수·채점 보고 한계를 남긴다.
 """
 
 import argparse
@@ -316,7 +316,8 @@ def require_resolved(g: dict, name: str) -> None:
 
 
 DEC066 = "DEC-066"
-DEC066_NOTE = "합의: 우지훈 결정"  # DEC-066 ③ — 갈린 후보의 합의값을 우지훈이 정했다는 표시
+DEC066_NOTE = "합의: 우지훈 결정"  # DEC-066 ③ — 갈린 후보의 합의값을 우지훈이 정했다는 표시(이 문구와 정확히 같아야 한다)
+DEC066_RECHECK = frozenset({"PE12017", "PE11022", "PE18009"})  # DEC-066 ②가 고정한 재확인 3문항
 DEC066_SCOPE = "재확인 3문항(DEC-066 — 예비 일치 확인 생략, 일치율 미측정)"
 DEC066_LIMIT = (  # DEC-066 영향 항목의 채점 보고 한계 문구(고정) — {n}은 재확인 3문항에서 두 사람의 label이 갈린 후보 수
     "표시자 간 일치율 미측정 — 예비 시트 한 장(완성본)을 받은 뒤 절차를 바꿨다. 작성자(B)는 그 시트의 값 종류와 같은 "
@@ -345,7 +346,7 @@ def check_rechecked_dec066(merged: dict, recheck: set[str]) -> int:
         sys.exit(
             f"label이 갈린 후보 {one_side[:3]} 등 {len(one_side)}개에 합의값이 한 사람 시트에만 있다 — 두 시트 모두에 같은 agreed_label을 적는다({flag})"
         )
-    no_reason = sorted(k for k in split if not any(DEC066_NOTE in n for n in rows[k]["notes"]))
+    no_reason = sorted(k for k in split if DEC066_NOTE not in rows[k]["notes"])
     if no_reason:
         sys.exit(
             f'label이 갈린 후보 {no_reason[:3]} 등 {len(no_reason)}개에 합의 이유 note("{DEC066_NOTE}")가 없다({flag})'
@@ -357,15 +358,17 @@ def check_rechecked_dec066(merged: dict, recheck: set[str]) -> int:
         sys.exit(
             f"재확인 3문항 밖의 후보 {outside[:3]} 등 {len(outside)}개에 agreed_label이 있다 — 합의값은 재확인 3문항에만 쓴다({flag})"
         )
-    # 갈리지 않은 후보에 다른 합의값을 적으면 두 사람의 같은 판단을 덮어쓴다 — 같은 label을 그대로 쓰는 규칙과 어긋난다
-    overwritten = sorted(
-        k
-        for k, m in rows.items()
-        if k not in split and m["agreed"] and m["agreed"] != set(m["labels"])
-    )
-    if overwritten:
+    # 합의값은 갈린 후보에만 적는다 — 갈리지 않은 후보는 같은 label을 그대로 쓴다(예전 절차처럼 모든 후보에 채운 시트도 거른다)
+    needless = sorted(k for k, m in rows.items() if k not in split and m["agreed"])
+    if needless:
         sys.exit(
-            f"두 사람의 label이 같은 후보 {overwritten[:3]}에 다른 agreed_label이 있다 — 같은 label을 그대로 쓴다({flag})"
+            f"두 사람의 label이 같은 후보 {needless[:3]} 등 {len(needless)}개에 agreed_label이 있다 — 합의값은 갈린 후보에만 적는다({flag})"
+        )
+    # 재확인 3문항 밖은 한 문항을 한 사람만 표시한다(DEC-066 ②) — 배정이 겹쳐 둘이 표시하면 표시가 같아도 멈춘다
+    doubled = sorted(k for k, m in merged.items() if k[0] not in recheck and len(m["labelers"]) > 1)
+    if doubled:
+        sys.exit(
+            f"재확인 3문항 밖의 후보 {doubled[:3]} 등 {len(doubled)}개를 두 사람 이상이 표시했다 — 나머지 문항은 한 사람만 표시한다({flag})"
         )
     return len(split)
 
@@ -627,6 +630,16 @@ def main(argv: list[str] | None = None) -> None:
     if a.pilot_agreement_skipped:
         agreements: list[dict] = []
         scope, must_double = DEC066_SCOPE, phase_actions("recheck", a.questions)
+        # 재확인 범위는 DEC-066이 고정한 3문항이어야 하고, 질문 파일은 후보를 만든 그 파일이어야 한다(AGENTS.md 2-4)
+        if must_double != DEC066_RECHECK:
+            sys.exit(
+                f"질문 파일 main 앞 3문항 {sorted(must_double)}이 DEC-066 재확인 3문항 {sorted(DEC066_RECHECK)}과 다르다"
+            )
+        q_sha = sha256_of(a.questions)
+        if any(c.get("questions_sha256") != q_sha for c in cands):
+            sys.exit(
+                "--questions 파일이 후보 파일을 만든 질문 파일(questions_sha256)과 다르다(DEC-066)"
+            )
         n_split = check_rechecked_dec066(merged, must_double)
     else:
         agreements = [json.loads(g.read_text(encoding="utf-8")) for g in a.agreement]
@@ -668,6 +681,7 @@ def main(argv: list[str] | None = None) -> None:
             for c, cand in zip(a.candidates, cands, strict=True)
         ],
         "sheets": {str(s): sha256_of(s) for s in a.sheets},
+        "questions": {"file": str(a.questions), "sha256": sha256_of(a.questions)},
         "numpy": version("numpy"),  # 부트스트랩 난수열은 numpy 판본에 따라 달라질 수 있다
     }
     out["note"] = (
