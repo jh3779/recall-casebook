@@ -36,7 +36,7 @@
 사후 변경(2026-10-16, DEC-066 — 이슈 #143, 예비 시트 한 장을 받은 뒤의 변경): 위 규칙의 점수 계산(Hit@k·하한·Wilson·
 McNemar·부트스트랩·34문항 기준)은 바꾸지 않았다. `score`에 `--pilot-agreement-skipped DEC-066` 입력을 더했다 — 예비 일치
 확인(agreement)을 하지 않은 회차에서 이중 표시 검사 범위를 재확인 3문항으로 정하고(`check_rechecked_dec066`), 갈리지 않은
-후보는 같은 `label`을 그대로 쓰며(`agreed_label` 요구 완화), 결과 파일에 "일치율 미측정"과 갈린 후보 수·채점 보고 한계를 남긴다.
+후보는 같은 `label`을 그대로 쓰며(`agreed_label` 요구 완화), 갈린 후보는 두 시트에 같은 합의값과 note "합의: 우지훈 결정"을 요구하고, 재확인 3문항 밖의 합의값은 막으며, 결과 파일에 "일치율 미측정"과 갈린 후보 수·채점 보고 한계를 남긴다.
 """
 
 import argparse
@@ -316,6 +316,7 @@ def require_resolved(g: dict, name: str) -> None:
 
 
 DEC066 = "DEC-066"
+DEC066_NOTE = "합의: 우지훈 결정"  # DEC-066 ③ — 갈린 후보의 합의값을 우지훈이 정했다는 표시
 DEC066_SCOPE = "재확인 3문항(DEC-066 — 예비 일치 확인 생략, 일치율 미측정)"
 DEC066_LIMIT = (  # DEC-066 영향 항목의 채점 보고 한계 문구(고정) — {n}은 재확인 3문항에서 두 사람의 label이 갈린 후보 수
     "표시자 간 일치율 미측정 — 예비 시트 한 장(완성본)을 받은 뒤 절차를 바꿨다. 작성자(B)는 그 시트의 값 종류와 같은 "
@@ -344,10 +345,17 @@ def check_rechecked_dec066(merged: dict, recheck: set[str]) -> int:
         sys.exit(
             f"label이 갈린 후보 {one_side[:3]} 등 {len(one_side)}개에 합의값이 한 사람 시트에만 있다 — 두 시트 모두에 같은 agreed_label을 적는다({flag})"
         )
-    no_reason = sorted(k for k in split if not rows[k]["notes"])
+    no_reason = sorted(k for k in split if not any(DEC066_NOTE in n for n in rows[k]["notes"]))
     if no_reason:
         sys.exit(
-            f"label이 갈린 후보 {no_reason[:3]} 등 {len(no_reason)}개에 합의 이유(note)가 없다({flag})"
+            f'label이 갈린 후보 {no_reason[:3]} 등 {len(no_reason)}개에 합의 이유 note("{DEC066_NOTE}")가 없다({flag})'
+        )
+    # 합의값은 재확인 3문항의 갈린 후보에만 쓴다(DEC-066 ②③) — 나머지 문항을 둘이 표시해 갈렸는데 한쪽 시트에만 합의값을
+    # 적으면 우지훈 결정도 이유 기록도 없이 갈림이 사라진다
+    outside = sorted(k for k, m in merged.items() if k[0] not in recheck and m["agreed"])
+    if outside:
+        sys.exit(
+            f"재확인 3문항 밖의 후보 {outside[:3]} 등 {len(outside)}개에 agreed_label이 있다 — 합의값은 재확인 3문항에만 쓴다({flag})"
         )
     # 갈리지 않은 후보에 다른 합의값을 적으면 두 사람의 같은 판단을 덮어쓴다 — 같은 label을 그대로 쓰는 규칙과 어긋난다
     overwritten = sorted(

@@ -1102,10 +1102,18 @@ def test_cli_score_dec066_split_candidate_needs_agreed_label_on_both_sheets_and_
     no_note = [row("R1", "A", "no", agreed_label="yes"), *c_rows[1:]]
     with pytest.raises(SystemExit, match="합의 이유"):
         ts.main(_dec066_args(tmp_path, a_ok, no_note))
+    other_note = [row("R1", "A", "no", agreed_label="yes", note="생산 기간이 겹침"), *c_rows[1:]]
+    with pytest.raises(SystemExit, match="합의 이유"):  # 일반 메모는 합의 이유로 세지 않는다
+        ts.main(_dec066_args(tmp_path, a_ok, other_note))
     ts.main(_dec066_args(tmp_path, a_ok, one_side))
     out = json.loads(capsys.readouterr().out)
-    assert out["checks"]["recheck_split_candidates"] == 1
+    assert out["checks"]["recheck_split_candidates"] == 1 and out["answered"] == 4
     assert out["limitations"] == [ts.DEC066_LIMIT.format(n=1)]
+    # 합의값이 점수에 실제로 쓰인다 — 갈린 R1을 no로 정하면 정답 있는 문항이 하나 준다
+    a_no = [row("R1", "A", "yes", agreed_label="no"), *a_rows[1:]]
+    c_no = [row("R1", "A", "no", agreed_label="no", note=ts.DEC066_NOTE), *c_rows[1:]]
+    ts.main(_dec066_args(tmp_path, a_no, c_no))
+    assert json.loads(capsys.readouterr().out)["answered"] == 3
 
 
 def test_cli_score_dec066_recheck_questions_need_two_labelers(tmp_path):
@@ -1142,3 +1150,16 @@ def test_cli_score_needs_exactly_one_of_agreement_or_dec066(tmp_path):
         ts.main([*args, "--agreement", agreement_file(tmp_path, "pilot", True)])
     with pytest.raises(SystemExit):
         ts.main([*without, "--pilot-agreement-skipped", "other"])
+
+
+def test_cli_score_dec066_refuses_agreed_label_outside_recheck_questions(tmp_path):
+    """합의값은 재확인 3문항에만 — 나머지 문항을 둘이 표시해 갈렸을 때 한쪽에만 합의값을 적어도 멈춘다(DEC-066 ②③)."""
+    same = [row(r, "A", "yes") for r in ("R1", "R2", "R3")]
+    q, base = _recheck_setup(tmp_path)
+    a = write_sheet(tmp_path / "a.csv", [*same, row("Q4", "A", "yes", agreed_label="no")])
+    c = write_sheet(
+        tmp_path / "c.csv", [{**r, "labeler_id": "L-C1"} for r in [*same, row("Q4", "A", "no")]]
+    )
+    head = base[: base.index("--sheets")]
+    with pytest.raises(SystemExit, match="재확인 3문항 밖"):
+        ts.main([*head, "--sheets", str(a), str(c), "--pilot-agreement-skipped", "DEC-066"])
