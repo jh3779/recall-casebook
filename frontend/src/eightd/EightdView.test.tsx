@@ -34,3 +34,11 @@ it("내 8D 파일을 올리기 전에는 내려받기가 꺼져 있고 파일이
   expect(markup).toContain("파일은 이 기기 밖으로 나가지 않고 원본은 바뀌지 않습니다");
   expect(markup).toMatch(/<button[^>]*disabled=""[^>]*title="위에서 내 8D 파일\(\.docx\)을 올리면 켜집니다"[^>]*>원본 서식 그대로 내려받기 \(\.docx\)<\/button>/);
 });
+it("적용할 단계 선택이 있고 기본은 전체 적용이며 D2·D4만 프리셋이 있다", () => {
+  const markup = renderToStaticMarkup(<EightdView cards={picked} response={response} onBack={() => {}} />);
+  expect(markup).toContain("적용할 단계");
+  for (let n = 1; n <= 8; n++) expect(markup).toMatch(new RegExp(`<button type="button" aria-pressed="true" class="on" title="[^"]+">D${n}</button>`));
+  expect(markup).toMatch(/aria-pressed="true" class="on">전체<\/button>/);
+  expect(markup).toMatch(/aria-pressed="false"[^>]*>D2·D4만<\/button>/);
+  expect(markup).not.toContain("적용 안 함");
+});

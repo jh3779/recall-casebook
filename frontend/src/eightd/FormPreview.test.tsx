@@ -22,3 +22,9 @@ it("선례를 넣었을 때의 근거 데이터 줄은 표 밖에 붙는다", ()
   const markup = renderToStaticMarkup(<FormPreview subject="" values={{}} evidenceNote="※ 선례 근거 데이터: build x" />);
   expect(markup).toContain('<p class="fp-note">※ 선례 근거 데이터: build x</p>');
 });
+it("적용하지 않은 단계는 써 둔 글이 있어도 칸을 비워 두고 표시한다", () => {
+  const markup = renderToStaticMarkup(<FormPreview subject="" values={{ d2: "문제", d3: "잠정" }} evidenceNote={null} only={new Set([2])} />);
+  expect(markup).toContain("<p>문제</p>");
+  expect(markup).not.toContain("잠정");
+  expect(markup.match(/fp-cell off/g)).toHaveLength(7);
+});

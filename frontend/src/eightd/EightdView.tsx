@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Card, SearchResponse } from "../search/types";
-import { composeDocument, evidenceFooter, insertBlock, removeBlock, STEPS, stepParagraphs, TARGET } from "./document";
+import { ALL_STEPS, composeDocument, CORE_STEPS, evidenceFooter, insertBlock, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
 import { DocxError, inspectDocx, patchDocx, type Place } from "./docxPatch";
 import { EvidenceCard } from "./EvidenceCard";
 import { FormPreview } from "./FormPreview";
@@ -33,10 +33,12 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
   const [docx, setDocx] = useState<{ file: File; steps: ({ step: number } & Place)[] } | null>(null);
   const [docxError, setDocxError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [applied, setApplied] = useState<ReadonlySet<number>>(ALL_STEPS);
   const subject = subjectInput ?? response?.question ?? "";
   const customers = new Set(response?.customer_precedents.map((c) => c.campno));
   const insertedCount = (step: string) => Object.keys(inserted).filter((k) => k.startsWith(`${step}|`)).length;
-  const fileText = composeDocument({ subject, values, withEvidence: Object.keys(inserted).length > 0, prov: response });
+  const appliedInserted = Object.keys(inserted).filter((k) => applied.has(Number(k.split("|")[0]))).length;
+  const fileText = composeDocument({ subject, values, withEvidence: appliedInserted > 0, prov: response, only: applied });
 
   function toggle(step: string, id: string, block: string) {
     const key = `${step}|${id}`;
@@ -66,11 +68,11 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
     if (!docx) return;
     setBusy(true); setMessage("");
     try {
-      const steps = Object.fromEntries(STEPS.map((step) => [step.n, stepParagraphs(step, values)]));
-      const r = await patchDocx(docx.file, { subject, steps, footer: Object.keys(inserted).length && response ? evidenceFooter(response) : null });
-      const name = `${docx.file.name.replace(/\.docx$/i, "")}_${Object.keys(inserted).length ? "선례삽입" : "작성"}.docx`;
+      const steps = Object.fromEntries(STEPS.filter((step) => applied.has(step.n)).map((step) => [step.n, stepParagraphs(step, values)]));
+      const r = await patchDocx(docx.file, { subject, steps, footer: appliedInserted && response ? evidenceFooter(response) : null });
+      const name = `${docx.file.name.replace(/\.docx$/i, "")}_${appliedInserted ? "선례삽입" : "작성"}.docx`;
       download(r.blob, name);
-      setMessage(`${name} 파일을 내려받았습니다. 칸에 넣은 단계: ${r.filled.length ? stepLabel(r.filled) : "없음(쓴 글이 없습니다)"}.${r.missing.length ? ` 파일에서 칸을 찾지 못해 넣지 못한 단계: ${stepLabel(r.missing)} — "파일 글 복사"로 직접 붙여 넣어 주세요.` : ""}`);
+      setMessage(`${name} 파일을 내려받았습니다. 적용한 단계: ${stepLabel([...applied].sort((a, b) => a - b))}. 칸에 넣은 단계: ${r.filled.length ? stepLabel(r.filled) : "없음(쓴 글이 없습니다)"}.${r.missing.length ? ` 파일에서 칸을 찾지 못해 넣지 못한 단계: ${stepLabel(r.missing)} — "파일 글 복사"로 직접 붙여 넣어 주세요.` : ""}`);
     } catch (e) { setMessage(e instanceof DocxError ? e.message : "파일을 만들지 못했습니다"); }
     finally { setBusy(false); }
   }
@@ -90,7 +92,7 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
       {cards.map((card) => <EvidenceCard key={card.campno} step={step as EvidenceStep} card={card} customer={customers.has(card.campno)} inserted={inserted[`${step}|${card.campno}`] !== undefined} onToggle={(block) => toggle(step, card.campno, block)} />)}
     </details>;
   };
-  const total = Object.keys(inserted).length;
+  const total = appliedInserted;
   return <main className="view-eightd">
     <h1>8D 작성</h1>
     <div className="ed-picked">
@@ -103,11 +105,21 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
       <input type="file" aria-label="8D 양식 파일 선택" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => onFile(e.target.files?.[0])} />
       {docxError && <p className="ed-err" role="alert">{docxError}</p>}
       {docx && <><p className="note"><span className="ed-fn">{docx.file.name}</span> — 단계 {docx.steps.length}개의 칸을 찾았습니다. 못 찾은 단계는 "파일 글 복사"로 직접 붙여 넣습니다.</p>
-        <table className="ed-map"><thead><tr><th>단계</th><th>양식에서 찾은 칸</th></tr></thead><tbody>{STEPS.map((st) => { const hit = docx.steps.find((x) => x.step === st.n); return <tr key={st.n}><td>D{st.n} {dname(st.n)}</td><td>{hit ? <span className="ed-ok">표 {hit.table} · {hit.row}행 · {hit.col}열 ✓</span> : <span className="note">찾지 못함</span>}</td></tr>; })}</tbody></table></>}
+        <table className="ed-map"><thead><tr><th>단계</th><th>양식에서 찾은 칸</th></tr></thead><tbody>{STEPS.map((st) => { const hit = docx.steps.find((x) => x.step === st.n); return <tr key={st.n} className={applied.has(st.n) ? "" : "off"}><td>D{st.n} {dname(st.n)}{applied.has(st.n) ? "" : " (적용 안 함)"}</td><td>{hit ? <span className="ed-ok">표 {hit.table} · {hit.row}행 · {hit.col}열 ✓</span> : <span className="note">찾지 못함</span>}</td></tr>; })}</tbody></table></>}
+    </section>
+    <section className="ed-apply" aria-label="적용할 단계">
+      <div className="ed-apply-head"><b>적용할 단계</b><span className="note">체크한 단계만 미리보기·복사·내려받기 파일에 들어갑니다. 빼도 써 둔 글은 지워지지 않고, 파일의 그 칸은 손대지 않습니다.</span></div>
+      <div className="ed-apply-row">
+        <div className="ed-chips" role="group" aria-label="8D 단계 선택">{STEPS.map((st) => <button type="button" key={st.n} aria-pressed={applied.has(st.n)} className={applied.has(st.n) ? "on" : ""} title={st.name} onClick={() => setApplied(toggleStep(applied, st.n))}>D{st.n}</button>)}</div>
+        <div className="ed-presets"><button type="button" aria-pressed={sameSteps(applied, ALL_STEPS)} className={sameSteps(applied, ALL_STEPS) ? "on" : ""} onClick={() => setApplied(ALL_STEPS)}>전체</button><button type="button" aria-pressed={sameSteps(applied, CORE_STEPS)} className={sameSteps(applied, CORE_STEPS) ? "on" : ""} onClick={() => setApplied(CORE_STEPS)}>D2·D4만</button></div>
+      </div>
     </section>
     <div className="ed-form">
       <label className="ed-subject"><span>SUBJECT</span><input type="text" lang="en" value={subject} onChange={(e) => setSubjectInput(e.target.value)} /></label>
-      {STEPS.map((step) => <section className="ed-step" key={step.n} aria-labelledby={`ed-h-${step.n}`}>
+      {STEPS.map((step) => !applied.has(step.n) ? <section className="ed-step off" key={step.n} aria-labelledby={`ed-h-${step.n}`}>
+        <h2 id={`ed-h-${step.n}`}><span className="ed-n">DISCIPLINE {step.n}</span>{step.name}</h2>
+        <p className="note ed-off">적용 안 함 — 미리보기·파일에서 빠집니다. 써 둔 글은 그대로 남아 있습니다. <button type="button" className="ed-link" onClick={() => setApplied(toggleStep(applied, step.n))}>적용하기</button></p>
+      </section> : <section className="ed-step" key={step.n} aria-labelledby={`ed-h-${step.n}`}>
         <h2 id={`ed-h-${step.n}`}><span className="ed-n">DISCIPLINE {step.n}</span>{step.name}</h2>
         <div className={`ed-fields${step.fields.length > 1 ? ` n${step.fields.length}` : ""}`}>
           {step.fields.map((f) => <label key={f.key} className="ed-field"><span>{f.label} <em className="ed-own">작성자 기입</em></span>
@@ -124,7 +136,7 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
     <section className="ed-preview" aria-label="미리보기">
       <div className="ed-preview-head"><b>파일 미리보기</b><span className="note">칸에 쓴 글이 양식 어디에 앉는지, 자동 갱신</span>
         <div className="ed-tabs" role="group" aria-label="미리보기 보기 방식"><button type="button" aria-pressed={previewMode === "form"} className={previewMode === "form" ? "on" : ""} onClick={() => setPreviewMode("form")}>양식 미리보기</button><button type="button" aria-pressed={previewMode === "text"} className={previewMode === "text" ? "on" : ""} onClick={() => setPreviewMode("text")}>텍스트</button></div></div>
-      {previewMode === "form" ? <FormPreview subject={subject} values={values} evidenceNote={total && response ? evidenceFooter(response) : null} /> : <pre className="ev-text paper">{fileText}</pre>}
+      {previewMode === "form" ? <FormPreview subject={subject} values={values} only={applied} evidenceNote={total && response ? evidenceFooter(response) : null} /> : <pre className="ev-text paper">{fileText}</pre>}
     </section>
   </main>;
 }

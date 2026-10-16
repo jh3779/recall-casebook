@@ -86,3 +86,16 @@
 .ed-map th { text-align: left; font-size: var(--fs-xs); color: var(--ink-3); padding: 4px 8px; border-bottom: 1px solid var(--line-strong); }
 .ed-map td { padding: 4px 8px; border-bottom: 1px solid var(--line); }
 .ed-ok { color: var(--accent); font-weight: 600; }
+.ed-apply { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); padding: 10px 14px; display: grid; gap: 8px; }
+.ed-apply-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.ed-apply-row { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.ed-chips, .ed-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.ed-chips button, .ed-presets button { font: inherit; font-size: var(--fs-s); font-weight: 600; border: 1px solid var(--accent-2); background: var(--surface); color: var(--accent); border-radius: var(--radius-pill); padding: 3px 12px; cursor: pointer; }
+.ed-chips button.on, .ed-presets button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.ed-chips button:focus-visible, .ed-presets button:focus-visible { outline: none; box-shadow: var(--focus); }
+.ed-presets { margin-left: auto; }
+.ed-step.off h2 { opacity: 0.55; }
+.ed-off { margin: 0 16px; }
+.ed-link { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--accent-2); text-decoration: underline; cursor: pointer; }
+.ed-map tr.off td { color: var(--ink-3); }
+.fp-cell.off { background: repeating-linear-gradient(135deg, #fff, #fff 6px, #f3f3f3 6px, #f3f3f3 12px); }

@@ -15,6 +15,12 @@ export const STEPS: Step[] = [
   { n: 8, name: "CLOSE", fields: [{ key: "d8_received", label: "CAR Received" }, { key: "d8_review", label: "Review" }, { key: "d8_approval", label: "Approval" }] },
 ];
 
+export const ALL_STEPS: ReadonlySet<number> = new Set(STEPS.map((s) => s.n));
+/** 선례 근거가 핵심인 단계 — 문제 기술(D2)과 원인(D4)만 적용하는 프리셋 */
+export const CORE_STEPS: ReadonlySet<number> = new Set([2, 4]);
+export const toggleStep = (applied: ReadonlySet<number>, n: number): Set<number> => { const next = new Set(applied); if (!next.delete(n)) next.add(n); return next; };
+export const sameSteps = (a: ReadonlySet<number>, b: ReadonlySet<number>) => a.size === b.size && [...a].every((n) => b.has(n));
+
 export const shortLabel = (label: string) => label.split(" — ")[0];
 
 /** 양식 칸에 들어갈 한 문단 — prefix는 칸이 여럿인 단계에서 굵게 붙는 칸 이름 */
@@ -44,10 +50,10 @@ export function removeBlock(value: string, block: string): string | null {
 /** 선례를 하나라도 넣었을 때 문서 끝에 붙는 근거 데이터 한 줄 */
 export const evidenceFooter = (prov: Pick<ProvenanceData, "build_id" | "snapshot_date">) => `※ 선례 근거 데이터: build ${prov.build_id} · 스냅샷 ${prov.snapshot_date} · 대괄호 [타사 선례 …] 글은 타사 공개 원문이며 자사 사실이 아닙니다.`;
 
-/** 파일 본문에 들어갈 글 — 칸에 쓴 글만 그대로. 선례를 하나라도 넣었으면 근거 데이터 한 줄을 끝에 붙인다 */
-export function composeDocument({ subject, values, withEvidence, prov }: { subject: string; values: Record<string, string>; withEvidence: boolean; prov: Pick<ProvenanceData, "build_id" | "snapshot_date"> | null }): string {
+/** 파일 본문에 들어갈 글 — 칸에 쓴 글만 그대로(only에 든 단계만). 선례를 하나라도 넣었으면 근거 데이터 한 줄을 끝에 붙인다 */
+export function composeDocument({ subject, values, withEvidence, prov, only = ALL_STEPS }: { subject: string; values: Record<string, string>; withEvidence: boolean; prov: Pick<ProvenanceData, "build_id" | "snapshot_date"> | null; only?: ReadonlySet<number> }): string {
   const out = [`8D REPORT\nSUBJECT: ${subject}\n`];
-  for (const step of STEPS) {
+  for (const step of STEPS.filter((st) => only.has(st.n))) {
     const parts = step.fields.flatMap((f) => (values[f.key]?.trim() ? [`${f.label}\n${values[f.key].trim()}`] : []));
     out.push(`DISCIPLINE ${step.n} · ${step.name}\n${parts.length ? parts.join("\n\n") : "(미작성)"}\n`);
   }
