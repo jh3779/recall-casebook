@@ -1,6 +1,6 @@
 # Codex 작업 지시 — 검색 화면 구현 (공통 규칙)
 
-> 이 폴더는 **Codex(구현 에이전트)**에게 주는 지시문이다. 사람은 Codex에 "`docs/design-system/codex/README.md`와 `task-D-…md`를 읽고 작업 D를 해 줘"처럼 한 작업씩 맡긴다.
+> 이 폴더는 **Codex(구현 에이전트)**에게 주는 지시문이다. 사람은 Codex에 "`docs/archive/design-system-codex/README.md`와 `task-D-…md`를 읽고 작업 D를 해 줘"처럼 한 작업씩 맡긴다.
 > 작성: 2026-10-13 (우지훈 결정 기반, Claude Code 작성). 설계 정본은 `docs/design-system/`(v1.0).
 
 ## 작업 순서

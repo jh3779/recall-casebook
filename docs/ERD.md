@@ -31,7 +31,9 @@ flowchart LR
     PDF -->|"rclrpt all (pdftotext)"| CAUJ
     RECJ --> BUILDJ
     RECJ & EVALJ & CAUJ -->|load_db| T
-    T -->|server.rag.bundle| STOR
+    RECJ & CAUJ -->|"bundle build: 로컬 카드·원인"| STOR
+    FLAT -->|"조사 요약(FLAT_INV 원본 대조)"| STOR
+    T -->|"벡터 가져오기 + 검사 대조"| STOR
     STOR -->|RAG_SOURCE=bundle| MEM
     MEM -->|POST /search| API["SearchResponse<br/>(4절)"]
 ```
@@ -48,7 +50,7 @@ erDiagram
     data_builds ||--o{ causes : "build_id"
     data_builds ||--o{ embedding_sets : "build_id"
     embedding_sets ||--o{ recall_embeddings : "build_id, model"
-    recalls ||--o| recall_embeddings : "build_id, campno"
+    recalls ||--o{ recall_embeddings : "build_id, campno"
     embedding_sets ||--o{ serving_bundles : "build_id, model"
     recalls }o..o| causes : "campaign6 = campaign (FK 없음)"
     eval_questions }o..o{ recalls : "gold_campnos[] (배열, 적재 때 대조)"
@@ -121,6 +123,7 @@ erDiagram
         text texts_sha256
         text model_fingerprint
         integer rows
+        timestamptz loaded_at
     }
     recall_embeddings {
         text build_id PK,FK

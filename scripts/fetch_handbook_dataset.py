@@ -3,7 +3,7 @@
 사용법: uv run python scripts/fetch_handbook_dataset.py
 
 AGENTS.md 7절: 원본 데이터는 커밋하지 않고, 다시 만드는 스크립트를 커밋한다.
-docs/기획v1.md 3절의 실측치(34개 핵심 부서·4,612개 md)는 이 스크립트가 만든
+docs/archive/기획v1.md 3절의 실측치(34개 핵심 부서·4,612개 md)는 이 스크립트가 만든
 결과를 기준으로 한다 — 실행 후 수치가 다르면 스크립트가 실패해야 한다.
 """
 
@@ -79,7 +79,7 @@ def verify(content_dir: Path) -> None:
     if len(md_files) != EXPECTED_MD_COUNT:
         sys.exit(
             f"md 파일 수가 예상과 다르다: {len(md_files)}개 (기대값 {EXPECTED_MD_COUNT}개). "
-            "소스 저장소가 갱신됐을 수 있다 — docs/기획v1.md 3절을 다시 실측해 갱신한다."
+            "소스 저장소가 갱신됐을 수 있다 — docs/archive/기획v1.md 3절을 다시 실측해 갱신한다."
         )
 
     print(f"검증 통과: {len(md_files)}개 md 파일 (기대값과 일치)")
