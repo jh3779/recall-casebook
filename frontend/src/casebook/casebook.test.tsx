@@ -63,3 +63,13 @@ it("앱 바에 케이스북 탭이 있고 현재 화면을 눌린 상태로 보�
   expect(markup).toMatch(/aria-pressed="true"[^>]*>케이스북/);
   expect(markup).toMatch(/aria-pressed="false"[^>]*>선례 검색/);
 });
+it("케이스북 화면 문구에 영어 판정·단정 표현이 없다", () => {
+  const forbidden = /applies|verdict|is_?applicable|recall[_\s-]?required|root\s+cause\s+is\b|is\s+the\s+cause\b|will\s+be\s+recalled/i; // principle-ok: 판정 문구가 화면에 없는지 검사하는 금지 패턴
+  const texts = [
+    renderToStaticMarkup(<CasebookView health="loading" />),
+    renderToStaticMarkup(<NotesPanel cards={[cards[0]]} caseName="Case A" notes={{}} onChange={() => {}} persistent storageBlocked={false} onCopy={() => {}} onClear={() => {}} copyMessage="" />),
+    ...cards.map((card) => renderToStaticMarkup(<CaseDetail card={card} response={response} onRemove={() => {}} />)),
+  ];
+  // 원문(NHTSA 글, `cb-src-text` 문단)은 바꾸지 않으므로 빼고 화면이 붙인 문구만 본다
+  for (const markup of texts) expect(markup.replace(/<p class="cb-src-text"[^>]*>.*?<\/p>/gs, "").match(forbidden)).toBeNull();
+});

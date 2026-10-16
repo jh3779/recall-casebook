@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { draft } from "../api";
+import { fmtDate } from "../recalls";
 import { sameBuild, type DraftResponse } from "../eightd/draft";
 import type { Card } from "../search/types";
 import { errorText } from "./errors";
@@ -55,7 +56,7 @@ export function GroupPanel({ question, build, cards }: { question: string; build
           <b className="cb-id">{item.campno}</b>{byId.get(item.campno) && <span className="cb-muted"> · {byId.get(item.campno)!.maker}</span>}
           <q lang="en">{item.quote}</q>
           {item.cause_status === "stated_unknown" && <span className="cb-muted">Text opens with a not-reported / under-investigation expression; this does not mean the cause is unknown.</span>}
-          <span className="cb-muted" lang={langOf(item.speaker)}>Said by {item.speaker}{item.cause_source ? ` · ${item.cause_source.file} · sha256 ${item.cause_source.pdf_sha256}` : ""}</span>
+          <span className="cb-muted" lang={langOf(item.speaker)}>Said by {item.speaker}{item.cause_source ? ` · ${item.cause_source.file} · submitted ${fmtDate(item.cause_source.submission_date)} · sha256 ${item.cause_source.pdf_sha256}` : ""}</span>
         </li>)}</ul>
       </article>)}
       {result.groups.length > 0 && result.ungrouped.length > 0 && <p className="cb-muted">{result.ungrouped.length} cause text(s) were not grouped; read them in the middle column.</p>}

@@ -7,7 +7,7 @@ import { CaseList } from "./CaseList";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
-import { adoptNotes, browserStorage, clearNotes, normalizeCaseName, notesText, saveNote } from "./notes";
+import { adoptNotes, browserStorage, clearNotes, nextUnsaved, normalizeCaseName, notesText, saveNote } from "./notes";
 
 /**
  * Recall Casebook. for Engineer (DEC-067) — 선례를 체크하면 원인 원문이 근거로 쌓이고, 선례별 메모와 원인 묶기를 오른쪽에 둔다.
@@ -23,7 +23,8 @@ export default function CasebookView({ health }: { health: HealthState }) {
   const [caseName, setCaseName] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [copyMessage, setCopyMessage] = useState("");
-  const [saveFailed, setSaveFailed] = useState(false); // 사건 이름이 있는데 저장소에 쓰지 못한 적이 있다 — 저장됐다고 말하지 않는다
+  const [unsavedNotes, setUnsavedNotes] = useState<ReadonlySet<string>>(new Set()); // 저장소에 쓰지 못한 메모의 리콜 번호 — 하나라도 있으면 저장됐다고 말하지 않는다
+  const saveFailed = unsavedNotes.size > 0;
   const storage = useMemo(() => browserStorage(), []);
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => request.current?.abort(), []);
@@ -41,11 +42,12 @@ export default function CasebookView({ health }: { health: HealthState }) {
     const name = normalizeCaseName(caseInput);
     setCaseInput(name);
     if (name === caseName) return;
+    if (saveFailed && !confirm("Some notes could not be saved and will be lost if you switch cases. Switch anyway?")) { setCaseInput(caseName); return; }
     setCaseName(name);
     // 이름 없이 적은 메모만 첫 사건 이름으로 옮긴다 — 다른 사건 이름이 붙어 있던 메모가 새 사건에 섞이지 않게
     const next = name ? adoptNotes(storage, name, caseName ? {} : notes) : { notes: {}, saved: true };
     setNotes(next.notes);
-    setSaveFailed(!!storage && !!name && !next.saved);
+    setUnsavedNotes(!!storage && !!name && !next.saved ? new Set(Object.keys(next.notes)) : new Set());
   }
   async function run() {
     const value = question.trim();
@@ -73,7 +75,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
       return next;
     });
     const saved = saveNote(storage, caseName, campno, text);
-    if (caseName && storage) setSaveFailed(!saved);
+    if (caseName && storage) setUnsavedNotes((prev) => nextUnsaved(prev, campno, saved));
   }
   async function copyAll() {
     try { await navigator.clipboard.writeText(notesText(checked, notes)); setCopyMessage("Copied."); }
@@ -81,9 +83,8 @@ export default function CasebookView({ health }: { health: HealthState }) {
   }
   function clearCase() {
     if (!confirm(caseName ? `Delete all notes saved under “${caseName}”?` : "Delete all notes in this tab?")) return;
-    const cleared = clearNotes(storage, caseName);
-    setNotes({}); setCopyMessage("");
-    if (caseName && storage) setSaveFailed(!cleared);
+    if (caseName && storage && !clearNotes(storage, caseName)) { setCopyMessage("Could not delete the saved notes — they may remain in this browser."); return; } // 지우지 못했으면 화면도 그대로 둔다
+    setNotes({}); setCopyMessage(""); setUnsavedNotes(new Set());
   }
   const noEnglish = !!question.trim() && !/[A-Za-z]/.test(question);
   const persistent = !!caseName && !!storage;
@@ -93,7 +94,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
       <div className="cb-brand"><span className="cb-brand-mark" aria-hidden="true" /><h1>Recall Casebook.<small> for Engineer</small></h1></div>
       <label className="cb-case-name">
         <span>Case name</span>
-        <input value={caseInput} maxLength={80} onChange={(e) => setCaseInput(e.target.value)} onBlur={commitCase} onKeyDown={(e) => { if (e.key === "Enter") commitCase(); }} placeholder="e.g. Sorento rear camera, Oct" aria-describedby="cb-case-hint" />
+        <input value={caseInput} maxLength={80} onChange={(e) => setCaseInput(e.target.value)} onBlur={commitCase} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) commitCase(); }} placeholder="e.g. Sorento rear camera, Oct" aria-describedby="cb-case-hint" />
         <small id="cb-case-hint" className="cb-muted">Changing the name switches to that case's notes.</small>
       </label>
       <span className="cb-health" role="status">{typeof health === "object" ? `build ${health.build_id} · snapshot ${health.snapshot_date}` : health === "loading" ? "Checking server…" : "Server version unavailable"}</span>

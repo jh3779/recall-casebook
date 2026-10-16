@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { adoptNotes, clearNotes, loadNotes, normalizeCaseName, notesText, noteKey, saveNote, UNNAMED_MARK, type StorageLike } from "./notes";
+import { adoptNotes, clearNotes, loadNotes, nextUnsaved, normalizeCaseName, notesText, noteKey, saveNote, UNNAMED_MARK, type StorageLike } from "./notes";
 
 function memory(): StorageLike & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -82,4 +82,28 @@ it("clearNotes는 저장소가 막혔으면 false", () => {
   const blocked: StorageLike = { length: 1, key: () => "casebook.note.v1|A|1", getItem: () => null, setItem: () => {}, removeItem: () => { throw new Error("blocked"); } };
   expect(clearNotes(blocked, "A")).toBe(false);
   expect(clearNotes(null, "A")).toBe(false);
+});
+it("저장된 글의 일부 단어와 겹쳐도 다른 메모면 버리지 않는다", () => {
+  const s = memory();
+  saveNote(s, "Case A", "1", "not confirmed");
+  const { notes } = adoptNotes(s, "Case A", { "1": "confirmed" });
+  expect(notes["1"]).toBe(`not confirmed\n\n${UNNAMED_MARK}\nconfirmed`);
+});
+it("저장 실패한 메모 집합은 다른 메모를 저장해도 비지 않는다", () => {
+  let failed = nextUnsaved(new Set(), "A", false);
+  failed = nextUnsaved(failed, "B", true);
+  expect([...failed]).toEqual(["A"]);
+  failed = nextUnsaved(failed, "B", false);
+  expect([...failed].sort()).toEqual(["A", "B"]);
+  failed = nextUnsaved(nextUnsaved(failed, "A", true), "B", true);
+  expect(failed.size).toBe(0);
+});
+it("80자에서 이모지가 잘려도 사건 이름 처리가 예외를 던지지 않는다", () => {
+  const name = `${"x".repeat(79)}😀😀`;
+  const normalized = normalizeCaseName(name);
+  expect(Array.from(normalized)).toHaveLength(80);
+  const s = memory();
+  expect(() => loadNotes(s, name)).not.toThrow();
+  expect(saveNote(s, name, "1", "글")).toBe(true);
+  expect(loadNotes(s, name)).toEqual({ "1": "글" });
 });
