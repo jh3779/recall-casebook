@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import fixture from "../search/__fixtures__/search_airbag.json";
 import type { SearchResponse } from "../search/types";
-import { workChanged } from "./session";
+import { nextEightdInput, workChanged } from "./session";
 
 const response = fixture as SearchResponse;
 const other = { ...response, question: "a different question about brakes" } as SearchResponse;
@@ -20,4 +20,10 @@ it("한쪽에 검색 결과가 없으면(선례 없이 쓰던 작업·검색 실
   expect(workChanged(null, response)).toBe(false);
   expect(workChanged(response, null)).toBe(false);
   expect(workChanged(null, null)).toBe(false);
+});
+it("응답 없이 열면(검색 중·실패) 마지막 응답을 유지하고, 새 응답이 있으면 새것으로 바꾼다", () => {
+  const prev = { cards: [], response };
+  expect(nextEightdInput(prev, [], null).response).toBe(response);
+  expect(nextEightdInput(prev, [], other).response).toBe(other);
+  expect(nextEightdInput({ cards: [], response: null }, [], null).response).toBeNull();
 });

@@ -1,4 +1,4 @@
-import type { SearchResponse } from "../search/types";
+import type { Card, SearchResponse } from "../search/types";
 
 /**
  * 8D 작성 화면에 들어온 검색 결과가 이전 작업의 것과 다른 질문·서버 판본에서 나온 것인가.
@@ -7,3 +7,7 @@ import type { SearchResponse } from "../search/types";
  */
 export const workChanged = (prev: SearchResponse | null, next: SearchResponse | null): boolean =>
   !!prev && !!next && (prev.question !== next.question || prev.build_id !== next.build_id);
+
+export interface EightdInput { cards: readonly Card[]; response: SearchResponse | null }
+/** 검색 화면에서 "8D 작성"을 누를 때의 새 입력 — 검색이 진행 중·실패라 응답이 비어 있으면 마지막 응답을 유지한다(넣어 둔 글의 출처 꼬리줄·SUBJECT·검색 결과 표 토글이 사라지지 않게, 리뷰 지적) */
+export const nextEightdInput = (prev: EightdInput, cards: readonly Card[], response: SearchResponse | null): EightdInput => ({ cards, response: response ?? prev.response });

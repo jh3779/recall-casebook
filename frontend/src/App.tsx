@@ -2,8 +2,9 @@ import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "
 import { health } from "./api";
 import { AppBar } from "./AppBar";
 import EightdView from "./eightd/EightdView";
+import { nextEightdInput, type EightdInput } from "./eightd/session";
 import SearchView from "./search/SearchView";
-import type { Card, HealthState, SearchResponse } from "./search/types";
+import type { HealthState } from "./search/types";
 
 const ShowroomView = lazy(() => import("./showroom/ShowroomView"));
 type View = "search" | "showroom" | "8d";
@@ -18,7 +19,7 @@ class ShowroomBoundary extends Component<{ children: ReactNode }, { failed: bool
 }
 export default function App() {
   const [view, setView] = useState<View>(currentView);
-  const [eightd, setEightd] = useState<{ cards: readonly Card[]; response: SearchResponse | null }>({ cards: [], response: null });
+  const [eightd, setEightd] = useState<EightdInput>({ cards: [], response: null });
   const [server, setServer] = useState<HealthState>("loading");
   const [draft, setDraft] = useState<{ question: string; key: number } | null>(null);
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function App() {
   function navigate(next: View) { setView(next); location.hash = next; }
   return <div className="app-shell">
     <AppBar view={view} onView={navigate} health={server} />
-    <div hidden={view !== "search"}><SearchView key={draft?.key ?? 0} health={server} draft={draft} onShowroom={() => navigate("showroom")} onWrite8d={(cards, response) => { setEightd({ cards, response }); navigate("8d"); }} /></div>
+    <div hidden={view !== "search"}><SearchView key={draft?.key ?? 0} health={server} draft={draft} onShowroom={() => navigate("showroom")} onWrite8d={(cards, response) => { setEightd((prev) => nextEightdInput(prev, cards, response)); navigate("8d"); }} /></div>
     <div hidden={view !== "8d"}><EightdView cards={eightd.cards} response={eightd.response} onBack={() => navigate("search")} /></div>
     {view === "showroom" && <ShowroomBoundary><Suspense fallback={<div className="showroom-fallback" role="status">3D 쇼룸 불러오는 중…</div>}><ShowroomView onSearch={(question) => { setDraft((old) => ({ question, key: (old?.key ?? 0) + 1 })); navigate("search"); }} /></Suspense></ShowroomBoundary>}
   </div>;

@@ -49,7 +49,7 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
     const r = pruneInserted(values, inserted, new Set(cards.map((c) => c.campno)), changed);
     if (r.removed.length || r.blocked.length) {
       setValues(r.values); setInserted(r.inserted);
-      setMessage(`담지 않은 선례의 인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요.` : ""}`);
+      setMessage(`담지 않은 선례의 인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요(타사 원문이면 출처 줄이 붙지 않으니 지우는 것을 권장합니다).` : ""}`);
     }
     if (changed && (Object.values(r.values).some((v) => v.trim()) || docx)) setStale(true);
   }
@@ -123,7 +123,7 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
       <button type="button" className="btn ghost" onClick={onBack}>← 선례 찾기로</button>
       {cards.length ? <><span className="note">8D 근거로 담은 선례 {cards.length}건</span>{cards.map((c) => <span className="ed-chip campno" key={c.campno}>{c.campno}</span>)}</> : <span className="note">담은 선례 없음 — 선례 없이 작성합니다</span>}
     </div>
-    {stale && <p className="ed-err" role="alert">질문이 바뀌었습니다. 이전 질문의 선례 인용과 검색 결과 표는 본문에서 뺐지만, 이전에 쓴 글{docx ? "과 올린 파일" : ""}은 남아 있습니다. <button type="button" className="ed-link" onClick={startOver}>이전 작업 비우고 새로 시작</button> · <button type="button" className="ed-link" onClick={() => setStale(false)}>이어서 쓰기</button></p>}
+    {stale && <p className="ed-err" role="alert">질문이 바뀌었습니다. 이전 질문의 선례 인용과 검색 결과 표는 본문에서 뺐지만, 이전에 쓴 글{docx ? "과 올린 파일" : ""}은 남아 있습니다 — SUBJECT 칸도 확인해 주세요. <button type="button" className="ed-link" onClick={startOver}>이전 작업 비우고 새로 시작</button> · <button type="button" className="ed-link" onClick={() => setStale(false)}>이어서 쓰기</button></p>}
     <p className="ed-intro"><b>기본은 선례 없이 작성하는 빈 양식입니다.</b> {cards.length ? <>칸 아래 "선례 참고 열기"에는 앞 화면에서 담은 선례만 나오고, <b>"본문에 텍스트로 넣기"를 누른 인용만</b> 그 칸에 평문으로 들어갑니다. 들어간 글은 일반 문서 글처럼 고치거나 지울 수 있고, </> : <>선례를 참고하려면 "← 선례 찾기로" 돌아가 선례를 담고 다시 오면 됩니다. </>}서비스는 어떤 칸도 스스로 채우지 않습니다.</p>
     <section className="ed-file" aria-label="내 8D 파일">
       <div className="ed-file-head"><b>내 8D 파일(.docx)</b><span className="ed-opt">선택</span><span className="note">올리면 그 파일의 칸 끝에 쓴 글을 덧붙인 새 파일로 내려받습니다. 파일은 이 기기 밖으로 나가지 않고 원본은 바뀌지 않습니다.</span></div>
