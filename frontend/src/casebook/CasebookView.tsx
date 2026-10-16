@@ -23,12 +23,13 @@ export default function CasebookView({ health }: { health: HealthState }) {
   const [caseName, setCaseName] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [copyMessage, setCopyMessage] = useState("");
+  const [saveFailed, setSaveFailed] = useState(false); // 사건 이름이 있는데 저장소에 쓰지 못한 적이 있다 — 저장됐다고 말하지 않는다
   const storage = useMemo(() => browserStorage(), []);
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => request.current?.abort(), []);
 
   // 사건 이름 없이 적은 메모가 있으면 새로고침·탭 닫기 전에 잃는다고 알린다
-  const unsaved = (!caseName || !storage) && Object.values(notes).some((t) => t.trim());
+  const unsaved = (!caseName || !storage || saveFailed) && Object.values(notes).some((t) => t.trim());
   useEffect(() => {
     if (!unsaved) return;
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
@@ -42,7 +43,9 @@ export default function CasebookView({ health }: { health: HealthState }) {
     if (name === caseName) return;
     setCaseName(name);
     // 이름 없이 적은 메모만 첫 사건 이름으로 옮긴다 — 다른 사건 이름이 붙어 있던 메모가 새 사건에 섞이지 않게
-    setNotes((memory) => name ? adoptNotes(storage, name, caseName ? {} : memory) : {});
+    const next = name ? adoptNotes(storage, name, caseName ? {} : notes) : { notes: {}, saved: true };
+    setNotes(next.notes);
+    setSaveFailed(!!storage && !!name && !next.saved);
   }
   async function run() {
     const value = question.trim();
@@ -53,10 +56,10 @@ export default function CasebookView({ health }: { health: HealthState }) {
     request.current = controller;
     const timer = setTimeout(() => controller.abort(), 60_000);
     setState("loading"); setError(""); setResponse(null); setChecked([]);
-    if (!caseName) setNotes({});
     try {
       const result = await search(value, controller.signal);
       if (request.current !== controller) return;
+      if (!caseName) setNotes({}); // 이름 없는 메모는 새 결과가 실제로 온 뒤에 비운다(검색이 실패하면 메모를 잃지 않게)
       setResponse(result); setState("done");
     } catch (e) {
       if (request.current !== controller) return;
@@ -69,7 +72,8 @@ export default function CasebookView({ health }: { health: HealthState }) {
       if (text) next[campno] = text; else delete next[campno];
       return next;
     });
-    saveNote(storage, caseName, campno, text);
+    const saved = saveNote(storage, caseName, campno, text);
+    if (caseName && storage) setSaveFailed(!saved);
   }
   async function copyAll() {
     try { await navigator.clipboard.writeText(notesText(checked, notes)); setCopyMessage("Copied."); }
@@ -77,18 +81,20 @@ export default function CasebookView({ health }: { health: HealthState }) {
   }
   function clearCase() {
     if (!confirm(caseName ? `Delete all notes saved under “${caseName}”?` : "Delete all notes in this tab?")) return;
-    clearNotes(storage, caseName);
+    const cleared = clearNotes(storage, caseName);
     setNotes({}); setCopyMessage("");
+    if (caseName && storage) setSaveFailed(!cleared);
   }
   const noEnglish = !!question.trim() && !/[A-Za-z]/.test(question);
   const persistent = !!caseName && !!storage;
 
-  return <main className="view-casebook">
+  return <main className="view-casebook" lang="en">
     <header className="cb-top">
       <div className="cb-brand"><span className="cb-brand-mark" aria-hidden="true" /><h1>Recall Casebook.<small> for Engineer</small></h1></div>
       <label className="cb-case-name">
         <span>Case name</span>
-        <input value={caseInput} maxLength={80} onChange={(e) => setCaseInput(e.target.value)} onBlur={commitCase} onKeyDown={(e) => { if (e.key === "Enter") commitCase(); }} placeholder="e.g. Sorento rear camera, Oct" />
+        <input value={caseInput} maxLength={80} onChange={(e) => setCaseInput(e.target.value)} onBlur={commitCase} onKeyDown={(e) => { if (e.key === "Enter") commitCase(); }} placeholder="e.g. Sorento rear camera, Oct" aria-describedby="cb-case-hint" />
+        <small id="cb-case-hint" className="cb-muted">Changing the name switches to that case's notes.</small>
       </label>
       <span className="cb-health" role="status">{typeof health === "object" ? `build ${health.build_id} · snapshot ${health.snapshot_date}` : health === "loading" ? "Checking server…" : "Server version unavailable"}</span>
     </header>
@@ -106,11 +112,12 @@ export default function CasebookView({ health }: { health: HealthState }) {
     {state === "done" && response && <div className="cb-grid">
       <CaseList response={response} checked={checked} onToggle={(card) => setChecked((list) => togglePick(list, card))} />
       <section className="cb-stack" aria-label="Checked precedents">
+        <h2 className="sr-only">Checked precedents</h2>
         {!checked.length && <p className="cb-empty">Check precedents on the left. Each one stacks here with its original wording, who said it, and the report it came from.</p>}
         {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => setChecked((list) => togglePick(list, card))} />)}
       </section>
       <div className="cb-side">
-        <NotesPanel cards={checked} notes={notes} onChange={changeNote} persistent={persistent} storageBlocked={!!caseName && !storage} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
+        <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={(!!caseName && !storage) || saveFailed} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
         <GroupPanel key={checked.map((c) => c.campno).join(",")} question={response.question} build={response} cards={checked} />
       </div>
     </div>}

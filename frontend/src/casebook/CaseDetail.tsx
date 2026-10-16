@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { fmtDate } from "../recalls";
 import { highlight } from "../search/highlight";
 import { hasCauseText, type Card, type SearchResponse } from "../search/types";
-import { causeBadge, causeLine, productionItem, supplierView, type ReportSource } from "./sources";
+import { causeBadge, causeLine, langOf, productionItem, supplierView, type ReportSource } from "./sources";
 
 function Report({ source }: { source: ReportSource & { text_basis?: string } }) {
   return <dl className="cb-src">
@@ -22,20 +22,20 @@ export function CaseDetail({ card, response, onRemove }: { card: Card; response:
   return <article className="cb-case" aria-label={`Recall ${card.campno}`}>
     <header className="cb-case-head">
       <div><h3 className="cb-id">{card.campno}</h3><span className="cb-who">{card.maker}{card.maker_group && card.maker_group !== card.maker ? ` (${card.maker_group})` : ""}</span><span className="cb-muted"> · received {fmtDate(card.received_date)}</span></div>
-      <button type="button" className="cb-link" onClick={onRemove}>Remove</button>
+      <button type="button" className="cb-link" onClick={onRemove} aria-label={`Remove ${card.campno}`}>Remove</button>
     </header>
     <div className="cb-parts">{card.components.map((part, i) => <span key={i}>{part}</span>)}</div>
 
     <section className="cb-block">
       <h4>Defect · Consequence · Remedy <small>NHTSA recall summary, verbatim</small></h4>
-      <p className="cb-byline">Said by <b>{card.source.speaker}</b> · {card.campno} · {card.source.dataset} snapshot {card.source.snapshot_date}</p>
+      <p className="cb-byline">Said by <b lang={langOf(card.source.speaker)}>{card.source.speaker}</b> · {card.campno} · {card.source.dataset} snapshot {card.source.snapshot_date}</p>
       {([["Defect", card.defect], ["Consequence", card.consequence], ["Remedy", card.remedy]] as const).map(([label, text]) => <div key={label}><h5>{label}</h5><p className="cb-src-text" lang="en">{text}</p></div>)}
     </section>
 
     <section className={`cb-block cb-cause ${badge.level}`}>
       <h4>Cause <small>Part 573 report</small><span className={`cb-badge ${badge.level}`}>{badge.label}</span></h4>
       {hasCauseText(cause) && <>
-        <p className="cb-byline">Said by <b>{cause.speaker}</b> · campaign <span className="cb-mono">{cause.source.campaign}</span></p>
+        <p className="cb-byline">Said by <b lang={langOf(cause.speaker)}>{cause.speaker}</b> · campaign <span className="cb-mono">{cause.source.campaign}</span></p>
         <p className="cb-src-text" lang="en">{highlight(cause.text, cause.flags).map((part, i) => part.kind
           ? <span key={i} className={`cb-flag ${part.kind}`} title={part.kind === "unknown_expression" ? "Not-reported / under-investigation expression" : "Hedging expression"}>{part.text}</span>
           : <Fragment key={i}>{part.text}</Fragment>)}</p>

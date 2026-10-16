@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import fixture from "../search/__fixtures__/search_airbag.json";
 import { hasCauseText, type Card, type SearchResponse } from "../search/types";
-import { causeBadge, causeLine, supplierView } from "./sources";
+import { causeBadge, causeLine, groupCandidates, langOf, supplierView } from "./sources";
 
 const cards = [...(fixture as SearchResponse).customer_precedents, ...(fixture as SearchResponse).precedents];
 const withSupplier = cards.find((c) => hasCauseText(c.cause) && c.checklist.some((i) => i.item === "supplier"))!;
@@ -38,4 +38,17 @@ it("원인 상태 문구는 글이 있는지만 말한다", () => {
     expect(line.length).toBeGreaterThan(0);
     expect(causeBadge(card).label).not.toMatch(/applies|root cause is/i); // principle-ok: 라벨에 판정 문구가 없는지 검사하는 금지 패턴
   }
+});
+it("묶기 후보는 원인 글이 있는 선례만 고른 뒤 앞 6건이다(원인 없는 선례가 자리를 차지하지 않는다)", () => {
+  const noCause: Card = { ...withSupplier, cause: { status: "no_573_report" } };
+  const many = [...Array.from({ length: 6 }, (_, i) => ({ ...noCause, campno: `N${i}` })), withSupplier];
+  expect(groupCandidates(many).map((c) => c.campno)).toEqual([withSupplier.campno]);
+  const withCause = Array.from({ length: 8 }, (_, i) => ({ ...withSupplier, campno: `C${i}` }));
+  expect(groupCandidates(withCause)).toHaveLength(6);
+  expect(groupCandidates(withCause, Infinity)).toHaveLength(8);
+  expect(groupCandidates([])).toEqual([]);
+});
+it("한글이 있는 글은 ko로 표시한다", () => {
+  expect(langOf("리콜 제조사 (Part 573)")).toBe("ko");
+  expect(langOf("Hyundai Motor America")).toBe("en");
 });

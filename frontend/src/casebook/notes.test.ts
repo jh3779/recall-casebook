@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { adoptNotes, clearNotes, loadNotes, normalizeCaseName, notesText, noteKey, saveNote, type StorageLike } from "./notes";
+import { adoptNotes, clearNotes, loadNotes, normalizeCaseName, notesText, noteKey, saveNote, UNNAMED_MARK, type StorageLike } from "./notes";
 
 function memory(): StorageLike & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -47,8 +47,39 @@ it("전체 복사 글은 체크한 순서대로 메모가 있는 선례만 싣�
 it("사건 이름을 정하면 저장된 메모를 불러오고 화면에만 있던 메모를 옮긴다", () => {
   const s = memory();
   saveNote(s, "Case A", "1", "저장된 글");
-  const merged = adoptNotes(s, "Case A", { "1": "화면 글", "2": "새 메모" });
-  expect(merged).toEqual({ "1": "저장된 글", "2": "새 메모" });
+  const { notes, saved } = adoptNotes(s, "Case A", { "2": "새 메모" });
+  expect(notes).toEqual({ "1": "저장된 글", "2": "새 메모" });
+  expect(saved).toBe(true);
   expect(loadNotes(s, "Case A")).toEqual({ "1": "저장된 글", "2": "새 메모" });
-  expect(adoptNotes(null, "Case A", { "3": "x" })).toEqual({ "3": "x" });
+  expect(adoptNotes(null, "Case A", { "3": "x" })).toEqual({ notes: { "3": "x" }, saved: false });
+});
+it("같은 리콜에 서로 다른 글이 있으면 어느 쪽도 버리지 않고 이어 붙인다", () => {
+  const s = memory();
+  saveNote(s, "Case A", "1", "예전 글");
+  const { notes } = adoptNotes(s, "Case A", { "1": "방금 쓴 글" });
+  expect(notes["1"]).toBe(`예전 글\n\n${UNNAMED_MARK}\n방금 쓴 글`);
+  expect(loadNotes(s, "Case A")["1"]).toBe(notes["1"]);
+  expect(adoptNotes(s, "Case A", { "1": notes["1"] }).notes["1"]).toBe(notes["1"]); // 같은 글이면 다시 붙이지 않는다
+  expect(adoptNotes(s, "Case A", { "1": "예전 글" }).notes["1"]).toBe(notes["1"]);
+});
+it("저장소가 쓰기에 실패하면 saved가 false이고 화면 메모는 그대로 돌려준다", () => {
+  const full: StorageLike = { length: 0, key: () => null, getItem: () => null, removeItem: () => {}, setItem: () => { throw new Error("QuotaExceededError"); } };
+  expect(adoptNotes(full, "Case A", { "1": "글" })).toEqual({ notes: { "1": "글" }, saved: false });
+});
+it("사건 이름에 |가 있어도 다른 사건의 메모가 섞이거나 함께 지워지지 않는다", () => {
+  const s = memory();
+  saveNote(s, "Case A", "1", "a");
+  saveNote(s, "Case A|B", "1", "ab");
+  saveNote(s, "A", "x|y", "리콜 번호 쪽 |는 이름과 겹치지 않는다");
+  expect(loadNotes(s, "Case A")).toEqual({ "1": "a" });
+  expect(loadNotes(s, "Case A|B")).toEqual({ "1": "ab" });
+  expect(clearNotes(s, "Case A")).toBe(true);
+  expect(loadNotes(s, "Case A")).toEqual({});
+  expect(loadNotes(s, "Case A|B")).toEqual({ "1": "ab" });
+  expect(loadNotes(s, "A")).toEqual({ "x|y": "리콜 번호 쪽 |는 이름과 겹치지 않는다" });
+});
+it("clearNotes는 저장소가 막혔으면 false", () => {
+  const blocked: StorageLike = { length: 1, key: () => "casebook.note.v1|A|1", getItem: () => null, setItem: () => {}, removeItem: () => { throw new Error("blocked"); } };
+  expect(clearNotes(blocked, "A")).toBe(false);
+  expect(clearNotes(null, "A")).toBe(false);
 });

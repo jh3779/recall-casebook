@@ -5,6 +5,7 @@ import { hasCauseText, type SearchResponse } from "../search/types";
 import { CaseDetail } from "./CaseDetail";
 import { CaseList } from "./CaseList";
 import CasebookView from "./CasebookView";
+import { AppBar } from "../AppBar";
 import { NotesPanel } from "./NotesPanel";
 
 const response = fixture as SearchResponse;
@@ -35,14 +36,30 @@ it("목록은 체크한 선례를 눌린 상태로 보인다", () => {
   expect(markup).toContain('aria-pressed="false"');
 });
 it("메모 칸은 사건 이름이 없으면 잃을 수 있다고 알리고 서버로 보내지 않는다고 밝힌다", () => {
-  const props = { cards: [cards[0]], notes: {}, onChange: () => {}, storageBlocked: false, onCopy: () => {}, onClear: () => {}, copyMessage: "" };
+  const props = { cards: [cards[0]], caseName: "Case A", notes: {}, onChange: () => {}, storageBlocked: false, onCopy: () => {}, onClear: () => {}, copyMessage: "" };
   expect(renderToStaticMarkup(<NotesPanel {...props} persistent={false} />)).toContain("lost on reload");
   const saved = renderToStaticMarkup(<NotesPanel {...props} persistent />);
-  expect(saved).toContain("Never sent to the server or an LLM");
-  expect(renderToStaticMarkup(<NotesPanel {...props} persistent storageBlocked />)).toContain("blocks storage");
+  expect(saved).toContain("Saved in this browser under “Case A”. Never sent to the server or an LLM");
+  expect(renderToStaticMarkup(<NotesPanel {...props} persistent storageBlocked />)).toContain("could not save the notes");
 });
-it("처음 화면은 안내만 보이고 서버를 부르지 않는다", () => {
+it("처음 화면은 안내 문구를 그린다(서버를 부르지 않는지는 헤드리스 브라우저로 확인)", () => {
   const markup = renderToStaticMarkup(<CasebookView health="loading" />);
   expect(markup).toContain("Recall Casebook.");
   expect(markup).toContain("Describe a defect");
+});
+it("메모 칸은 합성·비식별 입력만 쓰라고 안내하고 길이를 제한한다", () => {
+  const markup = renderToStaticMarkup(<NotesPanel cards={[cards[0]]} caseName="" notes={{}} onChange={() => {}} persistent={false} storageBlocked={false} onCopy={() => {}} onClear={() => {}} copyMessage="" />);
+  expect(markup).toContain("synthetic or de-identified");
+  expect(markup).toContain('maxLength="10000"');
+});
+it("선례마다 Remove 버튼을 구분할 수 있고 화면 언어를 밝힌다", () => {
+  const markup = renderToStaticMarkup(<CaseDetail card={cards[0]} response={response} onRemove={() => {}} />);
+  expect(markup).toContain(`aria-label="Remove ${cards[0].campno}"`);
+  expect(markup).toMatch(/lang="ko"[^>]*>[^<]*[가-힣]/); // 한국어 말한 주체 문구
+  expect(renderToStaticMarkup(<CasebookView health="loading" />)).toContain('lang="en"');
+});
+it("앱 바에 케이스북 탭이 있고 현재 화면을 눌린 상태로 보인다", () => {
+  const markup = renderToStaticMarkup(<AppBar view="casebook" onView={() => {}} health="loading" />);
+  expect(markup).toMatch(/aria-pressed="true"[^>]*>케이스북/);
+  expect(markup).toMatch(/aria-pressed="false"[^>]*>선례 검색/);
 });

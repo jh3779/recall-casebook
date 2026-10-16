@@ -45,3 +45,8 @@ export const causeBadge = (card: Card): { level: "text" | "stated" | "none"; lab
   card.cause.status === "filled" ? { level: "text", label: "Cause text" }
     : card.cause.status === "stated_unknown" ? { level: "stated", label: "Not reported / under investigation" }
       : { level: "none", label: "No cause text" };
+
+/** 묶기에 보낼 선례 — 원인 글이 있는 것만 고른 뒤 앞에서 `max`건(서버가 원인 글 없는 카드를 뺀 뒤에 자르면 뒤쪽 원인 글이 통째로 빠진다) */
+export const groupCandidates = (cards: readonly Card[], max = 6): Card[] => cards.filter((c) => hasCauseText(c.cause)).slice(0, max);
+/** 글에 한글이 있으면 ko — 서버가 주는 말한 주체 문구는 한국어라 영어 화면에서도 언어를 밝힌다 */
+export const langOf = (text: string): "ko" | "en" => (/[가-힣]/.test(text) ? "ko" : "en");
