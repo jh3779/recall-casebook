@@ -1,6 +1,6 @@
 # ERD — 결함 선례 찾기 도우미 데이터 구조
 
-> 기준: `origin/main` b9d699a (2026-10-16). **이 문서는 새 설계가 아니라 이미 있는 스키마의 그림이다** — 아래 그림과 표의 모든 칸은 `scripts/defect_precedent/schema.sql`·`server/rag/embeddings.sql`·`server/rag/bundle.sql`·`server/api.py`에서 옮겼다. 다르면 SQL·코드가 맞고 이 문서를 고친다.
+> 기준: `origin/main` 763211e (2026-10-16). **이 문서는 새 설계가 아니라 이미 있는 스키마의 그림이다** — 아래 그림과 표의 칸은 `scripts/defect_precedent/schema.sql`·`server/rag/embeddings.sql`·`server/rag/bundle.sql`·`server/api.py`에서 옮겼다(계보에 중요한 칸 위주이며 **전체 칸은 SQL이 정본**). 다르면 SQL·코드가 맞고 이 문서를 고친다.
 > 스키마 변경은 10/17부터 동결이다(DEC-059 ⑤). 칸을 바꾸지 않고 읽기만 하는 문서다.
 
 ## 1. 한눈에 — 데이터가 흐르는 길
@@ -58,6 +58,7 @@ erDiagram
         date snapshot_date
         text raw_manifest_sha256
         text recalls_sha256
+        text causes_file "573 원인 추출 파일"
         text eval_sha256
         text causes_kind "sample | full"
         text causes_sha256
@@ -72,6 +73,7 @@ erDiagram
         text campno PK "24V412000 (9자리)"
         text campaign6 "생성 칸 left(campno,6)"
         text maker "정리한 이름"
+        date snapshot_date
         text maker_group "같은 회사 묶음 단위"
         text raw_maker
         text_arr components
@@ -89,6 +91,7 @@ erDiagram
         text campaign PK "24V412 (6자리)"
         integer versions
         text source_file
+        date snapshot_date
         date submission_date "미확정이면 NULL"
         text cause_text "원문 그대로"
         text cause_status "filled|stated_unknown|empty|no_field"
@@ -108,6 +111,7 @@ erDiagram
         date open_date
         text_arr gold_campnos "정답 = 조사에서 나온 리콜"
         text_arr sets "all|since2010|rclrpt_range"
+        date snapshot_date
         text row_sha256
     }
     embedding_sets {

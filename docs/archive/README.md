@@ -4,7 +4,7 @@
 
 ## 옛 경로 → 새 경로
 
-`.agent/DECISIONS.md`·`SESSION_LOG.md`·`HANDOFF.md`는 기록 문서라 고치지 않았다. 거기 적힌 옛 경로는 아래 표로 찾는다.
+`.agent/DECISIONS.md`·`SESSION_LOG.md`의 과거 서술과 `HANDOFF.md`의 완료·과거 항목은 기록이라 고치지 않았다. 거기 적힌 옛 경로는 아래 표로 찾는다. 세션 시작에 읽는 `.agent/PROJECT_CONTEXT.md`와 `HANDOFF.md`의 아직 할 일 항목은 새 경로로 고쳤다.
 
 | 옛 경로 | 새 경로 | 보관 이유 |
 |---|---|---|
