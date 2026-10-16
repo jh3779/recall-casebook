@@ -13,7 +13,7 @@
 
 | 파일 | 할 일 |
 |---|---|
-| `src/App.tsx` | **껍데기로 다시 쓴다**: 공용 상단 바([components/app-bar.md](../components/app-bar.md)) + 현재 화면. 화면 상태 `view`는 `location.hash`에서 처음 값을 읽고(`#search` 기본, `#showroom`), 바뀌면 해시에 쓴다(`hashchange`도 듣는다) |
+| `src/App.tsx` | **껍데기로 다시 쓴다**: 공용 상단 바([components/app-bar.md](../../design-system/components/app-bar.md)) + 현재 화면. 화면 상태 `view`는 `location.hash`에서 처음 값을 읽고(`#search` 기본, `#showroom`), 바뀌면 해시에 쓴다(`hashchange`도 듣는다) |
 | `src/showroom/ShowroomView.tsx` (새) | 지금 `App.tsx`의 `App`+`Explorer`를 거의 그대로 옮긴다. `React.lazy(() => import("./showroom/ShowroomView"))` + `<Suspense>`로 불러 **검색 화면이 three.js 묶음을 받지 않게** 한다 |
 | 같은 파일 | `new Showroom()`(WebGL 컨텍스트 생성)을 try/catch로 감싸 실패해도 안내를 띄운다. 실패 안내에 "검색 화면으로" 버튼(`location.hash = "search"`) |
 | 같은 파일 | `Loader`·`body.xray`는 쇼룸 안에서만 — 언마운트할 때 `body.classList.remove("xray")` |
@@ -44,19 +44,19 @@
 
 | 컴포넌트(새 파일, `src/search/`) | 설계 정본 |
 |---|---|
-| `SearchView.tsx` — 화면 전체, 상태 `idle \| loading \| done \| error`, 들어올 때 `health()` 한 번 | [patterns/screens.md](../patterns/screens.md) |
-| `SearchInput.tsx` — 입력·버튼·도움말·예시 질문 | [components/search-input.md](../components/search-input.md) — 예시 질문 4개는 그 문서 표의 문구·순서 그대로 |
-| `Welcome.tsx` — 첫 화면(하는 일/하지 않는 일·데이터 판본·쇼룸 바로가기) | [patterns/screens.md](../patterns/screens.md) 1절, 문구는 [copy/ui-text.md](../copy/ui-text.md) |
-| `ResultList.tsx`·`ListItem.tsx` | [components/result-list.md](../components/result-list.md) — 고객사 0건이면 구역 유지 + 안내 문구(결정 6) |
-| `PrecedentDetail.tsx` — 순서: 머리 → 원문 → 원인 → 조사 → 확인 항목 → 출처 꼬리(결정 3) | [components/precedent-detail.md](../components/precedent-detail.md) |
-| `CauseBlock.tsx`·`CauseBadge.tsx` | [components/cause.md](../components/cause.md) |
-| `InvestigationBlock.tsx` | [components/investigation.md](../components/investigation.md) |
-| `Checklist.tsx` | [components/checklist.md](../components/checklist.md) |
-| `Provenance.tsx` — 출처 꼬리(결정 5) | [precedent-detail.md 출처 꼬리](../components/precedent-detail.md#출처-꼬리) |
-| `Feedback.tsx` — 로딩·오류 5종(5xx 포함)·빈 결과 | [components/feedback.md](../components/feedback.md) |
-| `causeStatus.ts` — 상태 → 단계(text/stated/none)·문구 | [copy/cause-status.md](../copy/cause-status.md) **문구 글자 그대로** |
-| `highlight.ts` — 꼬리표 강조 조각 | [cause.md 꼬리표](../components/cause.md#꼬리표) |
-| `fieldLabels.ts` — evidence `field` → 칸 라벨 | [components/checklist.md](../components/checklist.md) 표 |
+| `SearchView.tsx` — 화면 전체, 상태 `idle \| loading \| done \| error`, 들어올 때 `health()` 한 번 | [patterns/screens.md](../../design-system/patterns/screens.md) |
+| `SearchInput.tsx` — 입력·버튼·도움말·예시 질문 | [components/search-input.md](../../design-system/components/search-input.md) — 예시 질문 4개는 그 문서 표의 문구·순서 그대로 |
+| `Welcome.tsx` — 첫 화면(하는 일/하지 않는 일·데이터 판본·쇼룸 바로가기) | [patterns/screens.md](../../design-system/patterns/screens.md) 1절, 문구는 [copy/ui-text.md](../../design-system/copy/ui-text.md) |
+| `ResultList.tsx`·`ListItem.tsx` | [components/result-list.md](../../design-system/components/result-list.md) — 고객사 0건이면 구역 유지 + 안내 문구(결정 6) |
+| `PrecedentDetail.tsx` — 순서: 머리 → 원문 → 원인 → 조사 → 확인 항목 → 출처 꼬리(결정 3) | [components/precedent-detail.md](../../design-system/components/precedent-detail.md) |
+| `CauseBlock.tsx`·`CauseBadge.tsx` | [components/cause.md](../../design-system/components/cause.md) |
+| `InvestigationBlock.tsx` | [components/investigation.md](../../design-system/components/investigation.md) |
+| `Checklist.tsx` | [components/checklist.md](../../design-system/components/checklist.md) |
+| `Provenance.tsx` — 출처 꼬리(결정 5) | [precedent-detail.md 출처 꼬리](../../design-system/components/precedent-detail.md#출처-꼬리) |
+| `Feedback.tsx` — 로딩·오류 5종(5xx 포함)·빈 결과 | [components/feedback.md](../../design-system/components/feedback.md) |
+| `causeStatus.ts` — 상태 → 단계(text/stated/none)·문구 | [copy/cause-status.md](../../design-system/copy/cause-status.md) **문구 글자 그대로** |
+| `highlight.ts` — 꼬리표 강조 조각 | [cause.md 꼬리표](../../design-system/components/cause.md#꼬리표) |
+| `fieldLabels.ts` — evidence `field` → 칸 라벨 | [components/checklist.md](../../design-system/components/checklist.md) 표 |
 
 **지켜야 할 세부**
 - 원문 칸(결함·결과·시정·원인 text·조사 summary·checklist evidence text, **목록의 결함 첫 2줄 포함**)은 `lang="en"`, `--font-source`, `white-space: pre-wrap`. 목록의 결함 원문은 CSS로 2줄 자르기만(문자열을 자르지 않는다).
@@ -66,8 +66,8 @@
 - 573 PDF 링크를 만들지 않는다(주소 규칙 미확인 — 파일 이름만).
 - 로딩: 3초 뒤 안내, `AbortController`로 60초에 끊음. 검색 중 버튼 "찾는 중…" 비활성. 오류가 나도 입력한 질문은 그대로.
 - 입력: 영어 글자(`[A-Za-z]`)가 하나도 없으면 보내기 전에 안내, 1~4000자, 한글 조합 중 Enter 무시(`e.nativeEvent.isComposing`).
-- 반응형([tokens/spacing.md](../tokens/spacing.md)): 768px 이상 2단(목록 300~380px), 767px 이하 한 단(목록 → 상세, "← 목록").
-- 키보드: 목록 항목은 `button`, 초점은 불투명 `outline`([tokens/spacing.md](../tokens/spacing.md) — 선택 띠와 겹치지 않게), 탭은 `aria-pressed`.
+- 반응형([tokens/spacing.md](../../design-system/tokens/spacing.md)): 768px 이상 2단(목록 300~380px), 767px 이하 한 단(목록 → 상세, "← 목록").
+- 키보드: 목록 항목은 `button`, 초점은 불투명 `outline`([tokens/spacing.md](../../design-system/tokens/spacing.md) — 선택 띠와 겹치지 않게), 탭은 `aria-pressed`.
 - **판정 색·문구 금지**(빨강·초록·주황, "위험·안전·확정" 등). 오류 상자 왼쪽 띠도 `--ink-2`.
 
 **`highlight.ts` 규칙(반드시)**

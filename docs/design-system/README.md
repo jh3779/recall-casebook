@@ -26,7 +26,7 @@
 | [copy/ui-text.md](copy/ui-text.md) | 라벨·안내·버튼 문구 모음 |
 | [open-questions.md](open-questions.md) | 결정 기록(열린 질문 8개) · 예시 질문 후보 실행 기록 |
 | [mockup.html](mockup.html) | 토큰 견본·컴포넌트·화면 목업(실제 API 응답) |
-| [codex/](codex/README.md) | 구현 지시문(Codex용) — 공통 규칙 + 작업 D(#60 정리)·E(검색 화면)·F(화면 배포) |
+| [codex/](../archive/design-system-codex/README.md) | 구현 지시문(Codex용) — 공통 규칙 + 작업 D(#60 정리)·E(검색 화면)·F(화면 배포). 세 작업 모두 끝나 `docs/archive/`로 옮겼다 |
 
 ## 인터뷰로 정한 것 (우지훈, 2026-10-13)
 
