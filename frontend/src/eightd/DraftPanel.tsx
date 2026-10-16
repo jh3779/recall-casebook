@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, draft } from "../api";
 import type { Card } from "../search/types";
-import type { DraftResponse, DraftStep } from "./draft";
+import { sameBuild, type DraftResponse, type DraftStep } from "./draft";
 import { DraftResult } from "./DraftResult";
 
 const MAX_CARDS = 6; // 서버가 한 번에 받는 선례 수
 
 /** D2·D4의 "선례 근거 묶음 초안" — 담은 선례 원문을 LLM이 묶고 제목을 붙이게 한다(DEC-065). 누르기 전에는 아무것도 부르지 않는다 */
-export function DraftPanel({ step, question, cards, inserted, onToggle }: { step: DraftStep; question: string; cards: readonly Card[]; inserted: Record<string, string>; onToggle: (id: string, block: string) => void }) {
+export function DraftPanel({ step, question, buildId, cards, inserted, onToggle }: { step: DraftStep; question: string; buildId: string; cards: readonly Card[]; inserted: Record<string, string>; onToggle: (id: string, block: string) => void }) {
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [result, setResult] = useState<DraftResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -24,6 +24,7 @@ export function DraftPanel({ step, question, cards, inserted, onToggle }: { step
     try {
       const r = await draft(question, used.map((x) => x.campno), step, c.signal);
       if (controller.current !== c) return;
+      if (!sameBuild(r, { build_id: buildId })) { setResult(null); setError(new ApiError("server", "서버의 데이터 판본이 검색할 때와 달라졌습니다. 질문을 다시 검색한 뒤 선례를 담아 다시 시도해 주세요.")); setState("error"); return; }
       setResult(r); setState("done");
     } catch (e) {
       if (controller.current !== c) return;

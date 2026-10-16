@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import fixture from "../search/__fixtures__/search_airbag.json";
 import { hasCauseText, type ProductionCheckItem, type SearchResponse } from "../search/types";
-import { evidenceBlock, isoDate, missingReason, resultsBlock, supplierName } from "./evidenceText";
+import { evidenceBlock, isoDate, missingReason, resultsBlock, report573, supplierName } from "./evidenceText";
 
 const response = fixture as SearchResponse;
 const cards = [...response.customer_precedents, ...response.precedents];
@@ -46,4 +46,16 @@ it("D7 표는 검색 결과 전부를 한 줄씩 싣고 고객사 구분과 공�
 });
 it("판정 문구를 만들지 않는다", () => {
   for (const c of cards) for (const step of ["2", "3", "4", "5"] as const) expect(evidenceBlock(step, c) ?? "").not.toMatch(/리콜 대상입니다|원인은 이것입니다|해당합니다/);  // principle-ok: 판정 문구가 본문에 들어가지 않는지 확인하는 부정 단언
+});
+
+it("D7 표의 573 칸은 상태를 나눠 쓴다 — 수집 여부를 모르는 선례를 '있음'으로 적지 않는다(리뷰 지적)", () => {
+  const base = cards[0];
+  const withCause = (cause: object) => ({ ...base, cause }) as unknown as typeof base;
+  expect(report573(withCause({ status: "no_573_report" }))).toBe("범위 밖");
+  expect(report573(withCause({ status: "report_status_unknown", campaign: "24V412" }))).toBe("확인 못함");
+  for (const status of ["version_unresolved", "cause_empty", "cause_no_field", "verify_failed"]) expect(report573(withCause({ status, campaign: "24V412" }))).toBe("있음");
+  expect(report573(withCause({ status: "report_unreadable", campaign: "24V412", reason: "x" }))).toBe("있음");
+  const unknown = { ...response, customer_precedents: [], precedents: [withCause({ status: "report_status_unknown", campaign: "24V412" })] } as SearchResponse;
+  expect(resultsBlock(unknown)).toContain("573 확인 못함");
+  expect(resultsBlock(unknown)).not.toContain("573 있음");
 });

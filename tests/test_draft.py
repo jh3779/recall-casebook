@@ -132,11 +132,8 @@ def test_assemble_cuts_quotes_from_the_source_and_computes_ungrouped_itself():
     out = draft.assemble(srcs2(), payload)
     (g,) = out["groups"]
     it = g["items"][0]
-    assert (
-        DEFECT[it["start"] : it["end"]]
-        == it["quote"]
-        == "The circuit board may short circuit, resulting in a loss of power steering assist."
-    )
+    # 묶음에 넣은 출처의 전체 원문이 원문 글자 그대로 나간다(문장 일부만 인용한 LLM 구간은 "이 출처를 넣는다"는 표시일 뿐)
+    assert DEFECT[it["start"] : it["end"]] == it["quote"] == DEFECT
     assert it["campno"] == "24V412000" and it["field"] == "defect" and it["speaker"] == SPEAKER
     # LLM이 말한 ungrouped(S99)는 믿지 않고, 쓰이지 않은 원문(S2)을 서버가 싣는다
     assert [(u["field"], u["quote"]) for u in out["ungrouped"]] == [("consequence", CONSEQ)]
@@ -505,37 +502,34 @@ def test_assemble_counts_quotes_re_anchored_because_only_whitespace_differed():
 TEXT = "It was not found. The part may have failed. Then nothing happened."
 
 
-@pytest.mark.parametrize(
-    ("quote", "expected"),
-    [
-        (
-            "have failed",
-            "The part may have failed.",
-        ),  # 문장 한가운데 — "may"가 빠진 조각을 문장으로 넓힌다
-        ("not found", "It was not found."),
-        ("The part may have failed.", "The part may have failed."),  # 이미 온전한 문장
-        ("Then", "Then nothing happened."),
-    ],
-)
-def test_partial_quotes_are_widened_to_whole_sentences_so_qualifiers_cannot_be_dropped(
-    quote, expected
-):
-    """리뷰 지적(PR #141) — 글자만 같으면 받던 인용이 "may"·"not" 같은 한정어를 뺀 뒷부분일 수 있었다."""
+@pytest.mark.parametrize("quote", ["have failed", "not found", "The part may have failed.", "Then"])
+def test_a_partial_quote_puts_the_whole_source_text_so_qualifiers_cannot_be_dropped(quote):
+    """리뷰 지적(PR #141) — 글자만 같으면 받던 인용이 "may"·"not" 같은 한정어를 뺀 조각일 수 있었다. 이제 LLM의 구간은
+    "이 출처를 묶음에 넣는다"는 표시일 뿐이고 화면에는 그 출처의 전체 원문이 나간다."""
     src = Source("S1", "24V412000", "defect", TEXT, {"speaker": SPEAKER})
     out = draft.assemble(
         [src],
         {"groups": [{"title": "t를 적은 선례", "quotes": [{"source_id": "S1", "text": quote}]}]},
     )
     it = out["groups"][0]["items"][0]
-    assert it["quote"] == expected == TEXT[it["start"] : it["end"]]
+    assert (it["start"], it["end"]) == (0, len(TEXT)) and it["quote"] == TEXT
 
 
-def test_widening_without_sentence_end_marks_goes_to_the_whole_text_and_keeps_quotes_balanced():
-    assert draft.expand_to_sentences("no punctuation here at all", 3, 8) == (0, 26)
-    y = 'He said "stop." Then left.'
-    i = y.index("stop")
-    assert y[slice(*draft.expand_to_sentences(y, i, i + 4))] == 'He said "stop."'
-    assert draft.expand_to_sentences(TEXT, 0, len(TEXT)) == (0, len(TEXT))
+def test_the_unknown_expression_question_asks_the_user_to_check_instead_of_judging():
+    qs = draft.questions_for(
+        "d4",
+        [
+            Source(
+                "S1",
+                "26V219000",
+                "cause",
+                "unknown -- axles were received with a bad weld",
+                {"speaker": SPEAKER, "cause_status": "stated_unknown"},
+            )
+        ],
+    )
+    unknown = qs[-1]
+    assert "쓸 수 없" not in unknown and "원문 전체를 확인" in unknown and unknown.endswith("?")
 
 
 def test_the_key_never_appears_in_repr_of_config_or_llm_callable():

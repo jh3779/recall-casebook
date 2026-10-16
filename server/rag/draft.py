@@ -1,7 +1,7 @@
 """근거 연결형 초안 (DEC-065) — 8D D2·D4에 선례 원문을 묶어 보여 준다. LLM은 묶고 제목을 붙일 뿐 문장을 쓰지 않는다.
 
 - 입력은 검색이 넘긴 선례의 **원문 문장**뿐이다(D2 = 결함·결과, D4 = 573 원인 칸). 판정·원인 추정·조치 권고를 시키지 않는다.
-- LLM이 돌려준 인용 문자열은 그대로 쓰지 않는다 — 서버가 원문에서 그 구간을 **찾아** 원문 글자를 잘라 싣는다(`locate`).
+- LLM이 돌려준 인용 문자열은 그대로 쓰지 않는다 — 서버가 원문에서 그 구간을 **찾아** 그 출처가 이 묶음에 속하는지만 확인하고(`locate`), 싣는 것은 그 출처의 **전체 원문 글자**다(부분 인용으로 한정어가 빠지지 않게).
   원문과 다른 문자열(글자를 바꿨거나 지어낸 것)은 버리고 센다. NHTSA 글에는 마침표 뒤 이중 공백이 많아, 공백만 다르면
   원문 구간으로 되짚되 싣는 글자는 언제나 원문 것이다(AGENTS.md 2-2).
 - 묶음 제목은 도구가 만든 문장이다 — 화면은 "도구가 붙인 제목"으로 표시해야 한다. 판정 표현이 들어 있으면 제목을 버린다.
@@ -109,7 +109,7 @@ QUESTIONS = {
         "선례의 공급사·생산 기간(확인 항목)과 우리 건의 공급사·생산 기간이 겹칩니까?",
     ],
 }
-QUESTION_UNKNOWN = "원인 대신 '미보고·조사 중' 표현(N/A·NR 등)을 적은 선례는 원인 근거로 쓸 수 없습니다. 다른 근거가 있습니까?"
+QUESTION_UNKNOWN = "원인 칸에 '미보고·조사 중' 표현(N/A·NR 등)이 있는 선례는, 그 표현 뒤에 별도의 원인 서술이 이어지는지 원문 전체를 확인했습니까?"
 
 
 class LlmError(RuntimeError):
@@ -195,30 +195,6 @@ def locate(text: str, quote: str) -> tuple[int, int] | None:
     return index[j], index[j + len(q) - 1] + 1
 
 
-_SENT_END = re.compile(r"[.!?][\"')\]]*(?=\s|$)")
-
-
-def expand_to_sentences(text: str, start: int, end: int) -> tuple[int, int]:
-    """인용 구간을 문장 경계까지 넓힌다 — LLM이 문장 한가운데를 잘라 "may"·"not" 같은 한정어를 뺀 채 뒷부분만 돌려줘도,
-    화면에는 언제나 온전한 문장(들)이 원문 글자 그대로 나간다. 문장 끝 표시(. ! ? 뒤 공백)가 없으면 원문 끝까지 간다."""
-    s0 = 0
-    for m in _SENT_END.finditer(text, 0, start):
-        if m.end() <= start:
-            s0 = m.end()
-    while s0 < start and text[s0].isspace():
-        s0 += 1
-    e0 = end
-    already_final = (
-        end > 0
-        and bool(_SENT_END.search(text, max(0, end - 4), end))
-        and (end == len(text) or text[end].isspace())
-    )
-    if not already_final:
-        m = _SENT_END.search(text, end)
-        e0 = m.end() if m else len(text)
-    return s0, e0
-
-
 def item(src: Source, start: int, end: int) -> dict:
     return {
         "campno": src.campno,
@@ -259,13 +235,15 @@ def assemble(sources: list[Source], parsed: dict) -> dict:
             if src.id in used:
                 rejected["duplicate_source"] += 1
                 continue
-            span = locate(src.text, q.get("text", "")) if isinstance(q.get("text"), str) else None
-            if span is None:
+            found = locate(src.text, q.get("text", "")) if isinstance(q.get("text"), str) else None
+            if found is None:
                 rejected["not_in_source"] += 1
                 continue
             used.add(src.id)
             relocated += src.text.find(q["text"]) < 0
-            items.append(item(src, *expand_to_sentences(src.text, *span)))
+            # LLM이 돌려준 구간은 "그 출처를 이 묶음에 넣는다"는 표시로만 쓴다 — 화면에는 그 출처의 **전체 원문**을 싣는다.
+            # 문장 한가운데를 잘라 "may"·"not" 같은 한정어가 빠진 부분 인용이 나가지 못하게 한다(리뷰 지적, PR #141)
+            items.append(item(src, 0, len(src.text)))
         if not items:
             continue
         title = str(g.get("title", "")).strip()

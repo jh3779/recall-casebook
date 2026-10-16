@@ -51,3 +51,8 @@ it("다른 단계가 이미 쓰는 칸은 고르지 못하게 막는다(두 단�
   const d2 = markup.split("D2 칸 고르기")[1].split("</select>")[0];
   expect(d2).toMatch(/<option value="1\.3\.2" disabled="">[^<]*다른 단계가 사용 중/); // D4가 라벨로 자동 정해진 칸
 });
+it("적용하지 않는 단계가 쥔 칸은 다른 단계의 선택지를 막지 않는다", () => {
+  const markup = render({ 2: { table: 1, row: 2, col: 2 } }, new Set([4])); // D2는 적용 안 함
+  const d4 = markup.split("D4 칸 고르기")[1].split("</select>")[0];
+  expect(d4).not.toMatch(/value="1\.2\.2" disabled/);
+});

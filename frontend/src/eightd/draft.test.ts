@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import fixture from "../search/__fixtures__/search_airbag.json";
 import { hasCauseText, type SearchResponse } from "../search/types";
-import { groupBlock, groupId, questionsBlock, quoteBlock, type DraftItem } from "./draft";
+import { groupBlock, groupId, questionsBlock, quoteBlock, sameBuild, type DraftItem } from "./draft";
 
 const response = fixture as SearchResponse;
 const cards = [...response.customer_precedents, ...response.precedents];
@@ -53,4 +53,10 @@ it("묶음 이름은 내용에서 만들어 같은 순번에 다른 묶음이 �
 it("확인 질문은 고정 문장임을 밝히고 번호를 붙인다", () => {
   expect(questionsBlock(["가", "나"])).toBe("[확인 질문 — 도구가 만든 고정 문장]\n① 가\n② 나");
   expect(questionsBlock(Array.from({ length: 10 }, (_, i) => `q${i}`)).split("\n")[10]).toBe("10. q9");
+});
+
+it("초안 응답의 build가 검색 응답과 다르면 같은 서버 판본이 아니라고 본다(검색 응답이 없으면 비교하지 않는다)", () => {
+  expect(sameBuild({ build_id: "aaa" }, { build_id: "aaa" })).toBe(true);
+  expect(sameBuild({ build_id: "aaa" }, { build_id: "bbb" })).toBe(false);
+  expect(sameBuild({ build_id: "aaa" }, null)).toBe(true);
 });

@@ -91,7 +91,7 @@ export default function EightdView({ cards, response, onBack }: { cards: readonl
     if (!(step in HINT) || !cards.length) return null;
     return <details className="ed-ref"><summary><span>선례 참고 열기 <span className="ed-opt">선택</span></span><span className={`ed-cnt${insertedCount(step) ? " on" : ""}`}>넣음 {insertedCount(step)}건</span></summary>
       <p className="note">{HINT[step]} 넣기를 누르기 전에는 본문에 아무것도 들어가지 않습니다.</p>
-      {response && (step === "2" || step === "4") && <DraftPanel key={`${step}|${response.question}|${cards.map((c) => c.campno).join(",")}`} step={step === "2" ? "d2" : "d4"} question={response.question} cards={cards} inserted={insertedFor(inserted, step)} onToggle={(id, block) => toggle(step, id, block)} />}
+      {response && (step === "2" || step === "4") && <DraftPanel key={`${step}|${response.question}|${cards.map((c) => c.campno).join(",")}`} step={step === "2" ? "d2" : "d4"} question={response.question} buildId={response.build_id} cards={cards} inserted={insertedFor(inserted, step)} onToggle={(id, block) => toggle(step, id, block)} />}
       {cards.map((card) => <EvidenceCard key={card.campno} step={step as EvidenceStep} card={card} customer={customers.has(card.campno)} inserted={inserted[`${step}|${card.campno}`] !== undefined} onToggle={(block) => toggle(step, card.campno, block)} />)}
     </details>;
   };

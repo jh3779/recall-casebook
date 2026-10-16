@@ -33,6 +33,9 @@ export interface DraftResponse {
   relocated?: number; // 공백만 달라 원문 구간으로 되짚은 인용 수 — 싣는 글자는 원문 것
 }
 
+/** 초안 응답이 검색 응답과 같은 서버 판본(build)에서 나왔는가 — 다르면 서류 꼬리의 출처 표시가 인용의 실제 출처와 어긋난다(리뷰 지적) */
+export const sameBuild = (result: Pick<DraftResponse, "build_id">, search: { build_id: string } | null): boolean => !search || result.build_id === search.build_id;
+
 const FIELD_LABEL = { defect: "결함", consequence: "결과", cause: "원인 원문" } as const;
 
 /** 인용 하나를 본문에 넣을 평문으로 — 선례 카드를 넣을 때와 같은 머리줄·원문 줄·꼬리줄(말한 주체·출처) */

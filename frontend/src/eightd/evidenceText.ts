@@ -43,10 +43,13 @@ export function missingReason(step: "3" | "4", card: Card): string {
   return step === "3" ? `생산 기간 정보 없음 — ${message}` : `원인 원문 없음 — ${message}`;
 }
 
+/** D7 표의 573 칸 — 보고서가 있다고 서버가 확정한 상태만 "있음", 수집 범위 밖은 "범위 밖", 수집 여부를 모르면 "확인 못함"(모르는 것을 아는 것처럼 쓰지 않는다) */
+export const report573 = (c: Card): "범위 밖" | "확인 못함" | "있음" => c.cause.status === "no_573_report" ? "범위 밖" : c.cause.status === "report_status_unknown" ? "확인 못함" : "있음";
+
 /** D7 참고: 같은 질문의 검색 결과 전부를 줄 단위 표로 */
 export function resultsBlock(response: SearchResponse): string {
   const customers = new Set(response.customer_precedents.map((c) => c.campno));
   const all = [...response.customer_precedents, ...response.precedents];
-  const rows = all.map((c) => `${c.campno} | ${c.maker} | ${isoDate(c.received_date)} | ${customers.has(c.campno) ? "고객사" : "다른 회사"} | 573 ${c.cause.status === "no_573_report" ? "범위 밖" : "있음"} | ${supplierName(c) ?? "-"}`);
+  const rows = all.map((c) => `${c.campno} | ${c.maker} | ${isoDate(c.received_date)} | ${customers.has(c.campno) ? "고객사" : "다른 회사"} | 573 ${report573(c)} | ${supplierName(c) ?? "-"}`);
   return [`[참고 · 같은 부품 검색 결과 ${all.length}건 · 공급사는 원문 그대로]`, ...rows].join("\n");
 }
