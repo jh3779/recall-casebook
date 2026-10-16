@@ -217,7 +217,7 @@ const multi = () => doc(
   tbl(tr(tc(p("TEAM")), tc(p()))), p("— 사이 문단 —"),
   tbl(tr(tc(p("PROBLEM DESCRIPTION")), tc(p())), tr(tc(p("DEFINE THE PROBLEM CAUSE")), tc(p()))), p("— 두 번째 사이 —"),
   tbl(tr(tc(p("APPROVAL")), tc(p()))));
-it("표가 여럿이어도 부록은 D4 칸이 든 표 뒤에 붙고, 어느 단계를 채웠는지에 따라 자리가 바뀌지 않는다(리뷰 지적)", () => {
+it("표가 여럿이어도 부록은 8D 단계 칸이 든 마지막 표 뒤에 붙고, 어느 단계를 채웠는지에 따라 자리가 바뀌지 않는다(리뷰 지적)", () => {
   const at = (r: { xml: string }) => r.xml.indexOf("[선례 근거 부록]");
   const bodyEnd = (r: { xml: string }) => r.xml.indexOf("— 두 번째 사이 —");
   for (const steps of [{ 1: [{ text: "팀" }], 4: [{ text: "원인" }] }, { 4: [{ text: "원인" }] }, { 2: [{ text: "문제" }] }, {}]) {

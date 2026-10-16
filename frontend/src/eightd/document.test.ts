@@ -122,3 +122,13 @@ it("직접 고쳐 못 뺀 인용은 넣은 목록에서는 빼서 개수·꼬리
   expect(r.inserted).toEqual({});
   expect(r.values.d2).toBe("내가 고친 글");
 });
+it("같은 렌더에서 두 번 걷어 낼 때 첫 번째 결과(글·넣은 목록)를 이어 쓰면 두 번째는 아무것도 못 뺀 것으로 잘못 세지 않는다(13차 리뷰 지적)", () => {
+  const values = { d2: insertBlock("", "[타사 선례 20V000002]\n원문"), d7: insertBlock("", "표") };
+  const inserted = { "2|20V000002": "[타사 선례 20V000002]\n원문", "7|table": "표" };
+  const first = pruneInserted(values, inserted, new Set(), true);
+  expect(first.removed.length).toBe(2);
+  const again = pruneInserted(first.values, first.inserted, new Set(), true);
+  expect(again.removed).toEqual([]);
+  expect(again.blocked).toEqual([]);
+  expect(pruneInserted(first.values, inserted, new Set(), true).blocked.length).toBe(2); // 옛 목록을 쓰면 이미 지운 글이 "못 뺀 것"으로 잡힌다 — 그래서 화면은 갱신한 목록을 쓴다
+});

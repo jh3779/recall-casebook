@@ -44,14 +44,16 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   const [stale, setStale] = useState<"question" | "fresh" | null>(null);
   const [seenFresh, setSeenFresh] = useState(fresh);
   let valuesNow = values; // 이 렌더에서 걷어 낸 뒤의 글 — "이전에 쓴 글이 남았나" 판단은 걷어 낸 뒤 값으로 한다
+  let insertedNow = inserted; // 글과 짝인 "넣은 블록" 목록도 같은 시점 것으로 맞춘다(옛 목록으로 다시 걷으면 이미 지운 글을 못 뺀 것으로 잘못 알린다)
+  const notes: string[] = [];
   if (seen.cards !== cards || seen.response !== response) {
     const changed = workChanged(anchor, response);
     setSeen({ cards, response });
     if (response) setAnchor(response);
     const r = pruneInserted(values, inserted, new Set(cards.map((c) => c.campno)), changed);
     if (r.removed.length || r.blocked.length) {
-      setValues(r.values); setInserted(r.inserted); valuesNow = r.values;
-      setMessage(`담지 않은 선례의 인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요(타사 원문이면 출처 줄이 붙지 않으니 지우는 것을 권장합니다).` : ""}`);
+      setValues(r.values); setInserted(r.inserted); valuesNow = r.values; insertedNow = r.inserted;
+      notes.push(`담지 않은 선례의 인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요(타사 원문이면 출처 줄이 붙지 않으니 지우는 것을 권장합니다).` : ""}`);
     }
     if (changed && (Object.values(r.values).some((v) => v.trim()) || docx)) setStale("question");
   }
@@ -60,14 +62,15 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
     setSeenFresh(fresh);
     // 검색창 질문만 바꿨다면 이전 질문의 검색 결과 표·확인 질문은 걷어 낸다(사용자가 쓴 글은 남긴다)
     if (freshQuestionChanged(anchor, freshQuestion)) {
-      const r = pruneInserted(valuesNow, inserted, new Set(cards.map((c) => c.campno)), true);
+      const r = pruneInserted(valuesNow, insertedNow, new Set(cards.map((c) => c.campno)), true);
       if (r.removed.length || r.blocked.length) {
-        setValues(r.values); setInserted(r.inserted); valuesNow = r.values;
-        setMessage(`이전 질문의 검색 결과 표·인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요.` : ""}`);
+        setValues(r.values); setInserted(r.inserted); valuesNow = r.values; insertedNow = r.inserted;
+        notes.push(`이전 질문의 검색 결과 표·인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요.` : ""}`);
       }
     }
     if (Object.values(valuesNow).some((v) => v.trim()) || docx || subjectInput !== null) setStale("fresh");
   }
+  if (notes.length) setMessage(notes.join(" "));
   function startOver() {
     setValues({}); setInserted({}); setDocx(null); setChoice({}); setApplied(ALL_STEPS); setSubjectInput(null); setDocxError(""); setStale(null);
     setMessage("이전 작업을 비우고 새로 시작했습니다.");
@@ -110,7 +113,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
       const r = await patchDocx(docx.file, { subject, steps, footer: appliedInserted && response ? evidenceFooter(response) : null, cells: choice, appendix: applied.has(4) ? appendixParagraphs(values) : [] });
       const name = `${docx.file.name.replace(/\.docx$/i, "")}_${appliedInserted ? "선례삽입" : "작성"}.docx`;
       download(r.blob, name);
-      setMessage(`${name} 파일을 내려받았습니다. 적용한 단계: ${stepLabel([...applied].sort((a, b) => a - b))}. 칸에 넣은 단계: ${r.filled.length ? stepLabel(r.filled) : "없음(쓴 글이 없습니다)"}.${r.missing.length ? ` 파일에서 칸을 찾지 못해 넣지 못한 단계: ${stepLabel(r.missing)} — 칸을 고르거나 "파일 글 복사"로 직접 붙여 넣어 주세요.` : ""}${r.ambiguous.length ? ` 후보 칸이 여럿이라 넣지 않은 단계: ${stepLabel(r.ambiguous)} — 위 표에서 칸을 고른 뒤 다시 내려받아 주세요.` : ""}${r.conflict.length ? ` 다른 단계와 같은 칸을 골라 넣지 않은 단계: ${stepLabel(r.conflict)} — 단계마다 다른 칸을 골라 주세요.` : ""}${r.appendixPlaced === false ? " 파일에 표가 없어 선례 근거 부록을 넣지 못했습니다 — \"파일 글 복사\"로 직접 붙여 넣어 주세요." : r.appendixPlaced ? " 선례 근거 부록은 D4 칸이 든 표 뒤에 별도 문단으로 붙였습니다(양식에 따라 위치가 다를 수 있으니 파일에서 확인해 주세요)." : ""}`);
+      setMessage(`${name} 파일을 내려받았습니다. 적용한 단계: ${stepLabel([...applied].sort((a, b) => a - b))}. 칸에 넣은 단계: ${r.filled.length ? stepLabel(r.filled) : "없음(쓴 글이 없습니다)"}.${r.missing.length ? ` 파일에서 칸을 찾지 못해 넣지 못한 단계: ${stepLabel(r.missing)} — 칸을 고르거나 "파일 글 복사"로 직접 붙여 넣어 주세요.` : ""}${r.ambiguous.length ? ` 후보 칸이 여럿이라 넣지 않은 단계: ${stepLabel(r.ambiguous)} — 위 표에서 칸을 고른 뒤 다시 내려받아 주세요.` : ""}${r.conflict.length ? ` 다른 단계와 같은 칸을 골라 넣지 않은 단계: ${stepLabel(r.conflict)} — 단계마다 다른 칸을 골라 주세요.` : ""}${r.appendixPlaced === false ? " 파일에 표가 없어 선례 근거 부록을 넣지 못했습니다 — \"파일 글 복사\"로 직접 붙여 넣어 주세요." : r.appendixPlaced ? " 선례 근거 부록은 8D 단계 칸이 든 마지막 표 뒤에 별도 문단으로 붙였습니다(양식에 따라 위치가 다를 수 있으니 파일에서 확인해 주세요)." : ""}`);
     } catch (e) { setMessage(e instanceof DocxError ? e.message : "파일을 만들지 못했습니다"); }
     finally { setBusy(false); }
   }
