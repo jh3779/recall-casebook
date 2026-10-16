@@ -43,13 +43,14 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   const [anchor, setAnchor] = useState(response); // 마지막으로 본 검색 결과(검색 실패로 null이 와도 기억)
   const [stale, setStale] = useState<"question" | "fresh" | null>(null);
   const [seenFresh, setSeenFresh] = useState(fresh);
+  let valuesNow = values; // 이 렌더에서 걷어 낸 뒤의 글 — "이전에 쓴 글이 남았나" 판단은 걷어 낸 뒤 값으로 한다
   if (seen.cards !== cards || seen.response !== response) {
     const changed = workChanged(anchor, response);
     setSeen({ cards, response });
     if (response) setAnchor(response);
     const r = pruneInserted(values, inserted, new Set(cards.map((c) => c.campno)), changed);
     if (r.removed.length || r.blocked.length) {
-      setValues(r.values); setInserted(r.inserted);
+      setValues(r.values); setInserted(r.inserted); valuesNow = r.values;
       setMessage(`담지 않은 선례의 인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요(타사 원문이면 출처 줄이 붙지 않으니 지우는 것을 권장합니다).` : ""}`);
     }
     if (changed && (Object.values(r.values).some((v) => v.trim()) || docx)) setStale("question");
@@ -57,7 +58,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   // "선례 없이 8D 작성하기"를 새로 눌렀으면, 이전에 쓴 글·올린 파일이 있을 때 비울지 묻는다
   if (seenFresh !== fresh) {
     setSeenFresh(fresh);
-    if (Object.values(values).some((v) => v.trim()) || docx) setStale("fresh");
+    if (Object.values(valuesNow).some((v) => v.trim()) || docx || subjectInput !== null) setStale("fresh");
   }
   function startOver() {
     setValues({}); setInserted({}); setDocx(null); setChoice({}); setApplied(ALL_STEPS); setSubjectInput(null); setDocxError(""); setStale(null);
@@ -108,6 +109,8 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   const reference = (step: string) => {
     if (step === "7") {
       if (!response) return null;
+      // 검색창에서 질문만 고쳐 "선례 없이" 열었다면 이 표는 이전 질문의 검색 결과다 — SUBJECT와 어긋나는 표를 서류에 넣게 하지 않는다
+      if (freshQuestion && freshQuestion.trim() !== response.question.trim()) return <p className="note ed-ref">D7 검색 결과 표는 지금 질문과 다른 질문의 검색 결과라 제안하지 않습니다. 지금 질문을 검색한 뒤 선례를 담아 8D 작성을 누르면 넣을 수 있습니다.</p>;
       const block = resultsBlock(response);
       const on = inserted["7|table"] !== undefined;
       return <details className="ed-ref"><summary><span>선례 참고 열기 <span className="ed-opt">선택</span></span><span className={`ed-cnt${on ? " on" : ""}`}>넣음 {insertedCount("7")}건</span></summary>
