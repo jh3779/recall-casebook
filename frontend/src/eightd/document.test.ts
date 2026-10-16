@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { ALL_STEPS, composeDocument, CORE_STEPS, insertBlock, insertedFor, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
+import { ALL_STEPS, composeDocument, CORE_STEPS, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
 
 const prov = { build_id: "abc123", snapshot_date: "2026-10-06" };
 it("빈 칸에는 그대로, 글이 있으면 한 줄 띄우고 덧붙인다", () => {
@@ -60,4 +60,29 @@ it("단계별로 넣은 것만 접두사를 떼어 돌려준다 — 묶음 화�
   expect(insertedFor(inserted, "2")).toEqual({ "draft:gabc": "x", "20V001000": "y" });
   expect(insertedFor(inserted, "4")).toEqual({ "draft:gabc": "z" });
   expect(insertedFor(inserted, "5")).toEqual({});
+});
+
+const blockOf = (campno: string) => `[타사 선례 ${campno} · 회사 · 접수 2020-01-05]\n(결함) "원문 ${campno}"`;
+it("같은 작업에 선례 목록이 바뀌면 담지 않은 선례의 인용만 본문에서 걷어 내고, 선례에 매이지 않은 글은 남긴다", () => {
+  let values: Record<string, string> = {};
+  const inserted: Record<string, string> = {};
+  for (const [key, field, block] of [["2|20V000001", "d2", blockOf("20V000001")], ["2|20V000002", "d2", blockOf("20V000002")], ["7|table", "d7", "표"], ["4|draft:q", "d4_root", "[확인 질문 — 도구가 만든 고정 문장]\n① 가"]] as const) {
+    values = { ...values, [field]: insertBlock(values[field] ?? "", block) };
+    inserted[key] = block;
+  }
+  values.d2 = `내가 쓴 글\n\n${values.d2}`;
+  const r = pruneInserted(values, inserted, new Set(["20V000001"])); // 000002는 더는 담지 않음
+  expect(r.removed).toEqual(["2|20V000002"]);
+  expect(r.values.d2).toContain("20V000001");
+  expect(r.values.d2).not.toContain("20V000002");
+  expect(r.values.d2).toContain("내가 쓴 글");
+  expect(Object.keys(r.inserted).sort()).toEqual(["2|20V000001", "4|draft:q", "7|table"]);
+  expect(r.blocked).toEqual([]);
+});
+it("사용자가 고쳐 더는 그대로 없는 인용은 자동으로 못 빼고 blocked로 알린다", () => {
+  const inserted = { "2|20V000002": blockOf("20V000002") };
+  const r = pruneInserted({ d2: "내가 고친 글" }, inserted, new Set());
+  expect(r.blocked).toEqual(["2|20V000002"]);
+  expect(r.values.d2).toBe("내가 고친 글");
+  expect(r.inserted).toEqual(inserted);
 });

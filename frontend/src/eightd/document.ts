@@ -50,6 +50,28 @@ export function removeBlock(value: string, block: string): string | null {
   return value.replace(`\n\n${block}`, "").replace(block, "").trim();
 }
 
+/**
+ * 같은 작업에 선례 목록이 바뀌어 돌아왔을 때, 더는 담지 않은 선례의 인용을 본문에서 걷어 낸다(리뷰 지적 — 화면에서 뺄 버튼이 없는 인용이 남지 않게).
+ * 인용 머리줄의 리콜 번호로 판단하고, D7 검색 결과 표와 고정 확인 질문은 선례에 매이지 않아 남긴다. 사용자가 고쳐 자동으로 못 빼는 글은 blocked로 알린다.
+ */
+export function pruneInserted(values: Record<string, string>, inserted: Record<string, string>, keep: ReadonlySet<string>): { values: Record<string, string>; inserted: Record<string, string>; removed: string[]; blocked: string[] } {
+  const nextValues = { ...values };
+  const nextInserted = { ...inserted };
+  const removed: string[] = [];
+  const blocked: string[] = [];
+  for (const [key, block] of Object.entries(inserted)) {
+    const refs = [...block.matchAll(/\[타사 선례 (\d{2}[A-Z]\d{6})/g)].map((m) => m[1]);
+    if (!refs.length || refs.every((c) => keep.has(c))) continue;
+    const field = TARGET[key.split("|")[0]];
+    const next = field ? removeBlock(nextValues[field] ?? "", block) : null;
+    if (next === null) { blocked.push(key); continue; }
+    nextValues[field] = next;
+    delete nextInserted[key];
+    removed.push(key);
+  }
+  return { values: nextValues, inserted: nextInserted, removed, blocked };
+}
+
 /** 선례를 하나라도 넣었을 때 문서 끝에 붙는 근거 데이터 한 줄 */
 export const evidenceFooter = (prov: Pick<ProvenanceData, "build_id" | "snapshot_date">) => `※ 선례 근거 데이터: build ${prov.build_id} · 스냅샷 ${prov.snapshot_date} · 대괄호 [타사 선례 …] 글은 타사 공개 원문이며 자사 사실이 아닙니다.`;
 

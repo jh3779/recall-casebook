@@ -56,7 +56,10 @@ it("확인 질문은 고정 문장임을 밝히고 번호를 붙인다", () => {
 });
 
 it("초안 응답의 build가 검색 응답과 다르면 같은 서버 판본이 아니라고 본다(검색 응답이 없으면 비교하지 않는다)", () => {
-  expect(sameBuild({ build_id: "aaa" }, { build_id: "aaa" })).toBe(true);
-  expect(sameBuild({ build_id: "aaa" }, { build_id: "bbb" })).toBe(false);
-  expect(sameBuild({ build_id: "aaa" }, null)).toBe(true);
+  const r = (build_id: string, bundle_sha256: string | null = null) => ({ build_id, bundle_sha256 });
+  expect(sameBuild(r("aaa"), r("aaa"))).toBe(true);
+  expect(sameBuild(r("aaa"), r("bbb"))).toBe(false);
+  expect(sameBuild(r("aaa"), null)).toBe(true);
+  expect(sameBuild(r("aaa", "x"), r("aaa", "y"))).toBe(false); // build_id가 같아도 묶음(형식 판본)이 다르면 다른 판본
+  expect(sameBuild(r("aaa", "x"), r("aaa", null))).toBe(true); // 한쪽에 없으면 build_id만 본다
 });

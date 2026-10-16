@@ -147,7 +147,7 @@ def test_assemble_uses_source_characters_even_when_the_llm_changed_whitespace():
         "ungrouped": [],
     }
     out = draft.assemble(srcs2(), payload)
-    # 문장 경계까지 넓힌 온전한 문장들이 원문 글자 그대로(이중 공백 포함) 나간다 — 부분 인용 확장은 아래 시험
+    # 묶음에 넣은 출처의 전체 원문이 원문 글자 그대로(이중 공백 포함) 나간다 — 부분 인용은 아래 시험
     assert out["groups"][0]["items"][0]["quote"] == DEFECT
 
 

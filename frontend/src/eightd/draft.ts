@@ -34,7 +34,8 @@ export interface DraftResponse {
 }
 
 /** 초안 응답이 검색 응답과 같은 서버 판본(build)에서 나왔는가 — 다르면 서류 꼬리의 출처 표시가 인용의 실제 출처와 어긋난다(리뷰 지적) */
-export const sameBuild = (result: Pick<DraftResponse, "build_id">, search: { build_id: string } | null): boolean => !search || result.build_id === search.build_id;
+export const sameBuild = (result: Pick<DraftResponse, "build_id" | "bundle_sha256">, search: { build_id: string; bundle_sha256?: string | null } | null): boolean =>
+  !search || (result.build_id === search.build_id && (!result.bundle_sha256 || !search.bundle_sha256 || result.bundle_sha256 === search.bundle_sha256));
 
 const FIELD_LABEL = { defect: "결함", consequence: "결과", cause: "원인 원문" } as const;
 
