@@ -190,3 +190,24 @@ it("XML에 넣을 수 없는 제어 문자는 빼고 탭·줄바꿈은 남긴다
   expect(r.xml).toContain("abc\td");
   expect([...r.xml].some((ch) => { const c = ch.charCodeAt(0); return (c < 9) || c === 11 || c === 12 || (c > 13 && c < 32); })).toBe(false);
 });
+
+// ---- 선례 근거 부록(D4 타사 원인) ----
+const APP = [{ text: "[선례 근거 부록]", bold: true }, { text: "[타사 선례 20V000001]" }, { text: "(원인 원문) \"원문 & 글\"" }];
+it("선례 근거 부록은 칸에 넣지 않고 8D 표 뒤 별도 문단으로, 근거 데이터 줄보다 앞에 붙는다(제목은 굵게)", () => {
+  const xml = withCell(tc(p()));
+  const r = patchDocumentXml(xml, content({ 2: [{ text: "내 글" }] }, { appendix: APP, footer: "※ 근거 줄" }));
+  expect(r.appendixPlaced).toBe(true);
+  expect(r.xml.indexOf("내 글")).toBeLessThan(r.xml.indexOf("[선례 근거 부록]"));
+  expect(r.xml.indexOf("[선례 근거 부록]")).toBeLessThan(r.xml.indexOf("※ 근거 줄"));
+  expect(r.xml).toContain("<w:b/><w:bCs/><w:sz w:val=\"18\"/></w:rPr><w:t xml:space=\"preserve\">[선례 근거 부록]");
+  expect(r.xml).toContain("원문 &amp; 글");
+  expect(r.xml.indexOf("[타사 선례 20V000001]")).toBeGreaterThan(r.xml.indexOf("</w:tbl>")); // 표 칸 안이 아니다
+  expect((r.xml.match(/<w:p>/g) ?? []).length).toBe((r.xml.match(/<\/w:p>/g) ?? []).length);
+});
+it("칸에 넣은 단계가 없어도 부록은 문서의 마지막 표 뒤에 붙고, 표가 없으면 못 넣었다고 알린다", () => {
+  const only = patchDocumentXml(withCell(tc(p())), content({}, { appendix: APP }));
+  expect(only.appendixPlaced).toBe(true);
+  expect(only.xml.indexOf("[선례 근거 부록]")).toBeGreaterThan(only.xml.lastIndexOf("</w:tbl>"));
+  expect(patchDocumentXml(doc(p("표 없는 문서")), content({}, { appendix: APP })).appendixPlaced).toBe(false);
+  expect(patchDocumentXml(withCell(tc(p())), content({ 2: [{ text: "x" }] })).appendixPlaced).toBeNull(); // 부록 없음
+});

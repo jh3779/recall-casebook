@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Card, SearchResponse } from "../search/types";
-import { ALL_STEPS, composeDocument, CORE_STEPS, evidenceFooter, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
+import { ALL_STEPS, APPENDIX_KEY, appendixParagraphs, composeDocument, CORE_STEPS, evidenceFooter, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
 import { workChanged } from "./session";
 import { DocxError, inspectDocx, patchDocx, type Inspection, type Place } from "./docxPatch";
 import { DraftPanel } from "./DraftPanel";
@@ -12,7 +12,7 @@ import { resultsBlock, type EvidenceStep } from "./evidenceText";
 const HINT: Record<string, string> = {
   "2": "타사 선례가 쓴 결함·결과 원문입니다.",
   "3": "선례 차량의 573 생산 기간입니다(우리 로트가 아님).",
-  "4": "타사 선례의 공개된 원인 원문입니다. 자사 원인이 아닙니다.",
+  "4": "타사 선례의 공개된 원인 원문입니다. 자사 원인이 아니라서 'Root Cause' 칸이 아니라 아래 '선례 근거 부록'에만 들어갑니다.",
   "5": "타사 선례 리콜의 시정 원문입니다(설계·공정 변경이 아닐 수 있음).",
   "7": "같은 부품 검색 결과와 공급사 표시입니다.",
 };
@@ -99,10 +99,10 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
     setBusy(true); setMessage("");
     try {
       const steps = Object.fromEntries(STEPS.filter((step) => applied.has(step.n)).map((step) => [step.n, stepParagraphs(step, values)]));
-      const r = await patchDocx(docx.file, { subject, steps, footer: appliedInserted && response ? evidenceFooter(response) : null, cells: choice });
+      const r = await patchDocx(docx.file, { subject, steps, footer: appliedInserted && response ? evidenceFooter(response) : null, cells: choice, appendix: applied.has(4) ? appendixParagraphs(values) : [] });
       const name = `${docx.file.name.replace(/\.docx$/i, "")}_${appliedInserted ? "선례삽입" : "작성"}.docx`;
       download(r.blob, name);
-      setMessage(`${name} 파일을 내려받았습니다. 적용한 단계: ${stepLabel([...applied].sort((a, b) => a - b))}. 칸에 넣은 단계: ${r.filled.length ? stepLabel(r.filled) : "없음(쓴 글이 없습니다)"}.${r.missing.length ? ` 파일에서 칸을 찾지 못해 넣지 못한 단계: ${stepLabel(r.missing)} — 칸을 고르거나 "파일 글 복사"로 직접 붙여 넣어 주세요.` : ""}${r.ambiguous.length ? ` 후보 칸이 여럿이라 넣지 않은 단계: ${stepLabel(r.ambiguous)} — 위 표에서 칸을 고른 뒤 다시 내려받아 주세요.` : ""}${r.conflict.length ? ` 다른 단계와 같은 칸을 골라 넣지 않은 단계: ${stepLabel(r.conflict)} — 단계마다 다른 칸을 골라 주세요.` : ""}`);
+      setMessage(`${name} 파일을 내려받았습니다. 적용한 단계: ${stepLabel([...applied].sort((a, b) => a - b))}. 칸에 넣은 단계: ${r.filled.length ? stepLabel(r.filled) : "없음(쓴 글이 없습니다)"}.${r.missing.length ? ` 파일에서 칸을 찾지 못해 넣지 못한 단계: ${stepLabel(r.missing)} — 칸을 고르거나 "파일 글 복사"로 직접 붙여 넣어 주세요.` : ""}${r.ambiguous.length ? ` 후보 칸이 여럿이라 넣지 않은 단계: ${stepLabel(r.ambiguous)} — 위 표에서 칸을 고른 뒤 다시 내려받아 주세요.` : ""}${r.conflict.length ? ` 다른 단계와 같은 칸을 골라 넣지 않은 단계: ${stepLabel(r.conflict)} — 단계마다 다른 칸을 골라 주세요.` : ""}${r.appendixPlaced === false ? " 파일에 표가 없어 선례 근거 부록을 넣지 못했습니다 — \"파일 글 복사\"로 직접 붙여 넣어 주세요." : r.appendixPlaced ? " 선례 근거 부록은 8D 표 뒤에 별도 문단으로 붙였습니다." : ""}`);
     } catch (e) { setMessage(e instanceof DocxError ? e.message : "파일을 만들지 못했습니다"); }
     finally { setBusy(false); }
   }
@@ -121,8 +121,8 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
     if (!(step in HINT) || !cards.length) return null;
     return <details className="ed-ref"><summary><span>선례 참고 열기 <span className="ed-opt">선택</span></span><span className={`ed-cnt${insertedCount(step) ? " on" : ""}`}>넣음 {insertedCount(step)}건</span></summary>
       <p className="note">{HINT[step]} 넣기를 누르기 전에는 본문에 아무것도 들어가지 않습니다.</p>
-      {response && (step === "2" || step === "4") && <DraftPanel key={`${step}|${response.question}|${cards.map((c) => c.campno).join(",")}`} step={step === "2" ? "d2" : "d4"} question={response.question} build={response} cards={cards} inserted={insertedFor(inserted, step)} onToggle={(id, block) => toggle(step, id, block)} />}
-      {cards.map((card) => <EvidenceCard key={card.campno} step={step as EvidenceStep} card={card} customer={customers.has(card.campno)} inserted={inserted[`${step}|${card.campno}`] !== undefined} onToggle={(block) => toggle(step, card.campno, block)} />)}
+      {response && (step === "2" || step === "4") && <DraftPanel key={`${step}|${response.question}|${cards.map((c) => c.campno).join(",")}`} step={step === "2" ? "d2" : "d4"} question={response.question} build={response} cards={cards} appendix={step === "4"} inserted={insertedFor(inserted, step)} onToggle={(id, block) => toggle(step, id, block)} />}
+      {cards.map((card) => <EvidenceCard key={card.campno} appendix={step === "4"} step={step as EvidenceStep} card={card} customer={customers.has(card.campno)} inserted={inserted[`${step}|${card.campno}`] !== undefined} onToggle={(block) => toggle(step, card.campno, block)} />)}
     </details>;
   };
   const total = appliedInserted;
@@ -161,6 +161,11 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
         </div>
         {reference(String(step.n))}
       </section>)}
+      {applied.has(4) && <section className="ed-step" aria-labelledby="ed-h-appendix">
+        <h2 id="ed-h-appendix"><span className="ed-n">부록</span>선례 근거 부록 — D4 타사 원인</h2>
+        <div className="ed-fields"><label className="ed-field"><span>D4 인용 <em className="ed-own">D4 "본문에 넣기"를 누른 인용만</em></span>
+          <textarea value={values[APPENDIX_KEY] ?? ""} rows={rowsFor(values[APPENDIX_KEY] ?? "")} placeholder="D4 선례 참고에서 넣은 타사 원인 원문이 여기 들어갑니다 — 8D 표 뒤 별도 문단이라 자사 근본 원인과 섞이지 않습니다" onChange={(e) => setValues((v) => ({ ...v, [APPENDIX_KEY]: e.target.value }))} /></label></div>
+      </section>}
     </div>
     <section className="ed-bar" aria-label="파일 만들기">
       <div className="ed-bar-main"><b>본문에 넣은 선례 {total}건</b><span className="note">{total ? "— 칸의 글이 그대로 파일에 들어갑니다" : "— 선례 없이 만들어집니다"}</span></div>

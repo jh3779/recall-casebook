@@ -1,4 +1,4 @@
-import { ALL_STEPS, shortLabel, STEPS, type Step } from "./document";
+import { ALL_STEPS, APPENDIX_KEY, APPENDIX_TITLE, shortLabel, STEPS, type Step } from "./document";
 
 /** 칸 안의 글 — 칸에 쓴 글 그대로, 여러 칸이 한 단계에 있으면 칸 이름을 굵게 앞에 붙인다(실제 .docx 삽입 결과와 같은 모양) */
 function cell(step: Step, values: Record<string, string>) {
@@ -23,6 +23,7 @@ export function FormPreview({ subject, values, evidenceNote, only = ALL_STEPS }:
       <tr><th colSpan={2} className="fp-band">8-DISCIPLINE REPORT</th></tr>
       {STEPS.map((step) => <tr key={step.n}><th className="fp-label"><div>DISCIPLINE {step.n}</div><div className="fp-name">{step.name}</div></th><td className={`fp-cell${only.has(step.n) ? "" : " off"}`}>{only.has(step.n) ? cell(step, values) : null}</td></tr>)}
     </tbody></table>
+    {only.has(4) && values[APPENDIX_KEY]?.trim() && <div className="fp-appendix"><p><b>{APPENDIX_TITLE}</b></p>{values[APPENDIX_KEY].trim().split("\n").map((line, i) => <p key={i}>{line}</p>)}</div>}
     {evidenceNote && <p className="fp-note">{evidenceNote}</p>}
     <div className="fp-foot">Form No. QA-8D-001 Rev.3</div>
   </div>;

@@ -28,3 +28,14 @@ it("적용하지 않은 단계는 써 둔 글이 있어도 칸을 비워 두고 
   expect(markup).not.toContain("잠정");
   expect(markup.match(/fp-cell off/g)).toHaveLength(7);
 });
+
+it("선례 근거 부록은 D4 적용 때만 표 아래 별도 영역에 보이고 D4 칸 안에는 섞이지 않는다", () => {
+  const values = { d4_root: "자사 원인", appendix: "[타사 선례 20V000001]\n(원인 원문) \"원문\"" };
+  const on = renderToStaticMarkup(<FormPreview subject="" values={values} evidenceNote={null} />);
+  expect(on).toContain("선례 근거 부록");
+  expect(on).toContain("(원인 원문) &quot;원문&quot;");
+  const table = on.slice(on.indexOf("<table class=\"fp-table fp-body\""), on.indexOf("</table>", on.indexOf("fp-body")));
+  expect(table).toContain("자사 원인");
+  expect(table).not.toContain("타사 선례");
+  expect(renderToStaticMarkup(<FormPreview subject="" values={values} evidenceNote={null} only={new Set([2])} />)).not.toContain("선례 근거 부록");
+});

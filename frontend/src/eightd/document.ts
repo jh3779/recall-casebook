@@ -27,7 +27,7 @@ export const insertedFor = (inserted: Readonly<Record<string, string>>, step: st
 export const shortLabel = (label: string) => label.split(" — ")[0];
 
 /** 양식 칸에 들어갈 한 문단 — prefix는 칸이 여럿인 단계에서 굵게 붙는 칸 이름 */
-export interface ParaSpec { prefix?: string; text: string }
+export interface ParaSpec { prefix?: string; text: string; bold?: boolean }
 /** 한 단계의 칸 글을 문단(줄 단위)으로 — 칸이 여럿이면 각 칸 첫 줄 앞에 칸 이름을 붙인다(양식 미리보기와 같은 모양) */
 export function stepParagraphs(step: Step, values: Record<string, string>): ParaSpec[] {
   return step.fields.flatMap((f) => {
@@ -37,8 +37,16 @@ export function stepParagraphs(step: Step, values: Record<string, string>): Para
   });
 }
 
-/** 선례 인용이 들어가는 칸 — D4는 "근본 원인" 칸 하나뿐이고, 그 안에서 머리줄로만 자사 글과 구분된다(DEC-064 알려진 한계 ④) */
-export const TARGET: Record<string, string> = { "2": "d2", "3": "d3", "4": "d4_root", "5": "d5", "7": "d7" };
+/** 선례 근거 부록 — D4 타사 원인 원문은 사용자의 "Root Cause" 칸이 아니라 이 부록에만 들어간다(DEC-064 ④ 결정 2026-10-17: D4만 부록). 8D 표 뒤 별도 문단이라 서류를 훑는 사람이 타사 원인을 이 건의 근본 원인으로 읽지 않는다 */
+export const APPENDIX_KEY = "appendix";
+export const APPENDIX_TITLE = "[선례 근거 부록 — 타사 공개 원문이며 자사 사실이 아닙니다]";
+/** 선례 인용이 들어가는 칸 — D2·D3·D5는 해당 칸 끝에, D4는 "근본 원인" 칸이 아니라 부록에 들어간다 */
+export const TARGET: Record<string, string> = { "2": "d2", "3": "d3", "4": APPENDIX_KEY, "5": "d5", "7": "d7" };
+/** 부록의 문단 — 제목 한 줄(굵게) 뒤에 부록 글을 줄 단위로. 글이 없으면 부록 자체가 없다 */
+export function appendixParagraphs(values: Record<string, string>): ParaSpec[] {
+  const value = values[APPENDIX_KEY]?.trim();
+  return value ? [{ text: APPENDIX_TITLE, bold: true }, ...value.split("\n").map((text) => ({ text }))] : [];
+}
 
 /** 칸 끝에 한 줄 띄우고 덧붙인다 */
 export function insertBlock(value: string, block: string): string {
@@ -88,6 +96,7 @@ export function composeDocument({ subject, values, withEvidence, prov, only = AL
     const parts = step.fields.flatMap((f) => (values[f.key]?.trim() ? [`${f.label}\n${values[f.key].trim()}`] : []));
     out.push(`DISCIPLINE ${step.n} · ${step.name}\n${parts.length ? parts.join("\n\n") : "(미작성)"}\n`);
   }
+  if (only.has(4) && values[APPENDIX_KEY]?.trim()) out.push(`${APPENDIX_TITLE}\n${values[APPENDIX_KEY].trim()}\n`);
   if (withEvidence && prov) out.push(evidenceFooter(prov));
   return out.join("\n");
 }

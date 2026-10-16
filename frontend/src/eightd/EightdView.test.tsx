@@ -66,3 +66,11 @@ it("선례 없이 연 질문이 검색 응답의 질문과 같으면(앞뒤 공�
   expect(markup).toContain("표를 텍스트로 본문에 넣기");
   expect(markup).not.toContain("지금 질문과 다른 질문의 검색 결과");
 });
+
+it("D4 선례 참고는 부록에 넣는다고 안내하고 버튼도 부록에 넣기이며, 부록 칸이 따로 있다. D2는 그대로 본문에 넣기다", () => {
+  const markup = renderToStaticMarkup(<EightdView cards={[response.customer_precedents[0] ?? response.precedents[0]]} response={response} onBack={() => {}} />);
+  expect(markup).toMatch(/자사 원인이 아니라서 &#x27;Root Cause&#x27; 칸이 아니라 아래 &#x27;선례 근거 부록&#x27;에만 들어갑니다/);
+  expect(markup).toContain("부록에 텍스트로 넣기");
+  expect(markup).toContain("선례 근거 부록 — D4 타사 원인");
+  expect(markup).toContain("본문에 텍스트로 넣기"); // D2·D3·D5는 그대로
+});

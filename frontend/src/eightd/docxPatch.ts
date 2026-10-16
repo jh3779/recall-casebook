@@ -53,13 +53,14 @@ export interface Place { table: number; row: number; col: number }
 /** 라벨 칸 바로 오른쪽의 내용 칸 — label은 그 라벨 글, guess는 라벨이 가리키는 단계(없으면 null) */
 interface Target extends Place { cell: Cell; tableEnd: number; label: string; guess: number | null }
 /** cells: 라벨이 있는 모든 내용 칸(사용자가 직접 고를 수 있는 후보), matches: 단계별로 라벨이 맞은 칸들 */
-interface Recognition { cells: Target[]; matches: Map<number, Target[]>; subject?: Target }
+interface Recognition { cells: Target[]; matches: Map<number, Target[]>; subject?: Target; lastTableEnd?: number }
 
 function recognize(xml: string): Recognition {
   const cellsOut: Target[] = [];
   const matches = new Map<number, Target[]>();
   let subject: Target | undefined;
-  scan(xml).forEach((table, ti) => table.rows.forEach((cells, ri) => cells.forEach((label, ci) => {
+  const tables = scan(xml);
+  tables.forEach((table, ti) => table.rows.forEach((cells, ri) => cells.forEach((label, ci) => {
     const cell = cells[ci + 1];
     if (!cell || !label.text) return;
     const guess = stepOfLabel(label.text);
@@ -68,7 +69,7 @@ function recognize(xml: string): Recognition {
     if (/^subject\b/i.test(label.text)) subject ??= target;
     if (guess !== null) matches.set(guess, [...(matches.get(guess) ?? []), target]);
   })));
-  return { cells: cellsOut, matches, subject };
+  return { cells: cellsOut, matches, subject, lastTableEnd: tables.length ? Math.max(...tables.map((t) => t.end)) : undefined };
 }
 
 const samePlace = (a: Place, b: Place) => a.table === b.table && a.row === b.row && a.col === b.col;
@@ -111,9 +112,10 @@ function cellEdit(xml: string, cell: Cell, paras: ParaSpec[]): Edit {
 }
 
 /** cells: 사용자가 단계마다 직접 고른 칸(DEC-064 보완) — 있으면 라벨 인식보다 우선한다 */
-export interface ExportContent { subject: string; steps: Record<number, ParaSpec[]>; footer: string | null; cells?: Record<number, Place> }
+/** appendix: 8D 표 뒤에 별도 문단으로 붙는 선례 근거 부록(D4 타사 원인) — 칸에 들어가지 않는다 */
+export interface ExportContent { subject: string; steps: Record<number, ParaSpec[]>; footer: string | null; cells?: Record<number, Place>; appendix?: ParaSpec[] }
 /** missing: 칸을 못 찾은 단계, ambiguous: 라벨이 맞은 칸이 여럿인데 고르지 않아 넣지 않은 단계, conflict: 앞선 단계가 이미 쓰는 칸을 또 가리켜 넣지 않은 단계(두 편집이 같은 자리를 겹쳐 파일이 깨지지 않게) */
-export interface PatchResult { xml: string; filled: number[]; missing: number[]; ambiguous: number[]; conflict: number[] }
+export interface PatchResult { xml: string; filled: number[]; missing: number[]; ambiguous: number[]; conflict: number[]; appendixPlaced: boolean | null }
 
 /** 단계별 글을 칸에 덧붙인다. 글이 있는데 칸을 못 찾았거나(missing) 후보가 여럿인데 고르지 않은(ambiguous) 단계는 넣지 않는다 */
 export function patchDocumentXml(xml: string, content: ExportContent): PatchResult {
@@ -138,10 +140,15 @@ export function patchDocumentXml(xml: string, content: ExportContent): PatchResu
     tableEnd ??= target.tableEnd;
   }
   if (content.subject.trim() && found.subject && !found.subject.cell.text && !used.has(found.subject.cell)) edits.push(cellEdit(xml, found.subject.cell, [{ text: content.subject.trim() }]));
-  if (content.footer && tableEnd !== undefined) edits.push({ at: tableEnd, remove: 0, insert: `<w:p><w:r><w:rPr><w:sz w:val="16"/></w:rPr><w:t xml:space="preserve">${esc(content.footer)}</w:t></w:r></w:p>` });
+  // 8D 표 뒤: 선례 근거 부록(있으면) → 근거 데이터 줄. 부록만 있고 칸에 넣은 단계가 없으면 문서의 마지막 표 뒤에 둔다
+  const anchor = tableEnd ?? found.lastTableEnd;
+  const appendixXml = (content.appendix ?? []).map((p) => `<w:p><w:r><w:rPr>${p.bold ? "<w:b/><w:bCs/>" : ""}<w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">${esc(p.text)}</w:t></w:r></w:p>`).join("");
+  const footerXml = content.footer ? `<w:p><w:r><w:rPr><w:sz w:val="16"/></w:rPr><w:t xml:space="preserve">${esc(content.footer)}</w:t></w:r></w:p>` : "";
+  const appendixPlaced = appendixXml ? anchor !== undefined : null;
+  if (anchor !== undefined && (appendixXml || footerXml)) edits.push({ at: anchor, remove: 0, insert: appendixXml + footerXml });
   let out = xml;
   for (const e of edits.sort((a, b) => b.at - a.at)) out = out.slice(0, e.at) + e.insert + out.slice(e.at + e.remove);
-  return { xml: out, filled: filled.sort((a, b) => a - b), missing: missing.sort((a, b) => a - b), ambiguous: ambiguous.sort((a, b) => a - b), conflict: conflict.sort((a, b) => a - b) };
+  return { xml: out, filled: filled.sort((a, b) => a - b), missing: missing.sort((a, b) => a - b), ambiguous: ambiguous.sort((a, b) => a - b), conflict: conflict.sort((a, b) => a - b), appendixPlaced };
 }
 
 async function open(file: Blob) {

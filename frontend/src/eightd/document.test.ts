@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { ALL_STEPS, composeDocument, CORE_STEPS, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
+import { ALL_STEPS, composeDocument, CORE_STEPS, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep, APPENDIX_KEY, APPENDIX_TITLE, appendixParagraphs } from "./document";
 
 const prov = { build_id: "abc123", snapshot_date: "2026-10-06" };
 it("빈 칸에는 그대로, 글이 있으면 한 줄 띄우고 덧붙인다", () => {
@@ -14,9 +14,24 @@ it("넣은 글을 정확히 빼고 내 글은 남긴다", () => {
 it("넣은 뒤 사용자가 고쳤으면 자동으로 빼지 않는다(null)", () => {
   expect(removeBlock("내 글\n\n[타사 선례 X] 고침", "[타사 선례 X]\n원문")).toBeNull();
 });
-it("선례를 넣는 칸은 모두 실제 양식의 칸이다", () => {
+it("선례를 넣는 곳은 D2·D3·D5·D7은 실제 양식의 칸이고, D4 타사 원인은 'Root Cause' 칸이 아니라 부록이다(DEC-064 ④ 결정)", () => {
   const keys = new Set(STEPS.flatMap((s) => s.fields.map((f) => f.key)));
-  for (const key of Object.values(TARGET)) expect(keys.has(key)).toBe(true);
+  for (const [step, key] of Object.entries(TARGET)) {
+    if (step === "4") { expect(key).toBe(APPENDIX_KEY); expect(keys.has(key)).toBe(false); expect(keys.has("d4_root")).toBe(true); expect(key).not.toBe("d4_root"); }
+    else expect(keys.has(key)).toBe(true);
+  }
+});
+it("선례 근거 부록은 D4를 적용했을 때만, 글이 있을 때만 8D 표 뒤에 별도 제목과 함께 나오고 칸 본문에는 섞이지 않는다", () => {
+  const values = { d4_root: "자사 원인", [APPENDIX_KEY]: "[타사 선례 20V000001]\n(원인 원문) \"원문\"" };
+  const text = composeDocument({ subject: "s", values, withEvidence: true, prov });
+  expect(text).toContain(APPENDIX_TITLE);
+  expect(text.indexOf("Root Cause — 우리 건의 근본 원인\n자사 원인")).toBeGreaterThan(-1);
+  expect(text.slice(0, text.indexOf(APPENDIX_TITLE))).not.toContain("타사 선례"); // 부록 앞(8D 칸들)에는 타사 원문이 없다
+  expect(text.indexOf(APPENDIX_TITLE)).toBeLessThan(text.indexOf("※ 선례 근거 데이터"));
+  expect(composeDocument({ subject: "s", values, withEvidence: false, prov, only: new Set([2]) })).not.toContain(APPENDIX_TITLE); // D4 미적용
+  expect(composeDocument({ subject: "s", values: { d2: "x" }, withEvidence: false, prov })).not.toContain(APPENDIX_TITLE); // 글 없음
+  expect(appendixParagraphs(values)[0]).toEqual({ text: APPENDIX_TITLE, bold: true });
+  expect(appendixParagraphs({})).toEqual([]);
 });
 it("파일 본문은 칸에 쓴 글만 싣고 빈 단계는 (미작성)으로 둔다", () => {
   const text = composeDocument({ subject: "airbag", values: { d2: "  불량 6건  " }, withEvidence: false, prov });
@@ -66,7 +81,7 @@ const blockOf = (campno: string) => `[타사 선례 ${campno} · 회사 · 접�
 it("선례 목록만 바뀌면 담지 않은 선례의 인용과 확인 질문을 걷어 내고, 검색 결과 표와 사용자가 쓴 글은 남긴다", () => {
   let values: Record<string, string> = {};
   const inserted: Record<string, string> = {};
-  for (const [key, field, block] of [["2|20V000001", "d2", blockOf("20V000001")], ["2|20V000002", "d2", blockOf("20V000002")], ["7|table", "d7", "표"], ["4|draft:q", "d4_root", "[확인 질문 — 도구가 만든 고정 문장]\n① 가"]] as const) {
+  for (const [key, field, block] of [["2|20V000001", "d2", blockOf("20V000001")], ["2|20V000002", "d2", blockOf("20V000002")], ["7|table", "d7", "표"], ["4|draft:q", "appendix", "[확인 질문 — 도구가 만든 고정 문장]\n① 가"]] as const) {
     values = { ...values, [field]: insertBlock(values[field] ?? "", block) };
     inserted[key] = block;
   }
@@ -94,7 +109,7 @@ it("리콜 번호 모양을 가정하지 않는다 — 21V00F000처럼 실제 �
 });
 it("질문이 바뀌면(dropUnlinked) 선례에 매이지 않은 D7 표도 걷어 내고, 선례를 걷어 냈으면 고정 확인 질문도 함께 걷는다", () => {
   const inserted = { "2|20V000002": blockOf("20V000002"), "7|table": "표", "4|draft:q": "[확인 질문 — 도구가 만든 고정 문장]\n① 가" };
-  const values = { d2: insertBlock("", inserted["2|20V000002"]), d7: "표", d4_root: insertBlock("", inserted["4|draft:q"]) };
+  const values = { d2: insertBlock("", inserted["2|20V000002"]), d7: "표", appendix: insertBlock("", inserted["4|draft:q"]) };
   const same = pruneInserted(values, inserted, new Set()); // 질문 그대로: 인용과 그 확인 질문만
   expect(Object.keys(same.inserted)).toEqual(["7|table"]);
   const changed = pruneInserted(values, inserted, new Set(), true); // 질문이 바뀜: 표까지
