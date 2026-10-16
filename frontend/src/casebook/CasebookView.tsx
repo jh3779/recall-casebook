@@ -73,7 +73,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
   function changeNote(campno: string, text: string) {
     const r = applyNote(storage, caseName, notes, campno, text);
     setNotes(r.notes);
-    if (caseName && storage) setUnsavedNotes((prev) => nextUnsaved(prev, campno, r.saved));
+    if (caseName && storage && !r.deleteFailed) setUnsavedNotes((prev) => nextUnsaved(prev, campno, r.saved)); // 삭제 실패는 저장 실패가 아니다 — 옛 글이 저장소에 남아 있으므로 "잃는다" 경고를 켜지 않고 삭제 실패만 알린다
     setCopyMessage(r.deleteFailed ? "Could not delete the saved note — it may remain in this browser." : "");
   }
   async function copyAll() {
