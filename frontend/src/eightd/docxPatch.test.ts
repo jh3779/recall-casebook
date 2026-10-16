@@ -238,6 +238,19 @@ it("D1~D4와 D5~D8이 다른 표에 나뉜 양식이면 부록·근거 줄은 D5
     expect(r.xml.indexOf("※ 근거 줄")).toBeGreaterThan(r.xml.indexOf("[선례 근거 부록]"));
   }
 });
+it("자동 인식 안 된 뒤쪽 표의 칸을 D8로 직접 고르면, 부록·근거 줄은 그 표 뒤에 붙는다(14차 리뷰·Codex 지적)", () => {
+  const custom = () => doc(
+    tbl(tr(tc(p("PROBLEM DESCRIPTION")), tc(p())), tr(tc(p("DEFINE THE PROBLEM CAUSE")), tc(p()))), p("— 표 사이 —"),
+    tbl(tr(tc(p("Final Report")), tc(p())), tr(tc(p("Lessons")), tc(p()))), p("— 표 뒤 —"));
+  const steps = { 4: [{ text: "원인" }], 8: [{ text: "종결" }] };
+  const unmapped = patchDocumentXml(custom(), content(steps, { appendix: APP, footer: "※ 근거 줄" }));
+  expect(unmapped.filled).toEqual([4]); // 직접 고르지 않으면 D8은 못 찾음
+  const r = patchDocumentXml(custom(), content(steps, { appendix: APP, footer: "※ 근거 줄", cells: { 8: { table: 2, row: 1, col: 2 } } }));
+  expect(r.filled).toEqual([4, 8]);
+  expect(r.xml.indexOf("[선례 근거 부록]")).toBeGreaterThan(r.xml.indexOf("종결"));
+  expect(r.xml.indexOf("[선례 근거 부록]")).toBeLessThan(r.xml.indexOf("— 표 뒤 —"));
+  expect(r.xml.indexOf("※ 근거 줄")).toBeGreaterThan(r.xml.indexOf("[선례 근거 부록]"));
+});
 it("D4 칸이 없는 양식이면 인식한 8D 단계 칸이 든 표 중 마지막 표 뒤, 표 안의 칸이 하나도 인식되지 않으면 마지막 표 뒤에 붙는다", () => {
   const noD4 = doc(tbl(tr(tc(p("TEAM")), tc(p()))), p("가운데"), tbl(tr(tc(p("PROBLEM DESCRIPTION")), tc(p()))), p("끝 문단"), tbl(tr(tc(p("APPROVAL")), tc(p()))));
   const r = patchDocumentXml(noD4, content({}, { appendix: APP }));
