@@ -146,7 +146,7 @@ erDiagram
 | 관계 | 종류 | 설명 | 근거 |
 |---|---|---|---|
 | `data_builds` → `recalls`·`eval_questions`·`causes`·`embedding_sets` | 외래 키(1:N) | 줄마다 `build_id`를 갖고 `(build_id, 번호)`가 기본키다. 새 build를 올려도 지난 build는 지우지 않는다 | schema.sql:7-9 |
-| `embedding_sets` → `recall_embeddings`, `recalls` → `recall_embeddings` | 외래 키 | 카드 1장 = 벡터 1줄. 같은 build의 `recalls` 줄에만 붙는다 | embeddings.sql:19 |
+| `embedding_sets` → `recall_embeddings`, `recalls` → `recall_embeddings` | 외래 키 | (build, 모델)당 카드 1장 = 벡터 1줄(모델이 늘면 한 카드에 여러 줄). 같은 build의 `recalls` 줄에만 붙는다 | embeddings.sql:19 |
 | `embedding_sets` → `serving_bundles` | 외래 키 | `(build_id, model, format)` 마다 묶음 기록 1줄. 형식이 바뀌면 덮어쓰지 않고 새 줄 | bundle.sql:5 |
 | `recalls` ⇢ `causes` | **논리 관계(FK 없음)** | `recalls.campaign6 = causes.campaign`. 한 캠페인이 `recalls` 여러 건(번호 뒤 3자리가 다른 카드)에 붙을 수 있다 | schema.sql:40 |
 | `eval_questions` ⇢ `recalls` | **논리 관계(배열)** | `gold_campnos[]`는 배열이라 외래 키를 걸 수 없다. 적재 스크립트(`load_db`)가 같은 build의 `recalls.campno`와 대조한다 | schema.sql:61,68 |
