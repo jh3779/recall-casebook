@@ -22,7 +22,6 @@ export function GroupPanel({ question, build, cards }: { question: string; build
   useEffect(() => () => controller.current?.abort(), []);
   const withCause = groupCandidates(cards, Infinity).length;
   const used = groupCandidates(cards, MAX_CARDS);
-  const byId = new Map(cards.map((c) => [c.campno, c]));
 
   async function run() {
     controller.current?.abort();
@@ -46,22 +45,28 @@ export function GroupPanel({ question, build, cards }: { question: string; build
     <p className="cb-muted">Groups the cause texts of the checked precedents by similar wording. Each quote is the full original text of its source; the tool does not compare them with your case and does not write a cause.{cards.length > 0 && withCause === 0 ? " None of the checked precedents has a cause text." : ""}{withCause > MAX_CARDS ? ` ${withCause} have a cause text; only the first ${MAX_CARDS} are sent.` : ""}</p>
     <button type="button" className="cb-btn" onClick={run} disabled={!used.length || state === "loading"}>{state === "loading" ? "Grouping…" : state === "done" ? "Group again" : "Group the checked causes"}</button>
     {state === "error" && <p className="cb-error" role="alert">{error}</p>}
-    {state === "done" && result && <div className="cb-groups">
-      {result.degraded && <p className="cb-muted" role="status">{DEGRADED[result.degraded]} Read the cause texts in the middle column.</p>}
-      {!result.degraded && !result.groups.length && !result.ungrouped.length && <p className="cb-muted">None of the checked precedents has a cause text to group.</p>}
-      {!result.degraded && !result.groups.length && result.ungrouped.length > 0 && <p className="cb-muted">No similar wording found among the {result.ungrouped.length} cause text(s). Read them in the middle column.</p>}
-      {result.groups.map((group, i) => <article key={i} className="cb-grp" aria-label={`Group ${i + 1}`}>
-        <h3>Group {i + 1} <small>{group.items.length} quote(s)</small></h3>
-        <ul>{group.items.map((item) => <li key={`${item.campno}-${item.field}`}>
-          <b className="cb-id">{item.campno}</b>{byId.get(item.campno) && <span className="cb-muted"> · {byId.get(item.campno)!.maker}</span>}
-          <q lang="en">{item.quote}</q>
-          {item.cause_status === "stated_unknown" && <span className="cb-muted">Text opens with a not-reported / under-investigation expression; this does not mean the cause is unknown.</span>}
-          <span className="cb-muted" lang={langOf(item.speaker)}>Said by {item.speaker}{item.cause_source ? ` · ${item.cause_source.file} · submitted ${fmtDate(item.cause_source.submission_date)} · sha256 ${item.cause_source.pdf_sha256}` : ""}</span>
-        </li>)}</ul>
-      </article>)}
-      {result.groups.length > 0 && result.ungrouped.length > 0 && <p className="cb-muted">{result.ungrouped.length} cause text(s) were not grouped; read them in the middle column.</p>}
-      {Object.entries(result.rejected).some(([k, n]) => n > 0 && k !== "bad_title") && <p className="cb-muted">Dropped after checking against the source: {Object.entries(result.rejected).filter(([k, n]) => n > 0 && k !== "bad_title").map(([k, n]) => `${REJECTED[k] ?? k} ${n}`).join(" · ")}.</p>}
-      <p className="cb-muted">{result.model ? `model ${result.model} · ` : ""}build {result.build_id}</p>
-    </div>}
+    {state === "done" && result && <GroupResult result={result} cards={cards} />}
   </section>;
+}
+
+/** 묶기 응답을 그린다 — 묶음 제목은 보이지 않고("Group N") 인용은 출처의 전체 원문이다. 화면 문구 검사를 위해 상태와 떼어 두었다 */
+export function GroupResult({ result, cards }: { result: DraftResponse; cards: readonly Card[] }) {
+  const byId = new Map(cards.map((c) => [c.campno, c]));
+  return <div className="cb-groups">
+        {result.degraded && <p className="cb-muted" role="status">{DEGRADED[result.degraded]} Read the cause texts in the middle column.</p>}
+        {!result.degraded && !result.groups.length && !result.ungrouped.length && <p className="cb-muted">None of the checked precedents has a cause text to group.</p>}
+        {!result.degraded && !result.groups.length && result.ungrouped.length > 0 && <p className="cb-muted">No similar wording found among the {result.ungrouped.length} cause text(s). Read them in the middle column.</p>}
+        {result.groups.map((group, i) => <article key={i} className="cb-grp" aria-label={`Group ${i + 1}`}>
+          <h3>Group {i + 1} <small>{group.items.length} quote(s)</small></h3>
+          <ul>{group.items.map((item) => <li key={`${item.campno}-${item.field}`}>
+            <b className="cb-id">{item.campno}</b>{byId.get(item.campno) && <span className="cb-muted"> · {byId.get(item.campno)!.maker}</span>}
+            <q lang="en">{item.quote}</q>
+            {item.cause_status === "stated_unknown" && <span className="cb-muted">Text opens with a not-reported / under-investigation expression; this does not mean the cause is unknown.</span>}
+            <span className="cb-muted" lang={langOf(item.speaker)}>Said by {item.speaker}{item.cause_source ? ` · ${item.cause_source.file} · submitted ${fmtDate(item.cause_source.submission_date)} · sha256 ${item.cause_source.pdf_sha256}` : ""}</span>
+          </li>)}</ul>
+        </article>)}
+        {result.groups.length > 0 && result.ungrouped.length > 0 && <p className="cb-muted">{result.ungrouped.length} cause text(s) were not grouped; read them in the middle column.</p>}
+        {Object.entries(result.rejected).some(([k, n]) => n > 0 && k !== "bad_title") && <p className="cb-muted">Dropped after checking against the source: {Object.entries(result.rejected).filter(([k, n]) => n > 0 && k !== "bad_title").map(([k, n]) => `${REJECTED[k] ?? k} ${n}`).join(" · ")}.</p>}
+        <p className="cb-muted">{result.model ? `model ${result.model} · ` : ""}build {result.build_id}</p>
+      </div>;
 }

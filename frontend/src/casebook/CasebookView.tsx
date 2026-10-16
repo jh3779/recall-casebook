@@ -7,7 +7,7 @@ import { CaseList } from "./CaseList";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
-import { adoptNotes, browserStorage, clearNotes, nextUnsaved, normalizeCaseName, notesText, saveNote } from "./notes";
+import { adoptNotes, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, saveNote, storageProblem } from "./notes";
 
 /**
  * Recall Casebook. for Engineer (DEC-067) — 선례를 체크하면 원인 원문이 근거로 쌓이고, 선례별 메모와 원인 묶기를 오른쪽에 둔다.
@@ -32,7 +32,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
   useEffect(() => () => request.current?.abort(), []);
 
   // 사건 이름 없이 적은 메모가 있으면 새로고침·탭 닫기 전에 잃는다고 알린다
-  const unsaved = (!caseName || !storage || saveFailed) && Object.values(notes).some((t) => t.trim());
+  const unsaved = isUnsaved(caseName, notes, saveFailed, !!storage);
   useEffect(() => {
     if (!unsaved) return;
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
@@ -44,8 +44,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
     const name = normalizeCaseName(caseInput);
     setCaseInput(name);
     if (name === caseName) return;
-    const losing = !!caseName && Object.values(notes).some((t) => t.trim()) && (saveFailed || !storage); // 저장되지 않은 메모가 있는 사건을 떠난다
-    if (losing && !confirm("Notes that are not saved in this browser will be lost if you switch cases. Switch anyway?")) { setCaseInput(caseName); return; }
+    if (losesNotesOnSwitch(caseName, notes, saveFailed, !!storage) && !confirm("Notes that are not saved in this browser will be lost if you switch cases. Switch anyway?")) { setCaseInput(caseName); return; }
     setCaseName(name);
     // 이름 없이 적은 메모만 첫 사건 이름으로 옮긴다 — 다른 사건 이름이 붙어 있던 메모가 새 사건에 섞이지 않게
     const next = name ? adoptNotes(storage, name, caseName ? {} : notes) : { notes: {}, saved: true, failed: [] as string[] };
@@ -95,11 +94,11 @@ export default function CasebookView({ health }: { health: HealthState }) {
   return <main className="view-casebook" lang="en">
     <header className="cb-top">
       <div className="cb-brand"><span className="cb-brand-mark" aria-hidden="true" /><h1>Recall Casebook.<small> for Engineer</small></h1></div>
-      <label className="cb-case-name">
-        <span>Case name</span>
-        <input value={caseInput} maxLength={80} onChange={(e) => setCaseInput(e.target.value)} onBlur={commitCase} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) commitCase(); }} placeholder="e.g. Sorento rear camera, Oct" aria-describedby="cb-case-hint" />
+      <div className="cb-case-name">
+        <label htmlFor="cb-case">Case name</label>
+        <input id="cb-case" value={caseInput} maxLength={80} onChange={(e) => setCaseInput(e.target.value)} onBlur={commitCase} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) commitCase(); }} placeholder="e.g. Sorento rear camera, Oct" aria-describedby="cb-case-hint" />
         <small id="cb-case-hint" className="cb-muted">Changing the name switches to that case's notes.</small>
-      </label>
+      </div>
       <span className="cb-health" role="status">{typeof health === "object" ? `build ${health.build_id} · snapshot ${health.snapshot_date}` : health === "loading" ? "Checking server…" : "Server version unavailable"}</span>
     </header>
 
@@ -121,7 +120,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
         {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => setChecked((list) => togglePick(list, card))} />)}
       </section>
       <div className="cb-side">
-        <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={(!!caseName && !storage) || saveFailed} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
+        <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
         <GroupPanel key={checked.map((c) => c.campno).join(",")} question={response.question} build={response} cards={checked} />
       </div>
     </div>}

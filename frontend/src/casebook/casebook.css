@@ -1,7 +1,7 @@
-/* Recall Casebook. for Engineer — 현대자동차 CI 전용색(Hyundai Blue·Sand·Active Blue·Active Red)만 쓴다. 밝은 테마 하나, 이 화면 안에만 적용 */
+/* Recall Casebook. for Engineer — 현대자동차 CI 전용색(Hyundai Blue·Sand·Active Blue·Active Red)만 쓴다. 예외: 경고·구역 제목 글자색은 CI 색(Active Red·Gold)을 흰 바탕 대비 4.5:1 이상으로 어둡게 한 값. 밝은 테마 하나, 이 화면 안에만 적용 */
 .view-casebook {
   --cb-blue: #002c5f; --cb-active: #00aad2; --cb-red: #e63312; --cb-sand: #e4dcd3; --cb-light: #f6f3f2; --cb-sky: #aacae6; --cb-gold: #a36b4f;
-  --cb-red-text: #b32410; /* 경고 글자용 — Active Red(#e63312)는 흰 바탕 작은 글씨 대비가 4.3:1이라 글자에는 더 진한 값 */ --cb-ink: #000; --cb-ink-2: #4d4d4d; --cb-ink-3: #666;
+  --cb-gold-text: #8a563b; /* 구역 제목 글자용 — Gold(#a36b4f)는 흰 바탕 대비 4.4:1이라 4.5:1 이상으로 어둡게 */ --cb-red-text: #b32410; /* 경고 글자용 — Active Red(#e63312)는 흰 바탕 작은 글씨 대비가 4.3:1이라 글자에는 더 진한 값 */ --cb-ink: #000; --cb-ink-2: #4d4d4d; --cb-ink-3: #666;
   color: var(--cb-ink); background: #fff; min-height: calc(100dvh - var(--app-bar-height, 60px));
   font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, var(--font-ui);
   display: grid; gap: 14px; padding: 18px 28px 40px; align-content: start;
@@ -54,7 +54,7 @@
 .cb-parts { display: flex; flex-wrap: wrap; gap: 6px; }
 .cb-parts span { font-family: var(--font-id); font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--cb-light); border: 1px solid var(--cb-sand); }
 .cb-block { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--cb-sand); }
-.cb-block h4 { font-family: "New York", ui-serif, "Source Serif 4", Georgia, serif; font-size: 15px; color: var(--cb-gold); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.cb-block h4 { font-family: "New York", ui-serif, "Source Serif 4", Georgia, serif; font-size: 15px; color: var(--cb-gold-text); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 .cb-block h4 small { font-family: inherit; font-weight: 400; font-size: 12px; color: var(--cb-ink-3); }
 .cb-block h5 { font-size: 12px; font-weight: 700; color: var(--cb-ink-2); margin-top: 4px; }
 .cb-byline { margin: 0; font-size: 12.5px; color: var(--cb-ink-2); }
@@ -69,7 +69,7 @@
 .cb-check-item { display: grid; gap: 2px; }
 .cb-prov { margin: 0; }
 
-.cb-side { display: grid; gap: 18px; position: sticky; top: 8px; max-height: calc(100dvh - 90px); overflow: auto; }
+.cb-side { display: grid; gap: 18px; align-content: start; }
 .cb-notes, .cb-group { display: grid; gap: 10px; border-top: 3px solid var(--cb-red); padding-top: 10px; }
 .cb-group { border-top-color: var(--cb-blue); }
 .cb-notes h2, .cb-group h2 { font-size: 15px; color: var(--cb-blue); }
@@ -87,6 +87,5 @@
 
 @media (max-width: 1100px) {
   .cb-grid { grid-template-columns: 1fr; }
-  .cb-list, .cb-side { position: static; max-height: none; }
 }
 @media (max-width: 767px) { .view-casebook { padding-inline: 16px; } .cb-search { grid-template-columns: 1fr; } .cb-case-name input { width: 100%; max-width: none; } }

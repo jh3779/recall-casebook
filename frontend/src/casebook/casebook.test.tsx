@@ -6,7 +6,8 @@ import { CaseDetail } from "./CaseDetail";
 import { CaseList } from "./CaseList";
 import CasebookView from "./CasebookView";
 import { AppBar } from "../AppBar";
-import { GroupPanel } from "./GroupPanel";
+import type { DraftResponse } from "../eightd/draft";
+import { GroupPanel, GroupResult } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
 
 const response = fixture as SearchResponse;
@@ -76,4 +77,45 @@ it("케이스북 화면 문구에 영어 판정·단정 표현이 없다", () =>
   ];
   // 원문(NHTSA 글, `cb-src-text` 문단)은 바꾸지 않으므로 빼고 화면이 붙인 문구만 본다
   for (const markup of texts) expect(markup.replace(/<p class="cb-src-text"[^>]*>.*?<\/p>/gs, "").match(forbidden)).toBeNull();
+});
+
+const draftBase: DraftResponse = { build_id: response.build_id, bundle_sha256: response.bundle_sha256 ?? null, snapshot_date: response.snapshot_date, question: "airbag", step: "d4", titles_generated: true, model: "mock", degraded: null, groups: [], ungrouped: [], questions: [], rejected: {} };
+const withText = cards.filter((c) => hasCauseText(c.cause));
+const item = (c: (typeof cards)[number]) => ({ campno: c.campno, field: "cause" as const, quote: hasCauseText(c.cause) ? c.cause.text : "", start: 0, end: 1, speaker: hasCauseText(c.cause) ? c.cause.speaker : "", cause_status: hasCauseText(c.cause) ? c.cause.status as "filled" | "stated_unknown" : null, cause_source: hasCauseText(c.cause) ? c.cause.source : null });
+it("묶기 결과: 묶음은 'Group N'이고 제목·출처·제출일이 보이며 원문은 그대로다", () => {
+  const result: DraftResponse = { ...draftBase, groups: [{ title: "서버 제목은 보이지 않는다", items: withText.slice(0, 2).map(item) }], ungrouped: [item(withText[2])], rejected: { not_in_source: 1, bad_title: 3 } };
+  const markup = renderToStaticMarkup(<GroupResult result={result} cards={cards} />);
+  expect(markup).toContain("Group 1");
+  expect(markup).not.toContain("서버 제목은 보이지 않는다");
+  for (const c of withText.slice(0, 2)) {
+    const cause = c.cause as Extract<typeof c.cause, { text: string }>;
+    expect(markup).toContain(escaped(cause.text));
+    expect(markup).toContain(cause.source.pdf_sha256);
+    expect(markup).toContain(escaped(cause.source.file));
+  }
+  expect(markup).toContain("submitted ");
+  expect(markup).toContain("not in the source 1");
+  expect(markup).not.toContain("bad_title");
+  expect(markup).toContain("1 cause text(s) were not grouped");
+});
+it("묶기 결과 문구: 꺼짐·실패·묶음 없음·원인 없음 안내에도 판정 표현이 없다", () => {
+  const forbidden = /applies|verdict|is_?applicable|recall[_\s-]?required|root\s+cause\s+is\b|is\s+the\s+cause\b|will\s+be\s+recalled/i; // principle-ok: 판정 문구가 화면에 없는지 검사하는 금지 패턴
+  const variants: DraftResponse[] = [
+    { ...draftBase, degraded: "disabled" }, { ...draftBase, degraded: "llm_failed" }, draftBase,
+    { ...draftBase, ungrouped: [item(withText[0]), item(withText[1])] },
+    { ...draftBase, groups: [{ title: "t", items: [item(withText[0])] }], rejected: { unknown_source: 1, duplicate_source: 2 } },
+  ];
+  for (const result of variants) {
+    const markup = renderToStaticMarkup(<GroupResult result={result} cards={cards} />).replace(/<q[^>]*>.*?<\/q>/gs, "");
+    expect(markup.match(forbidden)).toBeNull();
+  }
+  expect(renderToStaticMarkup(<GroupResult result={{ ...draftBase, degraded: "disabled" }} cards={cards} />)).toContain("switched off");
+  expect(renderToStaticMarkup(<GroupResult result={{ ...draftBase, ungrouped: [item(withText[0])] }} cards={cards} />)).toContain("No similar wording found");
+  expect(renderToStaticMarkup(<GroupResult result={draftBase} cards={cards} />)).toContain("None of the checked precedents has a cause text");
+});
+it("stated_unknown 묶음 인용에는 '원인을 모른다는 뜻이 아니다' 안내가 붙는다", () => {
+  const unknown = cards.find((c) => c.cause.status === "stated_unknown");
+  if (!unknown) return;
+  const markup = renderToStaticMarkup(<GroupResult result={{ ...draftBase, groups: [{ title: "t", items: [item(unknown)] }] }} cards={cards} />);
+  expect(markup).toContain("does not mean the cause is unknown");
 });

@@ -92,3 +92,11 @@ export function nextUnsaved(prev: ReadonlySet<string>, campno: string, saved: bo
   if (saved) next.delete(campno); else next.add(campno);
   return next;
 }
+
+const hasText = (notes: Readonly<Record<string, string>>) => Object.values(notes).some((t) => t.trim());
+/** 새로고침·탭 닫기로 잃을 메모가 있는가 — 사건 이름이 없거나 저장소가 막혔거나 저장에 실패한 적이 있으면 탭에만 있는 메모다 */
+export const isUnsaved = (caseName: string, notes: Readonly<Record<string, string>>, saveFailed: boolean, hasStorage: boolean): boolean => (!caseName || !hasStorage || saveFailed) && hasText(notes);
+/** 사건 이름을 바꿀 때 잃을 메모가 있는가 — 이름 없는 메모는 새 이름으로 옮겨지므로 제외하고, 이름이 있는 사건에서 저장되지 않은 메모만 센다 */
+export const losesNotesOnSwitch = (caseName: string, notes: Readonly<Record<string, string>>, saveFailed: boolean, hasStorage: boolean): boolean => !!caseName && hasText(notes) && (saveFailed || !hasStorage);
+/** 노트 칸이 "저장됨" 대신 손실 경고를 보여야 하는가 */
+export const storageProblem = (caseName: string, hasStorage: boolean, saveFailed: boolean): boolean => (!!caseName && !hasStorage) || saveFailed;

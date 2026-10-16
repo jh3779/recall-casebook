@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { adoptNotes, clearNotes, loadNotes, nextUnsaved, normalizeCaseName, notesText, noteKey, saveNote, UNNAMED_MARK, type StorageLike } from "./notes";
+import { adoptNotes, clearNotes, isUnsaved, loadNotes, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, noteKey, saveNote, storageProblem, UNNAMED_MARK, type StorageLike } from "./notes";
 
 function memory(): StorageLike & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -114,4 +114,27 @@ it("이미 저장돼 있던 메모는 새 글의 저장 실패로 미저장에 �
     setItem: () => { throw new Error("QuotaExceededError"); },
   };
   expect(adoptNotes(flaky, "Case A", { "2": "새 메모" })).toEqual({ notes: { "1": "저장된 글", "2": "새 메모" }, saved: false, failed: ["2"] });
+});
+it("잃을 메모 판단: 이름이 없거나 저장소가 막혔거나 저장에 실패했으면 탭에만 있다", () => {
+  const some = { "1": "글" };
+  expect(isUnsaved("", some, false, true)).toBe(true);
+  expect(isUnsaved("A", some, false, false)).toBe(true);
+  expect(isUnsaved("A", some, true, true)).toBe(true);
+  expect(isUnsaved("A", some, false, true)).toBe(false);
+  expect(isUnsaved("", { "1": "  " }, false, true)).toBe(false);
+  expect(isUnsaved("", {}, false, true)).toBe(false);
+});
+it("사건 전환 확인: 이름 없는 메모는 옮겨지므로 묻지 않고, 저장소 차단·저장 실패 때만 묻는다", () => {
+  const some = { "1": "글" };
+  expect(losesNotesOnSwitch("", some, false, true)).toBe(false);
+  expect(losesNotesOnSwitch("A", some, false, true)).toBe(false);
+  expect(losesNotesOnSwitch("A", some, true, true)).toBe(true);
+  expect(losesNotesOnSwitch("A", some, false, false)).toBe(true);
+  expect(losesNotesOnSwitch("A", {}, true, true)).toBe(false);
+});
+it("노트 칸 손실 경고: 이름이 있는데 저장소가 막혔거나 저장에 실패했을 때", () => {
+  expect(storageProblem("A", false, false)).toBe(true);
+  expect(storageProblem("A", true, true)).toBe(true);
+  expect(storageProblem("A", true, false)).toBe(false);
+  expect(storageProblem("", false, false)).toBe(false);
 });
