@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import fixture from "../search/__fixtures__/search_airbag.json";
 import type { SearchResponse } from "../search/types";
-import { nextEightdInput, workChanged } from "./session";
+import { freshQuestionChanged, nextEightdInput, workChanged } from "./session";
 
 const response = fixture as SearchResponse;
 const other = { ...response, question: "a different question about brakes" } as SearchResponse;
@@ -40,4 +40,11 @@ it("선례 없이 새로 시작(fresh)을 누를 때만 fresh 번호가 올라�
   expect(nextEightdInput(prev, [], response)).toMatchObject({ fresh: 3, freshQuestion: undefined });
   expect(nextEightdInput(prev, [], null, { question: "" }).response).toBe(response); // 응답이 비어도 마지막 응답은 유지, 빈 입력은 질문 없음
   expect(nextEightdInput(prev, [], null, { question: "" }).freshQuestion).toBeUndefined();
+});
+
+it("\"선례 없이\"로 넘긴 질문이 마지막 검색 결과의 질문과 다르면(공백 무시) 이전 질문의 표를 걷어 낼 대상이다(12차 리뷰 지적)", () => {
+  expect(freshQuestionChanged(response, "brake B")).toBe(true);
+  expect(freshQuestionChanged(response, `  ${response.question}  `)).toBe(false);
+  expect(freshQuestionChanged(response, undefined)).toBe(false);
+  expect(freshQuestionChanged(null, "brake B")).toBe(false); // 이전 검색이 없으면 걷어 낼 것이 없다
 });

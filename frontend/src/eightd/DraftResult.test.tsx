@@ -39,6 +39,7 @@ it("꺼짐·실패는 묶음 없이 원문 카드를 쓰라고 알린다", () =>
 it("서버가 원문과 대조해 버린 인용이 있으면 수를 알린다", () => {
   expect(render({ ...base, rejected: { not_in_source: 2, bad_title: 0 } })).toContain("원문에 없어서 2건");
   expect(render(base)).not.toContain("버린 항목");
+  expect(render({ ...base, rejected: { bad_title: 3 } })).not.toContain("버린 항목"); // 제목은 화면에 없으니 제목 때문에 버린 것도 알리지 않는다
 });
 it("묶이지 않은 원문이 있으면 카드에서 직접 넣을 수 있다고 알린다", () => {
   expect(render({ ...base, ungrouped: [item, item] })).toContain("묶이지 않은 원문 2건");

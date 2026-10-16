@@ -227,6 +227,17 @@ it("표가 여럿이어도 부록은 D4 칸이 든 표 뒤에 붙고, 어느 단
     expect(r.xml.indexOf("※ 근거 줄")).toBeGreaterThan(at(r)); // 부록 다음에 근거 줄
   }
 });
+it("D1~D4와 D5~D8이 다른 표에 나뉜 양식이면 부록·근거 줄은 D5~D8 표 뒤에 붙는다(12차 리뷰 지적)", () => {
+  const split2 = () => doc(
+    tbl(tr(tc(p("TEAM")), tc(p())), tr(tc(p("PROBLEM DESCRIPTION")), tc(p())), tr(tc(p("DEFINE THE PROBLEM CAUSE")), tc(p()))), p("— 표 사이 —"),
+    tbl(tr(tc(p("PERMANENT ACTION")), tc(p())), tr(tc(p("VERIFICATION OF EFFECTIVENESS")), tc(p()))), p("— 표 뒤 —"));
+  for (const steps of [{ 4: [{ text: "원인" }] }, { 4: [{ text: "원인" }], 5: [{ text: "조치" }] }, {}]) {
+    const r = patchDocumentXml(split2(), content(steps as never, { appendix: APP, footer: "※ 근거 줄" }));
+    expect(r.xml.indexOf("[선례 근거 부록]")).toBeGreaterThan(r.xml.indexOf("VERIFICATION OF EFFECTIVENESS"));
+    expect(r.xml.indexOf("[선례 근거 부록]")).toBeLessThan(r.xml.indexOf("— 표 뒤 —"));
+    expect(r.xml.indexOf("※ 근거 줄")).toBeGreaterThan(r.xml.indexOf("[선례 근거 부록]"));
+  }
+});
 it("D4 칸이 없는 양식이면 인식한 8D 단계 칸이 든 표 중 마지막 표 뒤, 표 안의 칸이 하나도 인식되지 않으면 마지막 표 뒤에 붙는다", () => {
   const noD4 = doc(tbl(tr(tc(p("TEAM")), tc(p()))), p("가운데"), tbl(tr(tc(p("PROBLEM DESCRIPTION")), tc(p()))), p("끝 문단"), tbl(tr(tc(p("APPROVAL")), tc(p()))));
   const r = patchDocumentXml(noD4, content({}, { appendix: APP }));

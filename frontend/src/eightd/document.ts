@@ -37,7 +37,7 @@ export function stepParagraphs(step: Step, values: Record<string, string>): Para
   });
 }
 
-/** 선례 근거 부록 — D4 타사 원인 원문은 사용자의 "Root Cause" 칸이 아니라 이 부록에만 들어간다(DEC-064 ④ 결정 2026-10-17: D4만 부록). 8D 표 뒤 별도 문단이라 서류를 훑는 사람이 타사 원인을 이 건의 근본 원인으로 읽지 않는다 */
+/** 선례 근거 부록 — D4 타사 원인 원문은 사용자의 "Root Cause" 칸이 아니라 이 부록에만 들어간다(DEC-064 ④ 결정 2026-10-16: D4만 부록). 8D 표 뒤 별도 문단이라 서류를 훑는 사람이 타사 원인을 이 건의 근본 원인으로 읽지 않는다 */
 export const APPENDIX_KEY = "appendix";
 export const APPENDIX_TITLE = "[선례 근거 부록 — 타사 공개 원문과 도구 안내문이며 자사 사실이 아닙니다]";
 /** 선례 인용이 들어가는 칸 — D2·D3·D5는 해당 칸 끝에, D4는 "근본 원인" 칸이 아니라 부록에 들어간다 */

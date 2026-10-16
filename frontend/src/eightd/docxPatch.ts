@@ -140,12 +140,13 @@ export function patchDocumentXml(xml: string, content: ExportContent): PatchResu
     tableEnd ??= target.tableEnd;
   }
   if (content.subject.trim() && found.subject && !found.subject.cell.text && !used.has(found.subject.cell)) edits.push(cellEdit(xml, found.subject.cell, [{ text: content.subject.trim() }]));
-  // 선례 근거 부록(있으면) → 근거 데이터 줄. 자리는 "D4 칸이 든 표" 뒤(중첩 표면 바깥 표 뒤) — D4 칸을 못 찾았으면 라벨로 인식한 8D 단계 칸이 든 표 중 마지막, 그것도 없으면 문서의 마지막 표 뒤.
+  // 선례 근거 부록(있으면) → 근거 데이터 줄. 자리는 "D4 칸과 라벨로 인식한 8D 단계 칸이 든 표 중 문서상 마지막" 표 뒤(중첩 표면 바깥 표 뒤) — D5~D8이 별도 표여도 그 뒤에 붙는다. 인식한 칸이 하나도 없으면 문서의 마지막 표 뒤.
   // 부록이 없으면 근거 데이터 줄은 처음 글이 들어간 단계의 표 뒤에만 붙는다(아무것도 못 넣은 파일에는 붙지 않는다)
   const outerEnd = (pos: number) => Math.max(...found.tables.filter((t) => t.start <= pos && t.end >= pos).map((t) => t.end));
   const d4 = resolve(found, 4, content.cells?.[4]).target;
   const recognized = [...found.matches.values()].flat();
-  const appendixAt = d4 ? outerEnd(d4.cell.start) : recognized.length ? Math.max(...recognized.map((t) => outerEnd(t.cell.start))) : found.lastTableEnd;
+  const stepCells = [...recognized.map((t) => t.cell.start), ...(d4 ? [d4.cell.start] : [])];
+  const appendixAt = stepCells.length ? Math.max(...stepCells.map(outerEnd)) : found.lastTableEnd;
   const anchor = (content.appendix?.length ? appendixAt : tableEnd);
   const appendixXml = (content.appendix ?? []).map((p) => `<w:p><w:r><w:rPr>${p.bold ? "<w:b/><w:bCs/>" : ""}<w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">${esc(p.text)}</w:t></w:r></w:p>`).join("");
   const footerXml = content.footer ? `<w:p><w:r><w:rPr><w:sz w:val="16"/></w:rPr><w:t xml:space="preserve">${esc(content.footer)}</w:t></w:r></w:p>` : "";

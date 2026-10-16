@@ -3,7 +3,7 @@ import type { Card } from "../search/types";
 import { groupBlock, groupId, questionsBlock, type DraftItem, type DraftResponse } from "./draft";
 
 const FIELD = { defect: "결함", consequence: "결과", cause: "원인 원문" } as const;
-const REJECTED: Record<string, string> = { not_in_source: "원문에 없어서", unknown_source: "출처가 맞지 않아서", duplicate_source: "겹쳐서", bad_title: "서버 내부 처리(제목)" };
+const REJECTED: Record<string, string> = { not_in_source: "원문에 없어서", unknown_source: "출처가 맞지 않아서", duplicate_source: "겹쳐서" };
 const DEGRADED = { disabled: "묶음 초안 기능이 꺼져 있습니다.", llm_failed: "묶음을 만들지 못했습니다." } as const;
 
 function Quote({ item, card }: { item: DraftItem; card: Card | undefined }) {
@@ -22,7 +22,7 @@ export function DraftResult({ result, cards, inserted, appendix = false, onToggl
     const on = inserted[id] !== undefined;
     return <button type="button" className={`pick${on ? " on" : ""}`} aria-pressed={on} onClick={() => onToggle(id, block)}>{on ? `${appendix ? "부록" : "본문"}에 넣음 ✓ (다시 누르면 뺌)` : label}</button>;
   };
-  const dropped = Object.entries(result.rejected).filter(([, n]) => n > 0);
+  const dropped = Object.entries(result.rejected).filter(([k, n]) => n > 0 && k !== "bad_title");
   return <div className="dr">
     {result.degraded && <p className="note dr-degraded" role="status">{DEGRADED[result.degraded]} 묶음 없이 아래 "선례 참고"의 원문 카드를 쓰세요.</p>}
     {!result.degraded && !result.groups.length && !result.ungrouped.length && <p className="note">이 단계에 쓸 원문이 있는 선례가 없습니다{result.step === "d4" ? "(원인 원문이 있는 선례만 묶습니다)" : ""}.</p>}

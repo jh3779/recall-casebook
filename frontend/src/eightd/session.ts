@@ -8,6 +8,10 @@ import type { Card, SearchResponse } from "../search/types";
 export const workChanged = (prev: SearchResponse | null, next: SearchResponse | null): boolean =>
   !!prev && !!next && (prev.question !== next.question || prev.build_id !== next.build_id || (prev.bundle_sha256 ?? null) !== (next.bundle_sha256 ?? null));
 
+/** "선례 없이 8D 작성하기"가 넘긴 질문이 마지막으로 본 검색 결과의 질문과 다른가(공백 무시) — 다르면 이전 질문의 검색 결과 표·확인 질문을 걷어 낸다 */
+export const freshQuestionChanged = (anchor: SearchResponse | null, freshQuestion?: string): boolean =>
+  !!anchor && !!freshQuestion && freshQuestion.trim() !== anchor.question.trim();
+
 /** fresh: "선례 없이 8D 작성하기"를 누른 횟수, freshQuestion: 그때 검색창에 적혀 있던 질문(검색 응답이 아니라 현재 입력 — SUBJECT 기본값) */
 export interface EightdInput { cards: readonly Card[]; response: SearchResponse | null; fresh: number; freshQuestion?: string }
 /**

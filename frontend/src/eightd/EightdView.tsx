@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Card, SearchResponse } from "../search/types";
 import { ALL_STEPS, APPENDIX_KEY, appendixParagraphs, composeDocument, CORE_STEPS, evidenceFooter, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
-import { workChanged } from "./session";
+import { freshQuestionChanged, workChanged } from "./session";
 import { DocxError, inspectDocx, patchDocx, type Inspection, type Place } from "./docxPatch";
 import { DraftPanel } from "./DraftPanel";
 import { EvidenceCard } from "./EvidenceCard";
@@ -58,6 +58,14 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   // "선례 없이 8D 작성하기"를 새로 눌렀으면, 이전에 쓴 글·올린 파일이 있을 때 비울지 묻는다
   if (seenFresh !== fresh) {
     setSeenFresh(fresh);
+    // 검색창 질문만 바꿨다면 이전 질문의 검색 결과 표·확인 질문은 걷어 낸다(사용자가 쓴 글은 남긴다)
+    if (freshQuestionChanged(anchor, freshQuestion)) {
+      const r = pruneInserted(valuesNow, inserted, new Set(cards.map((c) => c.campno)), true);
+      if (r.removed.length || r.blocked.length) {
+        setValues(r.values); setInserted(r.inserted); valuesNow = r.values;
+        setMessage(`이전 질문의 검색 결과 표·인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요.` : ""}`);
+      }
+    }
     if (Object.values(valuesNow).some((v) => v.trim()) || docx || subjectInput !== null) setStale("fresh");
   }
   function startOver() {
