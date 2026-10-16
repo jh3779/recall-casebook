@@ -45,5 +45,5 @@ it("D7 표는 검색 결과 전부를 한 줄씩 싣고 고객사 구분과 공�
   for (const c of response.customer_precedents) expect(block).toContain(`${c.campno} | ${c.maker} | ${isoDate(c.received_date)} | 고객사`);
 });
 it("판정 문구를 만들지 않는다", () => {
-  for (const c of cards) for (const step of ["2", "3", "4", "5"] as const) expect(evidenceBlock(step, c) ?? "").not.toMatch(/리콜 대상입니다|원인은 이것입니다|해당합니다/);
+  for (const c of cards) for (const step of ["2", "3", "4", "5"] as const) expect(evidenceBlock(step, c) ?? "").not.toMatch(/리콜 대상입니다|원인은 이것입니다|해당합니다/);  // principle-ok: 판정 문구가 본문에 들어가지 않는지 확인하는 부정 단언
 });

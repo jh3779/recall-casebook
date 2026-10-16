@@ -36,9 +36,9 @@ EFFORTS = (
 DEFAULT_LIMIT = 6  # IP당 1분 (유료 호출이라 /search(60)보다 훨씬 낮다)
 
 # 제목에 들어가면 안 되는 표현 — 판정·단정(AGENTS.md 2-1). 못 걸러도 화면이 "도구가 붙인 제목"으로 표시한다
-VERDICT_RE = re.compile(
+VERDICT_RE = re.compile(  # principle-ok: 제목에서 판정 표현을 걸러 내는 필터 정의
     r"리콜\s*(대상|필요|불필요|해당)|해당(합니다|한다|됩니다|된다|함)|적용(됩니다|된다)|판정|결론"
-    r"|(원인|결함)은\s*.{0,30}(입니다|이다|임)\b|\b(applies|verdict|recall required|root cause is|is applicable)\b",
+    r"|(원인|결함)은\s*.{0,30}(입니다|이다|임)\b|\b(applies|verdict|recall required|root cause is|is applicable)\b",  # principle-ok: 걸러 낼 판정 표현 목록(출력이 아니라 필터 패턴)
     re.I,
 )
 
@@ -87,8 +87,8 @@ COMMON_RULES = (
     "For each group return the quotes: each quote is a continuous part of one source text copied EXACTLY, character for "
     "character (do not change capitalization, spelling, punctuation or spacing; do not shorten with '...'; do not "
     "translate). Prefer whole sentences. Use each source in at most one group. Sources that fit no group go to 'ungrouped' "
-    "by id. Never judge whether a recall applies to anything, never state or infer a cause, remedy or conclusion yourself, "
-    "never add facts that are not in the sources, and never put a verdict in a title."
+    "by id. Never judge whether a recall applies to anything, never state or infer a cause, remedy or conclusion yourself, "  # principle-ok: LLM에게 판정을 금지하는 지시문
+    "never add facts that are not in the sources, and never put a verdict in a title."  # principle-ok: LLM에게 판정을 금지하는 지시문
 )
 TASKS = {
     "d2": "The sources are sentences from NHTSA recall summaries: each says what fails (defect) or what may result "
@@ -211,7 +211,7 @@ def title_ok(title: str) -> bool:
         0 < len(t) <= MAX_TITLE
         and "\n" not in t
         and bool(TITLE_FORMAT_RE.search(t))
-        and not VERDICT_RE.search(t)
+        and not VERDICT_RE.search(t)  # principle-ok: 제목 판정 표현 필터 호출
     )
 
 
