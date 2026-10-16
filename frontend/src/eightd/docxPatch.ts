@@ -53,7 +53,7 @@ export interface Place { table: number; row: number; col: number }
 /** 라벨 칸 바로 오른쪽의 내용 칸 — label은 그 라벨 글, guess는 라벨이 가리키는 단계(없으면 null) */
 interface Target extends Place { cell: Cell; tableEnd: number; label: string; guess: number | null }
 /** cells: 라벨이 있는 모든 내용 칸(사용자가 직접 고를 수 있는 후보), matches: 단계별로 라벨이 맞은 칸들 */
-interface Recognition { cells: Target[]; matches: Map<number, Target[]>; subject?: Target; lastTableEnd?: number }
+interface Recognition { cells: Target[]; matches: Map<number, Target[]>; subject?: Target; tables: Table[]; lastTableEnd?: number }
 
 function recognize(xml: string): Recognition {
   const cellsOut: Target[] = [];
@@ -69,7 +69,7 @@ function recognize(xml: string): Recognition {
     if (/^subject\b/i.test(label.text)) subject ??= target;
     if (guess !== null) matches.set(guess, [...(matches.get(guess) ?? []), target]);
   })));
-  return { cells: cellsOut, matches, subject, lastTableEnd: tables.length ? Math.max(...tables.map((t) => t.end)) : undefined };
+  return { cells: cellsOut, matches, subject, tables, lastTableEnd: tables.length ? Math.max(...tables.map((t) => t.end)) : undefined };
 }
 
 const samePlace = (a: Place, b: Place) => a.table === b.table && a.row === b.row && a.col === b.col;
@@ -140,8 +140,13 @@ export function patchDocumentXml(xml: string, content: ExportContent): PatchResu
     tableEnd ??= target.tableEnd;
   }
   if (content.subject.trim() && found.subject && !found.subject.cell.text && !used.has(found.subject.cell)) edits.push(cellEdit(xml, found.subject.cell, [{ text: content.subject.trim() }]));
-  // 8D 표 뒤: 선례 근거 부록(있으면) → 근거 데이터 줄. 부록만 있고 칸에 넣은 단계가 없으면 문서의 마지막 표 뒤에 둔다
-  const anchor = tableEnd ?? found.lastTableEnd;
+  // 선례 근거 부록(있으면) → 근거 데이터 줄. 자리는 "D4 칸이 든 표" 뒤(중첩 표면 바깥 표 뒤) — D4 칸을 못 찾았으면 라벨로 인식한 8D 단계 칸이 든 표 중 마지막, 그것도 없으면 문서의 마지막 표 뒤.
+  // 부록이 없으면 근거 데이터 줄은 처음 글이 들어간 단계의 표 뒤에만 붙는다(아무것도 못 넣은 파일에는 붙지 않는다)
+  const outerEnd = (pos: number) => Math.max(...found.tables.filter((t) => t.start <= pos && t.end >= pos).map((t) => t.end));
+  const d4 = resolve(found, 4, content.cells?.[4]).target;
+  const recognized = [...found.matches.values()].flat();
+  const appendixAt = d4 ? outerEnd(d4.cell.start) : recognized.length ? Math.max(...recognized.map((t) => outerEnd(t.cell.start))) : found.lastTableEnd;
+  const anchor = (content.appendix?.length ? appendixAt : tableEnd);
   const appendixXml = (content.appendix ?? []).map((p) => `<w:p><w:r><w:rPr>${p.bold ? "<w:b/><w:bCs/>" : ""}<w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">${esc(p.text)}</w:t></w:r></w:p>`).join("");
   const footerXml = content.footer ? `<w:p><w:r><w:rPr><w:sz w:val="16"/></w:rPr><w:t xml:space="preserve">${esc(content.footer)}</w:t></w:r></w:p>` : "";
   const appendixPlaced = appendixXml ? anchor !== undefined : null;

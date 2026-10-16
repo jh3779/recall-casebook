@@ -36,7 +36,7 @@ export function DraftPanel({ step, question, build, cards, inserted, appendix = 
       <b>선례 근거 묶음 초안</b><span className="tag">LLM 보조 · 문장을 쓰지 않고 원문만 묶음</span>
       <button type="button" className="btn" onClick={run} disabled={state === "loading"}>{state === "loading" ? "묶는 중…" : state === "done" ? "다시 묶기" : "묶음 초안 만들기"}</button>
     </div>
-    <p className="note">담은 선례 {used.length}건의 {step === "d2" ? "결함·결과" : "원인"} 원문을 비슷한 것끼리 묶고 제목을 붙입니다. 인용은 서버가 원문에서 잘라 낸 글자이고, 제목은 도구가 붙인 문장이라 원문이 아닙니다. 같다·다르다를 판정하지 않으며 자사 원인을 쓰지 않습니다.{cards.length > MAX_CARDS ? ` 담은 선례가 ${cards.length}건이라 앞 ${MAX_CARDS}건만 보냅니다.` : ""}</p>
+    <p className="note">담은 선례 {used.length}건의 {step === "d2" ? "결함·결과" : "원인"} 원문을 비슷한 것끼리 묶습니다. 묶음에 넣는 인용은 그 출처의 전체 원문 글자입니다. 같다·다르다를 판정하지 않으며 자사 원인을 쓰지 않습니다.{cards.length > MAX_CARDS ? ` 담은 선례가 ${cards.length}건이라 앞 ${MAX_CARDS}건만 보냅니다.` : ""}</p>
     {state === "loading" && <p className="note" role="status">묶는 중입니다…</p>}
     {state === "error" && error && <p className="ed-err" role="alert">{error.message}</p>}
     {state === "done" && result && <DraftResult result={result} cards={cards} inserted={inserted} appendix={appendix} onToggle={onToggle} />}

@@ -211,3 +211,39 @@ it("칸에 넣은 단계가 없어도 부록은 문서의 마지막 표 뒤에 �
   expect(patchDocumentXml(doc(p("표 없는 문서")), content({}, { appendix: APP })).appendixPlaced).toBe(false);
   expect(patchDocumentXml(withCell(tc(p())), content({ 2: [{ text: "x" }] })).appendixPlaced).toBeNull(); // 부록 없음
 });
+
+// 표가 여럿인 양식 — D1이 든 머리표, D2·D4가 든 본문 표, 서명 표
+const multi = () => doc(
+  tbl(tr(tc(p("TEAM")), tc(p()))), p("— 사이 문단 —"),
+  tbl(tr(tc(p("PROBLEM DESCRIPTION")), tc(p())), tr(tc(p("DEFINE THE PROBLEM CAUSE")), tc(p()))), p("— 두 번째 사이 —"),
+  tbl(tr(tc(p("APPROVAL")), tc(p()))));
+it("표가 여럿이어도 부록은 D4 칸이 든 표 뒤에 붙고, 어느 단계를 채웠는지에 따라 자리가 바뀌지 않는다(리뷰 지적)", () => {
+  const at = (r: { xml: string }) => r.xml.indexOf("[선례 근거 부록]");
+  const bodyEnd = (r: { xml: string }) => r.xml.indexOf("— 두 번째 사이 —");
+  for (const steps of [{ 1: [{ text: "팀" }], 4: [{ text: "원인" }] }, { 4: [{ text: "원인" }] }, { 2: [{ text: "문제" }] }, {}]) {
+    const r = patchDocumentXml(multi(), content(steps as never, { appendix: APP, footer: "※ 근거 줄" }));
+    expect(at(r)).toBeGreaterThan(r.xml.indexOf("DEFINE THE PROBLEM CAUSE")); // D4가 든 표 뒤
+    expect(at(r)).toBeLessThan(bodyEnd(r)); // 서명 표·두 번째 사이 문단 앞
+    expect(r.xml.indexOf("※ 근거 줄")).toBeGreaterThan(at(r)); // 부록 다음에 근거 줄
+  }
+});
+it("D4 칸이 없는 양식이면 인식한 8D 단계 칸이 든 표 중 마지막 표 뒤, 표 안의 칸이 하나도 인식되지 않으면 마지막 표 뒤에 붙는다", () => {
+  const noD4 = doc(tbl(tr(tc(p("TEAM")), tc(p()))), p("가운데"), tbl(tr(tc(p("PROBLEM DESCRIPTION")), tc(p()))), p("끝 문단"), tbl(tr(tc(p("APPROVAL")), tc(p()))));
+  const r = patchDocumentXml(noD4, content({}, { appendix: APP }));
+  expect(r.xml.indexOf("[선례 근거 부록]")).toBeGreaterThan(r.xml.indexOf("PROBLEM DESCRIPTION"));
+  expect(r.xml.indexOf("[선례 근거 부록]")).toBeLessThan(r.xml.indexOf("끝 문단"));
+  const none = doc(tbl(tr(tc(p("A")), tc(p()))), p("가운데"), tbl(tr(tc(p("B")), tc(p()))));
+  const r2 = patchDocumentXml(none, content({}, { appendix: APP }));
+  expect(r2.xml.indexOf("[선례 근거 부록]")).toBeGreaterThan(r2.xml.lastIndexOf("</w:tbl>"));
+});
+it("중첩 표 안의 D4 칸이어도 부록은 바깥 표 뒤에 붙고 칸 안에 들어가지 않는다", () => {
+  const nested = doc(tbl(tr(tc(p("래퍼"), tbl(tr(tc(p("DEFINE THE PROBLEM CAUSE")), tc(p())))))), p("바깥 뒤"));
+  const r = patchDocumentXml(nested, content({}, { appendix: APP }));
+  expect(r.xml.indexOf("[선례 근거 부록]")).toBeGreaterThan(r.xml.indexOf("</w:tbl></w:tc></w:tr></w:tbl>"));
+  expect(r.xml.indexOf("[선례 근거 부록]")).toBeLessThan(r.xml.indexOf("바깥 뒤"));
+});
+it("아무 칸에도 못 넣고 부록도 없으면 근거 데이터 줄도 붙이지 않는다(기존 동작 유지)", () => {
+  const r = patchDocumentXml(doc(tbl(tr(tc(p("Problem Description")), tc(p())), tr(tc(p("Supplier Problem Report No.")), tc(p())))), content({ 2: [{ text: "x" }] }, { footer: "※ 근거 줄" }));
+  expect(r.filled).toEqual([]);
+  expect(r.xml).not.toContain("※ 근거 줄");
+});
