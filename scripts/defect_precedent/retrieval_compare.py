@@ -31,7 +31,8 @@ from scripts.defect_precedent.nhtsa import OUT_DIR, RCLRPT_FROM
 from scripts.defect_precedent.why_stats import GENERIC_WORDS
 
 ALIASES = Path(__file__).resolve().parent / "maker_aliases.csv"
-CACHE = Path(os.environ.get("RETRIEVAL_CACHE", "/tmp/retrieval_compare_cache"))
+# 카드 벡터 캐시 — 임시 폴더(/tmp)는 재부팅 때 지워져 매번 수십 분을 다시 쓰므로 데이터 폴더(커밋 안 함)에 둔다
+CACHE = Path(os.environ.get("RETRIEVAL_CACHE", OUT_DIR / "retrieval_cache"))
 RRF_K = 60  # 관례값, 이 시험지로 고르지 않았다
 FASTEMBED_VERSION = "0.9.0"  # 보고서 수치를 잰 판본 — 다르면 멈춘다(캐시한 카드 벡터와 질문 벡터가 다른 계산에서 나오지 않게)
 BRANDS = set(
