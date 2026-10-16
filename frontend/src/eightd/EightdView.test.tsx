@@ -52,3 +52,17 @@ it("선례 근거 묶음 초안 버튼은 D2·D4에만, 검색 결과와 담은 
   expect(renderToStaticMarkup(<EightdView cards={picked} response={null} onBack={() => {}} />)).not.toContain("묶음 초안");
   expect(renderToStaticMarkup(<EightdView cards={[]} response={response} onBack={() => {}} />)).not.toContain("묶음 초안 만들기");
 });
+
+it("질문만 고쳐 선례 없이 열면 SUBJECT는 새 질문이고, 이전 질문의 D7 검색 결과 표는 제안하지 않고 안내한다(리뷰 지적 — 서류에서 SUBJECT와 표가 어긋나지 않게)", () => {
+  const markup = renderToStaticMarkup(<EightdView cards={[]} response={response} freshQuestion="new brake hose leak" onBack={() => {}} />);
+  expect(markup).toContain('value="new brake hose leak"');
+  expect(markup).not.toContain("표를 텍스트로 본문에 넣기");
+  expect(markup).toContain("지금 질문과 다른 질문의 검색 결과라 제안하지 않습니다");
+  const campno = response.customer_precedents[0]?.campno ?? response.precedents[0].campno;
+  expect(markup).not.toContain(campno); // 이전 질문 검색 결과의 리콜 번호가 화면에 나오지 않는다
+});
+it("선례 없이 연 질문이 검색 응답의 질문과 같으면(앞뒤 공백 무시) D7 표를 그대로 제안한다", () => {
+  const markup = renderToStaticMarkup(<EightdView cards={[]} response={response} freshQuestion={`  ${response.question} `} onBack={() => {}} />);
+  expect(markup).toContain("표를 텍스트로 본문에 넣기");
+  expect(markup).not.toContain("지금 질문과 다른 질문의 검색 결과");
+});

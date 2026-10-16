@@ -11,11 +11,11 @@ const item: DraftItem = { campno: card.campno, field: "defect", quote: 'The <b>i
 const base: DraftResponse = { build_id: "b1", bundle_sha256: null, snapshot_date: "2026-10-06", question: "q", step: "d2", titles_generated: true, model: "gpt-6-luna", degraded: null, groups: [{ title: "파열을 적은 선례", items: [item] }], ungrouped: [], questions: ["질문 하나", "질문 둘"], rejected: {} };
 const render = (r: DraftResponse, inserted: Record<string, string> = {}) => renderToStaticMarkup(<DraftResult result={r} cards={[card]} inserted={inserted} onToggle={() => {}} />);
 
-it("묶음은 중립 번호로 보이고 도구가 붙인 제목은 접힌 참고로만 두며, 인용은 글자 그대로(HTML 이스케이프만) 보인다(리뷰 지적 — 제목이 한정어를 잃은 채 선택을 이끌지 않게)", () => {
+it("묶음은 중립 번호와 원문 인용만 보이고 도구가 붙인 제목은 화면 어디에도 없으며, 인용은 글자 그대로(HTML 이스케이프만) 보인다(리뷰 지적 — 제목이 한정어를 잃은 채 선택을 이끌지 않게)", () => {
   const markup = render(base);
   expect(markup).toContain("<b>묶음 1</b>");
-  expect(markup).not.toMatch(/<b>[^<]*파열을 적은 선례[^<]*<\/b>/);
-  expect(markup).toMatch(/<details class="dg-title"><summary[^>]*>도구가 붙인 제목 보기 \(원문 아님 · 참고용\)<\/summary><p[^>]*>파열을 적은 선례<\/p><\/details>/);
+  expect(markup).not.toContain("파열을 적은 선례");
+  expect(markup).not.toContain("도구가 붙인 제목");
   expect(markup).toContain("The &lt;b&gt;inflator&lt;/b&gt; may &quot;rupture&quot; &amp; crack");
   expect(markup).not.toContain("<b>inflator</b>");
   expect(markup).toContain(card.campno);
