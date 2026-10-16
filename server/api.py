@@ -7,6 +7,7 @@
   `ALLOW_ADMIN_DB_FOR_SERVER=1`을 직접 붙여 적재용 관리자 연결 `DATABASE_URL`로 읽을 수 있다(경고를 남긴다, DEC-042).
 
 - `POST /search {"question": "..."}` → 고객사 선례, 같은 부품·다른 회사 선례. 카드마다 결함·결과·시정 원문과 Part 573 원인 원문(말한 주체·출처)을 싣는다.
+- `POST /draft` → 8D D2·D4에 선례 원문을 묶은 초안(DEC-065). 기본은 꺼짐(`DRAFT_ENABLED=1`) — 꺼지면 묶음 없이 원문 목록만 준다. IP당 1분 6회(`DRAFT_RATE_LIMIT_PER_MINUTE`).
 - `GET /health` → 데이터 판본(build_id·스냅샷 날짜)과 카드 수.
 - `POST /search`는 IP당 1분 60회(`RATE_LIMIT_PER_MINUTE`)를 넘으면 429와 `Retry-After`를 낸다 — `server/ratelimit.py`, 이슈 #63.
 - 판정하지 않는다: 응답에 적용 여부·리콜 필요 여부 같은 칸을 두지 않는다(AGENTS.md 2-1). 모든 응답에 build_id를 싣는다(2-4).
@@ -21,12 +22,12 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Annotated, Literal
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from scripts.defect_precedent.bm25_baseline import tokenize
-from server.rag import customers
+from server.rag import customers, draft
 from server.rag.build import Build
 from server.rag.causes import cause_573
 from server.rag.checks import checklist
@@ -340,6 +341,65 @@ class SearchRequest(Strict):
         return v.strip()
 
 
+class DraftRequest(SearchRequest):
+    """담은 선례(검색 결과 안의 번호만)와 단계 — 서버가 질문으로 다시 검색해 그 범위 안인지 확인한다(AGENTS.md 2-2)."""
+
+    campnos: list[Annotated[str, Field(pattern=r"^[0-9]{2}[A-Z][0-9]{6}$")]] = Field(
+        min_length=1, max_length=draft.MAX_CARDS
+    )
+    step: Literal["d2", "d4"]
+
+
+class DraftItem(Strict):
+    """원문에서 잘라 낸 인용 하나 — 말한 주체와 출처 없이는 내보내지 않는다."""
+
+    campno: str
+    field: Literal["defect", "consequence", "cause"]
+    quote: str = Field(min_length=1)
+    start: int = Field(ge=0)
+    end: int
+    speaker: str = Field(min_length=1)
+    dataset: str | None = None
+    snapshot_date: str | None = None
+    cause_status: Literal["filled", "stated_unknown"] | None = None
+    cause_source: CauseSource | None = None
+
+    @model_validator(mode="after")
+    def needs_provenance(self):
+        if self.field == "cause":
+            if self.cause_source is None or self.cause_status is None:
+                raise ValueError("원인 인용에는 cause_status와 cause_source가 있어야 한다")
+        elif not self.dataset or not self.snapshot_date:
+            raise ValueError("결함·결과 인용에는 dataset과 snapshot_date가 있어야 한다")
+        return self
+
+
+class DraftGroup(Strict):
+    title: str = Field(
+        min_length=1, max_length=draft.MAX_TITLE
+    )  # 도구가 만든 문장 — 화면이 "도구가 붙인 제목"으로 표시한다
+    items: list[DraftItem] = Field(min_length=1)
+
+
+class DraftResponse(Strict):
+    build_id: str
+    bundle_sha256: str | None
+    snapshot_date: str
+    question: str
+    step: Literal["d2", "d4"]
+    titles_generated: Literal[True]
+    model: str | None
+    degraded: Literal["disabled", "llm_failed"] | None
+    reason: str | None = None
+    groups: list[DraftGroup]
+    ungrouped: list[DraftItem]  # 묶이지 않은 원문 전체 — 꺼짐·실패일 때도 원문 목록으로 쓴다
+    questions: list[str]
+    rejected: dict[str, int]
+    relocated: int = Field(
+        default=0, ge=0
+    )  # 공백만 달라 원문 구간으로 되짚은 인용 수 — 글자는 원문 것
+
+
 def card_view(state: RagState, campno: str, rank: int) -> dict:
     card = state.by_id[campno]
     cause = cause_573(card, state.build.causes, state.build.unreadable)
@@ -387,6 +447,29 @@ def answer(state: RagState, question: str) -> dict:
     }
 
 
+def make_draft(state: RagState, req: DraftRequest, llm) -> dict:
+    """담은 선례의 원문을 단계별로 묶는다. 번호가 이 질문의 검색 결과 밖이면 거절한다 — 밖의 번호는 지어낸 것으로 본다."""
+    result = state.searcher.search(req.question)
+    outside = [c for c in req.campnos if c not in result.candidates]
+    if outside:
+        raise HTTPException(
+            status_code=422,
+            detail=f"이 질문의 검색 결과에 없는 리콜 번호입니다: {', '.join(outside)}",
+        )
+    rank = {c: i + 1 for i, c in enumerate(result.ranking)}
+    cards = [card_view(state, c, rank[c]) for c in dict.fromkeys(req.campnos)]
+    verify(cards, result.candidates, state.build.causes, state.investigations)
+    out, _ = draft.generate(req.step, cards, llm)
+    return {
+        "build_id": state.build.build_id,
+        "bundle_sha256": state.bundle_sha256,
+        "snapshot_date": state.build.snapshot_date,
+        "question": req.question,
+        "titles_generated": True,
+        **out,
+    }
+
+
 def peak_rss_mb() -> int:
     """이 프로세스의 최대 RSS(MB). ru_maxrss 단위는 Linux KB, macOS 바이트."""
     import resource
@@ -396,11 +479,20 @@ def peak_rss_mb() -> int:
 
 
 def create_app(
-    loader: Callable[[], RagState] = load_state, limiter: RateLimiter | None = None
+    loader: Callable[[], RagState] = load_state,
+    limiter: RateLimiter | None = None,
+    draft_config: draft.DraftConfig | None = None,
+    draft_limiter: RateLimiter | None = None,
+    draft_llm: Callable | None = None,
 ) -> FastAPI:
     limiter = limiter or RateLimiter(
         limit_from_env()
     )  # IP당 1분 60회(이슈 #63), 잘못된 값이면 시작하지 않는다
+    cfg = (
+        draft_config or draft.DraftConfig.from_env()
+    )  # 기본 꺼짐 — 잘못된 값·키 없는 켬이면 시작하지 않는다
+    draft_limiter = draft_limiter or RateLimiter(cfg.limit)
+    llm = draft_llm or cfg.llm()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -413,6 +505,7 @@ def create_app(
     app = FastAPI(title="결함 선례 찾기 도우미", lifespan=lifespan)
     # 나중에 더한 미들웨어가 바깥이다 — CORS를 상한 바깥에 둬야 429에도 Access-Control-Allow-Origin이 붙는다
     app.add_middleware(RateLimitMiddleware, limiter=limiter)
+    app.add_middleware(RateLimitMiddleware, limiter=draft_limiter, route=("POST", "/draft"))
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins(),
@@ -435,6 +528,10 @@ def create_app(
     @app.post("/search", response_model=SearchResponse)
     def search(req: SearchRequest) -> dict:
         return answer(app.state.rag, req.question)
+
+    @app.post("/draft", response_model=DraftResponse)
+    def draft_route(req: DraftRequest) -> dict:
+        return make_draft(app.state.rag, req, llm)
 
     return app
 
