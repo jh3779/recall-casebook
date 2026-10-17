@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { search } from "../api";
 import { togglePick } from "../search/picks";
 import type { Card, HealthState, SearchResponse } from "../search/types";
@@ -7,6 +7,7 @@ import { CaseList } from "./CaseList";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
+const ModelOverlay = lazy(() => import("./ModelOverlay")); // three.js는 3D 창을 열 때만 받는다
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
 /**
@@ -23,6 +24,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
   const [caseName, setCaseName] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [copyMessage, setCopyMessage] = useState("");
+  const [view3d, setView3d] = useState<Card | null>(null);
   const [unsavedNotes, setUnsavedNotes] = useState<ReadonlySet<string>>(new Set()); // 저장소에 쓰지 못한 메모의 리콜 번호 — 하나라도 있으면 저장됐다고 말하지 않는다
   const saveFailed = unsavedNotes.size > 0;
   const storage = useMemo(() => browserStorage(), []);
@@ -114,12 +116,13 @@ export default function CasebookView({ health }: { health: HealthState }) {
       <section className="cb-stack" aria-label="Checked precedents">
         <h2 className="sr-only">Checked precedents</h2>
         {!checked.length && <p className="cb-empty">Check precedents on the left. Each one stacks here with its original wording, who said it, and the report it came from.</p>}
-        {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => setChecked((list) => togglePick(list, card))} />)}
+        {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => setChecked((list) => togglePick(list, card))} on3d={() => setView3d(card)} />)}
       </section>
       <div className="cb-side">
         <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
         <GroupPanel key={checked.map((c) => c.campno).join(",")} question={response.question} build={response} cards={checked} />
       </div>
     </div>}
+    {view3d && <Suspense fallback={<p className="cb-3d-msg" role="status">Loading the 3D view…</p>}><ModelOverlay card={view3d} onClose={() => setView3d(null)} /></Suspense>}
   </main>;
 }
