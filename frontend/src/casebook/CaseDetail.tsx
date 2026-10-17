@@ -64,7 +64,7 @@ export function CaseDetail({ card, response, onRemove }: { card: Card; response:
       <h4>NHTSA defect investigation <small>{card.investigations.length} linked, summary verbatim</small></h4>
       {card.investigations.map((inv) => <div key={inv.action} className="cb-check-item">
         <h5><span className="cb-mono">{inv.action}</span> · <span lang="en">{inv.subject}</span></h5>
-        <p className="cb-byline">Said by <b lang={langOf(inv.speaker)}>{inv.speaker}</b> · {inv.action} · opened {fmtDate(inv.open_date)} · closed {inv.close_date ? fmtDate(inv.close_date) : "no record"}</p>
+        <p className="cb-byline">Said by <b lang={langOf(inv.speaker)}>{inv.speaker}</b> · {inv.action} · opened {inv.open_date ? fmtDate(inv.open_date) : "no record"} · closed {inv.close_date ? fmtDate(inv.close_date) : "no record"}</p>
         <p className="cb-src-text" lang="en">{inv.summary}</p>
       </div>)}
     </section>}

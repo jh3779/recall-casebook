@@ -7,6 +7,7 @@ import { CaseList } from "./CaseList";
 import CasebookView from "./CasebookView";
 import { AppBar } from "../AppBar";
 import type { DraftResponse } from "../eightd/draft";
+import { fmtDate } from "../recalls";
 import { GroupPanel, GroupResult } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
 
@@ -130,7 +131,11 @@ it("연결된 NHTSA 결함 조사는 번호·말한 주체·개시/종결일·�
   expect(withInv.length).toBeGreaterThan(0);
   for (const card of withInv) {
     const markup = renderToStaticMarkup(<CaseDetail card={card} response={response} onRemove={() => {}} />);
-    for (const inv of card.investigations) for (const text of [inv.action, inv.speaker, inv.subject, inv.summary]) expect(markup).toContain(escaped(text));
+    for (const inv of card.investigations) {
+      for (const text of [inv.action, inv.speaker, inv.subject, inv.summary]) expect(markup).toContain(escaped(text));
+      expect(markup).toContain(`opened ${fmtDate(inv.open_date)}`);
+      expect(markup).toContain(inv.close_date ? `closed ${fmtDate(inv.close_date)}` : "closed no record");
+    }
     expect(markup).toContain("NHTSA defect investigation");
     expect(markup).not.toContain("<details");
   }
@@ -141,7 +146,7 @@ it("확인 항목: 생산 기간(생략 건수 포함)과 공급사를 출처와
   const source = { campaign: "X", file: "odi/rcl/2026/RCLRPT-X.pdf", pdf_sha256: "c".repeat(64), submission_date: "20260710" };
   const supplier = { item: "supplier" as const, label: "공급사", evidence: [{ field: "573.supplier_names", text: "ACME Parts, Inc." }] };
   const production = { item: "production_period" as const, label: "생산 기간", evidence: [{ field: "573.production_dates", text: "Vehicle 1: 2015 | Apr 18, 2015 - Aug 24, 2015" }], omitted: 3, unread: 2, source };
-  const card = { ...cards.find((c) => c.cause.status === "no_573_report")!, checklist: [production, supplier] };
+  const card = { ...cards.find((c) => c.cause.status === "no_573_report")!, cause: { status: "cause_empty" as const, campaign: "X" }, checklist: [production, supplier] }; // 원인 칸이 비어도 생산 기간 근거는 되짚을 수 있다(server/rag/checks.py)
   const markup = renderToStaticMarkup(<CaseDetail card={card} response={response} onRemove={() => {}} />);
   expect(markup).toContain("Production period");
   expect(markup).toContain("Vehicle 1: 2015");
@@ -150,4 +155,13 @@ it("확인 항목: 생산 기간(생략 건수 포함)과 공급사를 출처와
   expect(markup).toContain(source.file);
   expect(markup).toContain(source.pdf_sha256);
   expect(markup).toContain("ACME Parts, Inc.");
+  expect((markup.match(/pdf_sha256/g) ?? []).length).toBe(2); // 생산 기간 출처와 공급사 출처가 각각 그려진다
+});
+it("조사 개시일·종결일이 비어 있으면 점 두 개 대신 no record를 보인다", () => {
+  const base = cards.find((c) => c.investigations.length > 0)!;
+  const card = { ...base, investigations: [{ ...base.investigations[0], open_date: "", close_date: "" }] };
+  const markup = renderToStaticMarkup(<CaseDetail card={card} response={response} onRemove={() => {}} />);
+  expect(markup).toContain("opened no record");
+  expect(markup).toContain("closed no record");
+  expect(markup).not.toContain("opened ..");
 });
