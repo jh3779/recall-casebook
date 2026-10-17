@@ -3,7 +3,7 @@ import type { Card } from "../search/types";
 import { groupBlock, groupId, questionsBlock, type DraftItem, type DraftResponse } from "./draft";
 
 const FIELD = { defect: "결함", consequence: "결과", cause: "원인 원문" } as const;
-const REJECTED: Record<string, string> = { not_in_source: "원문에 없어서", unknown_source: "출처가 맞지 않아서", duplicate_source: "겹쳐서" };
+const REJECTED: Record<string, string> = { not_in_source: "원문에 없어서", unknown_source: "출처가 맞지 않아서", duplicate_source: "겹쳐서", unknown_question: "풀에 없는 질문 번호라서", duplicate_question: "겹친 질문 번호라서", over_limit_question: "상한을 넘은 질문 번호라서" };
 const DEGRADED = { disabled: "묶음 초안 기능이 꺼져 있습니다.", llm_failed: "묶음을 만들지 못했습니다." } as const;
 
 function Quote({ item, card }: { item: DraftItem; card: Card | undefined }) {

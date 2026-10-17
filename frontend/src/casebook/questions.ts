@@ -37,5 +37,7 @@ export function pickedQuestions(ids: readonly string[] | undefined): { id: strin
   for (const id of ids ?? []) if (Object.hasOwn(QUESTION_POOL, id) && !kept.includes(id) && kept.length < MAX_PICK) kept.push(id);
   return kept.map((id) => ({ id, text: QUESTION_POOL[id] }));
 }
+/** 모델이 고른 번호를 지금 체크한 선례 조합(`checkedKey`)에 대해서만 쓴다 — 다른 조합에서 받은 선택은 보이지 않는다 */
+export const pickedFor = (picked: { key: string; ids: string[] } | null, checkedKey: string): string[] => (picked && picked.key === checkedKey ? picked.ids : []);
 /** 묶기 응답에서 LLM이 고른 번호 — 응답이 문장을 들고 와도 번호만 쓴다 */
 export const pickedIdsOf = (result: { picked_questions?: readonly { id: string }[] }): string[] => pickedQuestions(result.picked_questions?.map((q) => q.id)).map((q) => q.id);

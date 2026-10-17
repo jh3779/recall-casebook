@@ -295,21 +295,26 @@ def assemble(sources: list[Source], parsed: dict) -> dict:
     return {"groups": groups, "ungrouped": ungrouped, "rejected": rejected, "relocated": relocated}
 
 
-def pick_questions(parsed: dict) -> tuple[list[str], int]:
-    """LLM이 돌려준 `question_ids`에서 풀 안의 번호만 남긴다(중복 제거, 준 순서, 최대 `MAX_PICK`). 버린 항목 수를 함께 돌려준다 — 문장은 호출하는 쪽이 풀에서 가져온다."""
+def pick_questions(parsed: dict) -> tuple[list[str], dict[str, int]]:
+    """LLM이 돌려준 `question_ids`에서 풀 안의 번호만 남긴다(중복 제거, 준 순서, 최대 `MAX_PICK`). 버린 항목은 이유별로 센다 —
+    `unknown_question`(풀 밖·문자열 아님·목록 아님), `duplicate_question`(앞에서 이미 고른 번호), `over_limit_question`(상한을 넘은 유효한 번호).
+    문장은 호출하는 쪽이 풀에서 가져온다."""
+    dropped = {"unknown_question": 0, "duplicate_question": 0, "over_limit_question": 0}
     raw = parsed.get("question_ids", [])
     if not isinstance(raw, list):
-        return [], 1
+        dropped["unknown_question"] = 1
+        return [], dropped
     kept: list[str] = []
     for qid in raw:
-        if (
-            isinstance(qid, str)
-            and qid in QUESTION_POOL
-            and qid not in kept
-            and len(kept) < MAX_PICK
-        ):
+        if not isinstance(qid, str) or qid not in QUESTION_POOL:
+            dropped["unknown_question"] += 1
+        elif qid in kept:
+            dropped["duplicate_question"] += 1
+        elif len(kept) >= MAX_PICK:
+            dropped["over_limit_question"] += 1
+        else:
             kept.append(qid)
-    return kept, len(raw) - len(kept)
+    return kept, dropped
 
 
 def questions_for(step: str, sources: list[Source]) -> list[str]:
@@ -424,7 +429,7 @@ def generate(
     if step == "d4":  # 풀은 D4 전용 — 문장은 LLM이 돌려준 글자가 아니라 풀에서 가져온다(DEC-071)
         ids, dropped = pick_questions(parsed)
         out["picked_questions"] = [{"id": i, "text": QUESTION_POOL[i]} for i in ids]
-        out["rejected"] = {**out["rejected"], "dropped_question": dropped}
+        out["rejected"] = {**out["rejected"], **dropped}
     return out, result
 
 

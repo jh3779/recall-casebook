@@ -8,6 +8,7 @@ import { D4Panel } from "./D4Panel";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
+import { pickedFor } from "./questions";
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
 /**
@@ -54,6 +55,9 @@ export default function CasebookView({ health }: { health: HealthState }) {
     setNotes(next.notes);
     setUnsavedNotes(!!storage && !!name ? new Set(next.failed) : new Set());
   }
+  function togglePicked(card: Card) { // 체크한 선례가 바뀌면 모델이 고른 질문을 걷어 낸다 — 같은 조합으로 돌아와도 되살아나지 않게(DEC-071)
+    setChecked((list) => togglePick(list, card)); setPicked(null);
+  }
   async function run() {
     const value = question.trim();
     if (!value || !/[A-Za-z]/.test(value) || value.length > 4000) return;
@@ -62,7 +66,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
     const controller = new AbortController();
     request.current = controller;
     const timer = setTimeout(() => controller.abort(), 60_000);
-    setState("loading"); setError(""); setResponse(null); setChecked([]);
+    setState("loading"); setError(""); setResponse(null); setChecked([]); setPicked(null);
     try {
       const result = await search(value, controller.signal);
       if (request.current !== controller) return;
@@ -116,18 +120,18 @@ export default function CasebookView({ health }: { health: HealthState }) {
 
     {state === "done" && response && <>
     <div className="cb-grid">
-      <CaseList response={response} checked={checked} onToggle={(card) => setChecked((list) => togglePick(list, card))} />
+      <CaseList response={response} checked={checked} onToggle={togglePicked} />
       <section className="cb-stack" aria-label="Checked precedents">
         <h2 className="sr-only">Checked precedents</h2>
         {!checked.length && <p className="cb-empty">Check precedents on the left. Each one stacks here with its original wording, who said it, and the report it came from.</p>}
-        {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => setChecked((list) => togglePick(list, card))} />)}
+        {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => togglePicked(card)} />)}
       </section>
       <div className="cb-side">
         <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
         <GroupPanel key={checkedKey} question={response.question} build={response} cards={checked} onPicked={(ids) => setPicked({ key: checkedKey, ids })} />
       </div>
     </div>
-    <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} picked={picked && picked.key === checkedKey ? picked.ids : []} />
+    <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} picked={pickedFor(picked, checkedKey)} />
     </>}
   </main>;
 }

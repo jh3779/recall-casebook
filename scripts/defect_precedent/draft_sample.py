@@ -96,6 +96,9 @@ def run(
                     "campnos": [c["campno"] for c in cards],
                     "n_sources": len(sources),
                     "draft": out_d,
+                    "raw_question_ids": json.loads(used.text).get("question_ids")
+                    if used
+                    else None,  # LLM이 돌려준 번호 원본 — 풀 밖·중복·초과를 사후에 구분하는 근거(DEC-071)
                     "raw_titles": [g["title"] for g in json.loads(used.text)["groups"]]
                     if used
                     else [],
@@ -173,9 +176,16 @@ def summary(
     if d4:  # 확인 질문 풀에서 LLM이 고른 번호(DEC-071) — 풀 밖 번호·중복·상한 초과로 서버가 버린 수와 고른 번호 분포
         picks = Counter(q["id"] for r in d4 for q in r["draft"]["picked_questions"])
         sizes = Counter(len(r["draft"]["picked_questions"]) for r in d4)
-        dropped = sum(r["draft"]["rejected"].get("dropped_question", 0) for r in d4)
+        why = Counter()
+        for r in d4:
+            why.update(
+                {
+                    k: r["draft"]["rejected"].get(k, 0)
+                    for k in ("unknown_question", "duplicate_question", "over_limit_question")
+                }
+            )
         print(
-            f"확인 질문 선택(D4 {len(d4)}회): 고른 개수 분포 {dict(sorted(sizes.items()))} · 번호별 {dict(sorted(picks.items(), key=lambda kv: int(kv[0][1:])))} · 서버가 버린 번호 {dropped}"
+            f"확인 질문 선택(D4 {len(d4)}회): 고른 개수 분포 {dict(sorted(sizes.items()))} · 번호별 {dict(sorted(picks.items(), key=lambda kv: int(kv[0][1:])))} · 서버가 버린 번호 {dict(why)}"
         )
     n_groups = sum(len(r["draft"]["groups"]) for r in calls)
     n_items = sum(len(g["items"]) for r in calls for g in r["draft"]["groups"])

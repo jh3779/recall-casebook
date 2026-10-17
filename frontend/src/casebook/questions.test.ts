@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
-import { D4_QUESTIONS, MAX_PICK, QUESTION_POOL, QUESTION_UNKNOWN, d4Questions, pickedIdsOf, pickedQuestions } from "./questions";
+import { D4_QUESTIONS, MAX_PICK, QUESTION_POOL, QUESTION_UNKNOWN, d4Questions, pickedFor, pickedIdsOf, pickedQuestions } from "./questions";
 
 const python = readFileSync(fileURLToPath(new URL("../../../server/rag/draft.py", import.meta.url)), "utf8");
 const strings = (block: string) => [...block.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse(`"${m[1]}"`) as string);
@@ -50,4 +50,13 @@ it("고른 번호는 풀 안의 것만, 중복 없이 준 순서대로 최대 3�
   expect(pickedIdsOf(forged)).toEqual(["P2"]);
   expect(pickedIdsOf({})).toEqual([]);
   expect(pickedIdsOf({ picked_questions: undefined })).toEqual([]);
+});
+it("모델이 고른 번호는 같은 선례 조합에서만 보이고, 응답 모양이 이상해도 화면이 깨지지 않는다", () => {
+  const picked = { key: "24V412000,24V422000", ids: ["P5", "P7"] };
+  expect(pickedFor(picked, "24V412000,24V422000")).toEqual(["P5", "P7"]);
+  expect(pickedFor(picked, "24V412000")).toEqual([]); // 다른 조합
+  expect(pickedFor(picked, "")).toEqual([]);
+  expect(pickedFor(null, "24V412000")).toEqual([]);
+  expect(pickedQuestions(["P1", "P1", "P2", "P3", "P4"]).map((q) => q.id)).toEqual(["P1", "P2", "P3"]); // 상한 3
+  expect(pickedQuestions([1 as never, null as never, "P4"]).map((q) => q.id)).toEqual(["P4"]); // 문자열이 아닌 항목은 쓰지 않는다
 });

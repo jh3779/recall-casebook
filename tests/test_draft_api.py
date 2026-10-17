@@ -243,9 +243,14 @@ def test_d4_returns_the_questions_the_llm_picked_by_id_with_the_fixed_pool_sente
         {"id": "P7", "text": draft.QUESTION_POOL["P7"]},
     ]
     assert j["questions"][0] == draft.QUESTIONS["d4"][0]  # 기본 문장은 코드가 붙인다
-    assert j["rejected"]["dropped_question"] == 2
-    assert (
-        "P2:" not in llm.calls[0] and draft.QUESTION_POOL["P2"] not in llm.calls[0]
+    rej = j["rejected"]
+    assert (rej["unknown_question"], rej["duplicate_question"], rej["over_limit_question"]) == (
+        1,
+        1,
+        0,
+    )
+    assert "P2:" not in llm.calls[0] and all(
+        q not in llm.calls[0] for q in draft.QUESTION_POOL.values()
     )  # LLM 입력에는 선례 원문만, 질문 문장은 없다
     assert FORBIDDEN_KEYS.isdisjoint(set(keys(j)))
 
@@ -379,3 +384,20 @@ def test_enabled_config_builds_a_llm_callable_without_exposing_the_key_in_repr_o
         }
     )
     assert (c.model, c.effort, c.limit) == ("gpt-4o-mini", "low", 3) and callable(c.llm())
+
+
+def test_more_than_the_limit_of_picked_questions_is_refused_by_the_response_model(
+    tmp_path, monkeypatch
+):
+    real = draft.generate
+
+    def too_many(step, cards, llm):
+        out, used = real(step, cards, llm)
+        out["picked_questions"] = [
+            {"id": i, "text": draft.QUESTION_POOL[i]} for i in ("P1", "P2", "P3", "P4")
+        ]
+        return out, used
+
+    monkeypatch.setattr(api_mod.draft, "generate", too_many)
+    with client(tmp_path) as c, pytest.raises(ResponseValidationError):
+        c.post("/draft", json=body(step="d4"))

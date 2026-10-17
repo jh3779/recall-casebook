@@ -582,14 +582,23 @@ def test_the_question_pool_is_ten_fixed_questions_that_never_judge():
 
 
 def test_pick_questions_keeps_only_pool_ids_once_in_the_order_given_and_at_most_three():
-    ids, bad = draft.pick_questions({"question_ids": ["P3", "P3", "P99", "P1", "x", "P2", "P5"]})
-    assert (
-        ids == ["P3", "P1", "P2"] and bad == 4
-    )  # 버린 항목 수: 중복 P3, 풀 밖 P99·x, 상한 3개를 넘는 P5
-    assert draft.pick_questions({"question_ids": []}) == ([], 0)
-    assert draft.pick_questions({}) == ([], 0)
-    assert draft.pick_questions({"question_ids": "P1"}) == ([], 1)  # 목록이 아니면 쓰지 않는다
-    assert draft.pick_questions({"question_ids": [1, None, ["P1"], "P4"]}) == (["P4"], 3)
+    none = {"unknown_question": 0, "duplicate_question": 0, "over_limit_question": 0}
+    ids, why = draft.pick_questions({"question_ids": ["P3", "P3", "P99", "P1", "x", "P2", "P5"]})
+    assert ids == ["P3", "P1", "P2"]
+    # 풀 밖 P99·x / 중복 P3 / 상한 3개를 넘은 유효한 P5 — 이유를 따로 센다
+    assert why == {"unknown_question": 2, "duplicate_question": 1, "over_limit_question": 1}
+    assert draft.pick_questions({"question_ids": []}) == ([], none)
+    assert draft.pick_questions({}) == ([], none)
+    assert draft.pick_questions({"question_ids": "P1"}) == ([], {**none, "unknown_question": 1})
+    assert draft.pick_questions({"question_ids": [1, None, ["P1"], "P4"]}) == (
+        ["P4"],
+        {**none, "unknown_question": 3},
+    )
+    more = draft.pick_questions({"question_ids": ["P1", "P2", "P3", "P4", "P5"]})[1]
+    assert more == {
+        **none,
+        "over_limit_question": 2,
+    }  # 유효한 번호를 더 준 것과 풀 밖 번호를 준 것이 구분된다
 
 
 def test_the_d4_prompt_offers_the_topics_by_id_and_d2_asks_for_an_empty_list():
@@ -598,9 +607,8 @@ def test_the_d4_prompt_offers_the_topics_by_id_and_d2_asks_for_an_empty_list():
     for qid, topic in draft.QUESTION_TOPICS.items():
         assert f"{qid}: {topic}" in d4
     assert "never write" in d4 and "ids" in d4  # 문장을 쓰지 않고 번호만 고른다는 지시
-    assert (
-        draft.QUESTION_POOL["P1"] not in d4
-    )  # 한국어 문장은 LLM에 보이지 않는다 — 번호와 영어 주제만
+    for text in draft.QUESTION_POOL.values():
+        assert text not in d4  # 한국어 문장은 LLM에 보이지 않는다 — 번호와 영어 주제만
     d2, _ = draft.prompt_for("d2", [Source("S1", "24V412000", "defect", "text", {})])
     assert "question_ids" in d2 and "empty" in d2 and "P1:" not in d2
 
@@ -626,7 +634,11 @@ def test_generate_d4_returns_the_picked_pool_sentences_and_counts_what_it_droppe
         draft.QUESTION_POOL["P5"],
         draft.QUESTION_POOL["P2"],
     ]  # 문장은 풀에서 가져온 것 — LLM이 돌려준 글자가 아니다
-    assert out["rejected"]["dropped_question"] == 2
+    assert (out["rejected"]["unknown_question"], out["rejected"]["duplicate_question"]) == (
+        1,
+        1,
+    )  # P42는 풀 밖, 두 번째 P5는 중복
+    assert out["rejected"]["over_limit_question"] == 0
     assert out["questions"] == draft.questions_for(
         "d4", draft.build_sources("d4", cards)
     )  # 기본 문장은 그대로 코드가 붙인다
@@ -637,7 +649,10 @@ def test_generate_without_picks_or_when_off_or_failed_has_no_picked_questions():
     ok, _ = draft.generate(
         "d4", cards, fake_llm({"groups": [], "ungrouped": ["S1"]})
     )  # 구 형식 응답(question_ids 없음)
-    assert ok["picked_questions"] == [] and ok["rejected"]["dropped_question"] == 0
+    assert ok["picked_questions"] == [] and all(
+        ok["rejected"][k] == 0
+        for k in ("unknown_question", "duplicate_question", "over_limit_question")
+    )
     off, _ = draft.generate("d4", cards, None)
     assert off["picked_questions"] == [] and off["degraded"] == "disabled"
 

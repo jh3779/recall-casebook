@@ -9,7 +9,7 @@ import { groupCandidates, langOf } from "./sources";
 
 const MAX_CARDS = 6; // 서버가 한 번에 받는 선례 수
 const DEGRADED = { disabled: "Grouping is switched off on this server.", llm_failed: "Grouping failed." } as const;
-const REJECTED: Record<string, string> = { not_in_source: "not in the source", unknown_source: "source mismatch", duplicate_source: "duplicate", dropped_question: "question id outside the fixed list" };
+const REJECTED: Record<string, string> = { not_in_source: "not in the source", unknown_source: "source mismatch", duplicate_source: "duplicate", unknown_question: "question id not in the fixed list", duplicate_question: "question id repeated", over_limit_question: "question ids over the limit" };
 
 /**
  * 원인 원문 묶기(DEC-065, LLM 보조). 문장을 새로 쓰지 않고, 화면에 나가는 글자는 서버가 출처 원문에서 잘라 낸 그 출처의 전체 원문이다.
