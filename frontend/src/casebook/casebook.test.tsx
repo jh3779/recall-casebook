@@ -140,6 +140,7 @@ it("연결된 NHTSA 결함 조사는 번호·말한 주체·개시/종결일·�
     expect(markup).not.toContain("<details");
   }
   const sample = withInv.find((c) => c.campno === "14E073000");
+  expect(sample).toBeDefined(); // 표본이 빠지면 조용히 건너뛰지 않고 실패한다
   if (sample) { // 고정 문자열로도 확인한다(기대값을 같은 fmtDate로 만들면 fmtDate가 망가져도 통과한다)
     const m = renderToStaticMarkup(<CaseDetail card={sample} response={response} onRemove={() => {}} />);
     expect(m).toContain("opened 2014.06.11");
