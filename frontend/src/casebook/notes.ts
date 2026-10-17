@@ -98,6 +98,14 @@ const hasText = (notes: Readonly<Record<string, string>>) => Object.values(notes
 export const isUnsaved = (caseName: string, notes: Readonly<Record<string, string>>, saveFailed: boolean, hasStorage: boolean): boolean => (!caseName || !hasStorage || saveFailed) && hasText(notes);
 /** 사건 이름을 바꿀 때 잃을 메모가 있는가 — 이름 없는 메모는 새 이름으로 옮겨지므로 제외하고, 이름이 있는 사건에서 저장되지 않은 메모만 센다 */
 export const losesNotesOnSwitch = (caseName: string, notes: Readonly<Record<string, string>>, saveFailed: boolean, hasStorage: boolean): boolean => !!caseName && hasText(notes) && (saveFailed || !hasStorage);
+/** 메모·D4 글 칸이 보여 줄 저장 상태 문구와 경고 여부 — 두 구역이 같은 저장 장치를 쓰므로 한 곳에서 만든다 */
+export function storageState(caseName: string, persistent: boolean, storageBlocked: boolean): { warn: boolean; text: string } {
+  if (persistent && !storageBlocked) return { warn: false, text: `Saved in this browser under “${caseName}”. Never sent to the server or an LLM.` };
+  if (storageBlocked) return { warn: true, text: "This browser could not save the notes (storage blocked or full) — they live only in this tab and are lost on reload." };
+  return { warn: true, text: "No case name — notes live only in this tab and are lost on reload. Set a case name above to keep them." };
+}
+/** 메모·D4 글에 붙는 공용 PC 안내 */
+export const SHARED_BROWSER_NOTE = "Use synthetic or de-identified details. Anyone using this browser can read saved notes.";
 /** 노트 칸이 "저장됨" 대신 손실 경고를 보여야 하는가 */
 export const storageProblem = (caseName: string, hasStorage: boolean, saveFailed: boolean): boolean => (!!caseName && !hasStorage) || saveFailed;
 

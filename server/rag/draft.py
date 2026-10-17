@@ -5,6 +5,7 @@
   원문과 다른 문자열(글자를 바꿨거나 지어낸 것)은 버리고 센다. NHTSA 글에는 마침표 뒤 이중 공백이 많아, 공백만 다르면
   원문 구간으로 되짚되 싣는 글자는 언제나 원문 것이다(AGENTS.md 2-2).
 - 묶음 제목은 도구가 만든 문장이다 — 화면은 "도구가 붙인 제목"으로 표시해야 한다. 판정 표현이 들어 있으면 제목을 버린다.
+- D4에서는 같은 호출에서 LLM이 확인 질문 풀(`QUESTION_POOL`)의 **번호만** 최대 3개 고른다(DEC-071). 문장은 LLM이 쓰지 않고 서버가 풀에서 가져오며, 풀 밖 번호·중복·초과는 버리고 센다.
 - 꺼져 있거나(`DRAFT_ENABLED` 아님) LLM이 실패하면 묶음 없이 원문 목록만 돌려준다(`degraded`).
 - 호출은 표준 라이브러리만 쓴다(런타임 의존성을 늘리지 않는다). 키는 서버 환경변수 `OPENAI_API_KEY`뿐이고 응답·오류에 싣지 않는다.
 """
@@ -73,8 +74,9 @@ SCHEMA = {
             },
         },
         "ungrouped": {"type": "array", "items": {"type": "string"}},
+        "question_ids": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["groups", "ungrouped"],
+    "required": ["groups", "ungrouped", "question_ids"],
     "additionalProperties": False,
 }
 
@@ -109,6 +111,34 @@ QUESTIONS = {
         "선례의 공급사·생산 기간(확인 항목)과 우리 건의 공급사·생산 기간이 겹칩니까?",
     ],
 }
+# D4 확인 질문 풀(DEC-071) — LLM은 이 중 **번호만** 고르고 문장은 쓰지 않는다. 사용자가 2026-10-17에 문장을 승인했다.
+# 질문형이며 같다·다르다·원인을 판정하지 않는다. 화면(`frontend/src/casebook/questions.ts`)에도 같은 문장이 있고 `questions.test.ts`가 글자까지 대조한다.
+QUESTION_POOL = {
+    "P1": "선례 원문이 소재·재질·열처리 등 재료 이유를 말한다면, 우리 건의 같은 부품 재료·공정 변경 이력을 확인했습니까?",
+    "P2": "선례 원문이 제조·가공 공정상의 이유를 말한다면, 우리 건의 해당 공정 조건과 변경점(설비·작업 조건·작업자)을 확인했습니까?",
+    "P3": "선례 원문이 조립·체결 이유를 말한다면, 우리 건의 조립·체결 조건(토크·순서·치구) 기록을 확인했습니까?",
+    "P4": "선례 원문이 설계·사양 이유를 말한다면, 우리 부품의 도면·공차·사양 이력을 확인했습니까?",
+    "P5": "선례 원문이 이물·오염을 말한다면, 우리 공정의 이물 관리·청정도 기록을 확인했습니까?",
+    "P6": "선례 원문이 소프트웨어·제어 로직을 말한다면, 우리 건의 소프트웨어 버전·교정값 이력을 확인했습니까?",
+    "P7": "선례 원문이 공급사·하위 공급사를 말한다면, 우리 건의 공급사·하위 공급사 기록을 확인했습니까?",
+    "P8": "선례 원문이 검사·시험에서 걸러내지 못한 이유를 말한다면, 우리 검사 항목이 같은 결함을 찾도록 되어 있는지 확인했습니까?",
+    "P9": "선례 원문이 특정 생산 기간·로트를 말한다면, 우리 건의 생산 시기·로트 기록을 확인했습니까?",
+    "P10": "선례 원문이 사용 환경(온도·습도·부식)이나 시간 경과를 말한다면, 우리 건의 사용 조건 자료를 확인했습니까?",
+}
+# LLM에게 보여 주는 것은 번호와 영어 주제뿐이다(한국어 문장은 보이지 않는다)
+QUESTION_TOPICS = {
+    "P1": "material, alloy or heat treatment",
+    "P2": "a manufacturing or machining process",
+    "P3": "assembly or fastening (torque, sequence, fixtures)",
+    "P4": "design or specification (drawing, tolerance)",
+    "P5": "contamination or foreign matter",
+    "P6": "software or control logic",
+    "P7": "a supplier or sub-supplier",
+    "P8": "an inspection or test that did not catch the problem",
+    "P9": "a specific production period or lot",
+    "P10": "use environment (temperature, humidity, corrosion) or aging",
+}
+MAX_PICK = 3  # LLM이 한 번에 고를 수 있는 질문 수
 QUESTION_UNKNOWN = "원인 칸에 '미보고·조사 중' 표현(N/A·NR 등)이 있는 선례는, 그 표현 뒤에 별도의 원인 서술이 이어지는지 원문 전체를 확인했습니까?"
 
 
@@ -163,9 +193,19 @@ def build_sources(step: str, cards: list[dict]) -> list[Source]:
     return out
 
 
+def question_task() -> str:
+    topics = " ".join(f"{qid}: {topic};" for qid, topic in QUESTION_TOPICS.items())
+    return (
+        f"Also fill 'question_ids': choose at most {MAX_PICK} ids from the list below for the topics that the wording of the "
+        "sources actually mentions, so the engineer is asked to check them. Return only ids from this list, never write a "
+        f"question or any other text there, never add a topic the sources do not mention, and return an empty list if none fits. {topics}"
+    )
+
+
 def prompt_for(step: str, sources: list[Source]) -> tuple[str, str]:
     body = "\n\n".join(f"[{s.id}] campno={s.campno} field={s.field}\n{s.text}" for s in sources)
-    return f"{COMMON_RULES} {TASKS[step]}", f"Sources:\n\n{body}"
+    tail = question_task() if step == "d4" else "Return an empty list for 'question_ids'."
+    return f"{COMMON_RULES} {TASKS[step]} {tail}", f"Sources:\n\n{body}"
 
 
 def locate(text: str, quote: str) -> tuple[int, int] | None:
@@ -255,6 +295,28 @@ def assemble(sources: list[Source], parsed: dict) -> dict:
     return {"groups": groups, "ungrouped": ungrouped, "rejected": rejected, "relocated": relocated}
 
 
+def pick_questions(parsed: dict) -> tuple[list[str], dict[str, int]]:
+    """LLM이 돌려준 `question_ids`에서 풀 안의 번호만 남긴다(중복 제거, 준 순서, 최대 `MAX_PICK`). 버린 항목은 이유별로 센다 —
+    `unknown_question`(풀 밖·문자열 아님·목록 아님), `duplicate_question`(앞에서 이미 고른 번호), `over_limit_question`(상한을 넘은 유효한 번호).
+    문장은 호출하는 쪽이 풀에서 가져온다."""
+    dropped = {"unknown_question": 0, "duplicate_question": 0, "over_limit_question": 0}
+    raw = parsed.get("question_ids", [])
+    if not isinstance(raw, list):
+        dropped["unknown_question"] = 1
+        return [], dropped
+    kept: list[str] = []
+    for qid in raw:
+        if not isinstance(qid, str) or qid not in QUESTION_POOL:
+            dropped["unknown_question"] += 1
+        elif qid in kept:
+            dropped["duplicate_question"] += 1
+        elif len(kept) >= MAX_PICK:
+            dropped["over_limit_question"] += 1
+        else:
+            kept.append(qid)
+    return kept, dropped
+
+
 def questions_for(step: str, sources: list[Source]) -> list[str]:
     qs = list(QUESTIONS[step])
     if step == "d4" and any(s.provenance.get("cause_status") == "stated_unknown" for s in sources):
@@ -341,6 +403,7 @@ def generate(
     base = {
         "step": step,
         "questions": questions_for(step, sources),
+        "picked_questions": [],
         "model": None,
         "degraded": None,
     }
@@ -362,7 +425,12 @@ def generate(
     except (LlmError, ValueError) as e:
         kind = e.kind if isinstance(e, LlmError) else "format"
         return {**base, **empty, "degraded": "llm_failed", "reason": kind}, None
-    return {**base, **assemble(sources, parsed), "model": result.model}, result
+    out = {**base, **assemble(sources, parsed), "model": result.model}
+    if step == "d4":  # 풀은 D4 전용 — 문장은 LLM이 돌려준 글자가 아니라 풀에서 가져온다(DEC-071)
+        ids, dropped = pick_questions(parsed)
+        out["picked_questions"] = [{"id": i, "text": QUESTION_POOL[i]} for i in ids]
+        out["rejected"] = {**out["rejected"], **dropped}
+    return out, result
 
 
 @dataclass(frozen=True)

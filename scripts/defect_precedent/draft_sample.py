@@ -7,6 +7,7 @@ LLM이 돌려준 인용 중 원문에 없던 것의 수, 묶음 수, 제목에 �
 사용법(공개 API에서 검색 결과를 받아 오고, LLM 키는 --env-file로만 준다 — 값은 출력하지 않는다):
     uv run --env-file .env python -m scripts.defect_precedent.draft_sample --out <결과.jsonl>
     호출 없이 입력과 호출 수만 보기:  ... draft_sample --dry-run
+    D4만(확인 질문 풀에서 LLM이 고른 번호 관찰, DEC-071):  ... draft_sample --steps d4 --out <결과.jsonl>
 """
 
 import argparse
@@ -55,7 +56,15 @@ def pick_cards(resp: dict, n: int, step: str) -> list[dict]:
     return cards[:n]
 
 
-def run(out: str, api: str, model: str, effort: str, n_cards: int, dry_run: bool) -> None:
+def run(
+    out: str,
+    api: str,
+    model: str,
+    effort: str,
+    n_cards: int,
+    dry_run: bool,
+    steps: tuple[str, ...] = draft.STEPS,
+) -> None:
     key = os.environ.get("OPENAI_API_KEY", "")
     if not dry_run and not key:
         sys.exit("OPENAI_API_KEY가 없다 — --env-file로 주거나 --dry-run으로 입력만 본다")
@@ -64,7 +73,7 @@ def run(out: str, api: str, model: str, effort: str, n_cards: int, dry_run: bool
     for q in QUESTIONS:
         resp = search(q, api)
         meta = {"build_id": resp["build_id"], "snapshot_date": resp["snapshot_date"], "api": api}
-        for step in draft.STEPS:
+        for step in steps:
             cards = pick_cards(resp, n_cards, step)
             sources = draft.build_sources(step, cards)
             if dry_run:
@@ -87,6 +96,9 @@ def run(out: str, api: str, model: str, effort: str, n_cards: int, dry_run: bool
                     "campnos": [c["campno"] for c in cards],
                     "n_sources": len(sources),
                     "draft": out_d,
+                    "raw_question_ids": json.loads(used.text).get("question_ids")
+                    if used
+                    else None,  # LLM이 돌려준 번호 원본 — 풀 밖·중복·초과를 사후에 구분하는 근거(DEC-071)
                     "raw_titles": [g["title"] for g in json.loads(used.text)["groups"]]
                     if used
                     else [],
@@ -96,7 +108,7 @@ def run(out: str, api: str, model: str, effort: str, n_cards: int, dry_run: bool
                 }
             )
             time.sleep(0.5)
-    summary(rows, model, dry_run)
+    summary(rows, model, dry_run, steps)
     if not dry_run:
         with open(out, "w", encoding="utf-8") as f:
             f.write(
@@ -107,6 +119,7 @@ def run(out: str, api: str, model: str, effort: str, n_cards: int, dry_run: bool
                             "model": model,
                             "effort": effort,
                             "n_cards": n_cards,
+                            "steps": list(steps),
                             "questions": QUESTIONS,
                         }
                     },
@@ -119,10 +132,12 @@ def run(out: str, api: str, model: str, effort: str, n_cards: int, dry_run: bool
         print(f"결과: {out}")
 
 
-def summary(rows: list[dict], model: str, dry_run: bool) -> None:
+def summary(
+    rows: list[dict], model: str, dry_run: bool, steps: tuple[str, ...] = draft.STEPS
+) -> None:
     calls = [r for r in rows if r["n_sources"]]
     print(
-        f"질문 {len(QUESTIONS)}개 × 단계 {len(draft.STEPS)} = 행 {len(rows)}, 호출할 행(원문이 있는 것) {len(calls)}"
+        f"질문 {len(QUESTIONS)}개 × 단계 {len(steps)} = 행 {len(rows)}, 호출할 행(원문이 있는 것) {len(calls)}"
     )
     if dry_run:
         for r in rows:
@@ -157,6 +172,21 @@ def summary(rows: list[dict], model: str, dry_run: bool) -> None:
     for t in raw:
         if not draft.title_ok(t):
             print(f"   (규칙 위반) {t}")
+    d4 = [r for r in calls if r["step"] == "d4"]
+    if d4:  # 확인 질문 풀에서 LLM이 고른 번호(DEC-071) — 풀 밖 번호·중복·상한 초과로 서버가 버린 수와 고른 번호 분포
+        picks = Counter(q["id"] for r in d4 for q in r["draft"]["picked_questions"])
+        sizes = Counter(len(r["draft"]["picked_questions"]) for r in d4)
+        why = Counter()
+        for r in d4:
+            why.update(
+                {
+                    k: r["draft"]["rejected"].get(k, 0)
+                    for k in ("unknown_question", "duplicate_question", "over_limit_question")
+                }
+            )
+        print(
+            f"확인 질문 선택(D4 {len(d4)}회): 고른 개수 분포 {dict(sorted(sizes.items()))} · 번호별 {dict(sorted(picks.items(), key=lambda kv: int(kv[0][1:])))} · 서버가 버린 번호 {dict(why)}"
+        )
     n_groups = sum(len(r["draft"]["groups"]) for r in calls)
     n_items = sum(len(g["items"]) for r in calls for g in r["draft"]["groups"])
     n_src = sum(r["n_sources"] for r in calls)
@@ -168,6 +198,8 @@ def summary(rows: list[dict], model: str, dry_run: bool) -> None:
         print(
             f"\n[{r['step']}] {r['question']}  (원문 {r['n_sources']}개, 묶음 {len(d['groups'])}개, 묶이지 않음 {len(d['ungrouped'])}개)"
         )
+        if r["step"] == "d4":
+            print(f"   확인 질문 선택: {[q['id'] for q in d['picked_questions']]}")
         for g in d["groups"]:
             print(f"   ▸ {g['title']}")
             for it in g["items"]:
@@ -184,5 +216,6 @@ if __name__ == "__main__":
     p.add_argument("--reasoning-effort", default=draft.DEFAULT_EFFORT, choices=draft.EFFORTS)
     p.add_argument("--n-cards", type=int, default=draft.MAX_CARDS)
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--steps", nargs="+", default=list(draft.STEPS), choices=draft.STEPS)
     a = p.parse_args()
-    run(a.out, a.api, a.model, a.reasoning_effort, a.n_cards, a.dry_run)
+    run(a.out, a.api, a.model, a.reasoning_effort, a.n_cards, a.dry_run, tuple(a.steps))

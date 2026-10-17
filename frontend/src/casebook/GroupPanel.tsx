@@ -4,17 +4,18 @@ import { fmtDate } from "../recalls";
 import { sameBuild, type DraftResponse } from "../eightd/draft";
 import type { Card } from "../search/types";
 import { errorText } from "./errors";
+import { pickedIdsOf } from "./questions";
 import { groupCandidates, langOf } from "./sources";
 
 const MAX_CARDS = 6; // 서버가 한 번에 받는 선례 수
 const DEGRADED = { disabled: "Grouping is switched off on this server.", llm_failed: "Grouping failed." } as const;
-const REJECTED: Record<string, string> = { not_in_source: "not in the source", unknown_source: "source mismatch", duplicate_source: "duplicate" };
+const REJECTED: Record<string, string> = { not_in_source: "not in the source", unknown_source: "source mismatch", duplicate_source: "duplicate", unknown_question: "question id not in the fixed list", duplicate_question: "question id repeated", over_limit_question: "question ids over the limit" };
 
 /**
  * 원인 원문 묶기(DEC-065, LLM 보조). 문장을 새로 쓰지 않고, 화면에 나가는 글자는 서버가 출처 원문에서 잘라 낸 그 출처의 전체 원문이다.
  * 묶음 제목은 보이지 않는다("Group N"). 누르기 전에는 아무것도 부르지 않는다. 체크한 선례가 바뀌면 부모가 key를 바꿔 새로 시작한다(이전 묶음을 걷어 낸다).
  */
-export function GroupPanel({ question, build, cards }: { question: string; build: { build_id: string; bundle_sha256: string | null }; cards: readonly Card[] }) {
+export function GroupPanel({ question, build, cards, onPicked }: { question: string; build: { build_id: string; bundle_sha256: string | null }; cards: readonly Card[]; onPicked: (ids: string[]) => void }) {
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [result, setResult] = useState<DraftResponse | null>(null);
   const [error, setError] = useState("");
@@ -32,11 +33,11 @@ export function GroupPanel({ question, build, cards }: { question: string; build
     try {
       const r = await draft(question, used.map((x) => x.campno), "d4", c.signal);
       if (controller.current !== c) return;
-      if (!sameBuild(r, build)) { setResult(null); setError("The server data version changed since the search. Search again."); setState("error"); return; }
-      setResult(r); setState("done");
+      if (!sameBuild(r, build)) { setResult(null); onPicked([]); setError("The server data version changed since the search. Search again."); setState("error"); return; }
+      setResult(r); setState("done"); onPicked(pickedIdsOf(r)); // 확인 질문 구역에 모델이 고른 번호를 넘긴다 — 문장은 화면의 고정 풀에서 가져온다
     } catch (e) {
       if (controller.current !== c) return;
-      setError(errorText(e, "grouping"));
+      setError(errorText(e, "grouping")); onPicked([]);
       setState("error");
     } finally { clearTimeout(timer); }
   }
@@ -66,7 +67,7 @@ export function GroupResult({ result, cards }: { result: DraftResponse; cards: r
           </li>)}</ul>
         </article>)}
         {result.groups.length > 0 && result.ungrouped.length > 0 && <p className="cb-muted">{result.ungrouped.length} cause text(s) were not grouped; read them in the middle column.</p>}
-        {Object.entries(result.rejected).some(([k, n]) => n > 0 && k !== "bad_title") && <p className="cb-muted">Dropped after checking against the source: {Object.entries(result.rejected).filter(([k, n]) => n > 0 && k !== "bad_title").map(([k, n]) => `${REJECTED[k] ?? k} ${n}`).join(" · ")}.</p>}
+        {Object.entries(result.rejected).some(([k, n]) => n > 0 && k !== "bad_title") && <p className="cb-muted">Excluded by the server's checks: {Object.entries(result.rejected).filter(([k, n]) => n > 0 && k !== "bad_title").map(([k, n]) => `${REJECTED[k] ?? k} ${n}`).join(" · ")}.</p>}
         <p className="cb-muted">{result.model ? `model ${result.model} · ` : ""}build {result.build_id}</p>
       </div>;
 }

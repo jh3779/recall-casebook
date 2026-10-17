@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { search } from "../api";
-import { togglePick } from "../search/picks";
 import type { Card, HealthState, SearchResponse } from "../search/types";
 import { CaseDetail } from "./CaseDetail";
 import { CaseList } from "./CaseList";
+import { D4Panel } from "./D4Panel";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
+import { pickedFor, toggleChecked } from "./questions";
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
 /**
@@ -23,6 +24,8 @@ export default function CasebookView({ health }: { health: HealthState }) {
   const [caseName, setCaseName] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [copyMessage, setCopyMessage] = useState("");
+  const [picked, setPicked] = useState<{ key: string; ids: string[] } | null>(null); // 묶기에서 모델이 고른 확인 질문 번호 — 체크한 선례가 바뀌면 걷어 낸다
+  const [storeMessage, setStoreMessage] = useState(""); // 저장·삭제 실패 안내 — D4 구역에서도 보인다
   const [unsavedNotes, setUnsavedNotes] = useState<ReadonlySet<string>>(new Set()); // 저장소에 쓰지 못한 메모의 리콜 번호 — 하나라도 있으면 저장됐다고 말하지 않는다
   const saveFailed = unsavedNotes.size > 0;
   const storage = useMemo(() => browserStorage(), []);
@@ -44,22 +47,26 @@ export default function CasebookView({ health }: { health: HealthState }) {
     const name = normalizeCaseName(caseInput);
     setCaseInput(name);
     if (name === caseName) return;
-    if (losesNotesOnSwitch(caseName, notes, saveFailed, !!storage) && !confirm("Notes that are not saved in this browser will be lost if you switch cases. Switch anyway?")) { setCaseInput(caseName); return; }
+    if (losesNotesOnSwitch(caseName, notes, saveFailed, !!storage) && !confirm("Notes and D4 text that are not saved in this browser will be lost if you switch cases. Switch anyway?")) { setCaseInput(caseName); return; }
     setCaseName(name);
     // 이름 없이 적은 메모만 첫 사건 이름으로 옮긴다 — 다른 사건 이름이 붙어 있던 메모가 새 사건에 섞이지 않게
     const next = name ? adoptNotes(storage, name, caseName ? {} : notes) : { notes: {}, saved: true, failed: [] as string[] };
     setNotes(next.notes);
     setUnsavedNotes(!!storage && !!name ? new Set(next.failed) : new Set());
   }
+  function togglePicked(card: Card) { // 체크한 선례가 바뀌면 모델이 고른 질문을 걷어 낸다 — 같은 조합으로 돌아와도 되살아나지 않게(DEC-071)
+    const next = toggleChecked({ checked, picked }, card);
+    setChecked(next.checked); setPicked(next.picked);
+  }
   async function run() {
     const value = question.trim();
     if (!value || !/[A-Za-z]/.test(value) || value.length > 4000) return;
-    if (!caseName && unsaved && !confirm("Notes without a case name will be discarded when you search again. Continue?")) return;
+    if (!caseName && unsaved && !confirm("Notes and D4 text without a case name will be discarded when you search again. Continue?")) return;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
     const timer = setTimeout(() => controller.abort(), 60_000);
-    setState("loading"); setError(""); setResponse(null); setChecked([]);
+    setState("loading"); setError(""); setResponse(null); setChecked([]); setPicked(null);
     try {
       const result = await search(value, controller.signal);
       if (request.current !== controller) return;
@@ -74,17 +81,19 @@ export default function CasebookView({ health }: { health: HealthState }) {
     const r = applyNote(storage, caseName, notes, campno, text);
     setNotes(r.notes);
     if (caseName && storage && !r.deleteFailed) setUnsavedNotes((prev) => nextUnsaved(prev, campno, r.saved)); // 삭제 실패는 저장 실패가 아니다 — 옛 글이 저장소에 남아 있으므로 "잃는다" 경고를 켜지 않고 삭제 실패만 알린다
-    setCopyMessage(r.deleteFailed ? "Could not delete the saved note — it may remain in this browser." : "");
+    const failed = r.deleteFailed ? "Could not delete the saved note — it may remain in this browser." : "";
+    setCopyMessage(failed); setStoreMessage(failed);
   }
   async function copyAll() {
     try { await navigator.clipboard.writeText(notesText(checked, notes)); setCopyMessage("Copied."); }
     catch { setCopyMessage("Could not copy — select the text in the boxes instead."); }
   }
   function clearCase() {
-    if (!confirm(caseName ? `Delete all notes saved under “${caseName}”?` : "Delete all notes in this tab?")) return;
-    if (caseName && storage && !clearNotes(storage, caseName)) { setCopyMessage("Could not delete the saved notes — they may remain in this browser."); return; } // 지우지 못했으면 화면도 그대로 둔다
-    setNotes({}); setCopyMessage(""); setUnsavedNotes(new Set());
+    if (!confirm(caseName ? `Delete all notes and D4 text saved under “${caseName}”?` : "Delete all notes and D4 text in this tab?")) return;
+    if (caseName && storage && !clearNotes(storage, caseName)) { const failed = "Could not delete the saved notes — they may remain in this browser."; setCopyMessage(failed); setStoreMessage(failed); return; } // 지우지 못했으면 화면도 그대로 둔다
+    setNotes({}); setCopyMessage(""); setStoreMessage(""); setUnsavedNotes(new Set());
   }
+  const checkedKey = checked.map((x) => x.campno).join(",");
   const noEnglish = !!question.trim() && !/[A-Za-z]/.test(question);
   const persistent = !!caseName && !!storage;
 
@@ -109,17 +118,20 @@ export default function CasebookView({ health }: { health: HealthState }) {
     {state === "idle" && <p className="cb-empty">Describe a defect to see precedents from other manufacturers, with the cause text each one wrote and who said it.</p>}
     {state === "loading" && <p className="cb-empty" role="status">Searching…</p>}
 
-    {state === "done" && response && <div className="cb-grid">
-      <CaseList response={response} checked={checked} onToggle={(card) => setChecked((list) => togglePick(list, card))} />
+    {state === "done" && response && <>
+    <div className="cb-grid">
+      <CaseList response={response} checked={checked} onToggle={togglePicked} />
       <section className="cb-stack" aria-label="Checked precedents">
         <h2 className="sr-only">Checked precedents</h2>
         {!checked.length && <p className="cb-empty">Check precedents on the left. Each one stacks here with its original wording, who said it, and the report it came from.</p>}
-        {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => setChecked((list) => togglePick(list, card))} />)}
+        {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => togglePicked(card)} />)}
       </section>
       <div className="cb-side">
         <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
-        <GroupPanel key={checked.map((c) => c.campno).join(",")} question={response.question} build={response} cards={checked} />
+        <GroupPanel key={checkedKey} question={response.question} build={response} cards={checked} onPicked={(ids) => setPicked({ key: checkedKey, ids })} />
       </div>
-    </div>}
+    </div>
+    <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} picked={pickedFor(picked, checkedKey)} />
+    </>}
   </main>;
 }

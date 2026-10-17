@@ -36,10 +36,16 @@ it("꺼짐·실패는 묶음 없이 원문 카드를 쓰라고 알린다", () =>
   expect(off).not.toContain("이 묶음을 본문에 넣기");
   expect(render({ ...base, degraded: "llm_failed", groups: [] })).toContain("묶음을 만들지 못했습니다.");
 });
-it("서버가 원문과 대조해 버린 인용이 있으면 수를 알린다", () => {
+it("서버 검증에서 제외된 인용·질문 번호가 있으면 수를 알린다", () => {
   expect(render({ ...base, rejected: { not_in_source: 2, bad_title: 0 } })).toContain("원문에 없어서 2건");
-  expect(render(base)).not.toContain("버린 항목");
-  expect(render({ ...base, rejected: { bad_title: 3 } })).not.toContain("버린 항목"); // 제목은 화면에 없으니 제목 때문에 버린 것도 알리지 않는다
+  expect(render(base)).not.toContain("제외된 항목");
+  expect(render({ ...base, rejected: { bad_title: 3 } })).not.toContain("제외된 항목"); // 제목은 화면에 없으니 제목 때문에 버린 것도 알리지 않는다
+  const rej = render({ ...base, rejected: { unknown_question: 1, duplicate_question: 1, over_limit_question: 2 } }); // 질문 번호는 원문 대조가 아니라 고정 풀 검증이다
+  expect(rej).toContain("제외된 항목");
+  expect(rej).toContain("풀에 없는 질문 번호라서 1건");
+  expect(rej).toContain("겹친 질문 번호라서 1건");
+  expect(rej).toContain("상한을 넘은 질문 번호라서 2건");
+  expect(rej).not.toContain("원문과 대조");
 });
 it("묶이지 않은 원문이 있으면 카드에서 직접 넣을 수 있다고 알린다", () => {
   expect(render({ ...base, ungrouped: [item, item] })).toContain("묶이지 않은 원문 2건");
