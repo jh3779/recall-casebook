@@ -1,4 +1,5 @@
 import { APPENDIX_KEY, appendixParagraphs, composeDocument, evidenceFooter, STEPS, stepParagraphs, type ParaSpec } from "../eightd/document";
+import type { ExportContent, Place } from "../eightd/docxPatch";
 import { evidenceBlock } from "../eightd/evidenceText";
 import type { Card, ProvenanceData } from "../search/types";
 
@@ -51,9 +52,15 @@ export function d4Export({ values, cards, includeAppendix, prov }: { values: D4V
   };
 }
 
-/** 내려받은 뒤의 안내 — 실제로 칸에 들어갔는지(`filled`)와 부록이 표 뒤에 놓였는지(`appendixPlaced`)를 patchDocx 결과 그대로 말한다. 못 넣은 것을 넣었다고 하지 않는다 */
-export function exportMessage(r: { filled: readonly number[]; missing: readonly number[]; ambiguous: readonly number[]; appendixPlaced: boolean | null }, name: string, appendixCount: number): string {
+/** patchDocx에 넘길 내용 — SUBJECT는 비워 둔다(검색 문장을 양식의 SUBJECT 칸에 넣지 않는다). 컴포넌트가 아니라 여기서 정해야 시험이 이 연결을 지킨다 */
+export function docxContent(out: D4Export, place: Place | null): ExportContent {
+  return { subject: "", steps: out.steps, footer: out.footer, cells: place ? { 4: place } : undefined, appendix: out.appendix };
+}
+
+/** 내려받은 뒤의 안내 — 실제로 칸에 들어갔는지(`filled`)와 부록이 표 뒤에 놓였는지(`appendixPlaced`)를 patchDocx 결과 그대로 말한다. 못 넣은 것을 넣었다고 하지 않는다. `wroteD4`가 false면 쓴 D4 글이 없었던 것이다 */
+export function exportMessage(r: { filled: readonly number[]; missing: readonly number[]; ambiguous: readonly number[]; appendixPlaced: boolean | null }, name: string, appendixCount: number, wroteD4: boolean): string {
   const appendix = !appendixCount ? "not added" : r.appendixPlaced ? `${appendixCount} precedent(s) placed after the 8D table` : "could not be placed (no table found in the file) — the file has no appendix, use Copy and paste it yourself";
-  const notFilled = r.missing.includes(4) ? " The D4 cell was not found in the file, so your D4 text was not inserted — pick the cell above or use Copy." : r.ambiguous.includes(4) ? " Several cells match D4 — pick the cell above; your D4 text was not inserted." : "";
-  return `Downloaded ${name}. D4 text ${r.filled.includes(4) ? "inserted" : "not inserted"}; appendix ${appendix}. The SUBJECT cell is left as it was.${notFilled}`;
+  const notFilled = wroteD4 && r.missing.includes(4) ? " The D4 cell was not found in the file, so your D4 text was not inserted — pick the cell above or use Copy." : wroteD4 && r.ambiguous.includes(4) ? " Several cells match D4 — pick the cell above; your D4 text was not inserted." : "";
+  const d4 = !wroteD4 ? "no D4 text written" : r.filled.includes(4) ? "D4 text inserted" : "D4 text not inserted";
+  return `Downloaded ${name}. ${d4}; appendix ${appendix}. The SUBJECT cell is left as it was.${notFilled}`;
 }

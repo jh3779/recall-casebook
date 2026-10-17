@@ -74,7 +74,7 @@ it("케이스북 화면 문구에 영어 판정·단정 표현이 없다", () =>
     renderToStaticMarkup(<CaseList response={response} checked={[]} onToggle={() => {}} />),
     renderToStaticMarkup(<GroupPanel question="airbag" build={response} cards={cards} />),
     renderToStaticMarkup(<GroupPanel question="airbag" build={response} cards={[]} />),
-    renderToStaticMarkup(<D4Panel cards={cards} response={response} notes={{}} onChange={() => {}} />),
+    renderToStaticMarkup(<D4Panel cards={cards} response={response} notes={{}} onChange={() => {}} caseName="Case A" persistent storageBlocked={false} storeMessage="" />),
     renderToStaticMarkup(<NotesPanel cards={[cards[0]]} caseName="Case A" notes={{}} onChange={() => {}} persistent storageBlocked={false} onCopy={() => {}} onClear={() => {}} copyMessage="" />),
     ...cards.map((card) => renderToStaticMarkup(<CaseDetail card={card} response={response} onRemove={() => {}} />)),
   ];

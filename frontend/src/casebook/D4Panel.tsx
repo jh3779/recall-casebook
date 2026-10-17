@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { DocxError, inspectDocx, patchDocx, type Inspection, type Place } from "../eightd/docxPatch";
 import type { Card, SearchResponse } from "../search/types";
-import { d4Export, D4_KEYS, d4Values, exportMessage } from "./d4Doc";
+import { d4Export, D4_KEYS, d4Values, docxContent, exportMessage } from "./d4Doc";
+import { SHARED_BROWSER_NOTE, storageState } from "./notes";
 import { d4Questions } from "./questions";
 
 const keyOf = (p: Place) => `${p.table}.${p.row}.${p.col}`;
@@ -16,7 +17,7 @@ function download(blob: Blob, name: string) {
  * D4 작성 칸(DEC-069) — 확인 질문(도구가 만든 고정 문장), 엔지니어가 직접 쓰는 Escape Cause·Root Cause·검증 방법, 8D `.docx` 내보내기.
  * 서비스는 이 칸을 채우거나 제안하지 않는다. 쓴 글은 메모처럼 이 브라우저에만 저장하고 서버·LLM에 보내지 않는다. 검증 방법은 8D 양식에 칸이 없어 내보내지 않는다.
  */
-export function D4Panel({ cards, response, notes, onChange }: { cards: readonly Card[]; response: SearchResponse; notes: Readonly<Record<string, string>>; onChange: (key: string, text: string) => void }) {
+export function D4Panel({ cards, response, notes, onChange, caseName, persistent, storageBlocked, storeMessage }: { cards: readonly Card[]; response: SearchResponse; notes: Readonly<Record<string, string>>; onChange: (key: string, text: string) => void; caseName: string; persistent: boolean; storageBlocked: boolean; storeMessage: string }) {
   const values = d4Values(notes);
   const [appendix, setAppendix] = useState(false);
   const [docx, setDocx] = useState<{ file: File; view: Inspection } | null>(null);
@@ -25,6 +26,7 @@ export function D4Panel({ cards, response, notes, onChange }: { cards: readonly 
   const [busy, setBusy] = useState(false);
   const out = d4Export({ values, cards, includeAppendix: appendix, prov: response });
   const questions = d4Questions(cards);
+  const state = storageState(caseName, persistent, storageBlocked);
   const auto = docx?.view.matches[4] ?? [];
   const place = chosen ?? (auto.length === 1 ? auto[0] : null);
   const labelAt = (p: Place) => docx?.view.cells.find((c) => keyOf(c) === keyOf(p))?.label ?? "";
@@ -39,10 +41,10 @@ export function D4Panel({ cards, response, notes, onChange }: { cards: readonly 
     if (!docx) return;
     setBusy(true); setMessage("");
     try {
-      const r = await patchDocx(docx.file, { subject: "", steps: out.steps, footer: out.footer, cells: place ? { 4: place } : undefined, appendix: out.appendix });
+      const r = await patchDocx(docx.file, docxContent(out, place));
       const name = `${docx.file.name.replace(/\.docx$/i, "")}_D4.docx`;
       download(r.blob, name);
-      setMessage(exportMessage(r, name, out.appendixCount));
+      setMessage(exportMessage(r, name, out.appendixCount, Object.keys(out.steps).length > 0));
     } catch (e) { setMessage(e instanceof DocxError ? e.message : "Could not make the file."); }
     finally { setBusy(false); }
   }
@@ -57,7 +59,10 @@ export function D4Panel({ cards, response, notes, onChange }: { cards: readonly 
 
   return <section className="cb-d4" aria-label="D4 — your cause analysis">
     <h2>D4 · Your cause analysis <span className="cb-tag">you write this — the tool never fills or suggests it</span></h2>
-    <p className="cb-muted">The cause texts above are what other manufacturers wrote about their own recalls. They are not the cause of your case. Write your own Escape Cause and Root Cause here. Your text is saved like the notes (in this browser, under the case name; without a case name it stays only in this tab and is lost on a new search or reload) and is never sent to the server or an LLM.</p>
+    <p className="cb-muted">The cause texts above are what other manufacturers wrote about their own recalls. They are not the cause of your case. Write your own Escape Cause and Root Cause here. Your text is saved like the notes and is never sent to the server or an LLM.</p>
+    <p className={`cb-note-state${state.warn ? " warn" : ""}`} role="status">{state.text}</p>
+    <p className="cb-muted">{SHARED_BROWSER_NOTE}</p>
+    {storeMessage && <p className="cb-note-state warn" role="status">{storeMessage}</p>}
 
     <div className="cb-d4-grid">
       <div>

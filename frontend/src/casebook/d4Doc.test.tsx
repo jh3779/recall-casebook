@@ -4,7 +4,7 @@ import { expect, it } from "vitest";
 import { patchDocx } from "../eightd/docxPatch";
 import fixture from "../search/__fixtures__/search_airbag.json";
 import { hasCauseText, type SearchResponse } from "../search/types";
-import { D4_KEYS, d4Export, d4Values, exportMessage } from "./d4Doc";
+import { D4_KEYS, d4Export, d4Values, docxContent, exportMessage } from "./d4Doc";
 import { D4Panel } from "./D4Panel";
 import { D4_QUESTIONS, QUESTION_UNKNOWN } from "./questions";
 import { isUnsaved, loadNotes, losesNotesOnSwitch, notesText, saveNote, type StorageLike } from "./notes";
@@ -61,7 +61,7 @@ const read = async (blob: Blob) => (await (await JSZip.loadAsync(await blob.arra
 
 it(".docx로 내보내면 D4 칸에 엔지니어 글이, 8D 표 뒤에 부록이 들어가고 검증 방법은 파일 어디에도 없다", async () => {
   const out = d4Export({ values, cards: withText.slice(0, 2), includeAppendix: true, prov });
-  const r = await patchDocx(await docxBlob(), { subject: "", steps: out.steps, footer: out.footer, appendix: out.appendix });
+  const r = await patchDocx(await docxBlob(), docxContent(out, null));
   expect(r.filled).toEqual([4]);
   expect(r.appendixPlaced).toBe(true);
   const xml = await read(r.blob);
@@ -75,7 +75,7 @@ it(".docx로 내보내면 D4 칸에 엔지니어 글이, 8D 표 뒤에 부록이
 });
 it("부록을 고르지 않으면 파일에 타사 원문이 한 글자도 들어가지 않는다", async () => {
   const out = d4Export({ values, cards: withText, includeAppendix: false, prov });
-  const r = await patchDocx(await docxBlob(), { subject: "", steps: out.steps, footer: out.footer, appendix: out.appendix });
+  const r = await patchDocx(await docxBlob(), docxContent(out, null));
   const xml = await read(r.blob);
   expect(xml).not.toContain("타사 선례");
   for (const c of withText) if (hasCauseText(c.cause)) expect(xml).not.toContain(c.cause.text.slice(0, 40));
@@ -92,7 +92,7 @@ it("D4 글은 메모와 같은 저장 키 장치로 사건 이름 아래 저장�
   expect(notesText(cards, loaded)).toBe(""); // 선례 메모 복사에 D4 글이 끼지 않는다
 });
 
-const panel = (checked = cards.slice(0, 2), notes: Record<string, string> = {}) => renderToStaticMarkup(<D4Panel cards={checked} response={response} notes={notes} onChange={() => {}} />);
+const panel = (checked = cards.slice(0, 2), notes: Record<string, string> = {}) => renderToStaticMarkup(<D4Panel cards={checked} response={response} notes={notes} onChange={() => {}} caseName="Case A" persistent storageBlocked={false} storeMessage="" />);
 it("D4 칸은 고정 확인 질문 전부와 세 입력 칸을 보이고, 서비스가 채우지 않는다고 밝힌다", () => {
   const m = panel();
   for (const q of D4_QUESTIONS) expect(m).toContain(renderToStaticMarkup(<span>{q}</span>).slice(6, -7));
@@ -125,7 +125,7 @@ it("검색 문장은 SUBJECT 칸에도 복사문에도 들어가지 않는다 �
   expect(out.text).not.toContain("SUBJECT");
   expect(out.text).not.toContain(SEARCH);
   expect(out.text.startsWith("DISCIPLINE 4")).toBe(true);
-  const xml = await read((await patchDocx(await docxBlob(), { subject: "", steps: out.steps, footer: out.footer, appendix: out.appendix })).blob);
+  const xml = await read((await patchDocx(await docxBlob(), docxContent(out, null))).blob);
   expect(xml).not.toContain(SEARCH);
   expect(xml).toContain("<w:tc><w:tcPr><w:tcW w:w=\"100\" w:type=\"dxa\"/></w:tcPr><w:p/></w:tc></w:tr><w:tr>"); // SUBJECT 줄의 값 칸이 빈 채로 남는다
 });
@@ -134,10 +134,10 @@ it("8D 표가 없는 파일에는 부록이 들어가지 않고 안내도 넣었
   const zip = new JSZip();
   zip.file("word/document.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body><w:p><w:r><w:t>no table here</w:t></w:r></w:p></w:body></w:document>`);
   const out = d4Export({ values, cards: withText.slice(0, 2), includeAppendix: true, prov });
-  const r = await patchDocx(await zip.generateAsync({ type: "blob" }), { subject: "", steps: out.steps, footer: out.footer, appendix: out.appendix });
+  const r = await patchDocx(await zip.generateAsync({ type: "blob" }), docxContent(out, null));
   expect(r.appendixPlaced).toBe(false);
   expect(await read(r.blob)).not.toContain(withText[0].campno);
-  const msg = exportMessage(r, "f_D4.docx", out.appendixCount);
+  const msg = exportMessage(r, "f_D4.docx", out.appendixCount, true);
   expect(msg).toContain("could not be placed");
   expect(msg).not.toContain("placed after the 8D table");
   expect(msg).toContain("D4 text not inserted");
@@ -145,16 +145,16 @@ it("8D 표가 없는 파일에는 부록이 들어가지 않고 안내도 넣었
 
 it("내려받은 뒤 안내: 부록이 표 뒤에 놓였을 때만 놓였다고 말한다", async () => {
   const out = d4Export({ values, cards: withText.slice(0, 2), includeAppendix: true, prov });
-  const r = await patchDocx(await docxBlob(), { subject: "", steps: out.steps, footer: out.footer, appendix: out.appendix });
-  const msg = exportMessage(r, "f_D4.docx", out.appendixCount);
+  const r = await patchDocx(await docxBlob(), docxContent(out, null));
+  const msg = exportMessage(r, "f_D4.docx", out.appendixCount, true);
   expect(msg).toContain("D4 text inserted");
   expect(msg).toContain("2 precedent(s) placed after the 8D table");
-  expect(exportMessage({ filled: [4], missing: [], ambiguous: [], appendixPlaced: null }, "f", 0)).toContain("appendix not added");
+  expect(exportMessage({ filled: [4], missing: [], ambiguous: [], appendixPlaced: null }, "f", 0, true)).toContain("appendix not added");
 });
 
 it("D4 글에 &·<가 있어도 .docx XML이 깨지지 않게 이스케이프한다", async () => {
   const out = d4Export({ values: { escape: "a & b < c", root: "x > y", verify: "" }, cards: [], includeAppendix: false, prov });
-  const xml = await read((await patchDocx(await docxBlob(), { subject: "", steps: out.steps, footer: out.footer, appendix: out.appendix })).blob);
+  const xml = await read((await patchDocx(await docxBlob(), docxContent(out, null))).blob);
   expect(xml).toContain("a &amp; b &lt; c");
   expect(xml).toContain("x &gt; y");
   expect(xml).not.toContain("a & b");
@@ -167,4 +167,30 @@ it("사건 이름 없이 D4 글만 쓴 상태도 저장 안 된 글로 잡힌다
   expect(isUnsaved("사건A", onlyD4, true, true)).toBe(true);
   expect(losesNotesOnSwitch("사건A", onlyD4, true, true)).toBe(true);
   expect(losesNotesOnSwitch("", onlyD4, false, true)).toBe(false);
+});
+
+it("patchDocx에 넘기는 내용은 SUBJECT를 비우고 D4 칸 선택·부록을 그대로 잇는다(컴포넌트가 아니라 이 함수가 정한다)", () => {
+  const out = d4Export({ values, cards: withText.slice(0, 1), includeAppendix: true, prov });
+  expect(docxContent(out, null)).toEqual({ subject: "", steps: out.steps, footer: out.footer, cells: undefined, appendix: out.appendix });
+  const place = { table: 2, row: 3, col: 1 };
+  expect(docxContent(out, place).cells).toEqual({ 4: place });
+  expect(docxContent(out, place).subject).toBe("");
+});
+
+it("쓴 D4 글이 없을 때 안내는 실패처럼 읽히지 않고 쓴 글이 없었다고 말한다", () => {
+  const msg = exportMessage({ filled: [], missing: [], ambiguous: [], appendixPlaced: true }, "f", 2, false);
+  expect(msg).toContain("no D4 text written");
+  expect(msg).not.toContain("not inserted");
+  expect(exportMessage({ filled: [], missing: [4], ambiguous: [], appendixPlaced: null }, "f", 0, true)).toContain("D4 cell was not found");
+});
+
+it("D4 구역도 저장 상태·공용 PC 안내·삭제 실패를 보인다(저장 장치를 메모와 같이 쓰므로)", () => {
+  const render = (props: { caseName: string; persistent: boolean; storageBlocked: boolean; storeMessage: string }) =>
+    renderToStaticMarkup(<D4Panel cards={cards.slice(0, 1)} response={response} notes={{}} onChange={() => {}} {...props} />);
+  const ok = render({ caseName: "Case A", persistent: true, storageBlocked: false, storeMessage: "" });
+  expect(ok).toContain("Saved in this browser under “Case A”");
+  expect(ok).toContain("Anyone using this browser can read saved notes");
+  expect(render({ caseName: "", persistent: false, storageBlocked: false, storeMessage: "" })).toContain("No case name");
+  expect(render({ caseName: "Case A", persistent: true, storageBlocked: true, storeMessage: "" })).toContain("could not save the notes");
+  expect(render({ caseName: "Case A", persistent: true, storageBlocked: false, storeMessage: "Could not delete the saved note — it may remain in this browser." })).toContain("Could not delete the saved note");
 });

@@ -24,6 +24,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
   const [caseName, setCaseName] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [copyMessage, setCopyMessage] = useState("");
+  const [storeMessage, setStoreMessage] = useState(""); // 저장·삭제 실패 안내 — D4 구역에서도 보인다
   const [unsavedNotes, setUnsavedNotes] = useState<ReadonlySet<string>>(new Set()); // 저장소에 쓰지 못한 메모의 리콜 번호 — 하나라도 있으면 저장됐다고 말하지 않는다
   const saveFailed = unsavedNotes.size > 0;
   const storage = useMemo(() => browserStorage(), []);
@@ -75,7 +76,8 @@ export default function CasebookView({ health }: { health: HealthState }) {
     const r = applyNote(storage, caseName, notes, campno, text);
     setNotes(r.notes);
     if (caseName && storage && !r.deleteFailed) setUnsavedNotes((prev) => nextUnsaved(prev, campno, r.saved)); // 삭제 실패는 저장 실패가 아니다 — 옛 글이 저장소에 남아 있으므로 "잃는다" 경고를 켜지 않고 삭제 실패만 알린다
-    setCopyMessage(r.deleteFailed ? "Could not delete the saved note — it may remain in this browser." : "");
+    const failed = r.deleteFailed ? "Could not delete the saved note — it may remain in this browser." : "";
+    setCopyMessage(failed); setStoreMessage(failed);
   }
   async function copyAll() {
     try { await navigator.clipboard.writeText(notesText(checked, notes)); setCopyMessage("Copied."); }
@@ -83,8 +85,8 @@ export default function CasebookView({ health }: { health: HealthState }) {
   }
   function clearCase() {
     if (!confirm(caseName ? `Delete all notes and D4 text saved under “${caseName}”?` : "Delete all notes and D4 text in this tab?")) return;
-    if (caseName && storage && !clearNotes(storage, caseName)) { setCopyMessage("Could not delete the saved notes — they may remain in this browser."); return; } // 지우지 못했으면 화면도 그대로 둔다
-    setNotes({}); setCopyMessage(""); setUnsavedNotes(new Set());
+    if (caseName && storage && !clearNotes(storage, caseName)) { const failed = "Could not delete the saved notes — they may remain in this browser."; setCopyMessage(failed); setStoreMessage(failed); return; } // 지우지 못했으면 화면도 그대로 둔다
+    setNotes({}); setCopyMessage(""); setStoreMessage(""); setUnsavedNotes(new Set());
   }
   const noEnglish = !!question.trim() && !/[A-Za-z]/.test(question);
   const persistent = !!caseName && !!storage;
@@ -123,7 +125,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
         <GroupPanel key={checked.map((c) => c.campno).join(",")} question={response.question} build={response} cards={checked} />
       </div>
     </div>
-    <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} />
+    <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} />
     </>}
   </main>;
 }
