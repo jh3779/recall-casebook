@@ -7,7 +7,7 @@ import { D4Panel } from "./D4Panel";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
-import { OverlayBoundary } from "./OverlayBoundary";
+import { OverlayBoundary, OverlayLoading } from "./OverlayBoundary";
 import { pickedFor, toggleChecked } from "./questions";
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
@@ -27,7 +27,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
   const [caseName, setCaseName] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [copyMessage, setCopyMessage] = useState("");
-  const [view3d, setView3d] = useState<Card | null>(null);
+  const [view3d, setView3d] = useState<{ card: Card; opener: HTMLElement } | null>(null); // opener = 클릭한 Show in 3D 버튼(닫을 때 초점을 돌려줄 곳)
   const [picked, setPicked] = useState<{ key: string; ids: string[] } | null>(null); // 묶기에서 모델이 고른 확인 질문 번호 — 체크한 선례가 바뀌면 걷어 낸다
   const [storeMessage, setStoreMessage] = useState(""); // 저장·삭제 실패 안내 — D4 구역에서도 보인다
   const [unsavedNotes, setUnsavedNotes] = useState<ReadonlySet<string>>(new Set()); // 저장소에 쓰지 못한 메모의 리콜 번호 — 하나라도 있으면 저장됐다고 말하지 않는다
@@ -133,7 +133,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
       <section className="cb-stack" aria-label="Checked precedents">
         <h2 className="sr-only">Checked precedents</h2>
         {!checked.length && <p className="cb-empty">Check precedents on the left. Each one stacks here with its original wording, who said it, and the report it came from.</p>}
-        {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => togglePicked(card)} on3d={() => setView3d(card)} />)}
+        {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => togglePicked(card)} on3d={(button) => setView3d({ card, opener: button })} />)}
       </section>
       <div className="cb-side">
         <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
@@ -142,6 +142,6 @@ export default function CasebookView({ health }: { health: HealthState }) {
     </div>
     <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} picked={pickedFor(picked, checkedKey)} />
     </>}
-    {view3d && <OverlayBoundary onClose={() => setView3d(null)}><Suspense fallback={<p className="cb-3d-msg" role="status">Loading the 3D view…</p>}><ModelOverlay card={view3d} onClose={() => setView3d(null)} /></Suspense></OverlayBoundary>}
+    {view3d && <OverlayBoundary onClose={() => setView3d(null)} opener={view3d.opener}><Suspense fallback={<OverlayLoading onClose={() => setView3d(null)} opener={view3d.opener} />}><ModelOverlay card={view3d.card} opener={view3d.opener} onClose={() => setView3d(null)} /></Suspense></OverlayBoundary>}
   </main>;
 }

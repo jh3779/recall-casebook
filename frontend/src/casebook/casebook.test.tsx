@@ -178,7 +178,7 @@ it("조사 개시일·종결일이 비어 있으면 점 두 개 대신 no record
 it("3D 설명 창: 부품 문구는 원문 그대로, 설명용 추정·저작자·CC BY 4.0을 밝히고 판정 표현이 없다", async () => {
   const { default: ModelOverlay } = await import("./ModelOverlay");
   const card = cards.find((c) => c.components.some((x) => x.startsWith("AIR BAGS")))!;
-  const markup = renderToStaticMarkup(<ModelOverlay card={card} onClose={() => {}} />);
+  const markup = renderToStaticMarkup(<ModelOverlay card={card} onClose={() => {}} opener={null} />);
   expect(markup).toContain('role="dialog"');
   for (const c of card.components) expect(markup).toContain(escaped(c));
   expect(markup).toContain("Illustration only");

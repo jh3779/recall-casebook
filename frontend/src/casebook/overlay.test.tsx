@@ -1,11 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { nextFocusIndex } from "./focusTrap";
-import { OverlayBoundary, OverlayFailed } from "./OverlayBoundary";
+import { OverlayBoundary, OverlayFailed, OverlayLoading } from "./OverlayBoundary";
 import { DEFAULT_PANEL_SHIFT, panelOffset } from "../showroom/viewOffset";
 
 it("3D 창 코드를 받지 못했을 때의 안내는 케이스북·메모가 그대로라고 알리고 닫기 버튼을 준다", () => {
-  const html = renderToStaticMarkup(<OverlayFailed onClose={() => {}} />);
+  const html = renderToStaticMarkup(<OverlayFailed onClose={() => {}} opener={null} />);
   expect(html).toContain('role="alertdialog"');
   expect(html).toContain("could not be loaded");
   expect(html).toContain("your notes are unchanged");
@@ -14,9 +14,16 @@ it("3D 창 코드를 받지 못했을 때의 안내는 케이스북·메모가 �
   expect(html).toMatch(/<button[^>]*>Close<\/button>/);
   expect(html).not.toMatch(/원인은|applies|verdict/i); // principle-ok: 안내 문구에 판정 표현이 없는지 검사
 });
+it("3D 코드를 처음 받는 동안에도 모달 창(Close 버튼·aria-modal)이 먼저 뜬다 — 뒤 화면 조작을 막는 틀이 로딩 문장만 있는 상태가 아니다", () => {
+  const html = renderToStaticMarkup(<OverlayLoading onClose={() => {}} opener={null} />);
+  expect(html).toContain('role="dialog"');
+  expect(html).toContain('aria-modal="true"');
+  expect(html).toContain("Loading the 3D view");
+  expect(html).toMatch(/<button[^>]*>Close<\/button>/);
+});
 it("오류 경계는 로딩 실패(오류)를 받으면 안내 상태로 바뀌고, 아니면 자식을 그대로 그린다", () => {
   expect(OverlayBoundary.getDerivedStateFromError()).toEqual({ failed: true });
-  expect(renderToStaticMarkup(<OverlayBoundary onClose={() => {}}><p>3D</p></OverlayBoundary>)).toBe("<p>3D</p>");
+  expect(renderToStaticMarkup(<OverlayBoundary onClose={() => {}} opener={null}><p>3D</p></OverlayBoundary>)).toBe("<p>3D</p>");
 });
 it("Tab·Shift+Tab은 창 안에서 순환하고 창 밖(−1)에서는 첫·마지막 요소로 들어온다", () => {
   expect(nextFocusIndex(3, 0, false)).toBe(1);

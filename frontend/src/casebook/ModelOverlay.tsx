@@ -12,7 +12,7 @@ type Stage = "loading" | "ready" | "failed" | "nowebgl";
  * 선례의 부품 분류를 3D 차량 위에 보여 주는 설명용 큰 창(DEC-070). 차량은 기아 쏘렌토 모델 하나이고 부품 위치는 추정 도형이다 —
  * 이 선례의 실제 차량·실제 위치가 아니다. 결함·원인·적용 여부를 판정하지 않는다. three.js는 이 창을 열 때만 받는다(lazy).
  */
-export default function ModelOverlay({ card, onClose }: { card: Card; onClose: () => void }) {
+export default function ModelOverlay({ card, onClose, opener }: { card: Card; onClose: () => void; opener: HTMLElement | null }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const showroomRef = useRef<Showroom | null>(null);
   const [stage, setStage] = useState<Stage>("loading");
@@ -55,7 +55,7 @@ export default function ModelOverlay({ card, onClose }: { card: Card; onClose: (
   }, [stage, mode, category]);
 
   const dialogRef = useRef<HTMLDivElement>(null);
-  const close = useModal(dialogRef, onClose);
+  const close = useModal(dialogRef, onClose, opener);
 
   const model = MODELS.sorento;
   return <div className="cb-3d" ref={dialogRef} role="dialog" aria-modal="true" aria-label={`3D illustration for recall ${card.campno}`}>
