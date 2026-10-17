@@ -29,6 +29,7 @@ export interface DraftResponse {
   groups: DraftGroup[];
   ungrouped: DraftItem[];
   questions: string[];
+  picked_questions?: { id: string; text: string }[]; // D4에서 LLM이 고정 풀에서 번호로 고른 질문(DEC-071) — 이전 서버 응답에는 없다
   rejected: Record<string, number>;
   relocated?: number; // 공백만 달라 원문 구간으로 되짚은 인용 수 — 싣는 글자는 원문 것
 }
