@@ -14,7 +14,7 @@ function Report({ source }: { source: ReportSource & { text_basis?: string } }) 
 }
 
 /** 체크한 선례 한 건 — 원문은 글자 그대로, 말한 주체와 출처는 접지 않고 항상 보인다(서비스 원칙 2) */
-export function CaseDetail({ card, response, onRemove }: { card: Card; response: SearchResponse; onRemove: () => void }) {
+export function CaseDetail({ card, response, onRemove, on3d }: { card: Card; response: SearchResponse; onRemove: () => void; on3d?: (button: HTMLElement) => void }) {
   const cause = card.cause;
   const supplier = supplierView(card);
   const production = productionItem(card);
@@ -22,7 +22,7 @@ export function CaseDetail({ card, response, onRemove }: { card: Card; response:
   return <article className="cb-case" aria-label={`Recall ${card.campno}`}>
     <header className="cb-case-head">
       <div><h3 className="cb-id">{card.campno}</h3><span className="cb-who">{card.maker}{card.maker_group && card.maker_group !== card.maker ? ` (${card.maker_group})` : ""}</span><span className="cb-muted"> · received {fmtDate(card.received_date)}</span></div>
-      <button type="button" className="cb-link" onClick={onRemove} aria-label={`Remove ${card.campno}`}>Remove</button>
+      <span className="cb-case-actions">{on3d && <button type="button" className="cb-link" onClick={(e) => on3d(e.currentTarget)} aria-label={`Show part category of ${card.campno} in 3D`}>Show in 3D</button>}<button type="button" className="cb-link" onClick={onRemove} aria-label={`Remove ${card.campno}`}>Remove</button></span>
     </header>
     <div className="cb-parts">{card.components.map((part, i) => <span key={i}>{part}</span>)}</div>
 

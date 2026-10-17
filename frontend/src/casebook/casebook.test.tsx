@@ -174,3 +174,22 @@ it("조사 개시일·종결일이 비어 있으면 점 두 개 대신 no record
   expect(markup).toContain("closed no record");
   expect(markup).not.toContain("opened ..");
 });
+
+it("3D 설명 창: 부품 문구는 원문 그대로, 설명용 추정·저작자·CC BY 4.0을 밝히고 판정 표현이 없다", async () => {
+  const { default: ModelOverlay } = await import("./ModelOverlay");
+  const card = cards.find((c) => c.components.some((x) => x.startsWith("AIR BAGS")))!;
+  const markup = renderToStaticMarkup(<ModelOverlay card={card} onClose={() => {}} opener={null} />);
+  expect(markup).toContain('role="dialog"');
+  for (const c of card.components) expect(markup).toContain(escaped(c));
+  expect(markup).toContain("Illustration only");
+  expect(markup).toContain("estimated");
+  expect(markup).toContain("says nothing about your case");
+  expect(markup).toContain("CC BY 4.0");
+  expect(markup).toContain("MattDoesBlender");
+  expect(markup.replace(/<ul class="cb-3d-comp"[^>]*>.*?<\/ul>/gs, "").match(/applies|verdict|is_?applicable|recall[_\s-]?required|root\s+cause\s+is\b|is\s+the\s+cause\b/i)).toBeNull(); // principle-ok: 판정 문구가 화면에 없는지 검사하는 금지 패턴
+});
+it("선례 상세에는 3D 보기 버튼이 있고(선택 사항), 연결하지 않으면 보이지 않는다", () => {
+  const withBtn = renderToStaticMarkup(<CaseDetail card={cards[0]} response={response} onRemove={() => {}} on3d={() => {}} />);
+  expect(withBtn).toContain(`aria-label="Show part category of ${cards[0].campno} in 3D"`);
+  expect(renderToStaticMarkup(<CaseDetail card={cards[0]} response={response} onRemove={() => {}} />)).not.toContain("in 3D");
+});

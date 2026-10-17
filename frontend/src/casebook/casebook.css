@@ -90,6 +90,25 @@
 }
 @media (max-width: 767px) { .view-casebook { padding-inline: 16px; } .cb-search { grid-template-columns: 1fr; } .cb-case-name input { width: 100%; max-width: none; } }
 
+/* 3D 설명 창(DEC-070) — 전체 화면 덮개, 쇼룸의 .stage 전역 규칙을 쓰지 않고 자기 크기로 둔다 */
+.cb-case-actions { display: inline-flex; gap: 14px; }
+.cb-3d { position: fixed; inset: 0; z-index: 100; background: #fff; display: grid; grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: auto 1fr; }
+.cb-3d-bar { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 2px solid var(--cb-blue); font-size: 14px; }
+.cb-3d-body { position: relative; background: linear-gradient(180deg, var(--cb-light), var(--cb-sand)); min-height: 320px; }
+.cb-3d-stage { position: absolute; inset: 0; }
+.cb-3d-stage canvas { display: block; outline: none; }
+.cb-3d-msg { position: absolute; inset: auto 20px 20px; margin: 0; padding: 12px 14px; background: #fff; border-radius: 10px; font-size: 14px; }
+.cb-3d-side { overflow: auto; padding: 16px 18px; display: grid; gap: 10px; align-content: start; border-left: 1px solid var(--cb-sand); font-size: 13.5px; }
+.cb-3d-side h2 { font-size: 15px; color: var(--cb-blue); }
+.cb-3d-comp { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--cb-ink-2); overflow-wrap: anywhere; }
+.cb-3d-chips, .cb-3d-mode { display: flex; flex-wrap: wrap; gap: 6px; }
+.cb-3d-chips button, .cb-3d-mode button { font: inherit; font-size: 12.5px; padding: 5px 11px; border-radius: 999px; border: 1.5px solid var(--cb-blue); background: #fff; color: var(--cb-blue); cursor: pointer; }
+.cb-3d-chips button.on, .cb-3d-mode button.on { background: var(--cb-blue); color: #fff; }
+.cb-3d-chips button:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--cb-sand); }
+.cb-3d-failed { grid-template-columns: 1fr; grid-template-rows: 1fr; place-items: center; background: rgba(255,255,255,0.96); }
+.cb-3d-failed .cb-3d-msg { position: static; display: grid; gap: 12px; max-width: 520px; box-shadow: 0 6px 24px rgba(0, 44, 95, 0.18); }
+.cb-3d-note { margin: 0; padding: 8px 10px; background: var(--cb-light); border-radius: 8px; border-left: 3px solid var(--cb-red); font-size: 12.5px; color: var(--cb-ink-2); }
+@media (max-width: 900px) { .cb-3d { grid-template-columns: 1fr; grid-template-rows: auto minmax(260px, 45vh) 1fr; } .cb-3d-side { border-left: 0; border-top: 1px solid var(--cb-sand); } }
 /* D4 작성 칸(DEC-069) — 전체 폭 구역 */
 .cb-d4 { display: grid; gap: 14px; border-top: 3px solid var(--cb-blue); padding-top: 12px; }
 .cb-d4 h2 { font-size: 17px; color: var(--cb-blue); }
