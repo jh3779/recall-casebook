@@ -9,6 +9,8 @@ it("3D 창 코드를 받지 못했을 때의 안내는 케이스북·메모가 �
   expect(html).toContain('role="alertdialog"');
   expect(html).toContain("could not be loaded");
   expect(html).toContain("your notes are unchanged");
+  expect(html).toContain("reload the page"); // 닫고 다시 열어도 같은 실패가 나므로 다시 시도하라고 안내하지 않는다
+  expect(html).not.toContain("try again");
   expect(html).toMatch(/<button[^>]*>Close<\/button>/);
   expect(html).not.toMatch(/원인은|applies|verdict/i); // principle-ok: 안내 문구에 판정 표현이 없는지 검사
 });

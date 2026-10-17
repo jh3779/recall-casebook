@@ -3,8 +3,8 @@ import { CATEGORIES, MODELS } from "../config";
 import { Showroom } from "../showroom/Showroom";
 import type { Card } from "../search/types";
 import type { CategoryKey, Mode } from "../types";
-import { FOCUSABLE, nextFocusIndex } from "./focusTrap";
 import { partCategories } from "./partCategory";
+import { useModal } from "./useModal";
 
 type Stage = "loading" | "ready" | "failed" | "nowebgl";
 
@@ -55,26 +55,13 @@ export default function ModelOverlay({ card, onClose }: { card: Card; onClose: (
   }, [stage, mode, category]);
 
   const dialogRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null; // 닫을 때 초점을 돌려줄 버튼(Show in 3D)
-    const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { onClose(); return; }
-      if (e.key !== "Tab" || !dialogRef.current) return;
-      const items = [...dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
-      const next = nextFocusIndex(items.length, items.indexOf(document.activeElement as HTMLElement), e.shiftKey);
-      if (next < 0) return;
-      e.preventDefault(); // 초점이 창 밖(뒤 화면)으로 나가지 않게 창 안에서 돈다
-      items[next].focus();
-    };
-    addEventListener("keydown", key);
-    return () => { removeEventListener("keydown", key); if (opener?.isConnected) opener.focus(); };
-  }, [onClose]);
+  const close = useModal(dialogRef, onClose);
 
   const model = MODELS.sorento;
   return <div className="cb-3d" ref={dialogRef} role="dialog" aria-modal="true" aria-label={`3D illustration for recall ${card.campno}`}>
     <div className="cb-3d-bar">
       <div><b className="cb-id">{card.campno}</b> · {card.maker} <span className="cb-muted">— where this part category sits on a vehicle (illustration)</span></div>
-      <button type="button" className="cb-btn" onClick={onClose} autoFocus>Close</button>
+      <button type="button" className="cb-btn" onClick={close} autoFocus>Close</button>
     </div>
     <div className="cb-3d-body">
       <div className="cb-3d-stage" ref={stageRef} />

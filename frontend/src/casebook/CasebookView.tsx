@@ -58,6 +58,11 @@ export default function CasebookView({ health }: { health: HealthState }) {
     setNotes(next.notes);
     setUnsavedNotes(!!storage && !!name ? new Set(next.failed) : new Set());
   }
+  useEffect(() => { // 3D 창을 연 채 다른 화면으로 가면(뒤로 가기·주소창 해시) 숨은 창이 남지 않게 닫는다
+    const left = () => { if (location.hash !== "#casebook") setView3d(null); };
+    addEventListener("hashchange", left);
+    return () => removeEventListener("hashchange", left);
+  }, []);
   function togglePicked(card: Card) { // 체크한 선례가 바뀌면 모델이 고른 질문을 걷어 낸다 — 같은 조합으로 돌아와도 되살아나지 않게(DEC-071)
     const next = toggleChecked({ checked, picked }, card);
     setChecked(next.checked); setPicked(next.picked);
