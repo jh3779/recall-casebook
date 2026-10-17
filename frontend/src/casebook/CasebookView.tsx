@@ -4,6 +4,7 @@ import { togglePick } from "../search/picks";
 import type { Card, HealthState, SearchResponse } from "../search/types";
 import { CaseDetail } from "./CaseDetail";
 import { CaseList } from "./CaseList";
+import { D4Panel } from "./D4Panel";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
@@ -81,7 +82,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
     catch { setCopyMessage("Could not copy — select the text in the boxes instead."); }
   }
   function clearCase() {
-    if (!confirm(caseName ? `Delete all notes saved under “${caseName}”?` : "Delete all notes in this tab?")) return;
+    if (!confirm(caseName ? `Delete all notes and D4 text saved under “${caseName}”?` : "Delete all notes and D4 text in this tab?")) return;
     if (caseName && storage && !clearNotes(storage, caseName)) { setCopyMessage("Could not delete the saved notes — they may remain in this browser."); return; } // 지우지 못했으면 화면도 그대로 둔다
     setNotes({}); setCopyMessage(""); setUnsavedNotes(new Set());
   }
@@ -109,7 +110,8 @@ export default function CasebookView({ health }: { health: HealthState }) {
     {state === "idle" && <p className="cb-empty">Describe a defect to see precedents from other manufacturers, with the cause text each one wrote and who said it.</p>}
     {state === "loading" && <p className="cb-empty" role="status">Searching…</p>}
 
-    {state === "done" && response && <div className="cb-grid">
+    {state === "done" && response && <>
+    <div className="cb-grid">
       <CaseList response={response} checked={checked} onToggle={(card) => setChecked((list) => togglePick(list, card))} />
       <section className="cb-stack" aria-label="Checked precedents">
         <h2 className="sr-only">Checked precedents</h2>
@@ -120,6 +122,8 @@ export default function CasebookView({ health }: { health: HealthState }) {
         <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
         <GroupPanel key={checked.map((c) => c.campno).join(",")} question={response.question} build={response} cards={checked} />
       </div>
-    </div>}
+    </div>
+    <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} />
+    </>}
   </main>;
 }

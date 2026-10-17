@@ -89,3 +89,22 @@
   .cb-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 767px) { .view-casebook { padding-inline: 16px; } .cb-search { grid-template-columns: 1fr; } .cb-case-name input { width: 100%; max-width: none; } }
+
+/* D4 작성 칸(DEC-069) — 전체 폭 구역 */
+.cb-d4 { display: grid; gap: 14px; border-top: 3px solid var(--cb-blue); padding-top: 12px; }
+.cb-d4 h2 { font-size: 17px; color: var(--cb-blue); }
+.cb-d4 h3 { font-size: 14px; color: var(--cb-gold-text); font-family: "New York", ui-serif, "Source Serif 4", Georgia, serif; }
+.cb-d4 h3 small, .cb-d4-field em, .cb-d4-opt em { font-family: inherit; font-weight: 400; font-style: normal; font-size: 12px; color: var(--cb-ink-3); }
+.cb-d4-grid { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 18px; align-items: start; }
+.cb-questions { margin: 6px 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; line-height: 1.5; }
+.cb-d4-fields { display: grid; gap: 12px; }
+.cb-d4-field { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+.cb-d4-field textarea { resize: vertical; width: 100%; box-sizing: border-box; font-weight: 400; }
+.cb-d4-out { display: grid; gap: 10px; background: var(--cb-light); border-radius: 12px; padding: 14px; }
+.cb-d4-opt { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; }
+.cb-d4-opt input { margin-top: 3px; }
+.cb-d4-file { display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 13px; }
+.cb-d4-file label { display: grid; gap: 4px; font-weight: 600; }
+.cb-d4-file select { font: inherit; font-size: 13px; max-width: 520px; padding: 6px; border: 1.5px solid var(--cb-sand); border-radius: 8px; background: #fff; }
+.cb-d4-preview pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-source); font-size: 13px; background: #fff; border-radius: 8px; padding: 10px; max-height: 360px; overflow: auto; }
+@media (max-width: 900px) { .cb-d4-grid { grid-template-columns: 1fr; } }

@@ -244,4 +244,4 @@ classDiagram
 
 - 시험지·시점 평가 시트·정답 표시 파일은 DB 테이블이 아니다(저장소 밖 또는 `data/processed/`의 파일) — `scripts/defect_precedent/README.md`와 `docs/시점평가_정답표시_안내.md`.
 - 8D 작성 보조의 `EvidencePacket`(PR #139의 계획)은 아직 구현 전의 개념이라 ERD에 넣지 않았다.
-- 프런트의 담기·작성 상태(`frontend/src/search/picks.ts` 등)는 브라우저 메모리 안의 값이고 저장하지 않는다. 예외: 케이스북의 선례별 메모는 사건 이름이 있을 때만 이 브라우저의 `localStorage`에 "사건 이름 + 리콜 번호" 키로 저장하며 서버·LLM에는 보내지 않는다(`frontend/src/casebook/notes.ts`, DEC-068).
+- 프런트의 담기·작성 상태(`frontend/src/search/picks.ts` 등)는 브라우저 메모리 안의 값이고 저장하지 않는다. 예외: 케이스북의 선례별 메모는 사건 이름이 있을 때만 이 브라우저의 `localStorage`에 "사건 이름 + 리콜 번호" 키로 저장하며 서버·LLM에는 보내지 않는다(`frontend/src/casebook/notes.ts`, DEC-068). 케이스북 D4 작성 칸의 엔지니어 글도 같은 저장 장치에 `@d4:` 접두어 키로 저장된다(DEC-069).
