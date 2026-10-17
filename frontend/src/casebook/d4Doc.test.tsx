@@ -6,7 +6,7 @@ import fixture from "../search/__fixtures__/search_airbag.json";
 import { hasCauseText, type SearchResponse } from "../search/types";
 import { D4_KEYS, d4Export, d4Values, docxContent, exportMessage } from "./d4Doc";
 import { D4Panel } from "./D4Panel";
-import { D4_QUESTIONS, QUESTION_UNKNOWN } from "./questions";
+import { D4_QUESTIONS, QUESTION_POOL, QUESTION_UNKNOWN } from "./questions";
 import { isUnsaved, loadNotes, losesNotesOnSwitch, notesText, saveNote, type StorageLike } from "./notes";
 
 const response = fixture as SearchResponse;
@@ -92,7 +92,7 @@ it("D4 글은 메모와 같은 저장 키 장치로 사건 이름 아래 저장�
   expect(notesText(cards, loaded)).toBe(""); // 선례 메모 복사에 D4 글이 끼지 않는다
 });
 
-const panel = (checked = cards.slice(0, 2), notes: Record<string, string> = {}) => renderToStaticMarkup(<D4Panel cards={checked} response={response} notes={notes} onChange={() => {}} caseName="Case A" persistent storageBlocked={false} storeMessage="" />);
+const panel = (checked = cards.slice(0, 2), notes: Record<string, string> = {}) => renderToStaticMarkup(<D4Panel cards={checked} response={response} notes={notes} onChange={() => {}} caseName="Case A" persistent storageBlocked={false} storeMessage="" picked={[]} />);
 it("D4 칸은 고정 확인 질문 전부와 세 입력 칸을 보이고, 서비스가 채우지 않는다고 밝힌다", () => {
   const m = panel();
   for (const q of D4_QUESTIONS) expect(m).toContain(renderToStaticMarkup(<span>{q}</span>).slice(6, -7));
@@ -186,11 +186,26 @@ it("쓴 D4 글이 없을 때 안내는 실패처럼 읽히지 않고 쓴 글이 
 
 it("D4 구역도 저장 상태·공용 PC 안내·삭제 실패를 보인다(저장 장치를 메모와 같이 쓰므로)", () => {
   const render = (props: { caseName: string; persistent: boolean; storageBlocked: boolean; storeMessage: string }) =>
-    renderToStaticMarkup(<D4Panel cards={cards.slice(0, 1)} response={response} notes={{}} onChange={() => {}} {...props} />);
+    renderToStaticMarkup(<D4Panel cards={cards.slice(0, 1)} response={response} notes={{}} onChange={() => {}} picked={[]} {...props} />);
   const ok = render({ caseName: "Case A", persistent: true, storageBlocked: false, storeMessage: "" });
   expect(ok).toContain("Saved in this browser under “Case A”");
   expect(ok).toContain("Anyone using this browser can read saved notes");
   expect(render({ caseName: "", persistent: false, storageBlocked: false, storeMessage: "" })).toContain("No case name");
   expect(render({ caseName: "Case A", persistent: true, storageBlocked: true, storeMessage: "" })).toContain("could not save the notes");
   expect(render({ caseName: "Case A", persistent: true, storageBlocked: false, storeMessage: "Could not delete the saved note — it may remain in this browser." })).toContain("Could not delete the saved note");
+});
+
+it("모델이 고른 확인 질문은 풀의 문장으로, 고르지 않았으면 안내만 보인다 — 기본 문장은 그대로", () => {
+  const none = panel();
+  expect(none).not.toContain("Picked by the model");
+  expect(none).toContain("lets the model pick more questions");
+  for (const q of D4_QUESTIONS) expect(none).toContain(q);
+  const withPicks = renderToStaticMarkup(<D4Panel cards={cards.slice(0, 2)} response={response} notes={{}} onChange={() => {}} caseName="Case A" persistent storageBlocked={false} storeMessage="" picked={["P2", "P99", "P7"]} />);
+  expect(withPicks).toContain("Picked by the model");
+  expect(withPicks).toContain("the model wrote none of them");
+  expect(withPicks).toContain(QUESTION_POOL.P2);
+  expect(withPicks).toContain(QUESTION_POOL.P7);
+  expect(withPicks).not.toContain("P99");
+  expect(withPicks).not.toContain("lets the model pick more questions");
+  for (const q of D4_QUESTIONS) expect(withPicks).toContain(q);
 });

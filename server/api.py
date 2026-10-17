@@ -381,6 +381,19 @@ class DraftGroup(Strict):
     items: list[DraftItem] = Field(min_length=1)
 
 
+class PickedQuestion(Strict):
+    """LLM이 번호로 고른 확인 질문 — 문장은 서버의 고정 풀(`draft.QUESTION_POOL`) 그대로여야 응답이 나간다(DEC-071)."""
+
+    id: str
+    text: str
+
+    @model_validator(mode="after")
+    def from_the_fixed_pool(self):
+        if draft.QUESTION_POOL.get(self.id) != self.text:
+            raise ValueError("확인 질문은 고정 풀의 문장이어야 한다")
+        return self
+
+
 class DraftResponse(Strict):
     build_id: str
     bundle_sha256: str | None
@@ -394,6 +407,9 @@ class DraftResponse(Strict):
     groups: list[DraftGroup]
     ungrouped: list[DraftItem]  # 묶이지 않은 원문 전체 — 꺼짐·실패일 때도 원문 목록으로 쓴다
     questions: list[str]
+    picked_questions: list[PickedQuestion] = Field(
+        default_factory=list, max_length=draft.MAX_PICK
+    )  # D4에서 LLM이 고정 풀에서 번호로 고른 질문 — 꺼짐·실패·D2는 빈 목록
     rejected: dict[str, int]
     relocated: int = Field(
         default=0, ge=0

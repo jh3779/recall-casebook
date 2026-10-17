@@ -104,7 +104,7 @@ RAG_SOURCE=bundle SERVING_BUILD_ID=<build_id> SUPABASE_URL=<프로젝트 주소>
 8D의 D2(문제 기술)·D4(원인)에 담은 선례의 **원문을 묶어** 보여 준다. LLM은 묶음과 제목을 정할 뿐 문장을 쓰지 않고, 묶음에 넣는 인용은 **그 출처의 전체 원문**을 서버가 그대로 싣는다(LLM이 문장 일부만 짚어도 "may"·"not" 같은 한정어가 빠진 조각은 나가지 않는다 — PR #141 리뷰).
 
 - 요청: `{"question": "...", "campnos": ["24V412000", ...최대 6개], "step": "d2" | "d4"}`. 번호가 **이 질문의 검색 결과 밖**이면 422(밖의 번호는 지어낸 것으로 본다).
-- 응답: `groups`(서버 내부용 제목 + 원문 인용 — 화면은 제목을 보이지 않는다: 번호·칸·원문 구간 `start`/`end`(출처 전체라 `0`~원문 길이)·말한 주체·출처), `ungrouped`(묶이지 않은 원문 전체), `questions`(고정 확인 질문), `rejected`(원문과 다르다고 버린 인용 수), `degraded`.
+- 응답: `groups`(서버 내부용 제목 + 원문 인용 — 화면은 제목을 보이지 않는다: 번호·칸·원문 구간 `start`/`end`(출처 전체라 `0`~원문 길이)·말한 주체·출처), `ungrouped`(묶이지 않은 원문 전체), `questions`(고정 확인 질문), `picked_questions`(D4에서 LLM이 고정 풀 `QUESTION_POOL`(P1~P10)에서 **번호로** 고른 확인 질문 최대 3개 — 문장은 풀의 글자이며 풀 밖 번호·중복·초과는 `rejected.dropped_question`으로 센다. D2·꺼짐·실패는 빈 목록, DEC-071), `rejected`(원문과 다르다고 버린 인용 수), `degraded`.
 - **기본은 꺼짐**: `DRAFT_ENABLED=1`과 `OPENAI_API_KEY`가 있어야 켜진다(키 없이 켜면 시작하지 않는다). 꺼져 있거나 LLM 호출이 실패하면 `degraded`(`disabled`·`llm_failed`)와 함께 묶음 없이 원문 목록(`ungrouped`)만 준다.
 - LLM: 기본 `gpt-6-luna`·추론 `none`(`DRAFT_MODEL`·`DRAFT_REASONING_EFFORT`), OpenAI Responses API를 표준 라이브러리로 부른다(`store: false`, 구조화 출력). 입력은 공개 선례 원문뿐이다. 키는 응답·오류에 싣지 않는다.
 - 호출 상한: IP당 1분 6회(`DRAFT_RATE_LIMIT_PER_MINUTE`, `/search` 상한과 따로 센다). 넘으면 429 + `Retry-After`.

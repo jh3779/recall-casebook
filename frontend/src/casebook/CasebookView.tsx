@@ -24,6 +24,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
   const [caseName, setCaseName] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [copyMessage, setCopyMessage] = useState("");
+  const [picked, setPicked] = useState<{ key: string; ids: string[] } | null>(null); // 묶기에서 모델이 고른 확인 질문 번호 — 체크한 선례가 바뀌면 걷어 낸다
   const [storeMessage, setStoreMessage] = useState(""); // 저장·삭제 실패 안내 — D4 구역에서도 보인다
   const [unsavedNotes, setUnsavedNotes] = useState<ReadonlySet<string>>(new Set()); // 저장소에 쓰지 못한 메모의 리콜 번호 — 하나라도 있으면 저장됐다고 말하지 않는다
   const saveFailed = unsavedNotes.size > 0;
@@ -88,6 +89,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
     if (caseName && storage && !clearNotes(storage, caseName)) { const failed = "Could not delete the saved notes — they may remain in this browser."; setCopyMessage(failed); setStoreMessage(failed); return; } // 지우지 못했으면 화면도 그대로 둔다
     setNotes({}); setCopyMessage(""); setStoreMessage(""); setUnsavedNotes(new Set());
   }
+  const checkedKey = checked.map((x) => x.campno).join(",");
   const noEnglish = !!question.trim() && !/[A-Za-z]/.test(question);
   const persistent = !!caseName && !!storage;
 
@@ -122,10 +124,10 @@ export default function CasebookView({ health }: { health: HealthState }) {
       </section>
       <div className="cb-side">
         <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
-        <GroupPanel key={checked.map((c) => c.campno).join(",")} question={response.question} build={response} cards={checked} />
+        <GroupPanel key={checkedKey} question={response.question} build={response} cards={checked} onPicked={(ids) => setPicked({ key: checkedKey, ids })} />
       </div>
     </div>
-    <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} />
+    <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} picked={picked && picked.key === checkedKey ? picked.ids : []} />
     </>}
   </main>;
 }

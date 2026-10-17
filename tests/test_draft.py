@@ -564,3 +564,93 @@ def test_a_json_response_that_is_not_an_object_is_a_format_error():
     with pytest.raises(LlmError) as e:
         draft.call_llm("r", "i", api_key="k", opener=lambda req, timeout: Resp([1, 2]))
     assert e.value.kind == "format"
+
+
+# ---------- 확인 질문 풀 — LLM은 번호만 고른다 (DEC-071) ----------
+def test_the_question_pool_is_ten_fixed_questions_that_never_judge():
+    assert list(draft.QUESTION_POOL) == [f"P{i}" for i in range(1, 11)]
+    assert set(draft.QUESTION_TOPICS) == set(draft.QUESTION_POOL)
+    for qid, text in draft.QUESTION_POOL.items():
+        assert text.endswith("습니까?"), qid  # 질문형이다
+        assert not draft.VERDICT_RE.search(text), (
+            qid
+        )  # principle-ok: 풀 문장에 판정 표현이 없는지 검사
+        assert not any(
+            w in text for w in ("원인은", "원인입니다", "적용", "다릅니다", "같습니다")
+        ), qid
+    assert len(set(draft.QUESTION_POOL.values())) == 10
+
+
+def test_pick_questions_keeps_only_pool_ids_once_in_the_order_given_and_at_most_three():
+    ids, bad = draft.pick_questions({"question_ids": ["P3", "P3", "P99", "P1", "x", "P2", "P5"]})
+    assert (
+        ids == ["P3", "P1", "P2"] and bad == 4
+    )  # 버린 항목 수: 중복 P3, 풀 밖 P99·x, 상한 3개를 넘는 P5
+    assert draft.pick_questions({"question_ids": []}) == ([], 0)
+    assert draft.pick_questions({}) == ([], 0)
+    assert draft.pick_questions({"question_ids": "P1"}) == ([], 1)  # 목록이 아니면 쓰지 않는다
+    assert draft.pick_questions({"question_ids": [1, None, ["P1"], "P4"]}) == (["P4"], 3)
+
+
+def test_the_d4_prompt_offers_the_topics_by_id_and_d2_asks_for_an_empty_list():
+    srcs = [Source("S1", "24V412000", "cause", "text", {})]
+    d4, _ = draft.prompt_for("d4", srcs)
+    for qid, topic in draft.QUESTION_TOPICS.items():
+        assert f"{qid}: {topic}" in d4
+    assert "never write" in d4 and "ids" in d4  # 문장을 쓰지 않고 번호만 고른다는 지시
+    assert (
+        draft.QUESTION_POOL["P1"] not in d4
+    )  # 한국어 문장은 LLM에 보이지 않는다 — 번호와 영어 주제만
+    d2, _ = draft.prompt_for("d2", [Source("S1", "24V412000", "defect", "text", {})])
+    assert "question_ids" in d2 and "empty" in d2 and "P1:" not in d2
+
+
+def test_the_schema_requires_question_ids_as_a_strict_string_list():
+    assert "question_ids" in draft.SCHEMA["required"]
+    assert draft.SCHEMA["properties"]["question_ids"] == {
+        "type": "array",
+        "items": {"type": "string"},
+    }
+
+
+def test_generate_d4_returns_the_picked_pool_sentences_and_counts_what_it_dropped():
+    cards = [card("24V412000", cause=cause("Contaminated solder flux used during manufacturing."))]
+    payload = {
+        "groups": [],
+        "ungrouped": ["S1"],
+        "question_ids": ["P5", "P2", "P42", "P5"],
+    }
+    out, _ = draft.generate("d4", cards, fake_llm(payload))
+    assert [q["id"] for q in out["picked_questions"]] == ["P5", "P2"]
+    assert [q["text"] for q in out["picked_questions"]] == [
+        draft.QUESTION_POOL["P5"],
+        draft.QUESTION_POOL["P2"],
+    ]  # 문장은 풀에서 가져온 것 — LLM이 돌려준 글자가 아니다
+    assert out["rejected"]["dropped_question"] == 2
+    assert out["questions"] == draft.questions_for(
+        "d4", draft.build_sources("d4", cards)
+    )  # 기본 문장은 그대로 코드가 붙인다
+
+
+def test_generate_without_picks_or_when_off_or_failed_has_no_picked_questions():
+    cards = [card("24V412000", cause=cause("Contaminated solder flux used during manufacturing."))]
+    ok, _ = draft.generate(
+        "d4", cards, fake_llm({"groups": [], "ungrouped": ["S1"]})
+    )  # 구 형식 응답(question_ids 없음)
+    assert ok["picked_questions"] == [] and ok["rejected"]["dropped_question"] == 0
+    off, _ = draft.generate("d4", cards, None)
+    assert off["picked_questions"] == [] and off["degraded"] == "disabled"
+
+    def boom(instructions, text):
+        raise LlmError("network")
+
+    failed, _ = draft.generate("d4", cards, boom)
+    assert failed["picked_questions"] == [] and failed["degraded"] == "llm_failed"
+
+
+def test_d2_never_picks_questions_even_if_the_model_returns_ids():
+    cards = [card("24V412000")]
+    out, _ = draft.generate(
+        "d2", cards, fake_llm({"groups": [], "ungrouped": [], "question_ids": ["P1"]})
+    )
+    assert out["picked_questions"] == []  # 풀은 D4 전용이다

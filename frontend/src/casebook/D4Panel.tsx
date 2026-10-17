@@ -3,7 +3,7 @@ import { DocxError, inspectDocx, patchDocx, type Inspection, type Place } from "
 import type { Card, SearchResponse } from "../search/types";
 import { d4Export, D4_KEYS, d4Values, docxContent, exportMessage } from "./d4Doc";
 import { SHARED_BROWSER_NOTE, storageState } from "./notes";
-import { d4Questions } from "./questions";
+import { d4Questions, pickedQuestions } from "./questions";
 
 const keyOf = (p: Place) => `${p.table}.${p.row}.${p.col}`;
 const short = (text: string) => (text.length > 40 ? `${text.slice(0, 40)}…` : text);
@@ -17,7 +17,7 @@ function download(blob: Blob, name: string) {
  * D4 작성 칸(DEC-069) — 확인 질문(도구가 만든 고정 문장), 엔지니어가 직접 쓰는 Escape Cause·Root Cause·검증 방법, 8D `.docx` 내보내기.
  * 서비스는 이 칸을 채우거나 제안하지 않는다. 쓴 글은 메모처럼 이 브라우저에만 저장하고 서버·LLM에 보내지 않는다. 검증 방법은 8D 양식에 칸이 없어 내보내지 않는다.
  */
-export function D4Panel({ cards, response, notes, onChange, caseName, persistent, storageBlocked, storeMessage }: { cards: readonly Card[]; response: SearchResponse; notes: Readonly<Record<string, string>>; onChange: (key: string, text: string) => void; caseName: string; persistent: boolean; storageBlocked: boolean; storeMessage: string }) {
+export function D4Panel({ cards, response, notes, onChange, caseName, persistent, storageBlocked, storeMessage, picked }: { cards: readonly Card[]; response: SearchResponse; notes: Readonly<Record<string, string>>; onChange: (key: string, text: string) => void; caseName: string; persistent: boolean; storageBlocked: boolean; storeMessage: string; picked: readonly string[] }) {
   const values = d4Values(notes);
   const [appendix, setAppendix] = useState(false);
   const [docx, setDocx] = useState<{ file: File; view: Inspection } | null>(null);
@@ -26,6 +26,7 @@ export function D4Panel({ cards, response, notes, onChange, caseName, persistent
   const [busy, setBusy] = useState(false);
   const out = d4Export({ values, cards, includeAppendix: appendix, prov: response });
   const questions = d4Questions(cards);
+  const modelPicked = pickedQuestions(picked);
   const state = storageState(caseName, persistent, storageBlocked);
   const auto = docx?.view.matches[4] ?? [];
   const place = chosen ?? (auto.length === 1 ? auto[0] : null);
@@ -68,7 +69,11 @@ export function D4Panel({ cards, response, notes, onChange, caseName, persistent
       <div>
         <h3>Questions to check <small>fixed sentences made by the tool, in Korean</small></h3>
         <ol className="cb-questions" lang="ko">{questions.map((q) => <li key={q}>{q}</li>)}</ol>
-        <p className="cb-muted">These do not say whether anything is the same or different, and they are not exported.</p>
+        {modelPicked.length > 0 && <>
+          <h4>Picked by the model <small>from a fixed list of sentences — the model wrote none of them</small></h4>
+          <ol className="cb-questions cb-picked" lang="ko">{modelPicked.map((q) => <li key={q.id}><b className="cb-id">{q.id}</b> {q.text}</li>)}</ol>
+        </>}
+        <p className="cb-muted">These do not say whether anything is the same or different, and they are not exported.{modelPicked.length === 0 ? " “Group the checked causes” lets the model pick more questions from a fixed list (needs a server with the model switched on)." : ""}</p>
       </div>
       <div className="cb-d4-fields">
         {field("Escape Cause — why it was not detected", "escape", "Why the defect was not caught in your process", true)}
