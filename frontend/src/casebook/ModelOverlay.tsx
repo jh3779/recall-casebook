@@ -3,6 +3,7 @@ import { CATEGORIES, MODELS } from "../config";
 import { Showroom } from "../showroom/Showroom";
 import type { Card } from "../search/types";
 import type { CategoryKey, Mode } from "../types";
+import { FOCUSABLE, nextFocusIndex } from "./focusTrap";
 import { partCategories } from "./partCategory";
 
 type Stage = "loading" | "ready" | "failed" | "nowebgl";
@@ -26,7 +27,7 @@ export default function ModelOverlay({ card, onClose }: { card: Card; onClose: (
     let showroom: Showroom | undefined;
     (async () => {
       try {
-        showroom = new Showroom(stageRef.current!);
+        showroom = new Showroom(stageRef.current!, { panelShift: 0 }); // 설명 패널이 무대와 다른 열이라 차를 옆으로 밀지 않는다
         showroomRef.current = showroom;
       } catch {
         if (alive) setStage("nowebgl");
@@ -53,14 +54,24 @@ export default function ModelOverlay({ card, onClose }: { card: Card; onClose: (
     showroom.focus(mode === "xray" ? category : null);
   }, [stage, mode, category]);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const key = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const opener = document.activeElement as HTMLElement | null; // 닫을 때 초점을 돌려줄 버튼(Show in 3D)
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const items = [...dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+      const next = nextFocusIndex(items.length, items.indexOf(document.activeElement as HTMLElement), e.shiftKey);
+      if (next < 0) return;
+      e.preventDefault(); // 초점이 창 밖(뒤 화면)으로 나가지 않게 창 안에서 돈다
+      items[next].focus();
+    };
     addEventListener("keydown", key);
-    return () => removeEventListener("keydown", key);
+    return () => { removeEventListener("keydown", key); if (opener?.isConnected) opener.focus(); };
   }, [onClose]);
 
   const model = MODELS.sorento;
-  return <div className="cb-3d" role="dialog" aria-modal="true" aria-label={`3D illustration for recall ${card.campno}`}>
+  return <div className="cb-3d" ref={dialogRef} role="dialog" aria-modal="true" aria-label={`3D illustration for recall ${card.campno}`}>
     <div className="cb-3d-bar">
       <div><b className="cb-id">{card.campno}</b> · {card.maker} <span className="cb-muted">— where this part category sits on a vehicle (illustration)</span></div>
       <button type="button" className="cb-btn" onClick={onClose} autoFocus>Close</button>

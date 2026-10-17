@@ -6,6 +6,7 @@ import { prepareVehicle } from "./vehicle";
 import { createEstimatedParts } from "./estimatedParts";
 import { MODELS, PAINTS } from "../config";
 import type { CategoryKey, Mode, ModelKey, PartInfo, PartsMap } from "../types";
+import { DEFAULT_PANEL_SHIFT, panelOffset } from "./viewOffset";
 
 interface Hotspot {
   point: THREE.Vector3;
@@ -82,7 +83,10 @@ export class Showroom {
 
   private readonly container: HTMLElement;
 
-  constructor(container: HTMLElement) {
+  private readonly panelShift: number;
+
+  constructor(container: HTMLElement, options: { panelShift?: number } = {}) {
+    this.panelShift = options.panelShift ?? DEFAULT_PANEL_SHIFT;
     this.container = container;
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -280,7 +284,7 @@ export class Showroom {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     this.camera.aspect = width / height;
-    const dx = width > 900 ? 200 : 0;
+    const dx = panelOffset(width, this.panelShift);
     this.camera.setViewOffset(width, height, dx, 0, width, height);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);

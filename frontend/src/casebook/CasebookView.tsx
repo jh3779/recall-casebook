@@ -7,6 +7,7 @@ import { D4Panel } from "./D4Panel";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
+import { OverlayBoundary } from "./OverlayBoundary";
 import { pickedFor, toggleChecked } from "./questions";
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
@@ -136,6 +137,6 @@ export default function CasebookView({ health }: { health: HealthState }) {
     </div>
     <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} picked={pickedFor(picked, checkedKey)} />
     </>}
-    {view3d && <Suspense fallback={<p className="cb-3d-msg" role="status">Loading the 3D view…</p>}><ModelOverlay card={view3d} onClose={() => setView3d(null)} /></Suspense>}
+    {view3d && <OverlayBoundary onClose={() => setView3d(null)}><Suspense fallback={<p className="cb-3d-msg" role="status">Loading the 3D view…</p>}><ModelOverlay card={view3d} onClose={() => setView3d(null)} /></Suspense></OverlayBoundary>}
   </main>;
 }

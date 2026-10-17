@@ -105,6 +105,8 @@
 .cb-3d-chips button, .cb-3d-mode button { font: inherit; font-size: 12.5px; padding: 5px 11px; border-radius: 999px; border: 1.5px solid var(--cb-blue); background: #fff; color: var(--cb-blue); cursor: pointer; }
 .cb-3d-chips button.on, .cb-3d-mode button.on { background: var(--cb-blue); color: #fff; }
 .cb-3d-chips button:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--cb-sand); }
+.cb-3d-failed { grid-template-columns: 1fr; grid-template-rows: 1fr; place-items: center; background: rgba(255,255,255,0.96); }
+.cb-3d-failed .cb-3d-msg { position: static; display: grid; gap: 12px; max-width: 520px; box-shadow: 0 6px 24px rgba(0, 44, 95, 0.18); }
 .cb-3d-note { margin: 0; padding: 8px 10px; background: var(--cb-light); border-radius: 8px; border-left: 3px solid var(--cb-red); font-size: 12.5px; color: var(--cb-ink-2); }
 @media (max-width: 900px) { .cb-3d { grid-template-columns: 1fr; grid-template-rows: auto minmax(260px, 45vh) 1fr; } .cb-3d-side { border-left: 0; border-top: 1px solid var(--cb-sand); } }
 /* D4 작성 칸(DEC-069) — 전체 폭 구역 */
