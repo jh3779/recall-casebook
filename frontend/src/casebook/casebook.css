@@ -1,0 +1,91 @@
+/* Recall Casebook. for Engineer — 현대자동차 CI 전용색(Hyundai Blue·Sand·Active Blue·Active Red)만 쓴다. 예외: 경고·구역 제목 글자색은 CI 색(Active Red·Gold)을 흰 바탕 대비 4.5:1 이상으로 어둡게 한 값. 밝은 테마 하나, 이 화면 안에만 적용 */
+.view-casebook {
+  --cb-blue: #002c5f; --cb-active: #00aad2; --cb-red: #e63312; --cb-sand: #e4dcd3; --cb-light: #f6f3f2; --cb-sky: #aacae6; --cb-gold: #a36b4f;
+  --cb-gold-text: #8a563b; /* 구역 제목 글자용 — Gold(#a36b4f)는 흰 바탕 대비 4.4:1이라 4.5:1 이상으로 어둡게 */ --cb-red-text: #b32410; /* 경고 글자용 — Active Red(#e63312)는 흰 바탕 작은 글씨 대비가 4.3:1이라 글자에는 더 진한 값 */ --cb-ink: #000; --cb-ink-2: #4d4d4d; --cb-ink-3: #666;
+  color: var(--cb-ink); background: #fff; min-height: calc(100dvh - var(--app-bar-height, 60px));
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, var(--font-ui);
+  display: grid; gap: 14px; padding: 18px 28px 40px; align-content: start;
+}
+.view-casebook h1, .view-casebook h2, .view-casebook h3, .view-casebook h4, .view-casebook h5 { margin: 0; }
+.cb-top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding-bottom: 12px; border-bottom: 2px solid var(--cb-blue); }
+.cb-brand { display: flex; align-items: center; gap: 10px; }
+.cb-brand-mark { width: 22px; height: 22px; background: var(--cb-blue); border-radius: 4px; box-shadow: 7px 7px 0 -2px var(--cb-active); }
+.cb-brand h1 { font-family: "New York", ui-serif, "Source Serif 4", Georgia, serif; font-size: 22px; color: var(--cb-blue); }
+.cb-brand small { font-size: 14px; font-weight: 400; color: var(--cb-ink-2); }
+.cb-case-name { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--cb-ink-2); }
+.cb-case-name input { width: 260px; max-width: 60vw; }
+.cb-health { margin-left: auto; font-size: 12px; color: var(--cb-ink-3); }
+.view-casebook input, .view-casebook textarea { font: inherit; font-size: 14px; color: var(--cb-ink); background: #fff; border: 1.5px solid var(--cb-sand); border-radius: 8px; padding: 8px 10px; }
+.view-casebook input:focus-visible, .view-casebook textarea:focus-visible, .view-casebook button:focus-visible { outline: 3px solid var(--cb-active); outline-offset: 1px; }
+.cb-search { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.cb-search > span { grid-column: 1 / -1; font-size: 12px; }
+.cb-btn { border: 0; border-radius: 8px; padding: 9px 16px; font: inherit; font-size: 14px; font-weight: 600; color: #fff; background: var(--cb-blue); cursor: pointer; }
+.cb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.cb-btn.ghost { background: #fff; color: var(--cb-blue); border: 1.5px solid var(--cb-blue); padding: 6px 12px; }
+.cb-link { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; color: var(--cb-blue); text-decoration: underline; cursor: pointer; }
+.cb-muted { color: var(--cb-ink-3); font-size: 12.5px; }
+.cb-muted.warn, .cb-note-state.warn { color: var(--cb-red-text); }
+.cb-error { color: var(--cb-red-text); margin: 0; font-size: 14px; }
+.cb-empty { margin: 8px 0; color: var(--cb-ink-2); background: var(--cb-light); border-radius: 10px; padding: 16px; font-size: 14px; }
+.cb-mono, .cb-id { font-family: var(--font-id); }
+.cb-tag { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--cb-light); color: var(--cb-ink-2); vertical-align: middle; }
+
+.cb-grid { display: grid; grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(280px, 340px); gap: 18px; align-items: start; }
+.cb-list { display: grid; gap: 14px; }
+.cb-list-group > header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--cb-sand); margin-bottom: 6px; }
+.cb-list-group h2 { font-size: 13px; color: var(--cb-blue); }
+.cb-list-group header span { font-size: 11.5px; color: var(--cb-ink-3); }
+.cb-row { display: flex; gap: 10px; width: 100%; text-align: left; font: inherit; color: inherit; background: #fff; border: 1.5px solid var(--cb-sand); border-radius: 10px; padding: 10px; margin-bottom: 6px; cursor: pointer; }
+.cb-row.on { background: rgba(170, 202, 230, 0.35); border-color: var(--cb-blue); }
+.cb-check { flex: none; width: 18px; height: 18px; margin-top: 2px; border: 1.5px solid var(--cb-blue); border-radius: 4px; display: grid; place-items: center; font-size: 13px; color: #fff; background: #fff; }
+.cb-row.on .cb-check { background: var(--cb-blue); }
+.cb-row-main { display: grid; gap: 3px; min-width: 0; }
+.cb-row-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.cb-row-who { font-size: 13px; font-weight: 600; }
+.cb-snip { font-family: var(--font-source); font-size: 13px; color: var(--cb-ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cb-badge { display: inline-block; justify-self: start; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--cb-sand); background: var(--cb-light); color: var(--cb-ink-2); }
+.cb-badge.text { border-color: var(--cb-active); color: var(--cb-blue); background: #fff; }
+
+.cb-stack { display: grid; gap: 16px; min-width: 0; }
+.cb-case { border: 1.5px solid var(--cb-sand); border-radius: 12px; padding: 16px; display: grid; gap: 12px; background: #fff; }
+.cb-case-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.cb-case-head h3 { display: inline; font-size: 18px; color: var(--cb-blue); margin-right: 8px; }
+.cb-who { font-weight: 600; }
+.cb-parts { display: flex; flex-wrap: wrap; gap: 6px; }
+.cb-parts span { font-family: var(--font-id); font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--cb-light); border: 1px solid var(--cb-sand); }
+.cb-block { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--cb-sand); }
+.cb-block h4 { font-family: "New York", ui-serif, "Source Serif 4", Georgia, serif; font-size: 15px; color: var(--cb-gold-text); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.cb-block h4 small { font-family: inherit; font-weight: 400; font-size: 12px; color: var(--cb-ink-3); }
+.cb-block h5 { font-size: 12px; font-weight: 700; color: var(--cb-ink-2); margin-top: 4px; }
+.cb-byline { margin: 0; font-size: 12.5px; color: var(--cb-ink-2); }
+.cb-src-text { margin: 2px 0 0; font-family: var(--font-source); font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cb-cause { border-top: 3px solid var(--cb-blue); }
+.cb-cause.none { border-top-color: var(--cb-sand); }
+.cb-flag { text-decoration: underline; text-decoration-color: var(--cb-active); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.cb-status { margin: 0; font-size: 12.5px; color: var(--cb-ink-2); }
+.cb-src { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 4px 0 0; font-size: 12px; padding: 8px 10px; background: var(--cb-light); border-radius: 8px; }
+.cb-src dt { color: var(--cb-ink-3); }
+.cb-src dd { margin: 0; overflow-wrap: anywhere; }
+.cb-check-item { display: grid; gap: 2px; }
+.cb-prov { margin: 0; }
+
+.cb-side { display: grid; gap: 18px; align-content: start; }
+.cb-notes, .cb-group { display: grid; gap: 10px; border-top: 3px solid var(--cb-red); padding-top: 10px; }
+.cb-group { border-top-color: var(--cb-blue); }
+.cb-notes h2, .cb-group h2 { font-size: 15px; color: var(--cb-blue); }
+.cb-note { display: grid; gap: 4px; font-size: 13px; }
+.cb-note textarea { resize: vertical; width: 100%; box-sizing: border-box; }
+.cb-note-state { margin: 0; font-size: 12.5px; color: var(--cb-ink-2); }
+.cb-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cb-groups { display: grid; gap: 12px; }
+.cb-grp { border: 1px solid var(--cb-sand); border-radius: 10px; padding: 10px; }
+.cb-grp h3 { font-size: 13px; color: var(--cb-blue); }
+.cb-grp h3 small { color: var(--cb-ink-3); font-weight: 400; }
+.cb-grp ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.cb-grp li { display: grid; gap: 2px; font-size: 13px; }
+.cb-grp q { font-family: var(--font-source); font-size: 14px; line-height: 1.5; quotes: "“" "”"; overflow-wrap: anywhere; }
+
+@media (max-width: 1100px) {
+  .cb-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 767px) { .view-casebook { padding-inline: 16px; } .cb-search { grid-template-columns: 1fr; } .cb-case-name input { width: 100%; max-width: none; } }
