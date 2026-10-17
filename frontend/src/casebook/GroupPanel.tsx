@@ -67,7 +67,7 @@ export function GroupResult({ result, cards }: { result: DraftResponse; cards: r
           </li>)}</ul>
         </article>)}
         {result.groups.length > 0 && result.ungrouped.length > 0 && <p className="cb-muted">{result.ungrouped.length} cause text(s) were not grouped; read them in the middle column.</p>}
-        {Object.entries(result.rejected).some(([k, n]) => n > 0 && k !== "bad_title") && <p className="cb-muted">Dropped after checking against the source: {Object.entries(result.rejected).filter(([k, n]) => n > 0 && k !== "bad_title").map(([k, n]) => `${REJECTED[k] ?? k} ${n}`).join(" · ")}.</p>}
+        {Object.entries(result.rejected).some(([k, n]) => n > 0 && k !== "bad_title") && <p className="cb-muted">Excluded by the server's checks: {Object.entries(result.rejected).filter(([k, n]) => n > 0 && k !== "bad_title").map(([k, n]) => `${REJECTED[k] ?? k} ${n}`).join(" · ")}.</p>}
         <p className="cb-muted">{result.model ? `model ${result.model} · ` : ""}build {result.build_id}</p>
       </div>;
 }

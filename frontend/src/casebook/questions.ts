@@ -1,3 +1,4 @@
+import { togglePick } from "../search/picks";
 import type { Card } from "../search/types";
 
 /**
@@ -39,5 +40,7 @@ export function pickedQuestions(ids: readonly string[] | undefined): { id: strin
 }
 /** 모델이 고른 번호를 지금 체크한 선례 조합(`checkedKey`)에 대해서만 쓴다 — 다른 조합에서 받은 선택은 보이지 않는다 */
 export const pickedFor = (picked: { key: string; ids: string[] } | null, checkedKey: string): string[] => (picked && picked.key === checkedKey ? picked.ids : []);
+/** 선례 체크를 바꿀 때의 상태 규칙 — 체크 목록이 바뀌면 모델이 고른 질문은 항상 걷힌다(같은 조합으로 돌아와도 되살아나지 않는다, DEC-071). `CasebookView`는 이 결과만 쓴다 */
+export const toggleChecked = <P>(state: { checked: readonly Card[]; picked: P | null }, card: Card): { checked: Card[]; picked: null } => ({ checked: togglePick(state.checked, card), picked: null });
 /** 묶기 응답에서 LLM이 고른 번호 — 응답이 문장을 들고 와도 번호만 쓴다 */
 export const pickedIdsOf = (result: { picked_questions?: readonly { id: string }[] }): string[] => pickedQuestions(result.picked_questions?.map((q) => q.id)).map((q) => q.id);

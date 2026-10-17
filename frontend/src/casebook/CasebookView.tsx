@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { search } from "../api";
-import { togglePick } from "../search/picks";
 import type { Card, HealthState, SearchResponse } from "../search/types";
 import { CaseDetail } from "./CaseDetail";
 import { CaseList } from "./CaseList";
@@ -8,7 +7,7 @@ import { D4Panel } from "./D4Panel";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
 import { NotesPanel } from "./NotesPanel";
-import { pickedFor } from "./questions";
+import { pickedFor, toggleChecked } from "./questions";
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
 /**
@@ -56,7 +55,8 @@ export default function CasebookView({ health }: { health: HealthState }) {
     setUnsavedNotes(!!storage && !!name ? new Set(next.failed) : new Set());
   }
   function togglePicked(card: Card) { // 체크한 선례가 바뀌면 모델이 고른 질문을 걷어 낸다 — 같은 조합으로 돌아와도 되살아나지 않게(DEC-071)
-    setChecked((list) => togglePick(list, card)); setPicked(null);
+    const next = toggleChecked({ checked, picked }, card);
+    setChecked(next.checked); setPicked(next.picked);
   }
   async function run() {
     const value = question.trim();

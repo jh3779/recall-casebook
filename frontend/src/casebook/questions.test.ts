@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
-import { D4_QUESTIONS, MAX_PICK, QUESTION_POOL, QUESTION_UNKNOWN, d4Questions, pickedFor, pickedIdsOf, pickedQuestions } from "./questions";
+import { D4_QUESTIONS, MAX_PICK, QUESTION_POOL, QUESTION_UNKNOWN, d4Questions, pickedFor, pickedIdsOf, pickedQuestions, toggleChecked } from "./questions";
 
 const python = readFileSync(fileURLToPath(new URL("../../../server/rag/draft.py", import.meta.url)), "utf8");
 const strings = (block: string) => [...block.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse(`"${m[1]}"`) as string);
@@ -59,4 +59,18 @@ it("모델이 고른 번호는 같은 선례 조합에서만 보이고, 응답 �
   expect(pickedFor(null, "24V412000")).toEqual([]);
   expect(pickedQuestions(["P1", "P1", "P2", "P3", "P4"]).map((q) => q.id)).toEqual(["P1", "P2", "P3"]); // 상한 3
   expect(pickedQuestions([1 as never, null as never, "P4"]).map((q) => q.id)).toEqual(["P4"]); // 문자열이 아닌 항목은 쓰지 않는다
+});
+it("선례 체크를 바꾸면 모델이 고른 질문은 항상 걷히고, 같은 조합으로 돌아와도 되살아나지 않는다", () => {
+  const a = { campno: "24V412000" } as never;
+  const b = { campno: "24V422000" } as never;
+  const picked = { key: "24V412000", ids: ["P5", "P7"] };
+  const on = toggleChecked({ checked: [], picked: null }, a); // A 체크
+  expect(on.checked).toEqual([a]);
+  expect(pickedFor(picked, "24V412000")).toEqual(["P5", "P7"]); // A만 체크한 상태에서 묶기를 눌러 고른 질문
+  const off = toggleChecked({ checked: on.checked, picked }, a); // A 해제
+  expect(off).toEqual({ checked: [], picked: null });
+  const again = toggleChecked({ checked: off.checked, picked: off.picked }, a); // A 다시 체크 — 같은 조합
+  expect(again.checked).toEqual([a]);
+  expect(pickedFor(again.picked, "24V412000")).toEqual([]); // 되살아나지 않는다
+  expect(toggleChecked({ checked: [a], picked }, b).picked).toBeNull(); // 다른 선례를 더해도 걷힌다
 });
