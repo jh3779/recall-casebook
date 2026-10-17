@@ -45,7 +45,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
     const name = normalizeCaseName(caseInput);
     setCaseInput(name);
     if (name === caseName) return;
-    if (losesNotesOnSwitch(caseName, notes, saveFailed, !!storage) && !confirm("Notes that are not saved in this browser will be lost if you switch cases. Switch anyway?")) { setCaseInput(caseName); return; }
+    if (losesNotesOnSwitch(caseName, notes, saveFailed, !!storage) && !confirm("Notes and D4 text that are not saved in this browser will be lost if you switch cases. Switch anyway?")) { setCaseInput(caseName); return; }
     setCaseName(name);
     // 이름 없이 적은 메모만 첫 사건 이름으로 옮긴다 — 다른 사건 이름이 붙어 있던 메모가 새 사건에 섞이지 않게
     const next = name ? adoptNotes(storage, name, caseName ? {} : notes) : { notes: {}, saved: true, failed: [] as string[] };
@@ -55,7 +55,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
   async function run() {
     const value = question.trim();
     if (!value || !/[A-Za-z]/.test(value) || value.length > 4000) return;
-    if (!caseName && unsaved && !confirm("Notes without a case name will be discarded when you search again. Continue?")) return;
+    if (!caseName && unsaved && !confirm("Notes and D4 text without a case name will be discarded when you search again. Continue?")) return;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;

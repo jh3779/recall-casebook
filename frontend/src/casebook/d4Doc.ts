@@ -2,6 +2,9 @@ import { APPENDIX_KEY, appendixParagraphs, composeDocument, evidenceFooter, STEP
 import { evidenceBlock } from "../eightd/evidenceText";
 import type { Card, ProvenanceData } from "../search/types";
 
+/** `composeDocument`가 맨 앞에 붙이는 SUBJECT 줄 — D4 복사문에는 필요 없다(빈 subject일 때의 모양) */
+const SUBJECT_HEADER = "8D REPORT\nSUBJECT: \n\n";
+
 /**
  * D4 엔지니어 작성 칸(DEC-069). 메모와 같은 저장 장치를 쓰되 리콜 번호와 겹치지 않게 `@d4:` 접두어 키로 둔다 —
  * 그래서 메모와 똑같이 이 브라우저에만 저장되고(사건 이름이 있을 때) 서버·LLM에는 가지 않는다.
@@ -26,8 +29,8 @@ export interface D4Export {
   hasContent: boolean;
 }
 
-/** 체크한 선례의 원인 원문을 부록으로 — 원인 글이 없는 선례는 없는 말을 채우지 않고 건너뛴다(AGENTS.md 서비스 원칙 3) */
-export function d4Export({ values, cards, includeAppendix, subject, prov }: { values: D4Values; cards: readonly Card[]; includeAppendix: boolean; subject: string; prov: Pick<ProvenanceData, "build_id" | "snapshot_date"> | null }): D4Export {
+/** 체크한 선례의 원인 원문을 부록으로 — 원인 글이 없는 선례는 없는 말을 채우지 않고 건너뛴다(AGENTS.md 서비스 원칙 3). SUBJECT는 다루지 않는다 — 검색 문장을 양식의 SUBJECT 칸에 말없이 넣지 않는다 */
+export function d4Export({ values, cards, includeAppendix, prov }: { values: D4Values; cards: readonly Card[]; includeAppendix: boolean; prov: Pick<ProvenanceData, "build_id" | "snapshot_date"> | null }): D4Export {
   const step = STEPS.find((s) => s.n === 4)!;
   const own = { d4_escape: values.escape, d4_root: values.root };
   const pairs = includeAppendix ? cards.map((c) => [c.campno, evidenceBlock("4", c)] as const) : [];
@@ -41,9 +44,16 @@ export function d4Export({ values, cards, includeAppendix, subject, prov }: { va
     steps: paras.length ? { 4: paras } : {},
     appendix,
     footer: withAppendix && prov ? evidenceFooter(prov) : null,
-    text: composeDocument({ subject, values: { ...own, [APPENDIX_KEY]: appendixText }, withEvidence: withAppendix, prov, only: new Set([4]) }),
+    text: composeDocument({ subject: "", values: { ...own, [APPENDIX_KEY]: appendixText }, withEvidence: withAppendix, prov, only: new Set([4]) }).replace(SUBJECT_HEADER, ""),
     appendixCount: blocks.length,
     skipped,
     hasContent: paras.length > 0 || withAppendix,
   };
+}
+
+/** 내려받은 뒤의 안내 — 실제로 칸에 들어갔는지(`filled`)와 부록이 표 뒤에 놓였는지(`appendixPlaced`)를 patchDocx 결과 그대로 말한다. 못 넣은 것을 넣었다고 하지 않는다 */
+export function exportMessage(r: { filled: readonly number[]; missing: readonly number[]; ambiguous: readonly number[]; appendixPlaced: boolean | null }, name: string, appendixCount: number): string {
+  const appendix = !appendixCount ? "not added" : r.appendixPlaced ? `${appendixCount} precedent(s) placed after the 8D table` : "could not be placed (no table found in the file) — the file has no appendix, use Copy and paste it yourself";
+  const notFilled = r.missing.includes(4) ? " The D4 cell was not found in the file, so your D4 text was not inserted — pick the cell above or use Copy." : r.ambiguous.includes(4) ? " Several cells match D4 — pick the cell above; your D4 text was not inserted." : "";
+  return `Downloaded ${name}. D4 text ${r.filled.includes(4) ? "inserted" : "not inserted"}; appendix ${appendix}. The SUBJECT cell is left as it was.${notFilled}`;
 }

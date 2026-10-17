@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { DocxError, inspectDocx, patchDocx, type Inspection, type Place } from "../eightd/docxPatch";
 import type { Card, SearchResponse } from "../search/types";
-import { d4Export, D4_KEYS, d4Values } from "./d4Doc";
+import { d4Export, D4_KEYS, d4Values, exportMessage } from "./d4Doc";
 import { d4Questions } from "./questions";
 
 const keyOf = (p: Place) => `${p.table}.${p.row}.${p.col}`;
@@ -23,8 +23,7 @@ export function D4Panel({ cards, response, notes, onChange }: { cards: readonly 
   const [chosen, setChosen] = useState<Place | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const subject = response.question;
-  const out = d4Export({ values, cards, includeAppendix: appendix, subject, prov: response });
+  const out = d4Export({ values, cards, includeAppendix: appendix, prov: response });
   const questions = d4Questions(cards);
   const auto = docx?.view.matches[4] ?? [];
   const place = chosen ?? (auto.length === 1 ? auto[0] : null);
@@ -40,11 +39,10 @@ export function D4Panel({ cards, response, notes, onChange }: { cards: readonly 
     if (!docx) return;
     setBusy(true); setMessage("");
     try {
-      const r = await patchDocx(docx.file, { subject, steps: out.steps, footer: out.footer, cells: place ? { 4: place } : undefined, appendix: out.appendix });
+      const r = await patchDocx(docx.file, { subject: "", steps: out.steps, footer: out.footer, cells: place ? { 4: place } : undefined, appendix: out.appendix });
       const name = `${docx.file.name.replace(/\.docx$/i, "")}_D4.docx`;
       download(r.blob, name);
-      const notFilled = r.missing.includes(4) ? " The D4 cell was not found in the file, so your D4 text was not inserted — pick the cell above or use Copy." : r.ambiguous.includes(4) ? " Several cells match D4 — pick the cell above; your D4 text was not inserted." : "";
-      setMessage(`Downloaded ${name}. D4 text ${r.filled.includes(4) ? "inserted" : "not inserted"}; appendix ${out.appendixCount ? `${out.appendixCount} precedent(s) placed after the 8D table` : "not added"}.${notFilled}`);
+      setMessage(exportMessage(r, name, out.appendixCount));
     } catch (e) { setMessage(e instanceof DocxError ? e.message : "Could not make the file."); }
     finally { setBusy(false); }
   }
@@ -59,7 +57,7 @@ export function D4Panel({ cards, response, notes, onChange }: { cards: readonly 
 
   return <section className="cb-d4" aria-label="D4 — your cause analysis">
     <h2>D4 · Your cause analysis <span className="cb-tag">you write this — the tool never fills or suggests it</span></h2>
-    <p className="cb-muted">The cause texts above are what other manufacturers wrote about their own recalls. They are not the cause of your case. Write your own Escape Cause and Root Cause here. Your text is saved like the notes (in this browser, under the case name) and is never sent to the server or an LLM.</p>
+    <p className="cb-muted">The cause texts above are what other manufacturers wrote about their own recalls. They are not the cause of your case. Write your own Escape Cause and Root Cause here. Your text is saved like the notes (in this browser, under the case name; without a case name it stays only in this tab and is lost on a new search or reload) and is never sent to the server or an LLM.</p>
 
     <div className="cb-d4-grid">
       <div>
