@@ -140,6 +140,24 @@ describe("걷어내기: 카메라", () => {
     const size = hotspot.box.getSize(new Vector3()).length();
     expect(camera.position.distanceTo(point)).toBeCloseTo(Math.max(6.8, size * 2.2) * scale, 6);
   });
+  it("층을 이동이 끝나기 전에 연달아 바꿔도 최종 카메라 거리는 원래 거리 × 최종 배율이고, 되돌리면 원래 거리다", () => {
+    const { showroom, camera, controls, tick } = fixture(false);
+    const base = offset(camera, controls).length();
+    for (const level of [1, 2, 3, 4]) showroom.setPeel(level); // 카메라가 움직이기 전에 연속 호출(슬라이더를 쭉 끄는 경우)
+    tick(1000 + 1200);
+    expect(offset(camera, controls).length()).toBeCloseTo(base * peelFraming(4).scale, 6);
+    for (const level of [3, 2, 1, 0]) showroom.setPeel(level);
+    tick(1000 + 1200);
+    expect(offset(camera, controls).length()).toBeCloseTo(base, 6);
+  });
+  it("걷어낸 상태에서 분류를 고른 뒤 되돌려도 거리가 어긋나지 않는다(분류 경로의 배율 기록)", () => {
+    const { showroom, camera, controls } = fixture();
+    showroom.setPeel(3);
+    showroom.focus("steering");
+    const focused = offset(camera, controls).length();
+    showroom.setPeel(0);
+    expect(offset(camera, controls).length()).toBeCloseTo(focused / peelFraming(3).scale, 6);
+  });
   it("분류 없이 처음 시점으로 돌아갈 때도 걷어낸 정도의 거리·높이를 쓴다", () => {
     const { showroom, camera, controls } = fixture();
     showroom.setPeel(2);

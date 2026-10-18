@@ -266,8 +266,10 @@ export class Showroom {
     const { scale, lift } = peelFraming(this.peelTo);
     const lookAt = HOME.target.clone().setY(HOME.target.y + lift);
     if (keepDirection) {
-      const offset = this.camera.position.clone().sub(this.controls.target);
-      const dist = (offset.length() * scale) / this.aimScale; // 지금 거리는 직전 scale 기준이다
+      // 날아가는 중이면 지금 카메라가 아니라 그 이동의 목표를 기준으로 삼는다 — 층을 연달아 바꿔도 거리가 어긋나 쌓이지 않는다
+      const { fly } = this;
+      const offset = (fly ? fly.p1.clone().sub(fly.t1) : this.camera.position.clone().sub(this.controls.target));
+      const dist = (offset.length() * scale) / this.aimScale; // 기준 거리는 직전 scale로 만든 것이다
       this.aimScale = scale;
       this.flyTo(lookAt.clone().addScaledVector(offset.normalize(), dist), lookAt);
       return;
