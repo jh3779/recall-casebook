@@ -49,7 +49,13 @@ function fixture(reducedMotion = true) {
     return { name, bone, rest: bone.position.clone(), toLocal: new Quaternion(), scale: 1 };
   });
   const hotspot = { point: new Vector3(0.5, 1.1, -0.4), box: new Box3(new Vector3(0, 0.8, -0.8), new Vector3(1, 1.4, 0)), bone: "steeringwheel_053" };
-  Object.assign(showroom, { current: { meshes: [], hotspots: { steering: hotspot }, rig: bones } });
+  const markerDefs = [
+    { id: "steering:Steering wheel", label: "Steering wheel", estimated: false, point: new Vector3(0.5, 1.1, -0.4), bone: "steeringwheel_053" },
+    { id: "steering:Steering rack", label: "Steering rack", estimated: true, point: new Vector3(1.4, 0.45, 0) },
+  ];
+  Object.assign(showroom, {
+    current: { meshes: [], hotspots: { steering: hotspot }, rig: bones, markers: { steering: markerDefs }, markerIndex: new Map(markerDefs.map((m) => [m.id, m])) },
+  });
   const { camera, controls } = showroom as unknown as { camera: PerspectiveCamera; controls: OrbitControls };
   return { showroom, camera, controls, bones, hotspot, tick: (now: number) => frame(now) };
 }
@@ -170,6 +176,20 @@ describe("걷어내기: 카메라", () => {
     showroom.setPeel(0);
     expect(offset(camera, controls).length()).toBeCloseTo(focused / peelFraming(3).scale, 6);
   });
+  it("안내 보기의 확대(close)는 부품 가까이 가고 걷어낸 배율을 곱하지 않으며, 일반 확대보다 가깝다", () => {
+    const { showroom, camera, hotspot } = fixture();
+    showroom.setPeel(4);
+    const point = hotspot.point.clone().add(new Vector3(...peelShift("steeringwheel_053", 4)));
+    const size = hotspot.box.getSize(new Vector3()).length();
+    showroom.focus("steering");
+    const normal = camera.position.distanceTo(point);
+    showroom.focus("steering", true);
+    const close = camera.position.distanceTo(point);
+    expect(close).toBeCloseTo(Math.max(3.6, size * 1.3), 6);
+    expect(close).toBeLessThan(normal);
+    showroom.setPeel(0); // 되돌리면 같은 비율로 가까워진 거리를 유지한다
+    expect(Number.isFinite(camera.position.length())).toBe(true);
+  });
   it("분류 없이 처음 시점으로 돌아갈 때도 걷어낸 정도의 거리·높이를 쓴다", () => {
     const { showroom, camera, controls } = fixture();
     showroom.setPeel(2);
@@ -277,11 +297,90 @@ describe("걷어내기: 기본 모드(모션 감소 꺼짐)의 보간과 취소"
     controls.dispatchEvent({ type: "start" } as never); // 첫 조작: 이동 취소, 마저 맞추기 시작
     tick(1000 + 160);
     controls.dispatchEvent({ type: "start" } as never); // 두 번째 조작(휠 확대): 사용자가 직접 거리를 정하는 중
-    expect(state(showroom).settle).toBeNull();
+    expect((state(showroom).settle as { dist: number | null } | null)?.dist ?? null).toBeNull(); // 거리는 맞추지 않는다(시선만 마저 맞춘다)
     const zoomed = offset(camera, controls).multiplyScalar(0.6);
     camera.position.copy(controls.target).add(zoomed);
     const want = zoomed.length();
     for (let i = 1; i <= 80; i++) tick(1000 + 160 + i * 50);
     expect(offset(camera, controls).length()).toBeCloseTo(want, 6);
+  });
+});
+
+describe("걷어내기: 첫 조작이 휠일 때", () => {
+  const state = (s: Showroom) => s as unknown as { wheelNext: boolean; settle: { dist: number | null } | null };
+  it("무대에 휠 이벤트가 오면 곧 오는 조작이 휠임을 기록한다", () => {
+    const { showroom, controls } = fixture(false);
+    const dom = (controls as unknown as { domElement: EventTarget }).domElement;
+    controls.enabled = false; // 이 시험은 기록만 본다 — OrbitControls의 휠 처리는 건너뛴다
+    expect(state(showroom).wheelNext).toBe(false);
+    dom.dispatchEvent(new Event("wheel"));
+    expect(state(showroom).wheelNext).toBe(true);
+  });
+  it("이동 중 첫 조작이 휠이면 거리는 사용자가 정한 대로 두고 시선(걷어낸 높이)만 마저 맞춘다", () => {
+    const { showroom, camera, controls, tick } = fixture(false);
+    showroom.setPeel(4);
+    tick(1000 + 110);
+    state(showroom).wheelNext = true; // 휠 이벤트가 먼저 와서 기록된 상태
+    controls.dispatchEvent({ type: "start" } as never);
+    expect(state(showroom).wheelNext).toBe(false); // 조작 하나에 한 번만 쓴다
+    expect(state(showroom).settle?.dist).toBeNull();
+    const zoomed = offset(camera, controls).multiplyScalar(0.6);
+    camera.position.copy(controls.target).add(zoomed);
+    const want = zoomed.length();
+    for (let i = 1; i <= 80; i++) tick(1000 + 110 + i * 50);
+    expect(offset(camera, controls).length()).toBeCloseTo(want, 6); // 확대가 되돌려지지 않는다
+    expect(controls.target.y).toBeCloseTo(HOME_TARGET.y + peelFraming(4).lift, 2); // 시선은 목표까지 올라간다
+    expect(state(showroom).settle).toBeNull();
+  });
+  it("이동 중 첫 조작이 방향 돌리기이면 거리·시선을 모두 목표까지 맞춘다(휠이 아닐 때의 기존 동작)", () => {
+    const { showroom, camera, controls, tick } = fixture(false);
+    const base = offset(camera, controls).length();
+    showroom.setPeel(4);
+    tick(1000 + 110);
+    controls.dispatchEvent({ type: "start" } as never);
+    expect(state(showroom).settle?.dist).not.toBeNull();
+    for (let i = 1; i <= 80; i++) tick(1000 + 110 + i * 50);
+    expect(offset(camera, controls).length()).toBeCloseTo(base * peelFraming(4).scale, 2);
+  });
+});
+
+describe("걷어내기: 부품 이름 마커", () => {
+  const el = () => ({ style: { top: "", left: "" }, toggleAttribute() {} }) as unknown as HTMLElement;
+  it("분류의 마커 목록(id·이름·추정 여부)을 돌려주고, 분류가 없으면 빈 목록이다", () => {
+    const { showroom } = fixture();
+    expect(showroom.markersOf("steering")).toEqual([
+      { id: "steering:Steering wheel", label: "Steering wheel", estimated: false },
+      { id: "steering:Steering rack", label: "Steering rack", estimated: true },
+    ]);
+    expect(showroom.markersOf(null)).toEqual([]);
+    expect(showroom.markersOf("brakes")).toEqual([]);
+  });
+  it("등록한 마커 요소의 화면 좌표를 매 프레임 갱신하고, 걷어낸 부품의 마커는 뼈대를 따라가며, 설명용 도형의 마커는 움직이지 않는다", () => {
+    const { showroom, camera, controls, tick } = fixture(false);
+    const wheel = el(), rack = el();
+    showroom.bindMarker("steering:Steering wheel", wheel);
+    showroom.bindMarker("steering:Steering rack", rack);
+    const pose = { position: camera.position.clone(), target: controls.target.clone() };
+    const topOf = (e: HTMLElement, now: number) => {
+      (showroom as unknown as { fly: unknown }).fly = null; // 카메라 이동은 빼고 마커의 이동량만 비교한다
+      camera.position.copy(pose.position);
+      controls.target.copy(pose.target);
+      tick(now);
+      return parseFloat(e.style.top);
+    };
+    const wheel0 = topOf(wheel, 1000), rack0 = topOf(rack, 1010);
+    expect(Number.isFinite(wheel0)).toBe(true);
+    showroom.setPeel(4); // 핸들은 4층에서 올라간다
+    const wheel4 = topOf(wheel, 1000 + 800), rack4 = topOf(rack, 1000 + 810);
+    expect(wheel4).toBeLessThan(wheel0);
+    expect(rack4).toBeCloseTo(rack0, 6);
+  });
+  it("등록을 해제한 마커 요소는 더 이상 갱신하지 않는다", () => {
+    const { showroom, tick } = fixture();
+    const e = el();
+    showroom.bindMarker("steering:Steering wheel", e);
+    showroom.bindMarker("steering:Steering wheel", null);
+    tick(1000);
+    expect(e.style.top).toBe("");
   });
 });

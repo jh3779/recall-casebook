@@ -105,6 +105,20 @@
 .cb-3d-chips button, .cb-3d-mode button { font: inherit; font-size: 12.5px; padding: 5px 11px; border-radius: 999px; border: 1.5px solid var(--cb-blue); background: #fff; color: var(--cb-blue); cursor: pointer; }
 .cb-3d-chips button.on, .cb-3d-mode button.on { background: var(--cb-blue); color: #fff; }
 .cb-3d-chips button:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--cb-sand); }
+.cb-3d-guide { display: grid; gap: 8px; padding: 10px 12px; border: 1.5px solid var(--cb-blue); background: var(--cb-light); }
+.cb-3d-guide h3 { font-size: 13.5px; color: var(--cb-blue); }
+.cb-3d-guide h3 small { font-weight: 400; color: var(--cb-ink-2); margin-left: 6px; }
+.cb-3d-guide > button, .cb-3d-guide .cb-3d-layer-btns button { font: inherit; font-size: 12.5px; padding: 5px 11px; border-radius: 999px; border: 1.5px solid var(--cb-blue); background: #fff; color: var(--cb-blue); cursor: pointer; }
+.cb-3d-guide button:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--cb-sand); }
+.cb-3d-guide button[aria-pressed="true"] { background: var(--cb-blue); color: #fff; }
+.cb-3d-steps { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--cb-ink-2); }
+.cb-3d-steps li[aria-current="step"] { color: var(--cb-blue); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.cb-3d-guide p { margin: 0; font-size: 12.5px; }
+.cb-3d-parts { display: grid; gap: 6px; border-top: 1px solid var(--cb-sand); padding-top: 8px; }
+.cb-3d-parts h4 { font-size: 12.5px; color: var(--cb-blue); margin: 0; }
+.cb-3d-parts ol, .cb-3d-parts ul { margin: 0; padding-left: 20px; font-size: 12.5px; }
+.cb-3d-marker { position: absolute; z-index: 2; transform: translate(-50%, -50%); width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--cb-blue); color: #fff; font-size: 12px; font-weight: 700; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); pointer-events: none; }
+.cb-3d-marker[data-behind] { opacity: 0.35; }
 .cb-3d-layers { display: grid; gap: 6px; }
 .cb-3d-layers label { font-size: 12.5px; color: var(--cb-ink-2); }
 .cb-3d-layers label b { color: var(--cb-blue); }
