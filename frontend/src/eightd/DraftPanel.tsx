@@ -6,8 +6,8 @@ import { DraftResult } from "./DraftResult";
 
 const MAX_CARDS = 6; // 서버가 한 번에 받는 선례 수
 
-/** D2·D4의 "선례 근거 묶음 초안" — 담은 선례 원문을 LLM이 묶고 제목을 붙이게 한다(DEC-065). 누르기 전에는 아무것도 부르지 않는다 */
-export function DraftPanel({ step, question, build, cards, inserted, appendix = false, onToggle }: { step: DraftStep; question: string; build: { build_id: string; bundle_sha256: string | null }; cards: readonly Card[]; inserted: Record<string, string>; appendix?: boolean; onToggle: (id: string, block: string) => void }) {
+/** D4의 "선례 근거 묶음 초안" — 담은 선례 원문을 LLM이 묶고 제목을 붙이게 한다(DEC-065). 누르기 전에는 아무것도 부르지 않는다. 화면은 D4(`d4`)만 부른다(DEC-076) — 서버 `/draft`의 `d2` 단계는 그대로이고 이 컴포넌트도 단계를 받는다 */
+export function DraftPanel({ step, question, build, cards, inserted, onToggle }: { step: DraftStep; question: string; build: { build_id: string; bundle_sha256: string | null }; cards: readonly Card[]; inserted: Record<string, string>; onToggle: (id: string, block: string) => void }) {
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [result, setResult] = useState<DraftResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -39,6 +39,6 @@ export function DraftPanel({ step, question, build, cards, inserted, appendix = 
     <p className="note">담은 선례 {used.length}건의 {step === "d2" ? "결함·결과" : "원인"} 원문을 비슷한 것끼리 묶습니다. 묶음에 넣는 인용은 그 출처의 전체 원문 글자입니다. 같다·다르다를 판정하지 않으며 자사 원인을 쓰지 않습니다.{cards.length > MAX_CARDS ? ` 담은 선례가 ${cards.length}건이라 앞 ${MAX_CARDS}건만 보냅니다.` : ""}</p>
     {state === "loading" && <p className="note" role="status">묶는 중입니다…</p>}
     {state === "error" && error && <p className="ed-err" role="alert">{error.message}</p>}
-    {state === "done" && result && <DraftResult result={result} cards={cards} inserted={inserted} appendix={appendix} onToggle={onToggle} />}
+    {state === "done" && result && <DraftResult result={result} cards={cards} inserted={inserted} onToggle={onToggle} />}
   </div>;
 }

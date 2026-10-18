@@ -22,11 +22,11 @@ it("묶음은 중립 번호와 원문 인용만 보이고 도구가 붙인 제�
   expect(markup).toContain(card.maker);
   expect(markup).toContain(`말한 주체: ${card.source.speaker}`);
 });
-it("묶음과 확인 질문에 본문에 넣기 버튼이 있고 넣은 것은 누른 상태로 보인다", () => {
-  expect(render(base)).toContain("이 묶음을 본문에 넣기");
-  expect(render(base)).toContain("확인 질문을 본문에 넣기");
+it("묶음과 확인 질문에 D4 본문·부록에 넣기 버튼이 있고 넣은 것은 누른 상태로 보인다", () => {
+  expect(render(base)).toContain("이 묶음을 D4 본문·부록에 넣기");
+  expect(render(base)).toContain("확인 질문을 D4 본문·부록에 넣기");
   const on = render(base, { [groupId(base.groups[0])]: "x", "draft:q": questionsBlock(base.questions) });
-  expect(on.match(/본문에 넣음 ✓ \(다시 누르면 뺌\)/g)).toHaveLength(2);
+  expect(on.match(/D4 본문·부록에 넣음 ✓ \(다시 누르면 뺌\)/g)).toHaveLength(2);
   expect(on).toContain('aria-pressed="true"');
 });
 it("꺼짐·실패는 묶음 없이 원문 카드를 쓰라고 알린다", () => {

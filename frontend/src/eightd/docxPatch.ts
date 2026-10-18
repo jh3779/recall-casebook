@@ -107,7 +107,7 @@ function cellEdit(xml: string, cell: Cell, paras: ParaSpec[]): Edit {
   const tmplXml = tmpl ? xml.slice(tmpl.start, tmpl.end) : "";
   const pPr = /<w:pPr>[\s\S]*?<\/w:pPr>/.exec(tmplXml)?.[0] ?? "";
   const rPr = plain(lastRPr(tmplXml));
-  const insert = paras.map((p) => `<w:p>${pPr}${p.prefix ? run(p.prefix, bold(rPr)) : ""}${p.text ? run(p.text, rPr) : ""}</w:p>`).join("");
+  const insert = paras.map((p) => `<w:p>${pPr}${p.prefix ? run(p.prefix, bold(rPr)) : ""}${p.text ? run(p.text, p.bold ? bold(rPr) : rPr) : ""}</w:p>`).join(""); // bold: D4 칸 안의 "[선례 근거 — 타사 공개 원문…]" 제목 줄(DEC-076)
   return !cell.text && tmpl && isEmptyParagraph(tmplXml) ? { at: tmpl.start, remove: tmpl.end - tmpl.start, insert } : { at: cell.close, remove: 0, insert };
 }
 
