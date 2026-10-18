@@ -10,7 +10,7 @@ export function Loader({ text, active, failed }: LoaderState) {
     <div className="loader" role={failed ? "alert" : "status"}>
       {!failed && <div className="loader-ring" />}
       <div className="loader-text">{text}</div>
-      {failed && <button className="search-category" onClick={() => { location.hash = "search"; }}>검색 화면으로</button>}
+      {failed && <button className="search-category" onClick={() => { location.hash = "casebook"; }}>케이스북으로</button>}
     </div>
   );
 }
