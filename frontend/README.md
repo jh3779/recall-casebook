@@ -1,6 +1,6 @@
 # frontend — 결함 선례 찾기
 
-영어 결함 서술을 공개 검색 API로 보내 고객사 선례·다른 회사 선례와 원문·출처를 보여 준다. 설계 정본은 [`docs/design-system/`](../docs/design-system/README.md) v1.0이다. 상단에서 검색(`#search`, 기본)과 3D 쇼룸(`#showroom`)을 전환한다.
+영어 결함 서술을 공개 검색 API로 보내 고객사 선례·다른 회사 선례와 원문·출처를 보여 준다. 설계 정본은 [`docs/design-system/`](../docs/design-system/README.md) v1.0이다. 주소에 해시가 없으면 랜딩이 뜨고(DEC-074), 케이스북(`#casebook`)이 검색 화면이다. 상단에서 케이스북과 3D 쇼룸(`#showroom`)을 전환하고 8D 작성은 `#8d`다. 옛 `#search`는 케이스북으로 간다(DEC-075).
 
 ## 실행
 

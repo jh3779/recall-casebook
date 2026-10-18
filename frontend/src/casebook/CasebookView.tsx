@@ -1,13 +1,17 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { search } from "../api";
 import type { Card, HealthState, SearchResponse } from "../search/types";
+import { adoptDraft } from "./adoptDraft";
 import { CaseDetail } from "./CaseDetail";
 import { CaseList } from "./CaseList";
 import { D4Panel } from "./D4Panel";
 import { errorText } from "./errors";
 import { GroupPanel } from "./GroupPanel";
+import { Intro } from "./Intro";
 import { NotesPanel } from "./NotesPanel";
 import { OverlayBoundary, OverlayLoading } from "./OverlayBoundary";
+import { Provenance } from "./Provenance";
+import { Write8dBar } from "./Write8dBar";
 import { pickedFor, toggleChecked } from "./questions";
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
@@ -17,8 +21,13 @@ const ModelOverlay = lazy(() => import("./ModelOverlay")); // three.js는 3D 창
  * Recall Casebook. for Engineer (DEC-067) — 선례를 체크하면 원인 원문이 근거로 쌓이고, 선례별 메모와 원인 묶기를 오른쪽에 둔다.
  * 판정하지 않는다: 같다·다르다·해당한다를 표시하지 않고 자사 원인을 제안하지 않는다. 메모는 서버·LLM으로 보내지 않는다.
  */
-export default function CasebookView({ health }: { health: HealthState }) {
-  const [question, setQuestion] = useState("");
+export default function CasebookView({ health, draft = null, onWrite8d }: { health: HealthState; draft?: { question: string; key: number } | null; onWrite8d?: (cards: readonly Card[], response: SearchResponse | null, fresh?: { question: string }) => void }) {
+  const [question, setQuestion] = useState(draft?.question ?? "");
+  const [draftKey, setDraftKey] = useState(draft?.key ?? 0);
+  const adopted = adoptDraft(draftKey, draft, question);
+  if (adopted.key !== draftKey) { setDraftKey(adopted.key); setQuestion(adopted.question); } // 3D 쇼룸에서 넘어온 질문을 입력창에 채운다(자동으로 검색하지는 않는다)
+  const questionInput = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (draft) questionInput.current?.focus(); }, [draft]);
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [response, setResponse] = useState<SearchResponse | null>(null);
   const [checked, setChecked] = useState<Card[]>([]);
@@ -67,8 +76,9 @@ export default function CasebookView({ health }: { health: HealthState }) {
     const next = toggleChecked({ checked, picked }, card);
     setChecked(next.checked); setPicked(next.picked);
   }
-  async function run() {
-    const value = question.trim();
+  async function run(example?: string) { // example: 예시 질문 버튼 — 입력창에도 채우고 바로 검색한다
+    const value = (example ?? question).trim();
+    if (example !== undefined) setQuestion(example);
     if (!value || !/[A-Za-z]/.test(value) || value.length > 4000) return;
     if (!caseName && unsaved && !confirm("Notes and D4 text without a case name will be discarded when you search again. Continue?")) return;
     request.current?.abort();
@@ -119,12 +129,13 @@ export default function CasebookView({ health }: { health: HealthState }) {
 
     <form className="cb-search" onSubmit={(e) => { e.preventDefault(); void run(); }}>
       <label htmlFor="cb-question" className="sr-only">Defect description in English</label>
-      <input id="cb-question" lang="en" value={question} maxLength={4000} onChange={(e) => setQuestion(e.target.value)} placeholder="Describe the defect in English — e.g. brake fluid leaking from front caliper" aria-invalid={noEnglish} />
+      <input id="cb-question" ref={questionInput} lang="en" value={question} maxLength={4000} onChange={(e) => setQuestion(e.target.value)} placeholder="Describe the defect in English — e.g. brake fluid leaking from front caliper" aria-invalid={noEnglish} />
       <button type="submit" className="cb-btn" disabled={state === "loading" || !question.trim() || noEnglish}>{state === "loading" ? "Searching…" : "Find precedents"}</button>
       <span className={`cb-muted${noEnglish ? " warn" : ""}`} aria-live="polite">{noEnglish ? "Needs English words." : "English questions only. NHTSA public recalls and Part 573 reports."}</span>
+      {onWrite8d && <button type="button" className="cb-link cb-write-plain" onClick={() => onWrite8d([], response, { question })}>Write 8D without precedents →</button>}
     </form>
     {state === "error" && <p className="cb-error" role="alert">{error} <button type="button" className="cb-link" onClick={() => void run()}>Retry</button></p>}
-    {state === "idle" && <p className="cb-empty">Describe a defect to see precedents from other manufacturers, with the cause text each one wrote and who said it.</p>}
+    {state === "idle" && <><p className="cb-empty">Describe a defect to see precedents from other manufacturers, with the cause text each one wrote and who said it.</p><Intro health={health} onExample={(q) => void run(q)} /></>}
     {state === "loading" && <p className="cb-empty" role="status">Searching…</p>}
 
     {state === "done" && response && <>
@@ -132,6 +143,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
       <CaseList response={response} checked={checked} onToggle={togglePicked} />
       <section className="cb-stack" aria-label="Checked precedents">
         <h2 className="sr-only">Checked precedents</h2>
+        {onWrite8d && <Write8dBar checked={checked} response={response} onWrite8d={onWrite8d} />}
         {!checked.length && <p className="cb-empty">Check precedents on the left. Each one stacks here with its original wording, who said it, and the report it came from.</p>}
         {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => togglePicked(card)} on3d={(button) => setView3d({ card, opener: button })} />)}
       </section>
@@ -141,6 +153,7 @@ export default function CasebookView({ health }: { health: HealthState }) {
       </div>
     </div>
     <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} picked={pickedFor(picked, checkedKey)} />
+    <Provenance data={response} />
     </>}
     {view3d && <OverlayBoundary onClose={() => setView3d(null)} opener={view3d.opener}><Suspense fallback={<OverlayLoading onClose={() => setView3d(null)} opener={view3d.opener} />}><ModelOverlay card={view3d.card} opener={view3d.opener} onClose={() => setView3d(null)} /></Suspense></OverlayBoundary>}
   </main>;

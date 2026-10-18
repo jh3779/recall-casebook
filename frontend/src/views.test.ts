@@ -10,13 +10,13 @@ describe("viewOfHash", () => {
     expect(viewOfHash("#casebook")).toBe("casebook");
     expect(viewOfHash("#8d")).toBe("8d");
     expect(viewOfHash("#showroom")).toBe("showroom");
-    expect(viewOfHash("#search")).toBe("search");
   });
   it("화면으로 정한 해시는 다시 그 화면으로 읽힌다(왕복)", () => {
-    for (const view of ["landing", "search", "showroom", "8d", "casebook"] as View[]) expect(viewOfHash(`#${hashOfView(view)}`)).toBe(view); // location.hash = x 뒤에 읽으면 "#x"다
+    for (const view of ["landing", "showroom", "8d", "casebook"] as View[]) expect(viewOfHash(`#${hashOfView(view)}`)).toBe(view); // location.hash = x 뒤에 읽으면 "#x"다
   });
-  it("모르는 해시는 예전처럼 검색 화면이다", () => {
-    expect(viewOfHash("#landing")).toBe("search");
-    expect(viewOfHash("#foo")).toBe("search");
+  it("옛 #search와 모르는 해시는 케이스북이다(선례 검색 화면을 케이스북에 합쳤다, DEC-075)", () => {
+    expect(viewOfHash("#search")).toBe("casebook");
+    expect(viewOfHash("#landing")).toBe("casebook");
+    expect(viewOfHash("#foo")).toBe("casebook");
   });
 });
