@@ -83,6 +83,7 @@ export class Showroom {
   private readonly entries = new Map<ModelKey, Entry>();
   private readonly hotspotEls = new Map<CategoryKey, HTMLElement>();
   private readonly v = new THREE.Vector3();
+  private readonly tmp = new THREE.Vector3();
   private current: Entry | null = null;
   private look: { mode: Mode; category: CategoryKey | null; activeCats: ReadonlySet<CategoryKey> } = {
     mode: "exterior",
@@ -91,6 +92,7 @@ export class Showroom {
   };
   private fly: { p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number; ms: number } | null = null;
   private focusCat: CategoryKey | null = null;
+  private aimScale = 1; // 지금 카메라 거리에 들어 있는 걷어내기 확대 배율
   private peelNow = 0;
   private peelTo = 0;
   private peelAnim: { from: number; to: number; start: number; ms: number } | null = null;
@@ -256,30 +258,34 @@ export class Showroom {
     this.aim(false);
   }
 
-  /** 걷어낸 정도(peelTo)에 맞춰 카메라 위치·시선을 정한다. keepDirection이면 지금 보는 방향을 유지하고 거리·높이만 바꾼다 */
+  /**
+   * 걷어낸 정도(peelTo)에 맞춰 카메라 위치·시선을 정한다. 시선은 차량 중앙 축(걷어낸 만큼 위로)이고 카메라는 그만큼 뒤로 빠진다(거리 × scale).
+   * keepDirection이면 지금 보는 방향을 유지하고 거리·높이만 바꾼다(분류를 고른 상태에서 층을 바꿀 때 포함).
+   */
   private aim(keepDirection: boolean) {
     const { scale, lift } = peelFraming(this.peelTo);
     const lookAt = HOME.target.clone().setY(HOME.target.y + lift);
+    if (keepDirection) {
+      const offset = this.camera.position.clone().sub(this.controls.target);
+      const dist = (offset.length() * scale) / this.aimScale; // 지금 거리는 직전 scale 기준이다
+      this.aimScale = scale;
+      this.flyTo(lookAt.clone().addScaledVector(offset.normalize(), dist), lookAt);
+      return;
+    }
     const cat = this.focusCat;
     const h = cat ? this.current?.hotspots[cat] : undefined;
     if (cat && !h) return;
-    let dir: THREE.Vector3;
-    let dist: number;
-    let center = lookAt;
-    if (h && cat) {
+    this.aimScale = scale;
+    if (h) {
       const point = h.point.clone().add(new THREE.Vector3(...(h.bone ? peelShift(h.bone, this.peelTo) : [0, 0, 0])));
       const size = h.box.getSize(new THREE.Vector3()).length();
-      dir = new THREE.Vector3(0.55, 0.42, -0.72).normalize();
+      const dir = new THREE.Vector3(0.55, 0.42, -0.72).normalize();
       if (point.y < 0.6) dir.set(0.5, 0.25, -0.83).normalize();
-      dist = Math.max(6.8, size * 2.2);
-      center = point;
-      if (keepDirection) dir = this.camera.position.clone().sub(this.controls.target).normalize();
-      this.flyTo(center.clone().addScaledVector(dir, dist), lookAt);
+      this.flyTo(point.addScaledVector(dir, Math.max(6.8, size * 2.2) * scale), lookAt);
       return;
     }
-    dir = keepDirection ? this.camera.position.clone().sub(this.controls.target).normalize() : HOME.pos.clone().sub(HOME.target).normalize();
-    dist = HOME.pos.distanceTo(HOME.target) * scale;
-    this.flyTo(lookAt.clone().addScaledVector(dir, dist), lookAt);
+    const dir = HOME.pos.clone().sub(HOME.target).normalize();
+    this.flyTo(lookAt.clone().addScaledVector(dir, HOME.pos.distanceTo(HOME.target) * scale), lookAt);
   }
 
   setAutoRotate(on: boolean) {
@@ -386,7 +392,9 @@ export class Showroom {
     for (const [cat, el] of this.hotspotEls) {
       const h = this.current?.hotspots[cat];
       if (!h) continue;
-      v.copy(h.point).project(this.camera);
+      v.copy(h.point);
+      if (h.bone) v.add(this.tmp.set(...peelShift(h.bone, this.peelNow))); // 걷어낸 부품의 뼈대를 따라간다
+      v.project(this.camera);
       el.toggleAttribute("data-behind", v.z > 1);
       el.style.left = `${(v.x * 0.5 + 0.5) * this.container.clientWidth}px`;
       el.style.top = `${(-v.y * 0.5 + 0.5) * this.container.clientHeight}px`;

@@ -42,6 +42,22 @@ describe("걷어내기 층 표", () => {
   });
 });
 
+describe("분류→층 표와 뼈대 층의 일치", () => {
+  it("실제 메시가 있는 분류는 그 뼈대가 움직이는 층(또는 껍데기 아래 = 4층)에서 드러난다고 적혀 있다", () => {
+    const layerOfBone = (bone: string) => PEEL_MOVES.findIndex((layer) => bone in layer) + 1; // 표에 없으면 0
+    const seen = new Map<string, Set<string>>();
+    for (const p of Object.values(parts as Record<string, { title: string; defect: string | null }>)) {
+      if (!p.defect) continue;
+      (seen.get(p.defect) ?? seen.set(p.defect, new Set()).get(p.defect)!).add(boneOfTitle(p.title));
+    }
+    expect(seen.size).toBeGreaterThan(0);
+    for (const [cat, bones] of seen) {
+      const layers = [...bones].map((b) => layerOfBone(b) || PEEL_MAX); // 움직이지 않는 뼈대는 차체 껍데기 아래(4층에서 드러남)
+      expect(CATEGORY_LAYER[cat as keyof typeof CATEGORY_LAYER], `${cat}: ${[...bones].join(", ")}`).toBe(Math.min(...layers));
+    }
+  });
+});
+
 describe("걷어낸 정도에 따른 이동", () => {
   it("0에서는 아무것도 움직이지 않고, 층이 끝나면 표의 이동량 그대로이며, 그 뒤로는 더 움직이지 않는다", () => {
     for (const bone of PEEL_BONES) expect(peelShift(bone, 0)).toEqual([0, 0, 0]);

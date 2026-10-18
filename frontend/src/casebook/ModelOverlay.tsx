@@ -21,8 +21,14 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   const [category, setCategory] = useState<CategoryKey | null>(null);
   const [mode, setMode] = useState<Mode>("xray");
   const [layer, setLayer] = useState(0);
+  const sliderRef = useRef<HTMLInputElement>(null);
   const cardCats = partCategories(card.components);
   const peel = peelControls(layer, category);
+  /** 층을 바꾼다. 누른 버튼이 끝에 닿아 비활성이 되면 초점이 사라지지 않게 슬라이더로 옮긴다 */
+  const moveLayer = (to: number, keepFocus = false) => {
+    setLayer(to);
+    if (keepFocus || to === 0 || to === PEEL_MAX) sliderRef.current?.focus();
+  };
   const shown = cardCats.filter((c) => cats3d.has(c));
 
   useEffect(() => {
@@ -80,6 +86,7 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
       <h2>Part category</h2>
       <p className="cb-muted">Component text of this recall (NHTSA, verbatim):</p>
       <ul className="cb-3d-comp" lang="en">{card.components.map((c, i) => <li key={i}>{c}</li>)}</ul>
+      <p className="cb-3d-note">Illustration only: a Kia Sorento model with <b>estimated</b> part shapes and positions. It is not the vehicle or the exact location in this recall, and it says nothing about your case. The peeling order is only an illustration — not a repair or disassembly procedure, and not the real structure of that vehicle.</p>
       {stage === "ready" && <>
         <div className="cb-3d-chips" role="group" aria-label="Part category to show">
           {cardCats.map((c) => <button key={c} type="button" aria-pressed={category === c} className={category === c ? "on" : ""} disabled={!cats3d.has(c)} title={cats3d.has(c) ? undefined : "No 3D position for this category"} onClick={() => setCategory(c)}>{CATEGORIES[c].en}</button>)}
@@ -87,11 +94,11 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
         {shown.length === 0 && <p className="cb-muted">None of this recall’s part categories has a position in the 3D model, so only the vehicle is shown.</p>}
         <div className="cb-3d-layers">
           <label htmlFor="cb-3d-layer">Layers <b>{layer} · {PEEL_LABELS[layer]}</b></label>
-          <input id="cb-3d-layer" type="range" min={0} max={PEEL_MAX} step={1} value={layer} aria-valuetext={`${layer}, ${PEEL_LABELS[layer]}`} onChange={(e) => setLayer(Number(e.target.value))} />
+          <input id="cb-3d-layer" ref={sliderRef} type="range" min={0} max={PEEL_MAX} step={1} value={layer} aria-valuetext={`${layer}, ${PEEL_LABELS[layer]}`} onChange={(e) => setLayer(Number(e.target.value))} />
           <div className="cb-3d-layer-btns">
-            <button type="button" disabled={!peel.canPutBack} onClick={() => setLayer(layer - 1)}>Put back one layer</button>
-            <button type="button" disabled={!peel.canPeel} onClick={() => setLayer(layer + 1)}>Peel next layer</button>
-            <button type="button" disabled={!peel.canReveal} onClick={() => peel.revealTo !== null && setLayer(peel.revealTo)} title={category ? undefined : "Pick a part category first"}>Reveal this category</button>
+            <button type="button" disabled={!peel.canPutBack} onClick={() => moveLayer(layer - 1)}>Put back one layer</button>
+            <button type="button" disabled={!peel.canPeel} onClick={() => moveLayer(layer + 1)}>Peel next layer</button>
+            <button type="button" disabled={!peel.canReveal} onClick={() => peel.revealTo !== null && moveLayer(peel.revealTo, true)} title={category ? undefined : "Pick a part category first"}>Reveal this category</button>
           </div>
         </div>
         <div className="cb-3d-mode" role="group" aria-label="View mode">
@@ -99,7 +106,6 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
           <button type="button" aria-pressed={mode === "exterior"} className={mode === "exterior" ? "on" : ""} onClick={() => setMode("exterior")}>Exterior</button>
         </div>
       </>}
-      <p className="cb-3d-note">Illustration only: a Kia Sorento model with <b>estimated</b> part shapes and positions. It is not the vehicle or the exact location in this recall, and it says nothing about your case. The peeling order is only an illustration — not a repair or disassembly procedure, and not the real structure of that vehicle.</p>
       <p className="cb-muted">3D: <a href={model.source} target="_blank" rel="noreferrer">{model.credit}</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a> · size and materials adjusted</p>
     </div>
   </div>;
