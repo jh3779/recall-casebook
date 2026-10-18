@@ -3,6 +3,7 @@ import { CATEGORIES, MODELS } from "../config";
 import { Showroom } from "../showroom/Showroom";
 import type { Card } from "../search/types";
 import type { CategoryKey, Mode } from "../types";
+import { PEEL_LABELS, PEEL_MAX, peelControls } from "../showroom/peel";
 import { partCategories } from "./partCategory";
 import { useModal } from "./useModal";
 
@@ -19,7 +20,9 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   const [cats3d, setCats3d] = useState<ReadonlySet<CategoryKey>>(new Set());
   const [category, setCategory] = useState<CategoryKey | null>(null);
   const [mode, setMode] = useState<Mode>("xray");
+  const [layer, setLayer] = useState(0);
   const cardCats = partCategories(card.components);
+  const peel = peelControls(layer, category);
   const shown = cardCats.filter((c) => cats3d.has(c));
 
   useEffect(() => {
@@ -54,6 +57,10 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
     showroom.focus(mode === "xray" ? category : null);
   }, [stage, mode, category]);
 
+  useEffect(() => {
+    if (stage === "ready") showroomRef.current?.setPeel(layer);
+  }, [stage, layer]);
+
   const dialogRef = useRef<HTMLDivElement>(null);
   const close = useModal(dialogRef, onClose, opener);
 
@@ -78,12 +85,21 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
           {cardCats.map((c) => <button key={c} type="button" aria-pressed={category === c} className={category === c ? "on" : ""} disabled={!cats3d.has(c)} title={cats3d.has(c) ? undefined : "No 3D position for this category"} onClick={() => setCategory(c)}>{CATEGORIES[c].en}</button>)}
         </div>
         {shown.length === 0 && <p className="cb-muted">None of this recall’s part categories has a position in the 3D model, so only the vehicle is shown.</p>}
+        <div className="cb-3d-layers">
+          <label htmlFor="cb-3d-layer">Layers <b>{layer} · {PEEL_LABELS[layer]}</b></label>
+          <input id="cb-3d-layer" type="range" min={0} max={PEEL_MAX} step={1} value={layer} aria-valuetext={`${layer}, ${PEEL_LABELS[layer]}`} onChange={(e) => setLayer(Number(e.target.value))} />
+          <div className="cb-3d-layer-btns">
+            <button type="button" disabled={!peel.canPutBack} onClick={() => setLayer(layer - 1)}>Put back one layer</button>
+            <button type="button" disabled={!peel.canPeel} onClick={() => setLayer(layer + 1)}>Peel next layer</button>
+            <button type="button" disabled={!peel.canReveal} onClick={() => peel.revealTo !== null && setLayer(peel.revealTo)} title={category ? undefined : "Pick a part category first"}>Reveal this category</button>
+          </div>
+        </div>
         <div className="cb-3d-mode" role="group" aria-label="View mode">
           <button type="button" aria-pressed={mode === "xray"} className={mode === "xray" ? "on" : ""} onClick={() => setMode("xray")}>See-through</button>
           <button type="button" aria-pressed={mode === "exterior"} className={mode === "exterior" ? "on" : ""} onClick={() => setMode("exterior")}>Exterior</button>
         </div>
       </>}
-      <p className="cb-3d-note">Illustration only: a Kia Sorento model with <b>estimated</b> part shapes and positions. It is not the vehicle or the exact location in this recall, and it says nothing about your case.</p>
+      <p className="cb-3d-note">Illustration only: a Kia Sorento model with <b>estimated</b> part shapes and positions. It is not the vehicle or the exact location in this recall, and it says nothing about your case. The peeling order is only an illustration — not a repair or disassembly procedure, and not the real structure of that vehicle.</p>
       <p className="cb-muted">3D: <a href={model.source} target="_blank" rel="noreferrer">{model.credit}</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a> · size and materials adjusted</p>
     </div>
   </div>;

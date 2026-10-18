@@ -7,16 +7,29 @@ import { createEstimatedParts } from "./estimatedParts";
 import { MODELS, PAINTS } from "../config";
 import type { CategoryKey, Mode, ModelKey, PartInfo, PartsMap } from "../types";
 import { DEFAULT_PANEL_SHIFT, panelOffset } from "./viewOffset";
+import { PEEL_BONES, boneOfTitle, clampPeel, peelFraming, peelShift, smootherstep } from "./peel";
 
 interface Hotspot {
   point: THREE.Vector3;
   box: THREE.Box3;
+  /** 이 분류의 메시가 매달린 뼈대 이름. 걷어내면 핫스팟도 이 뼈대를 따라간다(추정 도형은 움직이지 않으므로 없다) */
+  bone?: string;
+}
+
+/** 걷어내기로 움직이는 뼈대: rest는 조립 상태의 로컬 위치, toLocal·scale은 차량 좌표의 이동량을 부모 뼈대 좌표로 바꾸는 값 */
+interface PeelBone {
+  name: string;
+  bone: THREE.Object3D;
+  rest: THREE.Vector3;
+  toLocal: THREE.Quaternion;
+  scale: number;
 }
 
 interface Entry {
   root: THREE.Object3D;
   meshes: THREE.Mesh[];
   hotspots: Partial<Record<CategoryKey, Hotspot>>;
+  rig: PeelBone[];
 }
 
 const HOME = { pos: new THREE.Vector3(6.8, 2.6, -7.6), target: new THREE.Vector3(0, 0.8, 0) };
@@ -77,6 +90,10 @@ export class Showroom {
     activeCats: new Set(),
   };
   private fly: { p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number; ms: number } | null = null;
+  private focusCat: CategoryKey | null = null;
+  private peelNow = 0;
+  private peelTo = 0;
+  private peelAnim: { from: number; to: number; start: number; ms: number } | null = null;
   private raf = 0;
   private disposed = false;
   private readonly reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -173,7 +190,36 @@ export class Showroom {
     if (this.current) this.scene.remove(this.current.root);
     this.current = this.entries.get(key)!;
     this.scene.add(this.current.root);
+    this.applyPeel();
     this.applyLook();
+  }
+
+  /**
+   * 걷어내기 층(0 = 완성 … 4 = 차체 껍데기까지)으로 옮긴다. 모션 감소 설정이면 바로 바뀌고, 아니면 0.7초에 걸쳐 부드럽게 옮긴다.
+   * 부품이 나가는 만큼 카메라도 뒤로 빠진다(직접 돌려 둔 방향은 유지한다).
+   */
+  setPeel(level: number) {
+    const to = clampPeel(level);
+    const changed = to !== this.peelTo;
+    this.peelTo = to;
+    if (this.reducedMotion || to === this.peelNow) {
+      this.peelAnim = null;
+      this.peelNow = to;
+      this.applyPeel();
+    } else {
+      this.peelAnim = { from: this.peelNow, to, start: performance.now(), ms: 700 };
+    }
+    if (changed) this.aim(true);
+  }
+
+  private applyPeel() {
+    const entry = this.current;
+    if (!entry) return;
+    const shift = new THREE.Vector3();
+    for (const { name, bone, rest, toLocal, scale } of entry.rig) {
+      shift.set(...peelShift(name, this.peelNow)).applyQuaternion(toLocal).divideScalar(scale);
+      bone.position.copy(rest).add(shift);
+    }
   }
 
   /** 외관: 도장·재질 그대로 / 결함 투시: 고른 부품은 주황, 나머지 결함 부품은 회색, 그 밖은 반투명 */
@@ -205,18 +251,35 @@ export class Showroom {
 
   /** 부품 쪽으로 시점을 옮겨도 차량 중앙의 회전축은 유지한다. null이면 처음 시점 */
   focus(cat: CategoryKey | null) {
+    this.focusCat = cat;
     this.controls.autoRotate = !cat && !this.reducedMotion;
-    if (!cat) {
-      this.flyTo(HOME.pos.clone(), HOME.target.clone());
+    this.aim(false);
+  }
+
+  /** 걷어낸 정도(peelTo)에 맞춰 카메라 위치·시선을 정한다. keepDirection이면 지금 보는 방향을 유지하고 거리·높이만 바꾼다 */
+  private aim(keepDirection: boolean) {
+    const { scale, lift } = peelFraming(this.peelTo);
+    const lookAt = HOME.target.clone().setY(HOME.target.y + lift);
+    const cat = this.focusCat;
+    const h = cat ? this.current?.hotspots[cat] : undefined;
+    if (cat && !h) return;
+    let dir: THREE.Vector3;
+    let dist: number;
+    let center = lookAt;
+    if (h && cat) {
+      const point = h.point.clone().add(new THREE.Vector3(...(h.bone ? peelShift(h.bone, this.peelTo) : [0, 0, 0])));
+      const size = h.box.getSize(new THREE.Vector3()).length();
+      dir = new THREE.Vector3(0.55, 0.42, -0.72).normalize();
+      if (point.y < 0.6) dir.set(0.5, 0.25, -0.83).normalize();
+      dist = Math.max(6.8, size * 2.2);
+      center = point;
+      if (keepDirection) dir = this.camera.position.clone().sub(this.controls.target).normalize();
+      this.flyTo(center.clone().addScaledVector(dir, dist), lookAt);
       return;
     }
-    const h = this.current?.hotspots[cat];
-    if (!h) return;
-    const target = h.point.clone();
-    const size = h.box.getSize(new THREE.Vector3()).length();
-    const dir = new THREE.Vector3(0.55, 0.42, -0.72).normalize();
-    if (target.y < 0.6) dir.set(0.5, 0.25, -0.83).normalize();
-    this.flyTo(target.clone().addScaledVector(dir, Math.max(6.8, size * 2.2)), HOME.target.clone());
+    dir = keepDirection ? this.camera.position.clone().sub(this.controls.target).normalize() : HOME.pos.clone().sub(HOME.target).normalize();
+    dist = HOME.pos.distanceTo(HOME.target) * scale;
+    this.flyTo(lookAt.clone().addScaledVector(dir, dist), lookAt);
   }
 
   setAutoRotate(on: boolean) {
@@ -262,7 +325,13 @@ export class Showroom {
     root.add(vehicle.root, ...estimated);
     root.updateMatrixWorld(true);
     const meshes = [...vehicle.meshes, ...estimated];
-    const entry = { root, meshes, hotspots: computeHotspots(meshes) };
+    for (const m of vehicle.meshes) if ((m as THREE.SkinnedMesh).isSkinnedMesh) m.frustumCulled = false; // 뼈대를 옮기면 원래 경계 밖으로 나간다
+    const hotspots = computeHotspots(meshes);
+    for (const [cat, bone] of Object.entries(hotspotBonesOf(vehicle.meshes)) as [CategoryKey, string][]) {
+      const h = hotspots[cat];
+      if (h) h.bone = bone;
+    }
+    const entry: Entry = { root, meshes, hotspots, rig: buildPeelRig(vehicle.root) };
     this.entries.set(key, entry);
     return entry;
   }
@@ -298,6 +367,13 @@ export class Showroom {
       controls.target.lerpVectors(fly.t0, fly.t1, ease(t));
       if (t === 1) this.fly = null;
     }
+    const anim = this.peelAnim;
+    if (anim) {
+      const u = Math.min(1, (now - anim.start) / anim.ms);
+      this.peelNow = anim.from + (anim.to - anim.from) * smootherstep(u);
+      if (u === 1) { this.peelNow = anim.to; this.peelAnim = null; }
+      this.applyPeel();
+    }
     this.mat.hot.emissiveIntensity = this.reducedMotion ? 0.7 : 0.7 + 0.35 * Math.sin(now / 260);
     controls.update();
     this.renderer.render(this.scene, camera);
@@ -316,6 +392,29 @@ export class Showroom {
       el.style.top = `${(-v.y * 0.5 + 0.5) * this.container.clientHeight}px`;
     }
   }
+}
+
+/** 걷어낼 뼈대를 모델에서 찾아 조립 상태의 위치와 좌표 변환값을 기록한다. 모델에 없는 뼈대는 건너뛴다 */
+function buildPeelRig(root: THREE.Object3D): PeelBone[] {
+  root.updateMatrixWorld(true);
+  const rig: PeelBone[] = [];
+  const q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+  for (const name of PEEL_BONES) {
+    const bone = root.getObjectByName(name);
+    if (!bone?.parent) continue;
+    bone.parent.matrixWorld.decompose(p, q, s);
+    rig.push({ name, bone, rest: bone.position.clone(), toLocal: q.clone().invert(), scale: s.x });
+  }
+  return rig;
+}
+
+function hotspotBonesOf(meshes: THREE.Mesh[]): Partial<Record<CategoryKey, string>> {
+  const out: Partial<Record<CategoryKey, string>> = {};
+  for (const m of meshes) {
+    const cat = partOf(m).defect;
+    if (cat && !out[cat]) out[cat] = boneOfTitle(partOf(m).title);
+  }
+  return out;
 }
 
 // 분류별 핫스팟 위치: 운전석 쪽(-z) 부품이 있으면 그쪽, 없으면 전체의 중심
