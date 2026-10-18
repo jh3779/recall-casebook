@@ -16,10 +16,16 @@ export const STEPS: Step[] = [
 ];
 
 export const ALL_STEPS: ReadonlySet<number> = new Set(STEPS.map((s) => s.n));
-/** 선례 근거가 핵심인 단계 — 문제 기술(D2)과 원인(D4)만 적용하는 프리셋 */
-export const CORE_STEPS: ReadonlySet<number> = new Set([2, 4]);
+/** 선례 근거가 들어가는 단계 — 원인(D4)만 적용하는 프리셋. 선례 내용은 D4에만 넣는다(DEC-076) */
+export const CORE_STEPS: ReadonlySet<number> = new Set([4]);
 export const toggleStep = (applied: ReadonlySet<number>, n: number): Set<number> => { const next = new Set(applied); if (!next.delete(n)) next.add(n); return next; };
 export const sameSteps = (a: ReadonlySet<number>, b: ReadonlySet<number>) => a.size === b.size && [...a].every((n) => b.has(n));
+
+/** 넣은 항목 수 — 키는 "4|번호"(D4 칸 본문)·"4a|번호"(부록)이고, 적용한 단계(D4)에 속한 것만 센다. 근거 데이터 꼬리줄을 붙일지의 기준이다 */
+export const insertedCount = (inserted: Readonly<Record<string, string>>, applied: ReadonlySet<number>): number =>
+  new Set(Object.keys(inserted).filter((k) => applied.has(parseInt(k, 10))).map((k) => k.slice(k.indexOf("|") + 1))).size; // 본문과 부록에 함께 들어가므로 같은 선례는 한 건으로 센다
+/** D4 근거 칸을 보일지 — 선례를 담았거나 이미 글이 들어 있을 때(사용자가 쓴 글을 가리지 않는다) */
+export const d4EvidenceVisible = (cardCount: number, values: Readonly<Record<string, string>>): boolean => cardCount > 0 || !!values[D4_EVIDENCE_KEY]?.trim();
 
 /** 이 단계에서 넣은 것만, 단계 접두사("2|")를 뗀 이름으로 — 묶음 화면이 자기 이름(draft:…)으로 찾는다 */
 export const insertedFor = (inserted: Readonly<Record<string, string>>, step: string): Record<string, string> =>
@@ -30,18 +36,30 @@ export const shortLabel = (label: string) => label.split(" — ")[0];
 export interface ParaSpec { prefix?: string; text: string; bold?: boolean }
 /** 한 단계의 칸 글을 문단(줄 단위)으로 — 칸이 여럿이면 각 칸 첫 줄 앞에 칸 이름을 붙인다(양식 미리보기와 같은 모양) */
 export function stepParagraphs(step: Step, values: Record<string, string>): ParaSpec[] {
-  return step.fields.flatMap((f) => {
+  const own = step.fields.flatMap((f) => {
     const value = values[f.key]?.trim();
     if (!value) return [];
     return value.split("\n").map((text, i) => ({ text, ...(i === 0 && step.fields.length > 1 ? { prefix: `${shortLabel(f.label)}: ` } : {}) }));
   });
+  return step.n === 4 ? [...own, ...d4EvidenceParagraphs(values)] : own;
 }
 
-/** 선례 근거 부록 — D4 타사 원인 원문은 사용자의 "Root Cause" 칸이 아니라 이 부록에만 들어간다(DEC-064 ④ 결정 2026-10-16: D4만 부록). 8D 표 뒤 별도 문단이라 서류를 훑는 사람이 타사 원인을 이 건의 근본 원인으로 읽지 않는다 */
+/**
+ * D4 칸 안의 선례 근거 — 사용자가 "D4 본문·부록에 넣기"를 누른 타사 원인 원문(본문에 넣으면 부록에도 같이 들어간다). 엔지니어가 쓴 Escape·Root Cause 글 뒤에 제목 한 줄(굵게)을 두고 붙인다.
+ * 제목과 각 인용의 머리줄 "[타사 선례 …]"이 타사 원문임을 밝혀, 서류를 훑는 사람이 타사 원인을 이 건의 근본 원인으로 읽지 않게 한다(DEC-076).
+ */
+export const D4_EVIDENCE_KEY = "d4_evidence";
+export const D4_EVIDENCE_TITLE = "[선례 근거 — 타사 공개 원문과 도구 안내문이며 자사 사실이 아닙니다]"; // 부록 제목과 같은 말 — 이 칸에는 묶음 초안의 도구가 만든 확인 질문도 들어갈 수 있다
+export function d4EvidenceParagraphs(values: Record<string, string>): ParaSpec[] {
+  const value = values[D4_EVIDENCE_KEY]?.trim();
+  return value ? [{ text: D4_EVIDENCE_TITLE, bold: true }, ...value.split("\n").map((text) => ({ text }))] : [];
+}
+
+/** 선례 근거 부록 — D4 타사 원인 원문을 8D 표 뒤 별도 문단으로도 둘 수 있다(DEC-064 ④·DEC-076: D4 본문과 부록 둘 다 선택). 둘 다 기본은 꺼짐이다 */
 export const APPENDIX_KEY = "appendix";
 export const APPENDIX_TITLE = "[선례 근거 부록 — 타사 공개 원문과 도구 안내문이며 자사 사실이 아닙니다]";
-/** 선례 인용이 들어가는 칸 — D2·D3·D5는 해당 칸 끝에, D4는 "근본 원인" 칸이 아니라 부록에 들어간다 */
-export const TARGET: Record<string, string> = { "2": "d2", "3": "d3", "4": APPENDIX_KEY, "5": "d5", "7": "d7" };
+/** 선례 인용이 들어가는 곳 — 선례 내용은 D4에만 넣는다(DEC-076). "4"는 D4 칸 본문(엔지니어 글 뒤), "4a"는 8D 표 뒤 부록. 나머지 단계에는 선례 내용을 넣지 않는다 */
+export const TARGET: Record<string, string> = { "4": D4_EVIDENCE_KEY, "4a": APPENDIX_KEY };
 /** 부록의 문단 — 제목 한 줄(굵게) 뒤에 부록 글을 줄 단위로. 글이 없으면 부록 자체가 없다 */
 export function appendixParagraphs(values: Record<string, string>): ParaSpec[] {
   const value = values[APPENDIX_KEY]?.trim();
@@ -59,8 +77,31 @@ export function removeBlock(value: string, block: string): string | null {
 }
 
 /**
+ * 선례 인용을 D4 칸 본문("4|id")과 8D 표 뒤 부록("4a|id")에 함께 넣거나 함께 뺀다 — 본문에 넣으면 부록에도 같이 들어간다(DEC-076).
+ * 둘 중 하나라도 들어 있으면 빼는 쪽이다. 사용자가 직접 고쳐 더는 그대로 없는 쪽은 자동으로 못 빼므로 그대로 두고 blocked로 알린다.
+ */
+export function toggleEvidence(values: Readonly<Record<string, string>>, inserted: Readonly<Record<string, string>>, id: string, block: string): { values: Record<string, string>; inserted: Record<string, string>; blocked: boolean } {
+  const targets = (["4", "4a"] as const).map((step) => ({ key: `${step}|${id}`, field: TARGET[step] }));
+  const nextValues = { ...values };
+  const nextInserted = { ...inserted };
+  if (!targets.some((t) => inserted[t.key] !== undefined)) {
+    for (const t of targets) { nextValues[t.field] = insertBlock(nextValues[t.field] ?? "", block); nextInserted[t.key] = block; }
+    return { values: nextValues, inserted: nextInserted, blocked: false };
+  }
+  let blocked = false;
+  for (const t of targets) {
+    if (inserted[t.key] === undefined) continue;
+    const next = removeBlock(values[t.field] ?? "", inserted[t.key]);
+    if (next === null) { blocked = true; continue; }
+    nextValues[t.field] = next;
+    delete nextInserted[t.key];
+  }
+  return { values: nextValues, inserted: nextInserted, blocked };
+}
+
+/**
  * 선례 목록이나 검색 결과가 바뀌어 돌아왔을 때, 더는 담지 않은 선례의 인용을 본문에서 걷어 낸다(리뷰 지적 — 화면에서 뺄 버튼이 없는 인용이 남지 않게).
- * 인용 머리줄의 리콜 번호로 판단한다(번호 모양을 가정하지 않는다). dropUnlinked면 선례에 매이지 않은 글(D7 검색 결과 표·고정 확인 질문)도 걷어 낸다 — 질문이 바뀐 경우.
+ * 인용 머리줄의 리콜 번호로 판단한다(번호 모양을 가정하지 않는다). dropUnlinked면 선례에 매이지 않은 글(고정 확인 질문)도 걷어 낸다 — 질문이 바뀐 경우.
  * 걷어 낸 인용이 있으면 고정 확인 질문도 함께 걷어 낸다(그 인용에서 나온 질문일 수 있다). 사용자가 고쳐 자동으로 못 빼는 글은 blocked로 알리고 넣은 목록에서만 뺀다(칸의 글은 그대로).
  */
 export function pruneInserted(values: Record<string, string>, inserted: Record<string, string>, keep: ReadonlySet<string>, dropUnlinked = false): { values: Record<string, string>; inserted: Record<string, string>; removed: string[]; blocked: string[] } {
@@ -94,6 +135,7 @@ export function composeDocument({ subject, values, withEvidence, prov, only = AL
   const out = [`8D REPORT\nSUBJECT: ${subject}\n`];
   for (const step of STEPS.filter((st) => only.has(st.n))) {
     const parts = step.fields.flatMap((f) => (values[f.key]?.trim() ? [`${f.label}\n${values[f.key].trim()}`] : []));
+    if (step.n === 4 && values[D4_EVIDENCE_KEY]?.trim()) parts.push(`${D4_EVIDENCE_TITLE}\n${values[D4_EVIDENCE_KEY].trim()}`);
     out.push(`DISCIPLINE ${step.n} · ${step.name}\n${parts.length ? parts.join("\n\n") : "(미작성)"}\n`);
   }
   if (only.has(4) && values[APPENDIX_KEY]?.trim()) out.push(`${APPENDIX_TITLE}\n${values[APPENDIX_KEY].trim()}\n`);

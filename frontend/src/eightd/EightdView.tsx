@@ -1,21 +1,12 @@
 import { useState } from "react";
 import type { Card, SearchResponse } from "../search/types";
-import { ALL_STEPS, APPENDIX_KEY, appendixParagraphs, composeDocument, CORE_STEPS, evidenceFooter, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
+import { ALL_STEPS, APPENDIX_KEY, appendixParagraphs, composeDocument, CORE_STEPS, D4_EVIDENCE_KEY, d4EvidenceVisible, evidenceFooter, insertedCount, pruneInserted, sameSteps, STEPS, stepParagraphs, toggleEvidence, toggleStep } from "./document";
 import { freshQuestionChanged, workChanged } from "./session";
 import { DocxError, inspectDocx, patchDocx, type Inspection, type Place } from "./docxPatch";
-import { DraftPanel } from "./DraftPanel";
-import { EvidenceCard } from "./EvidenceCard";
+import { D4Reference } from "./D4Reference";
 import { FileMap } from "./FileMap";
 import { FormPreview } from "./FormPreview";
-import { resultsBlock, type EvidenceStep } from "./evidenceText";
 
-const HINT: Record<string, string> = {
-  "2": "타사 선례가 쓴 결함·결과 원문입니다.",
-  "3": "선례 차량의 573 생산 기간입니다(우리 로트가 아님).",
-  "4": "타사 선례의 공개된 원인 원문입니다. 자사 원인이 아니라서 'Root Cause' 칸이 아니라 아래 '선례 근거 부록'에만 들어갑니다.",
-  "5": "타사 선례 리콜의 시정 원문입니다(설계·공정 변경이 아닐 수 있음).",
-  "7": "같은 부품 검색 결과와 공급사 표시입니다.",
-};
 const stepLabel = (n: number[]) => n.map((x) => `D${x}`).join("·");
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -25,7 +16,7 @@ function download(blob: Blob, name: string) {
 }
 const rowsFor = (value: string) => Math.min(40, Math.max(3, value.split("\n").reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 90)), 0) + 1));
 
-/** 8D 작성 화면 — 선례는 기본으로 어디에도 들어가지 않고, 사용자가 "본문에 텍스트로 넣기"를 누른 인용만 해당 칸에 평문으로 들어간다(DEC-064) */
+/** 8D 작성 화면 — 선례는 기본으로 어디에도 들어가지 않고, 사용자가 D4에서 "D4 본문·부록에 넣기"를 누른 인용만 평문으로 들어간다(본문에 넣으면 부록에도 같이 들어간다). 선례 내용은 D4에만 넣는다(DEC-064·076) */
 export default function EightdView({ cards, response, fresh = 0, freshQuestion, onBack }: { cards: readonly Card[]; response: SearchResponse | null; fresh?: number; freshQuestion?: string; onBack: () => void }) {
   const [subjectInput, setSubjectInput] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -37,7 +28,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   const [docxError, setDocxError] = useState("");
   const [busy, setBusy] = useState(false);
   const [applied, setApplied] = useState<ReadonlySet<number>>(ALL_STEPS);
-  // 선례 목록·검색 결과가 바뀌어 돌아오면 더는 담지 않은 선례의 인용을 본문에서 걷어 낸다. 질문·판본까지 바뀌었으면 검색 결과 표·확인 질문도 걷어 내고,
+  // 선례 목록·검색 결과가 바뀌어 돌아오면 더는 담지 않은 선례의 인용을 본문에서 걷어 낸다. 질문·판본까지 바뀌었으면 확인 질문도 걷어 내고,
   // 사용자가 쓴 글·올린 파일은 지우지 않고 비울지 묻는다(session.ts). props가 바뀔 때 렌더 중에 상태를 맞추는 React 권장 방식
   const [seen, setSeen] = useState({ cards, response });
   const [anchor, setAnchor] = useState(response); // 마지막으로 본 검색 결과(검색 실패로 null이 와도 기억)
@@ -60,12 +51,12 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   // "선례 없이 8D 작성하기"를 새로 눌렀으면, 이전에 쓴 글·올린 파일이 있을 때 비울지 묻는다
   if (seenFresh !== fresh) {
     setSeenFresh(fresh);
-    // 검색창 질문만 바꿨다면 이전 질문의 검색 결과 표·확인 질문은 걷어 낸다(사용자가 쓴 글은 남긴다)
+    // 검색창 질문만 바꿨다면 이전 질문의 확인 질문은 걷어 낸다(사용자가 쓴 글은 남긴다)
     if (freshQuestionChanged(anchor, freshQuestion)) {
       const r = pruneInserted(valuesNow, insertedNow, new Set(cards.map((c) => c.campno)), true);
       if (r.removed.length || r.blocked.length) {
         setValues(r.values); setInserted(r.inserted); valuesNow = r.values; insertedNow = r.inserted;
-        notes.push(`이전 질문의 검색 결과 표·인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요.` : ""}`);
+        notes.push(`이전 질문의 인용·확인 질문 ${r.removed.length}건을 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요.` : ""}`);
       }
     }
     if (Object.values(valuesNow).some((v) => v.trim()) || docx || subjectInput !== null) setStale("fresh");
@@ -77,23 +68,13 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   }
   const subject = subjectInput ?? freshQuestion ?? response?.question ?? "";
   const customers = new Set(response?.customer_precedents.map((c) => c.campno));
-  const insertedCount = (step: string) => Object.keys(inserted).filter((k) => k.startsWith(`${step}|`)).length;
-  const appliedInserted = Object.keys(inserted).filter((k) => applied.has(Number(k.split("|")[0]))).length;
+    const appliedInserted = insertedCount(inserted, applied); // 키는 "4|번호"(D4 본문)·"4a|번호"(부록)
   const fileText = composeDocument({ subject, values, withEvidence: appliedInserted > 0, prov: response, only: applied });
 
-  function toggle(step: string, id: string, block: string) {
-    const key = `${step}|${id}`;
-    const field = TARGET[step];
-    setMessage("");
-    if (inserted[key] === undefined) {
-      setValues((v) => ({ ...v, [field]: insertBlock(v[field] ?? "", block) }));
-      setInserted((i) => ({ ...i, [key]: block }));
-      return;
-    }
-    const next = removeBlock(values[field] ?? "", inserted[key]);
-    if (next === null) { setMessage("본문에서 직접 고친 글이라 자동으로 뺄 수 없습니다. 칸에서 직접 지워 주세요."); return; }
-    setValues((v) => ({ ...v, [field]: next }));
-    setInserted((i) => { const rest = { ...i }; delete rest[key]; return rest; });
+  function toggleBoth(id: string, block: string) {
+    const r = toggleEvidence(values, inserted, id, block);
+    setValues(r.values); setInserted(r.inserted);
+    setMessage(r.blocked ? "직접 고친 글이라 자동으로 뺄 수 없는 곳이 있습니다. 그 칸에서 직접 지워 주세요." : "");
   }
   async function copy() {
     try { await navigator.clipboard.writeText(fileText); setMessage("파일에 들어갈 글을 클립보드에 복사했습니다."); }
@@ -117,25 +98,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
     } catch (e) { setMessage(e instanceof DocxError ? e.message : "파일을 만들지 못했습니다"); }
     finally { setBusy(false); }
   }
-  const reference = (step: string) => {
-    if (step === "7") {
-      if (!response) return null;
-      // 검색창에서 질문만 고쳐 "선례 없이" 열었다면 이 표는 이전 질문의 검색 결과다 — SUBJECT와 어긋나는 표를 서류에 넣게 하지 않는다
-      if (freshQuestion && freshQuestion.trim() !== response.question.trim()) return <p className="note ed-ref">D7 검색 결과 표는 지금 질문과 다른 질문의 검색 결과라 제안하지 않습니다. 지금 질문을 검색한 뒤 선례를 담아 8D 작성을 누르면 넣을 수 있습니다.</p>;
-      const block = resultsBlock(response);
-      const on = inserted["7|table"] !== undefined;
-      return <details className="ed-ref"><summary><span>선례 참고 열기 <span className="ed-opt">선택</span></span><span className={`ed-cnt${on ? " on" : ""}`}>넣음 {insertedCount("7")}건</span></summary>
-        <p className="note">{HINT["7"]} 넣기를 누르기 전에는 본문에 아무것도 들어가지 않습니다.</p>
-        <article className={`ev-card${on ? " on" : ""}`}><header className="ev-head"><span className="tag">검색 결과 표 · 자사 사실 아님</span>
-          <button type="button" className={`pick${on ? " on" : ""}`} aria-pressed={on} onClick={() => toggle("7", "table", block)}>{on ? "본문에 넣음 ✓ (다시 누르면 뺌)" : "표를 텍스트로 본문에 넣기"}</button></header><pre className="ev-text">{block}</pre></article></details>;
-    }
-    if (!(step in HINT) || !cards.length) return null;
-    return <details className="ed-ref"><summary><span>선례 참고 열기 <span className="ed-opt">선택</span></span><span className={`ed-cnt${insertedCount(step) ? " on" : ""}`}>넣음 {insertedCount(step)}건</span></summary>
-      <p className="note">{HINT[step]} 넣기를 누르기 전에는 본문에 아무것도 들어가지 않습니다.</p>
-      {response && (step === "2" || step === "4") && <DraftPanel key={`${step}|${response.question}|${cards.map((c) => c.campno).join(",")}`} step={step === "2" ? "d2" : "d4"} question={response.question} build={response} cards={cards} appendix={step === "4"} inserted={insertedFor(inserted, step)} onToggle={(id, block) => toggle(step, id, block)} />}
-      {cards.map((card) => <EvidenceCard key={card.campno} appendix={step === "4"} step={step as EvidenceStep} card={card} customer={customers.has(card.campno)} inserted={inserted[`${step}|${card.campno}`] !== undefined} onToggle={(block) => toggle(step, card.campno, block)} />)}
-    </details>;
-  };
+  const reference = (step: string) => step === "4" ? <D4Reference cards={cards} response={response} customers={customers} inserted={inserted} onToggle={toggleBoth} /> : null;
   const total = appliedInserted;
   return <main className="view-eightd">
     <h1>8D 작성</h1>
@@ -143,8 +106,8 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
       <button type="button" className="btn ghost" onClick={onBack}>← 케이스북으로</button>
       {cards.length ? <><span className="note">8D 근거로 담은 선례 {cards.length}건</span>{cards.map((c) => <span className="ed-chip campno" key={c.campno}>{c.campno}</span>)}</> : <span className="note">담은 선례 없음 — 선례 없이 작성합니다</span>}
     </div>
-    {stale && <p className="ed-err" role="alert">{stale === "fresh" ? "새로 시작했지만" : "질문이 바뀌었습니다. 이전 질문의 선례 인용과 검색 결과 표는 본문에서 뺐지만,"} 이전에 쓴 글{docx ? "과 올린 파일" : ""}은 남아 있습니다 — SUBJECT 칸도 확인해 주세요. <button type="button" className="ed-link" onClick={startOver}>이전 작업 비우고 새로 시작</button> · <button type="button" className="ed-link" onClick={() => setStale(null)}>이어서 쓰기</button></p>}
-    <p className="ed-intro"><b>기본은 선례 없이 작성하는 빈 양식입니다.</b> {cards.length ? <>칸 아래 "선례 참고 열기"에는 앞 화면에서 담은 선례만 나오고, <b>"본문에 텍스트로 넣기"를 누른 인용만</b> 그 칸에 평문으로 들어갑니다. 들어간 글은 일반 문서 글처럼 고치거나 지울 수 있고, </> : <>선례를 참고하려면 "← 케이스북으로" 돌아가 선례를 체크하고 "Write 8D from checked"로 다시 오면 됩니다. </>}서비스는 어떤 칸도 스스로 채우지 않습니다.</p>
+    {stale && <p className="ed-err" role="alert">{stale === "fresh" ? "새로 시작했지만" : "질문이 바뀌었습니다. 이전 질문의 선례 인용은 뺐지만,"} 이전에 쓴 글{docx ? "과 올린 파일" : ""}은 남아 있습니다 — SUBJECT 칸도 확인해 주세요. <button type="button" className="ed-link" onClick={startOver}>이전 작업 비우고 새로 시작</button> · <button type="button" className="ed-link" onClick={() => setStale(null)}>이어서 쓰기</button></p>}
+    <p className="ed-intro"><b>기본은 선례 없이 작성하는 빈 양식입니다.</b> {cards.length ? <>선례 내용은 <b>D4에만</b> 넣습니다 — D4 칸 아래 "선례 참고 열기"에는 앞 화면에서 담은 선례만 나오고, <b>"D4 본문·부록에 넣기"를 누른 인용만</b> D4 칸 본문과 8D 표 뒤 부록에 함께 평문으로 들어갑니다. 나머지 단계는 선례 없이 직접 씁니다. 들어간 글은 일반 문서 글처럼 고치거나 지울 수 있고, </> : <>선례를 참고하려면 "← 케이스북으로" 돌아가 선례를 체크하고 "Write 8D from checked"로 다시 오면 됩니다. </>}서비스는 어떤 칸도 스스로 채우지 않습니다.</p>
     <section className="ed-file" aria-label="내 8D 파일">
       <div className="ed-file-head"><b>내 8D 파일(.docx)</b><span className="ed-opt">선택</span><span className="note">올리면 그 파일의 칸 끝에 쓴 글을 덧붙인 새 파일로 내려받습니다. 파일은 이 기기 밖으로 나가지 않고 원본은 바뀌지 않습니다.</span></div>
       <input type="file" aria-label="8D 양식 파일 선택" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => onFile(e.target.files?.[0])} />
@@ -156,7 +119,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
       <div className="ed-apply-head"><b>적용할 단계</b><span className="note">체크한 단계만 미리보기·복사·내려받기 파일에 들어갑니다. 빼도 써 둔 글은 지워지지 않고, 파일의 그 칸은 손대지 않습니다.</span></div>
       <div className="ed-apply-row">
         <div className="ed-chips" role="group" aria-label="8D 단계 선택">{STEPS.map((st) => <button type="button" key={st.n} aria-pressed={applied.has(st.n)} className={applied.has(st.n) ? "on" : ""} title={st.name} onClick={() => setApplied(toggleStep(applied, st.n))}>D{st.n}</button>)}</div>
-        <div className="ed-presets"><button type="button" aria-pressed={sameSteps(applied, ALL_STEPS)} className={sameSteps(applied, ALL_STEPS) ? "on" : ""} onClick={() => setApplied(ALL_STEPS)}>전체</button><button type="button" aria-pressed={sameSteps(applied, CORE_STEPS)} className={sameSteps(applied, CORE_STEPS) ? "on" : ""} onClick={() => setApplied(CORE_STEPS)}>D2·D4만</button></div>
+        <div className="ed-presets"><button type="button" aria-pressed={sameSteps(applied, ALL_STEPS)} className={sameSteps(applied, ALL_STEPS) ? "on" : ""} onClick={() => setApplied(ALL_STEPS)}>전체</button><button type="button" aria-pressed={sameSteps(applied, CORE_STEPS)} className={sameSteps(applied, CORE_STEPS) ? "on" : ""} onClick={() => setApplied(CORE_STEPS)}>D4만</button></div>
       </div>
     </section>
     <div className="ed-form">
@@ -171,15 +134,17 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
             <textarea value={values[f.key] ?? ""} rows={rowsFor(values[f.key] ?? "")} placeholder={f.hint} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} /></label>)}
         </div>
         {reference(String(step.n))}
+        {step.n === 4 && d4EvidenceVisible(cards.length, values) && <div className="ed-fields"><label className="ed-field"><span>선례 근거 — D4 칸에 들어가는 타사 원문 <em className="ed-own">D4 "본문·부록에 넣기"를 누른 인용만 — 자사 글은 위 Escape·Root Cause 칸에 쓰세요</em></span>
+          <textarea value={values[D4_EVIDENCE_KEY] ?? ""} rows={rowsFor(values[D4_EVIDENCE_KEY] ?? "")} placeholder="D4 선례 참고에서 넣은 타사 원인 원문이 여기 들어갑니다 — 엔지니어가 쓴 Escape·Root Cause 글 뒤에 '타사 선례' 제목과 함께 붙습니다" onChange={(e) => setValues((v) => ({ ...v, [D4_EVIDENCE_KEY]: e.target.value }))} /></label></div>}
       </section>)}
       {applied.has(4) && <section className="ed-step" aria-labelledby="ed-h-appendix">
         <h2 id="ed-h-appendix"><span className="ed-n">부록</span>선례 근거 부록 — D4 타사 원인</h2>
-        <div className="ed-fields"><label className="ed-field"><span>D4 인용 <em className="ed-own">D4 "본문에 넣기"를 누른 인용만</em></span>
-          <textarea value={values[APPENDIX_KEY] ?? ""} rows={rowsFor(values[APPENDIX_KEY] ?? "")} placeholder="D4 선례 참고에서 넣은 타사 원인 원문이 여기 들어갑니다 — 8D 표 뒤 별도 문단이라 자사 근본 원인과 섞이지 않습니다" onChange={(e) => setValues((v) => ({ ...v, [APPENDIX_KEY]: e.target.value }))} /></label></div>
+        <div className="ed-fields"><label className="ed-field"><span>D4 인용 <em className="ed-own">D4 "본문·부록에 넣기"를 누른 인용도 여기 한 번 더 들어갑니다</em></span>
+          <textarea value={values[APPENDIX_KEY] ?? ""} rows={rowsFor(values[APPENDIX_KEY] ?? "")} placeholder="D4 선례 참고에서 넣은 타사 원인 원문이 부록에도 한 번 더 들어갑니다 — 8D 표 뒤 별도 문단이라 자사 근본 원인과 섞이지 않습니다" onChange={(e) => setValues((v) => ({ ...v, [APPENDIX_KEY]: e.target.value }))} /></label></div>
       </section>}
     </div>
     <section className="ed-bar" aria-label="파일 만들기">
-      <div className="ed-bar-main"><b>본문에 넣은 선례 {total}건</b><span className="note">{total ? "— 칸의 글이 그대로 파일에 들어갑니다" : "— 선례 없이 만들어집니다"}</span></div>
+      <div className="ed-bar-main"><b>D4에 넣은 선례 항목 {total}건</b><span className="note">{total ? "— 칸의 글이 그대로 파일에 들어갑니다" : "— 선례 없이 만들어집니다"}</span></div>
       <div className="ed-bar-actions"><button type="button" className="btn" onClick={copy}>파일 글 복사</button><button type="button" className="btn primary" disabled={!docx || !docx.view.cells.length || busy} title={docx ? undefined : "위에서 내 8D 파일(.docx)을 올리면 켜집니다"} onClick={exportDocx}>{busy ? "만드는 중…" : "원본 서식 그대로 내려받기 (.docx)"}</button></div>
       <p className="note" role="status">{message || (total ? "넣은 인용에는 머리줄 “[타사 선례 번호 · 회사 · 접수일]”과 꼬리줄 “— 말한 주체 · 출처 파일 · sha256”이 평문으로 붙어 있습니다. 출처 표시라 지우지 않는 것을 권장합니다." : "")}</p>
     </section>
