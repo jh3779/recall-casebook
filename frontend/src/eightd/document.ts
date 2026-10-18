@@ -21,6 +21,11 @@ export const CORE_STEPS: ReadonlySet<number> = new Set([4]);
 export const toggleStep = (applied: ReadonlySet<number>, n: number): Set<number> => { const next = new Set(applied); if (!next.delete(n)) next.add(n); return next; };
 export const sameSteps = (a: ReadonlySet<number>, b: ReadonlySet<number>) => a.size === b.size && [...a].every((n) => b.has(n));
 
+/** 넣은 인용 수 — 키는 "4|번호"(D4 칸 본문)·"4a|번호"(부록)이고, 적용한 단계(D4)에 속한 것만 센다. 근거 데이터 꼬리줄을 붙일지의 기준이다 */
+export const insertedCount = (inserted: Readonly<Record<string, string>>, applied: ReadonlySet<number>): number => Object.keys(inserted).filter((k) => applied.has(parseInt(k, 10))).length;
+/** D4 근거 칸을 보일지 — 선례를 담았거나 이미 글이 들어 있을 때(사용자가 쓴 글을 가리지 않는다) */
+export const d4EvidenceVisible = (cardCount: number, values: Readonly<Record<string, string>>): boolean => cardCount > 0 || !!values[D4_EVIDENCE_KEY]?.trim();
+
 /** 이 단계에서 넣은 것만, 단계 접두사("2|")를 뗀 이름으로 — 묶음 화면이 자기 이름(draft:…)으로 찾는다 */
 export const insertedFor = (inserted: Readonly<Record<string, string>>, step: string): Record<string, string> =>
   Object.fromEntries(Object.entries(inserted).filter(([k]) => k.startsWith(`${step}|`)).map(([k, v]) => [k.slice(step.length + 1), v]));
@@ -43,7 +48,7 @@ export function stepParagraphs(step: Step, values: Record<string, string>): Para
  * 제목과 각 인용의 머리줄 "[타사 선례 …]"이 타사 원문임을 밝혀, 서류를 훑는 사람이 타사 원인을 이 건의 근본 원인으로 읽지 않게 한다(DEC-076).
  */
 export const D4_EVIDENCE_KEY = "d4_evidence";
-export const D4_EVIDENCE_TITLE = "[선례 근거 — 타사 공개 원문이며 자사 사실이 아닙니다]";
+export const D4_EVIDENCE_TITLE = "[선례 근거 — 타사 공개 원문과 도구 안내문이며 자사 사실이 아닙니다]"; // 부록 제목과 같은 말 — 이 칸에는 묶음 초안의 도구가 만든 확인 질문도 들어갈 수 있다
 export function d4EvidenceParagraphs(values: Record<string, string>): ParaSpec[] {
   const value = values[D4_EVIDENCE_KEY]?.trim();
   return value ? [{ text: D4_EVIDENCE_TITLE, bold: true }, ...value.split("\n").map((text) => ({ text }))] : [];
@@ -72,7 +77,7 @@ export function removeBlock(value: string, block: string): string | null {
 
 /**
  * 선례 목록이나 검색 결과가 바뀌어 돌아왔을 때, 더는 담지 않은 선례의 인용을 본문에서 걷어 낸다(리뷰 지적 — 화면에서 뺄 버튼이 없는 인용이 남지 않게).
- * 인용 머리줄의 리콜 번호로 판단한다(번호 모양을 가정하지 않는다). dropUnlinked면 선례에 매이지 않은 글(D7 검색 결과 표·고정 확인 질문)도 걷어 낸다 — 질문이 바뀐 경우.
+ * 인용 머리줄의 리콜 번호로 판단한다(번호 모양을 가정하지 않는다). dropUnlinked면 선례에 매이지 않은 글(고정 확인 질문)도 걷어 낸다 — 질문이 바뀐 경우.
  * 걷어 낸 인용이 있으면 고정 확인 질문도 함께 걷어 낸다(그 인용에서 나온 질문일 수 있다). 사용자가 고쳐 자동으로 못 빼는 글은 blocked로 알리고 넣은 목록에서만 뺀다(칸의 글은 그대로).
  */
 export function pruneInserted(values: Record<string, string>, inserted: Record<string, string>, keep: ReadonlySet<string>, dropUnlinked = false): { values: Record<string, string>; inserted: Record<string, string>; removed: string[]; blocked: string[] } {

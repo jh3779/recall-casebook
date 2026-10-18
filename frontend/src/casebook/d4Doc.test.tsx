@@ -58,7 +58,7 @@ const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main
 const p = (t = "") => (t ? `<w:p><w:r><w:t>${t}</w:t></w:r></w:p>` : "<w:p/>");
 const tc = (...x: string[]) => `<w:tc><w:tcPr><w:tcW w:w="100" w:type="dxa"/></w:tcPr>${x.join("")}</w:tc>`;
 const form = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body><w:tbl><w:tr>${tc(p("SUBJECT"))}${tc(p())}</w:tr><w:tr>${tc(p("DISCIPLINE 4"), p("DEFINE THE PROBLEM CAUSE"))}${tc(p())}</w:tr></w:tbl><w:p><w:r><w:t>END</w:t></w:r></w:p></w:body></w:document>`;
-async function docxBlob() { const zip = new JSZip(); zip.file("word/document.xml", form); return zip.generateAsync({ type: "blob" }); }
+async function docxBlob(xml = form) { const zip = new JSZip(); zip.file("word/document.xml", xml); return zip.generateAsync({ type: "blob" }); }
 const read = async (blob: Blob) => (await (await JSZip.loadAsync(await blob.arrayBuffer())).file("word/document.xml")!.async("string"));
 
 it(".docx로 내보내면 D4 칸에 엔지니어 글이, 8D 표 뒤에 부록이 들어가고 검증 방법은 파일 어디에도 없다", async () => {
@@ -249,6 +249,8 @@ it("쓴 글이 없어도 D4 본문 선례만 골랐다면 내보낼 것이 있�
   expect(none.hasContent).toBe(false);
   expect(none.steps).toEqual({});
 });
+/** 글자가 이 문구로 시작하는 w:r 하나(앞뒤 run은 넘지 않는다) */
+const runOf = (xml: string, text: string) => xml.match(new RegExp(`<w:r>(?:(?!</w:r>)[^])*?<w:t xml:space="preserve">${text.replace(/[[\]]/g, "\\$&")}[^<]*</w:t></w:r>`))?.[0] ?? "";
 it(".docx로 내보내면 D4 칸 안(엔지니어 글 뒤)에 굵은 타사 원문 제목과 인용이 들어가고 부록은 따로 없다", async () => {
   const out = d4Export({ values, cards: withText.slice(0, 2), includeBody: true, includeAppendix: false, prov });
   const r = await patchDocx(await docxBlob(), docxContent(out, null));
@@ -261,7 +263,8 @@ it(".docx로 내보내면 D4 칸 안(엔지니어 글 뒤)에 굵은 타사 원�
   expect(at(D4_EVIDENCE_TITLE)).toBeGreaterThan(at("우리 건의 근본 원인 초안")); // 엔지니어 글 뒤
   expect(at(D4_EVIDENCE_TITLE)).toBeLessThan(table); // 표 안(D4 칸)
   expect(at("타사 선례")).toBeLessThan(table); // 인용도 D4 칸 안이고 표 뒤 부록은 없다
-  expect(xml).toMatch(new RegExp(`<w:rPr>[^]*?<w:b/>[^]*?</w:rPr><w:t xml:space="preserve">${D4_EVIDENCE_TITLE.replace(/[[\]]/g, "\\$&")}`)); // 제목 줄은 굵게
+  expect(runOf(xml, D4_EVIDENCE_TITLE)).toContain("<w:b/>"); // 제목 줄 run 하나가 굵다(앞쪽 다른 굵은 run에 기대지 않는다)
+  expect(runOf(xml, "우리 건의 근본 원인 초안")).not.toContain("<w:b/>"); // 엔지니어 글 run은 굵지 않다
   expect(xml).not.toContain(VERIFY);
 });
 it("내려받은 뒤 안내는 D4 칸에 들어간 타사 인용 수를 알린다", () => {
@@ -276,4 +279,16 @@ it("D4 구역은 D4 칸 본문 선택과 부록 선택을 따로 보이고 둘 �
   expect(m.match(/type="checkbox"/g)).toHaveLength(2);
   expect(m).not.toMatch(/type="checkbox"[^>]*checked/);
   expect(m).toContain("Write your Escape Cause or Root Cause, or tick a precedent option, to enable.");
+});
+it("칸에 글자 서식(rPr)이 있는 실제 양식에서도 제목 run은 굵고 엔지니어 글 run은 굵지 않다", async () => {
+  const row = `<w:tr>${tc(p("DISCIPLINE 4"), p("DEFINE THE PROBLEM CAUSE"))}${tc(p())}</w:tr>`;
+  expect(form).toContain(row); // 바꿀 자리가 실제로 있어야 시험이 의미 있다
+  const formatted = form.replace(row, `<w:tr>${tc(p("DISCIPLINE 4"), p("DEFINE THE PROBLEM CAUSE"))}${tc('<w:p><w:r><w:rPr><w:sz w:val="20"/></w:rPr></w:r></w:p>')}</w:tr>`);
+  const out = d4Export({ values, cards: withText.slice(0, 1), includeBody: true, includeAppendix: false, prov });
+  const r = await patchDocx(await docxBlob(formatted), docxContent(out, null));
+  expect(r.filled).toEqual([4]);
+  const xml = await read(r.blob);
+  expect(xml).toContain('<w:sz w:val="20"/>'); // 칸의 글자 서식을 이어받는다
+  expect(runOf(xml, D4_EVIDENCE_TITLE)).toContain("<w:b/>");
+  expect(runOf(xml, "우리 건의 근본 원인 초안")).not.toContain("<w:b/>");
 });

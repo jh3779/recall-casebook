@@ -1,15 +1,12 @@
 import { useState } from "react";
 import type { Card, SearchResponse } from "../search/types";
-import { ALL_STEPS, APPENDIX_KEY, appendixParagraphs, composeDocument, CORE_STEPS, D4_EVIDENCE_KEY, evidenceFooter, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
+import { ALL_STEPS, APPENDIX_KEY, appendixParagraphs, composeDocument, CORE_STEPS, D4_EVIDENCE_KEY, d4EvidenceVisible, evidenceFooter, insertBlock, insertedCount, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep } from "./document";
 import { freshQuestionChanged, workChanged } from "./session";
 import { DocxError, inspectDocx, patchDocx, type Inspection, type Place } from "./docxPatch";
-import { DraftPanel } from "./DraftPanel";
-import { EvidenceCard } from "./EvidenceCard";
+import { D4Reference } from "./D4Reference";
 import { FileMap } from "./FileMap";
 import { FormPreview } from "./FormPreview";
 
-/** 선례 내용은 D4에만 넣는다(DEC-076) — 다른 단계(D2·D3·D5·D7 등)는 엔지니어가 직접 쓰는 칸이다 */
-const D4_HINT = "타사 선례의 공개된 원인 원문입니다. 자사 원인이 아니라서 '타사 선례' 머리줄과 출처 줄이 붙고, D4 칸 본문(엔지니어가 쓴 글 뒤) 또는 아래 '선례 근거 부록'(8D 표 뒤 별도 문단)에 넣을 수 있습니다.";
 const stepLabel = (n: number[]) => n.map((x) => `D${x}`).join("·");
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -31,7 +28,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   const [docxError, setDocxError] = useState("");
   const [busy, setBusy] = useState(false);
   const [applied, setApplied] = useState<ReadonlySet<number>>(ALL_STEPS);
-  // 선례 목록·검색 결과가 바뀌어 돌아오면 더는 담지 않은 선례의 인용을 본문에서 걷어 낸다. 질문·판본까지 바뀌었으면 검색 결과 표·확인 질문도 걷어 내고,
+  // 선례 목록·검색 결과가 바뀌어 돌아오면 더는 담지 않은 선례의 인용을 본문에서 걷어 낸다. 질문·판본까지 바뀌었으면 확인 질문도 걷어 내고,
   // 사용자가 쓴 글·올린 파일은 지우지 않고 비울지 묻는다(session.ts). props가 바뀔 때 렌더 중에 상태를 맞추는 React 권장 방식
   const [seen, setSeen] = useState({ cards, response });
   const [anchor, setAnchor] = useState(response); // 마지막으로 본 검색 결과(검색 실패로 null이 와도 기억)
@@ -54,12 +51,12 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   // "선례 없이 8D 작성하기"를 새로 눌렀으면, 이전에 쓴 글·올린 파일이 있을 때 비울지 묻는다
   if (seenFresh !== fresh) {
     setSeenFresh(fresh);
-    // 검색창 질문만 바꿨다면 이전 질문의 검색 결과 표·확인 질문은 걷어 낸다(사용자가 쓴 글은 남긴다)
+    // 검색창 질문만 바꿨다면 이전 질문의 확인 질문은 걷어 낸다(사용자가 쓴 글은 남긴다)
     if (freshQuestionChanged(anchor, freshQuestion)) {
       const r = pruneInserted(valuesNow, insertedNow, new Set(cards.map((c) => c.campno)), true);
       if (r.removed.length || r.blocked.length) {
         setValues(r.values); setInserted(r.inserted); valuesNow = r.values; insertedNow = r.inserted;
-        notes.push(`이전 질문의 검색 결과 표·인용 ${r.removed.length}건을 본문에서 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요.` : ""}`);
+        notes.push(`이전 질문의 인용·확인 질문 ${r.removed.length}건을 뺐습니다.${r.blocked.length ? ` 직접 고친 글이라 자동으로 못 뺀 ${r.blocked.length}건은 칸에서 직접 지워 주세요.` : ""}`);
       }
     }
     if (Object.values(valuesNow).some((v) => v.trim()) || docx || subjectInput !== null) setStale("fresh");
@@ -71,8 +68,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
   }
   const subject = subjectInput ?? freshQuestion ?? response?.question ?? "";
   const customers = new Set(response?.customer_precedents.map((c) => c.campno));
-  const insertedCount = (step: string) => Object.keys(inserted).filter((k) => k.startsWith(`${step}|`)).length;
-  const appliedInserted = Object.keys(inserted).filter((k) => applied.has(parseInt(k, 10))).length; // 키는 "4|번호"(D4 본문)·"4a|번호"(부록)
+    const appliedInserted = insertedCount(inserted, applied); // 키는 "4|번호"(D4 본문)·"4a|번호"(부록)
   const fileText = composeDocument({ subject, values, withEvidence: appliedInserted > 0, prov: response, only: applied });
 
   function toggle(step: string, id: string, block: string) {
@@ -111,15 +107,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
     } catch (e) { setMessage(e instanceof DocxError ? e.message : "파일을 만들지 못했습니다"); }
     finally { setBusy(false); }
   }
-  const reference = (step: string) => {
-    if (step !== "4" || !cards.length) return null;
-    const count = insertedCount("4") + insertedCount("4a");
-    return <details className="ed-ref"><summary><span>선례 참고 열기 <span className="ed-opt">선택</span></span><span className={`ed-cnt${count ? " on" : ""}`}>넣음 {count}건</span></summary>
-      <p className="note">{D4_HINT} 넣기를 누르기 전에는 아무것도 들어가지 않습니다.</p>
-      {response && <DraftPanel key={`4|${response.question}|${cards.map((c) => c.campno).join(",")}`} step="d4" question={response.question} build={response} cards={cards} inserted={insertedFor(inserted, "4")} onToggle={(id, block) => toggle("4", id, block)} />}
-      {cards.map((card) => <EvidenceCard key={card.campno} card={card} customer={customers.has(card.campno)} inBody={inserted[`4|${card.campno}`] !== undefined} inAppendix={inserted[`4a|${card.campno}`] !== undefined} onToggleBody={(block) => toggle("4", card.campno, block)} onToggleAppendix={(block) => toggle("4a", card.campno, block)} />)}
-    </details>;
-  };
+  const reference = (step: string) => step === "4" ? <D4Reference cards={cards} response={response} customers={customers} inserted={inserted} onToggle={(target, id, block) => toggle(target, id, block)} /> : null;
   const total = appliedInserted;
   return <main className="view-eightd">
     <h1>8D 작성</h1>
@@ -127,7 +115,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
       <button type="button" className="btn ghost" onClick={onBack}>← 케이스북으로</button>
       {cards.length ? <><span className="note">8D 근거로 담은 선례 {cards.length}건</span>{cards.map((c) => <span className="ed-chip campno" key={c.campno}>{c.campno}</span>)}</> : <span className="note">담은 선례 없음 — 선례 없이 작성합니다</span>}
     </div>
-    {stale && <p className="ed-err" role="alert">{stale === "fresh" ? "새로 시작했지만" : "질문이 바뀌었습니다. 이전 질문의 선례 인용과 검색 결과 표는 본문에서 뺐지만,"} 이전에 쓴 글{docx ? "과 올린 파일" : ""}은 남아 있습니다 — SUBJECT 칸도 확인해 주세요. <button type="button" className="ed-link" onClick={startOver}>이전 작업 비우고 새로 시작</button> · <button type="button" className="ed-link" onClick={() => setStale(null)}>이어서 쓰기</button></p>}
+    {stale && <p className="ed-err" role="alert">{stale === "fresh" ? "새로 시작했지만" : "질문이 바뀌었습니다. 이전 질문의 선례 인용은 뺐지만,"} 이전에 쓴 글{docx ? "과 올린 파일" : ""}은 남아 있습니다 — SUBJECT 칸도 확인해 주세요. <button type="button" className="ed-link" onClick={startOver}>이전 작업 비우고 새로 시작</button> · <button type="button" className="ed-link" onClick={() => setStale(null)}>이어서 쓰기</button></p>}
     <p className="ed-intro"><b>기본은 선례 없이 작성하는 빈 양식입니다.</b> {cards.length ? <>선례 내용은 <b>D4에만</b> 넣습니다 — D4 칸 아래 "선례 참고 열기"에는 앞 화면에서 담은 선례만 나오고, <b>"본문에 텍스트로 넣기"(D4 칸)나 "부록에 텍스트로 넣기"(8D 표 뒤)를 누른 인용만</b> 평문으로 들어갑니다. 나머지 단계는 선례 없이 직접 씁니다. 들어간 글은 일반 문서 글처럼 고치거나 지울 수 있고, </> : <>선례를 참고하려면 "← 케이스북으로" 돌아가 선례를 체크하고 "Write 8D from checked"로 다시 오면 됩니다. </>}서비스는 어떤 칸도 스스로 채우지 않습니다.</p>
     <section className="ed-file" aria-label="내 8D 파일">
       <div className="ed-file-head"><b>내 8D 파일(.docx)</b><span className="ed-opt">선택</span><span className="note">올리면 그 파일의 칸 끝에 쓴 글을 덧붙인 새 파일로 내려받습니다. 파일은 이 기기 밖으로 나가지 않고 원본은 바뀌지 않습니다.</span></div>
@@ -155,7 +143,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
             <textarea value={values[f.key] ?? ""} rows={rowsFor(values[f.key] ?? "")} placeholder={f.hint} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} /></label>)}
         </div>
         {reference(String(step.n))}
-        {step.n === 4 && (cards.length > 0 || !!values[D4_EVIDENCE_KEY]?.trim()) && <div className="ed-fields"><label className="ed-field"><span>선례 근거 — D4 칸에 들어가는 타사 원문 <em className="ed-own">D4 "본문에 넣기"를 누른 인용만</em></span>
+        {step.n === 4 && d4EvidenceVisible(cards.length, values) && <div className="ed-fields"><label className="ed-field"><span>선례 근거 — D4 칸에 들어가는 타사 원문 <em className="ed-own">D4 "본문에 넣기"를 누른 인용만 — 자사 글은 위 Escape·Root Cause 칸에 쓰세요</em></span>
           <textarea value={values[D4_EVIDENCE_KEY] ?? ""} rows={rowsFor(values[D4_EVIDENCE_KEY] ?? "")} placeholder="D4 선례 참고에서 본문에 넣은 타사 원인 원문이 여기 들어갑니다 — 엔지니어가 쓴 Escape·Root Cause 글 뒤에 '타사 선례' 제목과 함께 붙습니다" onChange={(e) => setValues((v) => ({ ...v, [D4_EVIDENCE_KEY]: e.target.value }))} /></label></div>}
       </section>)}
       {applied.has(4) && <section className="ed-step" aria-labelledby="ed-h-appendix">
@@ -165,7 +153,7 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
       </section>}
     </div>
     <section className="ed-bar" aria-label="파일 만들기">
-      <div className="ed-bar-main"><b>D4에 넣은 선례 인용 {total}건</b><span className="note">{total ? "— 칸의 글이 그대로 파일에 들어갑니다" : "— 선례 없이 만들어집니다"}</span></div>
+      <div className="ed-bar-main"><b>D4에 넣은 선례 항목 {total}건</b><span className="note">{total ? "— 칸의 글이 그대로 파일에 들어갑니다" : "— 선례 없이 만들어집니다"}</span></div>
       <div className="ed-bar-actions"><button type="button" className="btn" onClick={copy}>파일 글 복사</button><button type="button" className="btn primary" disabled={!docx || !docx.view.cells.length || busy} title={docx ? undefined : "위에서 내 8D 파일(.docx)을 올리면 켜집니다"} onClick={exportDocx}>{busy ? "만드는 중…" : "원본 서식 그대로 내려받기 (.docx)"}</button></div>
       <p className="note" role="status">{message || (total ? "넣은 인용에는 머리줄 “[타사 선례 번호 · 회사 · 접수일]”과 꼬리줄 “— 말한 주체 · 출처 파일 · sha256”이 평문으로 붙어 있습니다. 출처 표시라 지우지 않는 것을 권장합니다." : "")}</p>
     </section>
