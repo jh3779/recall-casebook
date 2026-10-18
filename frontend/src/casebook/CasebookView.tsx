@@ -6,6 +6,7 @@ import { errorText, searchErrorMessage } from "./errors";
 import { Intro } from "./Intro";
 import { OverlayBoundary, OverlayLoading } from "./OverlayBoundary";
 import { pickedFor, toggleChecked } from "./questions";
+import { RequestGate } from "./requestGate";
 import { Results } from "./Results";
 import { SearchError } from "./SearchError";
 import { useCountdown } from "./useCountdown";
@@ -40,7 +41,7 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
   const [unsavedNotes, setUnsavedNotes] = useState<ReadonlySet<string>>(new Set()); // 저장소에 쓰지 못한 메모의 리콜 번호 — 하나라도 있으면 저장됐다고 말하지 않는다
   const saveFailed = unsavedNotes.size > 0;
   const storage = useMemo(() => browserStorage(), []);
-  const request = useRef<AbortController | null>(null);
+  const [gate] = useState(() => new RequestGate()); // 지금 요청 하나만 인정한다 — 새 질문이 오면 이전 요청의 응답은 버린다
   const caseRef = useRef(caseName); // 검색이 오래 걸리는 동안 사건 이름이 붙으면 낡은 이름으로 화면 메모를 비우지 않게
   useEffect(() => { caseRef.current = caseName; }, [caseName]);
   const adopted = adoptDraft(draftKey, draft, question);
@@ -49,9 +50,9 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
     if (adopted.reset) { setState("idle"); setResponse(null); setChecked([]); setPicked(null); setError(""); setRetryAt(null); setSlow(false); }
   }
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { request.current?.abort(); if (slowTimer.current) clearTimeout(slowTimer.current); }, []);
+  useEffect(() => () => { gate.invalidate(); if (slowTimer.current) clearTimeout(slowTimer.current); }, [gate]);
   // 새 질문이 오면 진행 중이던 이전 요청은 취소하고 그 응답은 버린다. 화면 상태를 비운 같은 커밋 안에서 끝내도록 레이아웃 효과로 둔다 — 일반 효과는 그리기 뒤라 그 사이에 늦게 도착한 이전 응답이 새 질문 밑에 다시 들어갈 수 있다(PR #164 Codex 리뷰)
-  useLayoutEffect(() => { if (draft) { request.current?.abort(); request.current = null; } }, [draft]);
+  useLayoutEffect(() => { if (draft) gate.invalidate(); }, [draft, gate]);
 
   // 사건 이름 없이 적은 메모가 있으면 새로고침·탭 닫기 전에 잃는다고 알린다
   const unsaved = isUnsaved(caseName, notes, saveFailed, !!storage);
@@ -87,22 +88,20 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
     if (example !== undefined) setQuestion(example);
     if (!value || !/[A-Za-z]/.test(value) || value.length > 4000) return;
     if (!caseName && unsaved && !confirm("Notes and D4 text without a case name will be discarded when you search again. Continue?")) return;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    const controller = gate.begin();
     const timer = setTimeout(() => controller.abort(), 60_000);
     setState("loading"); setError(""); setRetryAt(null); setResponse(null); setChecked([]); setPicked(null); setSlow(false);
     if (slowTimer.current) clearTimeout(slowTimer.current);
     slowTimer.current = setTimeout(() => setSlow(true), 3000);
     try {
       const result = await search(value, controller.signal);
-      if (request.current !== controller) return;
+      if (!gate.accepts(controller)) return;
       if (!caseRef.current) setNotes({}); // 이름 없는 메모는 새 결과가 실제로 온 뒤에 비운다(검색이 실패하면 메모를 잃지 않게)
       setResponse(result); setState("done");
     } catch (e) {
-      if (request.current !== controller) return;
+      if (!gate.accepts(controller)) return;
       setError(errorText(e, "search")); setRetryAt(e instanceof ApiError ? e.retryAt ?? null : null); setState("error");
-    } finally { clearTimeout(timer); if (request.current === controller && slowTimer.current) clearTimeout(slowTimer.current); }
+    } finally { clearTimeout(timer); if (gate.accepts(controller) && slowTimer.current) clearTimeout(slowTimer.current); }
   }
   function changeNote(campno: string, text: string) {
     const r = applyNote(storage, caseName, notes, campno, text);
