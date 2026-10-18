@@ -2,17 +2,12 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { search } from "../api";
 import type { Card, HealthState, SearchResponse } from "../search/types";
 import { adoptDraft } from "./adoptDraft";
-import { CaseDetail } from "./CaseDetail";
-import { CaseList } from "./CaseList";
-import { D4Panel } from "./D4Panel";
 import { errorText } from "./errors";
-import { GroupPanel } from "./GroupPanel";
 import { Intro } from "./Intro";
-import { NotesPanel } from "./NotesPanel";
 import { OverlayBoundary, OverlayLoading } from "./OverlayBoundary";
-import { Provenance } from "./Provenance";
-import { Write8dBar } from "./Write8dBar";
 import { pickedFor, toggleChecked } from "./questions";
+import { Results } from "./Results";
+import { Write8dPlain } from "./Write8dBar";
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
 const ModelOverlay = lazy(() => import("./ModelOverlay")); // three.js는 3D 창을 열 때만 받는다
@@ -132,29 +127,15 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
       <input id="cb-question" ref={questionInput} lang="en" value={question} maxLength={4000} onChange={(e) => setQuestion(e.target.value)} placeholder="Describe the defect in English — e.g. brake fluid leaking from front caliper" aria-invalid={noEnglish} />
       <button type="submit" className="cb-btn" disabled={state === "loading" || !question.trim() || noEnglish}>{state === "loading" ? "Searching…" : "Find precedents"}</button>
       <span className={`cb-muted${noEnglish ? " warn" : ""}`} aria-live="polite">{noEnglish ? "Needs English words." : "English questions only. NHTSA public recalls and Part 573 reports."}</span>
-      {onWrite8d && <button type="button" className="cb-link cb-write-plain" onClick={() => onWrite8d([], response, { question })}>Write 8D without precedents →</button>}
+      {onWrite8d && <Write8dPlain question={question} response={response} onWrite8d={onWrite8d} />}
     </form>
     {state === "error" && <p className="cb-error" role="alert">{error} <button type="button" className="cb-link" onClick={() => void run()}>Retry</button></p>}
     {state === "idle" && <><p className="cb-empty">Describe a defect to see precedents from other manufacturers, with the cause text each one wrote and who said it.</p><Intro health={health} onExample={(q) => void run(q)} /></>}
     {state === "loading" && <p className="cb-empty" role="status">Searching…</p>}
 
-    {state === "done" && response && <>
-    <div className="cb-grid">
-      <CaseList response={response} checked={checked} onToggle={togglePicked} />
-      <section className="cb-stack" aria-label="Checked precedents">
-        <h2 className="sr-only">Checked precedents</h2>
-        {onWrite8d && <Write8dBar checked={checked} response={response} onWrite8d={onWrite8d} />}
-        {!checked.length && <p className="cb-empty">Check precedents on the left. Each one stacks here with its original wording, who said it, and the report it came from.</p>}
-        {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => togglePicked(card)} on3d={(button) => setView3d({ card, opener: button })} />)}
-      </section>
-      <div className="cb-side">
-        <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
-        <GroupPanel key={checkedKey} question={response.question} build={response} cards={checked} onPicked={(ids) => setPicked({ key: checkedKey, ids })} />
-      </div>
-    </div>
-    <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} picked={pickedFor(picked, checkedKey)} />
-    <Provenance data={response} />
-    </>}
+    {state === "done" && response && <Results response={response} checked={checked} checkedKey={checkedKey} onToggle={togglePicked} on3d={(card, button) => setView3d({ card, opener: button })}
+      notes={notes} onNoteChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase}
+      copyMessage={copyMessage} storeMessage={storeMessage} onGroupPicked={(ids) => setPicked({ key: checkedKey, ids })} picked={pickedFor(picked, checkedKey)} onWrite8d={onWrite8d} />}
     {view3d && <OverlayBoundary onClose={() => setView3d(null)} opener={view3d.opener}><Suspense fallback={<OverlayLoading onClose={() => setView3d(null)} opener={view3d.opener} />}><ModelOverlay card={view3d.card} opener={view3d.opener} onClose={() => setView3d(null)} /></Suspense></OverlayBoundary>}
   </main>;
 }

@@ -13,7 +13,8 @@ import CasebookView from "./CasebookView";
 import { EXAMPLES } from "./examples";
 import { Intro } from "./Intro";
 import { Provenance } from "./Provenance";
-import { Write8dBar } from "./Write8dBar";
+import { Results } from "./Results";
+import { Write8dBar, Write8dPlain } from "./Write8dBar";
 
 // 선례 검색 화면을 케이스북에 합친 부분(DEC-075)
 const response = fixture as SearchResponse;
@@ -26,7 +27,7 @@ it("검색 전 안내에 예시 질문 4개·하는 일/하지 않는 일·데�
   for (const q of EXAMPLES) expect(markup).toMatch(new RegExp(`<button[^>]*>${q}</button>`));
   expect(markup).toContain("What this tool does");
   expect(markup).toContain("What it does not do");
-  expect(markup).toContain("It does not translate or summarize the originals.");
+  for (const line of ["What it does not do", "It does not decide whether a recall is needed, or what the cause is.", "It does not translate or summarize the originals.", "It does not guess a cause or a supplier that is not in the source."]) expect(markup).toContain(line);
   expect(markup).toContain(`build ${health.build_id}`);
   expect(markup).toContain(`snapshot ${health.snapshot_date}`);
 });
@@ -84,4 +85,31 @@ it("고객사 결과가 없더라도 구역과 안내를 남긴다", () => {
   const markup = renderToStaticMarkup(<CaseList response={{ ...response, customer_precedents: [] }} checked={[]} onToggle={() => {}} />);
   expect(markup).toContain("Customer precedents · Hyundai / Kia");
   expect(markup).toContain("No Hyundai / Kia recall in the top 100.");
+});
+
+const resultsProps = { response, checked: [] as Card[], checkedKey: "", onToggle: () => {}, on3d: () => {}, notes: {}, onNoteChange: () => {}, caseName: "", persistent: false, storageBlocked: null as never, onCopy: () => {}, onClear: () => {}, copyMessage: "", storeMessage: "", onGroupPicked: () => {}, picked: [] as string[] };
+it("결과 화면에는 응답 출처(묶음 sha 전체)가 항상 붙고, 8D 줄은 체크한 선례가 있고 넘길 수 있을 때만 붙는다", () => {
+  const none = renderToStaticMarkup(<Results {...resultsProps} />);
+  expect(none).toContain(response.bundle_sha256);
+  expect(none).not.toContain("Write 8D");
+  const withChecked = renderToStaticMarkup(<Results {...resultsProps} checked={cards.slice(0, 2)} onWrite8d={() => {}} />);
+  expect(withChecked).toContain("Write 8D from checked (2)");
+  expect(withChecked).toContain(response.bundle_sha256);
+  expect(renderToStaticMarkup(<Results {...resultsProps} checked={cards.slice(0, 2)} />)).not.toContain("Write 8D");
+  expect(renderToStaticMarkup(<Results {...resultsProps} onWrite8d={() => {}} />)).not.toContain("Write 8D");
+});
+it("선례 없이 8D 단추는 체크한 선례를 넘기지 않고 입력창의 질문을 새 질문으로 넘긴다", () => {
+  const seen: unknown[] = [];
+  const el = Write8dPlain({ question: "my question", response, onWrite8d: (...args) => { seen.push(args); } }) as ReactElement<{ onClick: () => void }>;
+  el.props.onClick();
+  expect(seen).toEqual([[[], response, { question: "my question" }]]);
+});
+it("싣지 못한 생산 기간 블록이 0이면 안내를 그리지 않는다", () => {
+  const source = { campaign: "X", file: "odi/rcl/2026/RCLRPT-X.pdf", pdf_sha256: "c".repeat(64), submission_date: "20260710" };
+  const production = { item: "production_period" as const, label: "생산 기간", evidence: [{ field: "573.production_dates", text: "Vehicle 1: 2015" }], omitted: 0, unread: 0, source };
+  const card = { ...cards.find((c) => c.cause.status === "no_573_report")!, cause: { status: "cause_empty" as const, campaign: "X" }, checklist: [production] };
+  const markup = renderToStaticMarkup(<CaseDetail card={card} response={response} onRemove={() => {}} />);
+  expect(markup).toContain("Production period");
+  expect(markup).not.toContain("not shown");
+  expect(markup).not.toContain("without a readable date");
 });

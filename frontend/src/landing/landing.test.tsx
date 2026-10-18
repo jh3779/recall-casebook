@@ -8,6 +8,8 @@ describe("랜딩", () => {
     const html = renderToStaticMarkup(<Landing onEnter={() => {}} />);
     expect(html).toContain("Recall Casebook");
     expect(html).toContain("quoted word for word from NHTSA records");
+    expect(html).toContain("recalls that may involve the same part"); // 같은 부품임을 보증하지 않는다(Intro와 같은 말투)
+    expect(html).toContain('lang="en"');
     expect(html).toMatch(/<button[^>]*>Open casebook<\/button>/);
   });
   it("판정·원인 단정 문구가 없다", () => {

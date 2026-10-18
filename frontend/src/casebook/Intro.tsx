@@ -13,7 +13,7 @@ export function Intro({ health, onExample }: { health: HealthState; onExample: (
         <li>Labels every quote with who said it and where it comes from (recall number, Part 573 file, investigation number).</li>
       </ul></section>
       <section className="not"><h2>What it does not do</h2><ul>
-        <li>It does not judge whether a recall is relevant to your case, or what the cause is.</li>
+        <li>It does not decide whether a recall is needed, or what the cause is.</li>
         <li>It does not translate or summarize the originals.</li>
         <li>It does not guess a cause or a supplier that is not in the source.</li>
       </ul></section>

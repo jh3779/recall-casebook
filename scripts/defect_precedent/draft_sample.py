@@ -22,8 +22,8 @@ from functools import partial
 from server.rag import draft
 
 API = "https://lg-cns-rag.vercel.app"
-# 입력 질문 — 질문마다 출처가 저장소에 있다(새로 지어 쓰지 않았다): 화면 예시 4개(frontend/src/search/examples.ts),
-# 시연 질문(HANDOFF 할 일 58), 검색창 안내 문구(SearchInput.tsx), 시연 대체 질문(HANDOFF 할 일 58)
+# 입력 질문 — 질문마다 출처가 저장소에 있다(새로 지어 쓰지 않았다): 화면 예시 4개(frontend/src/casebook/examples.ts, 옛 search/examples.ts에서 옮김),
+# 시연 질문(HANDOFF 할 일 58), 검색창 안내 문구(케이스북 검색창 placeholder), 시연 대체 질문(HANDOFF 할 일 58)
 QUESTIONS = [
     "electric power steering assist loss",
     "engine connecting rod bearing failure",
