@@ -6,38 +6,39 @@ import { MODEL_PART_BONES, TYPICAL_COMPONENTS, displayName } from "./partNames";
 import { CATEGORY_LAYER, PEEL_MAX, boneOfTitle } from "./peel";
 
 describe("안내 보기 단계", () => {
-  it("5단계: 완성 → 투시 → 풀림 → 확대 → 부품 이름", () => {
-    expect(GUIDE_STEPS.map((s) => s.id)).toEqual(["assembled", "seethrough", "unfold", "zoom", "parts"]);
-    expect(GUIDE_LAST).toBe(4);
+  it("4단계: 완성 → 풀림 → 확대 → 부품 이름 — 차체를 투명하게 하는 단계는 없다(DEC-078)", () => {
+    expect(GUIDE_STEPS.map((s) => s.id)).toEqual(["assembled", "unfold", "zoom", "parts"]);
+    expect(GUIDE_LAST).toBe(3);
   });
-  it("단계별 화면 상태: 처음은 완성 Exterior, 두 번째부터 투시, 3단계에 걷어내고, 4단계에 확대, 마지막에만 마커", () => {
-    expect(guideView(0, "engine")).toEqual({ mode: "exterior", layer: 0, zoom: false, markers: false });
-    expect(guideView(1, "engine")).toEqual({ mode: "xray", layer: 0, zoom: false, markers: false });
-    expect(guideView(2, "engine")).toEqual({ mode: "xray", layer: CATEGORY_LAYER.engine, zoom: false, markers: false });
-    expect(guideView(3, "engine")).toEqual({ mode: "xray", layer: CATEGORY_LAYER.engine, zoom: true, markers: false });
-    expect(guideView(4, "engine")).toEqual({ mode: "xray", layer: CATEGORY_LAYER.engine, zoom: true, markers: true });
+  it("단계별 화면 상태: 모든 단계가 외관(불투명) 그대로이고, 2단계에 걷어내며 선택 분류를 주황으로 보이고, 3단계에 확대하고, 마지막에만 마커", () => {
+    expect(guideView(0, "engine")).toEqual({ mode: "exterior", highlight: false, layer: 0, zoom: false, markers: false });
+    expect(guideView(1, "engine")).toEqual({ mode: "exterior", highlight: true, layer: CATEGORY_LAYER.engine, zoom: false, markers: false });
+    expect(guideView(2, "engine")).toEqual({ mode: "exterior", highlight: true, layer: CATEGORY_LAYER.engine, zoom: true, markers: false });
+    expect(guideView(3, "engine")).toEqual({ mode: "exterior", highlight: true, layer: CATEGORY_LAYER.engine, zoom: true, markers: true });
+    for (let s = 0; s <= GUIDE_LAST; s++) expect(guideView(s, "brakes").mode, `step ${s}`).toBe("exterior"); // 어느 단계에서도 투시(xray)가 아니다
   });
-  it("걷어내는 층은 선택한 분류가 드러나는 층이고 0~4 안이다 — 분류가 없으면 걷어내지 않는다", () => {
+  it("걷어내는 층은 선택한 분류가 드러나는 층이고 0~4 안이다 — 분류가 없으면 걷어내지 않고 강조도 없다", () => {
     for (const cat of Object.keys(CATEGORIES) as (keyof typeof CATEGORIES)[]) {
       for (let s = 0; s <= GUIDE_LAST; s++) {
         const v = guideView(s, cat);
         expect(v.layer).toBeGreaterThanOrEqual(0);
         expect(v.layer).toBeLessThanOrEqual(PEEL_MAX);
-        if (s >= 2) expect(v.layer).toBe(CATEGORY_LAYER[cat]);
+        if (s >= 1) expect(v.layer).toBe(CATEGORY_LAYER[cat]);
       }
     }
-    expect(guideView(4, null).layer).toBe(0);
+    expect(guideView(3, null).layer).toBe(0);
+    for (let s = 0; s <= GUIDE_LAST; s++) expect(guideView(s, null).highlight).toBe(false);
   });
   it("범위 밖·잘못된 단계는 0~4로 고정한다", () => {
     expect(clampGuide(-2)).toBe(0);
-    expect(clampGuide(9)).toBe(4);
+    expect(clampGuide(9)).toBe(3);
     expect(clampGuide(Number.NaN)).toBe(0);
-    expect(guideView(99, "seat")).toEqual(guideView(4, "seat"));
+    expect(guideView(99, "seat")).toEqual(guideView(3, "seat"));
   });
   it("Back은 첫 단계에서, Next는 마지막 단계에서 쓸 수 없다", () => {
     expect(guideMoves(0)).toEqual({ canBack: false, canNext: true });
-    expect(guideMoves(2)).toEqual({ canBack: true, canNext: true });
-    expect(guideMoves(4)).toEqual({ canBack: true, canNext: false });
+    expect(guideMoves(1)).toEqual({ canBack: true, canNext: true });
+    expect(guideMoves(3)).toEqual({ canBack: true, canNext: false });
   });
   it("안내 문구에 판정·단정 표현이 없다", () => {
     for (const s of GUIDE_STEPS) expect(s.text).not.toMatch(/applies|verdict|recall is required|caused by|the cause is/i); // principle-ok: 문구에 판정 표현이 없는지 검사

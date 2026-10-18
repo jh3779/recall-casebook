@@ -52,6 +52,7 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   const shown = cardCats.filter((c) => cats3d.has(c));
   const view = step === null ? null : guideView(step, category);
   const effMode = view ? view.mode : mode;
+  const effHighlight = view ? view.highlight : false;
   const effLayer = view ? view.layer : layer;
   const zoom = view ? view.zoom : mode === "xray";
   const peel = peelControls(effLayer, category);
@@ -101,9 +102,9 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   useEffect(() => {
     const showroom = showroomRef.current;
     if (stage !== "ready" || !showroom) return;
-    showroom.setLook(effMode, category, new Set(category ? [category] : []));
+    showroom.setLook(effMode, category, new Set(category ? [category] : []), effHighlight);
     showroom.focus(zoom ? category : null, step !== null); // 안내 보기의 확대는 부품 가까이
-  }, [stage, effMode, category, zoom, step]);
+  }, [stage, effMode, effHighlight, category, zoom, step]);
 
   useEffect(() => {
     if (stage !== "ready") return;

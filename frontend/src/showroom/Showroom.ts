@@ -8,6 +8,7 @@ import { MODELS, PAINTS } from "../config";
 import type { CategoryKey, Mode, ModelKey, PartInfo, PartsMap } from "../types";
 import { DEFAULT_PANEL_SHIFT, panelOffset } from "./viewOffset";
 import { type MarkerDef, type MarkersByCategory, computeMarkers } from "./markers";
+import { type Look, meshLook } from "./look";
 import { PEEL_BONES, boneOfTitle, clampPeel, peelFraming, peelShift, smootherstep } from "./peel";
 
 interface Hotspot {
@@ -89,10 +90,11 @@ export class Showroom {
   private readonly v = new THREE.Vector3();
   private readonly tmp = new THREE.Vector3();
   private current: Entry | null = null;
-  private look: { mode: Mode; category: CategoryKey | null; activeCats: ReadonlySet<CategoryKey> } = {
+  private look: Look = {
     mode: "exterior",
     category: null,
     activeCats: new Set(),
+    highlight: false,
   };
   private fly: { p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number; ms: number } | null = null;
   /** 사용자가 직접 돌려 이동이 취소됐을 때, 보던 방향은 그대로 두고 거리·시선만 원래 목표로 마저 맞춘다 */
@@ -246,30 +248,23 @@ export class Showroom {
     }
   }
 
-  /** 외관: 도장·재질 그대로 / 결함 투시: 고른 부품은 주황, 나머지 결함 부품은 회색, 그 밖은 반투명 */
-  setLook(mode: Mode, category: CategoryKey | null, activeCats: ReadonlySet<CategoryKey>) {
-    this.look = { mode, category, activeCats };
+  /** 외관: 도장·재질 그대로 / 결함 투시: 고른 부품은 주황, 나머지 결함 부품은 회색, 그 밖은 반투명. highlight: 외관에서도 선택한 분류만 주황(안내 보기, `look.ts`) */
+  setLook(mode: Mode, category: CategoryKey | null, activeCats: ReadonlySet<CategoryKey>, highlight = false) {
+    this.look = { mode, category, activeCats, highlight };
     this.applyLook();
   }
 
   private applyLook() {
     const { mat } = this;
-    const { mode, category, activeCats } = this.look;
+    const { mode } = this.look;
     this.floor.visible = mode === "exterior";
     this.ring.material.color.set(mode === "xray" ? 0x3d4a5c : 0x9aa4b2);
     for (const m of this.current?.meshes ?? []) {
-      const cat = partOf(m).defect;
-      m.visible = !m.userData.estimated || (mode === "xray" && !!cat && activeCats.has(cat) && (!category || cat === category));
-      if (mode === "exterior") {
-        m.material = m.userData.base;
-        m.castShadow = true;
-      } else {
-        m.castShadow = false;
-        if (cat && cat === category) m.material = mat.hot;
-        else if (cat && !category && activeCats.has(cat)) m.material = mat.defect;
-        else m.material = mat.ghost;
-      }
-      m.renderOrder = m.material === mat.ghost ? 1 : 0;
+      const { visible, material } = meshLook(this.look, { cat: partOf(m).defect, estimated: !!m.userData.estimated });
+      m.visible = visible;
+      m.material = material === "base" ? m.userData.base : mat[material];
+      m.castShadow = material === "base"; // 외관의 원래 재질만 그림자를 만든다
+      m.renderOrder = material === "ghost" ? 1 : 0;
     }
   }
 
