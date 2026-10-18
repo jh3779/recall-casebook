@@ -1,4 +1,4 @@
-import { BoxGeometry, Mesh, MeshStandardMaterial } from "three";
+import { BoxGeometry, Mesh, MeshStandardMaterial, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { createEstimatedParts } from "./estimatedParts";
 import { computeMarkers } from "./markers";
@@ -40,6 +40,18 @@ describe("부품 이름 마커", () => {
     expect(markers.suspension).toHaveLength(1);
     expect(markers.suspension![0]).toMatchObject({ id: "suspension:Suspension", label: "Suspension", estimated: false, bone: "suspension_lf_013" });
     expect(markers.suspension![0].point.x).toBeCloseTo(-1, 6);
+  });
+  it("모델의 실제 부품은 분류의 핫스팟 위치에 놓고(조각이 흩어진 메시도), 설명용 도형은 도형 중심에 놓는다", () => {
+    const parts = [real("motor_010 / x", "engine", -2), real("motor_010 / y", "engine", 3)]; // 조각이 멀리 흩어진 한 부품
+    const hot = new Vector3(0.7, 0.5, -0.2);
+    const withHot = computeMarkers(parts, { engine: { point: hot } });
+    expect(withHot.engine).toHaveLength(1);
+    expect(withHot.engine![0].point.toArray()).toEqual(hot.toArray());
+    expect(withHot.engine![0].point).not.toBe(hot); // 핫스팟 자체를 넘겨받지 않고 복사한다
+    expect(computeMarkers(parts).engine![0].point.x).toBeCloseTo(-2, 6); // 핫스팟이 없으면 첫 조각의 중심
+    const estimated = createEstimatedParts([body()], material);
+    const est = computeMarkers(estimated, { transmission: { point: hot } });
+    expect(est.transmission![0].point.toArray()).not.toEqual(hot.toArray()); // 설명용 도형은 핫스팟이 아니라 도형 중심
   });
   it("이름 표에 없는 부품·분류가 없는 부품은 마커를 만들지 않는다(이름을 지어내지 않는다)", () => {
     const shell = body();

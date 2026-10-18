@@ -3,9 +3,10 @@ import { CATEGORIES, MODELS } from "../config";
 import { Showroom } from "../showroom/Showroom";
 import type { Card } from "../search/types";
 import type { CategoryKey, Mode } from "../types";
-import { GUIDE_LAST, GUIDE_PLAY_MS, GUIDE_STEPS, guideMoves, guideView } from "../showroom/guide";
+import { GUIDE_LAST, GUIDE_PLAY_MS, guideMoves, guideView, markerTitle } from "../showroom/guide";
 import { TYPICAL_COMPONENTS } from "../showroom/partNames";
 import { PEEL_LABELS, PEEL_MAX, peelControls } from "../showroom/peel";
+import { GuideCard } from "./GuideCard";
 import { partCategories } from "./partCategory";
 import { useModal } from "./useModal";
 
@@ -33,6 +34,8 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   const backRef = useRef<HTMLButtonElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
   const lastLayer = useRef(0);
+  /** 다음 렌더 뒤에 초점을 줄 버튼(시작·재생 끝에서 누른 버튼이 사라지거나 비활성이 될 때) */
+  const focusAfter = useRef<"next" | "back" | null>(null);
   const cardCats = partCategories(card.components);
   /** 직접 조작하면 안내 보기를 멈춘다(보던 화면은 그대로 둔다) */
   const manual = () => {
@@ -55,6 +58,10 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   const markers = useMemo(() => readyShowroom?.markersOf(category) ?? [], [readyShowroom, category]);
   const isPlaying = playing && step !== null && step < GUIDE_LAST;
   const typical = category ? TYPICAL_COMPONENTS[category].filter((n) => !markers.some((m) => m.label === n)) : [];
+  const startGuide = () => {
+    focusAfter.current = "next";
+    setStep(0);
+  };
   const goStep = (to: number) => {
     setPlaying(false);
     setStep(to);
@@ -106,9 +113,19 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   }, [stage, effLayer]);
 
   useEffect(() => {
+    const target = focusAfter.current;
+    focusAfter.current = null;
+    if (target === "next") nextRef.current?.focus();
+    else if (target === "back") backRef.current?.focus();
+  }, [step]);
+
+  useEffect(() => {
     // 자동 재생: 3초마다 다음 단계로, 마지막 단계에서 멈춘다. 모션 감소 설정에서는 쓰지 않는다
     if (!isPlaying) return;
-    const id = setTimeout(() => setStep((s) => (s === null ? s : Math.min(GUIDE_LAST, s + 1))), GUIDE_PLAY_MS);
+    const id = setTimeout(() => {
+      if (step + 1 >= GUIDE_LAST) focusAfter.current = "back"; // 재생이 끝나 Play가 비활성이 된다
+      setStep((s) => (s === null ? s : Math.min(GUIDE_LAST, s + 1)));
+    }, GUIDE_PLAY_MS);
     return () => clearTimeout(id);
   }, [isPlaying, step]);
 
@@ -123,7 +140,7 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
     </div>
     <div className="cb-3d-body">
       <div className="cb-3d-stage" ref={stageRef} />
-      {view?.markers && markers.map((m, i) => <span key={m.id} className="cb-3d-marker" ref={(el) => showroomRef.current?.bindMarker(m.id, el)} title={m.label}>{i + 1}</span>)}
+      {view?.markers && markers.map((m, i) => <span key={m.id} className="cb-3d-marker" ref={(el) => showroomRef.current?.bindMarker(m.id, el)} title={markerTitle(m)}>{i + 1}</span>)}
       {stage === "loading" && <p className="cb-3d-msg" role="status">Loading the 3D model…</p>}
       {stage === "failed" && <p className="cb-3d-msg" role="alert">The 3D model file could not be loaded (public/{model.glb}). It is not committed to the repository — see frontend/README.md, “3D 모델 파일”.</p>}
       {stage === "nowebgl" && <p className="cb-3d-msg" role="alert">This browser cannot start WebGL, so the 3D view is not available.</p>}
@@ -139,29 +156,9 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
         </div>
         {shown.length === 0 && <p className="cb-muted">None of this recall’s part categories has a position in the 3D model, so only the vehicle is shown.</p>}
         {shown.length > 0 && (step === null
-          ? <div className="cb-3d-guide"><button type="button" onClick={() => setStep(0)}>Start guided view</button></div>
-          : <section className="cb-3d-guide" aria-label="Guided view">
-            <h3>Guided view <small>Step {step + 1} of {GUIDE_STEPS.length}</small></h3>
-            <ol className="cb-3d-steps">{GUIDE_STEPS.map((s, i) => <li key={s.id} aria-current={i === step ? "step" : undefined}>{s.title}</li>)}</ol>
-            <p role="status">{GUIDE_STEPS[step].text}</p>
-            <div className="cb-3d-layer-btns">
-              <button type="button" ref={backRef} disabled={!guideMoves(step).canBack} onClick={() => goStep(step - 1)}>Back</button>
-              <button type="button" ref={nextRef} disabled={!guideMoves(step).canNext} onClick={() => goStep(step + 1)}>Next</button>
-              <button type="button" aria-pressed={isPlaying} disabled={reducedMotion || !guideMoves(step).canNext} title={reducedMotion ? "Auto-play is off because your system asks for reduced motion" : undefined} onClick={() => setPlaying(!isPlaying)}>{isPlaying ? "Pause" : "Play"}</button>
-            </div>
-            {view?.markers && <div className="cb-3d-parts">
-              <h4>Parts of this category</h4>
-              {markers.length > 0
-                ? <ol>{markers.map((m) => <li key={m.id}>{m.label}{m.estimated && <span className="cb-muted"> (estimated shape)</span>}</li>)}</ol>
-                : <p className="cb-muted">No named parts of this category are drawn in the 3D model.</p>}
-              {typical.length > 0 && <>
-                <h4>Typical components of this system</h4>
-                <ul>{typical.map((n) => <li key={n}>{n}</li>)}</ul>
-                <p className="cb-muted">Typical components are a general list, not specific to this vehicle, and are not all drawn in the model.</p>
-              </>}
-              <p className="cb-muted">The parts and their layout are a simplified general illustration — not the structure of the vehicle in this recall and not where a defect is.</p>
-            </div>}
-          </section>)}
+          ? <div className="cb-3d-guide"><button type="button" onClick={startGuide}>Start guided view</button></div>
+          : <GuideCard step={step} showParts={!!view?.markers} markers={markers} typical={typical} isPlaying={isPlaying} reducedMotion={reducedMotion}
+            onBack={() => goStep(step - 1)} onNext={() => goStep(step + 1)} onPlay={() => setPlaying(!isPlaying)} backRef={backRef} nextRef={nextRef} />)}
         <div className="cb-3d-layers">
           <label htmlFor="cb-3d-layer">Layers <b>{effLayer} · {PEEL_LABELS[effLayer]}</b></label>
           <input id="cb-3d-layer" ref={sliderRef} type="range" min={0} max={PEEL_MAX} step={1} value={effLayer} aria-valuetext={`${effLayer}, ${PEEL_LABELS[effLayer]}`} onChange={(e) => { manual(); setLayer(Number(e.target.value)); }} />

@@ -190,6 +190,39 @@ describe("걷어내기: 카메라", () => {
     showroom.setPeel(0); // 되돌리면 같은 비율로 가까워진 거리를 유지한다
     expect(Number.isFinite(camera.position.length())).toBe(true);
   });
+  it("안내 보기의 확대는 시선을 부품 높이로 맞추고(회전축은 차량 중앙 수직축), 일반 확대는 시선을 걷어낸 높이에 둔다", () => {
+    const { showroom, controls, hotspot } = fixture();
+    showroom.setPeel(4);
+    const point = hotspot.point.clone().add(new Vector3(...peelShift("steeringwheel_053", 4)));
+    showroom.focus("steering", true);
+    expect(controls.target.toArray()).toEqual([0, point.y, 0]);
+    showroom.focus("steering");
+    expect(controls.target.y).toBeCloseTo(HOME_TARGET.y + peelFraming(4).lift, 9);
+    expect(controls.target.x).toBe(0);
+  });
+  it("안내 확대 중에 분류와 층이 함께 바뀌어도(칩 전환) 새로 확대한 것과 같은 거리·시선이다", () => {
+    const { showroom, camera, controls } = fixture();
+    const second = { point: new Vector3(-1.6, 0.9, 0.5), box: new Box3(new Vector3(-2, 0.6, 0), new Vector3(-1.2, 1.2, 1)), bone: "boot_080" };
+    (showroom as unknown as { current: { hotspots: Record<string, unknown> } }).current.hotspots.tailgate = second;
+    showroom.setPeel(4);
+    showroom.focus("steering", true);
+    // 칩 전환: 분류가 바뀌고(effect 순서상 focus 먼저) 그 분류가 드러나는 층(1)으로 setPeel
+    showroom.focus("tailgate", true);
+    showroom.setPeel(1);
+    const switched = { distance: offset(camera, controls).length(), position: camera.position.clone(), target: controls.target.clone() };
+    showroom.setPeel(1);
+    showroom.focus("tailgate", true);
+    expect(switched.position.distanceTo(camera.position)).toBeLessThan(1e-9);
+    expect(switched.target.distanceTo(controls.target)).toBeLessThan(1e-9);
+    expect(switched.distance).toBeCloseTo(offset(camera, controls).length(), 9);
+    // 반대 방향(1층 → 4층)도 같다
+    showroom.focus("tailgate", true);
+    showroom.focus("steering", true);
+    showroom.setPeel(4);
+    const back = camera.position.clone();
+    showroom.focus("steering", true);
+    expect(back.distanceTo(camera.position)).toBeLessThan(1e-9);
+  });
   it("분류 없이 처음 시점으로 돌아갈 때도 걷어낸 정도의 거리·높이를 쓴다", () => {
     const { showroom, camera, controls } = fixture();
     showroom.setPeel(2);
@@ -303,6 +336,8 @@ describe("걷어내기: 기본 모드(모션 감소 꺼짐)의 보간과 취소"
     const want = zoomed.length();
     for (let i = 1; i <= 80; i++) tick(1000 + 160 + i * 50);
     expect(offset(camera, controls).length()).toBeCloseTo(want, 6);
+    expect(controls.target.y).toBeCloseTo(HOME_TARGET.y + peelFraming(4).lift, 2); // 시선은 계속 목표까지 올라간다(거리는 사용자가 정한 대로)
+    expect(state(showroom).settle).toBeNull();
   });
 });
 
@@ -315,6 +350,15 @@ describe("걷어내기: 첫 조작이 휠일 때", () => {
     expect(state(showroom).wheelNext).toBe(false);
     dom.dispatchEvent(new Event("wheel"));
     expect(state(showroom).wheelNext).toBe(true);
+  });
+  it("실제 휠 이벤트가 OrbitControls에 들어가면 start가 불리기 전에 휠이 기록되어 settle.dist가 null이다(리스너 등록 순서)", () => {
+    const { showroom, controls, tick } = fixture(false);
+    const dom = (controls as unknown as { domElement: EventTarget }).domElement;
+    showroom.setPeel(4);
+    tick(1000 + 110); // 이동 중
+    dom.dispatchEvent(Object.assign(new Event("wheel"), { deltaY: -100, deltaMode: 0, ctrlKey: false, preventDefault() {} }));
+    expect(state(showroom).settle?.dist).toBeNull();
+    expect(state(showroom).wheelNext).toBe(false);
   });
   it("이동 중 첫 조작이 휠이면 거리는 사용자가 정한 대로 두고 시선(걷어낸 높이)만 마저 맞춘다", () => {
     const { showroom, camera, controls, tick } = fixture(false);
@@ -370,9 +414,14 @@ describe("걷어내기: 부품 이름 마커", () => {
     };
     const wheel0 = topOf(wheel, 1000), rack0 = topOf(rack, 1010);
     expect(Number.isFinite(wheel0)).toBe(true);
+    expect(Number.isFinite(parseFloat(wheel.style.left))).toBe(true); // 가로 좌표도 갱신한다
+    const wheelLeft0 = parseFloat(wheel.style.left);
     showroom.setPeel(4); // 핸들은 4층에서 올라간다
+    const wheelMid = topOf(wheel, 1000 + 560); // 700ms 중 80% — 핸들이 일부만 올라간 상태(목표값이 아니라 지금 값을 따라간다)
     const wheel4 = topOf(wheel, 1000 + 800), rack4 = topOf(rack, 1000 + 810);
-    expect(wheel4).toBeLessThan(wheel0);
+    expect(wheel4).toBeLessThan(wheelMid);
+    expect(wheelMid).toBeLessThan(wheel0);
+    expect(Math.abs(parseFloat(wheel.style.left) - wheelLeft0)).toBeGreaterThan(1); // 핸들은 앞으로도 0.4m 움직이므로 가로 좌표도 따라간다
     expect(rack4).toBeCloseTo(rack0, 6);
   });
   it("등록을 해제한 마커 요소는 더 이상 갱신하지 않는다", () => {

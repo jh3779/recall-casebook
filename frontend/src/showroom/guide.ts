@@ -43,3 +43,13 @@ export function guideView(step: number, category: CategoryKey | null): GuideView
 
 /** Next/Back가 닿을 수 있는지 */
 export const guideMoves = (step: number) => ({ canBack: clampGuide(step) > 0, canNext: clampGuide(step) < GUIDE_LAST });
+
+/** 안내 보기에서 쓰는 부품 이름 마커의 겉모습(이름·추정 여부) */
+export interface GuideMarker {
+  id: string;
+  label: string;
+  estimated: boolean;
+}
+
+/** 마커의 이름 표기. 설명용 도형은 호버로 읽어도 추정 표시가 따라간다 */
+export const markerTitle = (m: GuideMarker) => (m.estimated ? `${m.label} (estimated shape)` : m.label);

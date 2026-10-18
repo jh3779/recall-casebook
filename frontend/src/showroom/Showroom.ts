@@ -232,7 +232,8 @@ export class Showroom {
     } else {
       this.peelAnim = { from: this.peelNow, to, start: performance.now(), ms };
     }
-    if (changed) this.aim(true);
+    // 안내 보기의 확대 중에는 새 층 기준으로 다시 확대한다(칩 전환으로 분류·층이 함께 바뀔 때 거리가 어긋나지 않게). 그 밖에는 보던 방향을 유지한다
+    if (changed) this.aim(!(this.focusClose && this.focusCat));
   }
 
   private applyPeel() {
@@ -306,7 +307,9 @@ export class Showroom {
       if (point.y < 0.6) dir.set(0.5, 0.25, -0.83).normalize();
       // 안내 보기의 확대(close)는 부품 가까이(걷어낸 배율을 곱하지 않는다), 보통은 걷어낸 만큼 뒤로 빠진다
       const dist = this.focusClose ? Math.max(3.6, size * 1.3) : Math.max(6.8, size * 2.2) * scale;
-      this.go(point.addScaledVector(dir, dist), lookAt, this.focusClose ? 1 : scale);
+      // 안내 보기의 확대는 시선도 부품 높이로 맞춘다(회전축은 차량 중앙 수직축 그대로) — 아니면 높이가 다른 부품(엔진·변속기 등)이 화면 밖에 놓인다
+      const look = this.focusClose ? lookAt.clone().setY(point.y) : lookAt;
+      this.go(point.addScaledVector(dir, dist), look, this.focusClose ? 1 : scale);
       return;
     }
     const dir = HOME.pos.clone().sub(HOME.target).normalize();
@@ -392,7 +395,7 @@ export class Showroom {
       const h = hotspots[cat];
       if (h) h.bone = bone;
     }
-    const markers = computeMarkers(meshes);
+    const markers = computeMarkers(meshes, hotspots);
     const markerIndex = new Map(Object.values(markers).flatMap((list) => list!.map((m) => [m.id, m] as const)));
     const entry: Entry = { root, meshes, hotspots, rig: buildPeelRig(vehicle.root), markers, markerIndex };
     this.entries.set(key, entry);
