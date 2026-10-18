@@ -7,6 +7,7 @@ import { Intro } from "./Intro";
 import { OverlayBoundary, OverlayLoading } from "./OverlayBoundary";
 import { pickedFor, toggleChecked } from "./questions";
 import { Results } from "./Results";
+import { SearchError } from "./SearchError";
 import { useCountdown } from "./useCountdown";
 import { Write8dPlain } from "./Write8dBar";
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
@@ -140,7 +141,7 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
       <span className={`cb-muted${noEnglish ? " warn" : ""}`} aria-live="polite">{noEnglish ? "Needs English words." : "English questions only. NHTSA public recalls and Part 573 reports."}</span>
       {onWrite8d && <Write8dPlain question={question} response={response} onWrite8d={onWrite8d} />}
     </form>
-    {state === "error" && <div className="cb-error"><p role="alert">{error}</p>{wait > 0 && <p aria-hidden="true">{wait}s left</p>}<button type="button" className="cb-link" disabled={wait > 0} onClick={() => void run()}>Retry{wait > 0 && ` (${wait})`}</button></div>}
+    {state === "error" && <SearchError message={error} limited={retryAt !== null} wait={wait} onRetry={() => void run()} />}
     {state === "idle" && <><p className="cb-empty">Describe a defect to see precedents from other manufacturers, with the cause text each one wrote and who said it.</p><Intro health={health} onExample={(q) => void run(q)} /></>}
     {state === "loading" && <p className="cb-empty" role="status">Searching…{slow && " The server may be waking up — the first request can take 13–16 seconds."}</p>}
 

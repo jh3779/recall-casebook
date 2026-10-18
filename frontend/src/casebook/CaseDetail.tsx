@@ -49,22 +49,24 @@ export function CaseDetail({ card, response, onRemove, on3d }: { card: Card; res
 
     {(production || supplier || plain.length > 0) && <section className="cb-block">
       <h4>Items to check <small>evidence side by side; this tool does not say same or different</small></h4>
-      {production && <div className="cb-check-item">
-        <h5>Production period</h5>
-        {production.evidence.map((e, i) => <p key={i} className="cb-src-text" lang="en">{e.text}</p>)}
-        {production.omitted > 0 && <p className="cb-muted">{production.omitted} more block(s) are not shown — see the report.</p>}
-        {production.unread > 0 && <p className="cb-muted">{production.unread} block(s) without a readable date are not shown — see the report.</p>}
-        <Report source={production.source} />
-      </div>}
-      {supplier && <div className="cb-check-item">
-        <h5>Supplier</h5>
-        {supplier.names.map((name, i) => <p key={i} className="cb-src-text" lang="en">{name}</p>)}
-        <Report source={supplier.source} />
-      </div>}
-      {plain.map((item) => <div key={item.item} className="cb-check-item">
-        <h5>{itemLabel(item.item)}</h5>
-        {item.evidence.map((e, i) => <p key={i} className="cb-src-text" lang={langOf(e.text)}><span className="cb-muted">{fieldLabel(e.field)} · </span>{e.text}</p>)}
-      </div>)}
+      {card.checklist.map((item) => { // 서버가 준 순서 그대로(같은 부품 → 생산 기간 → 고장 양상 → 시정 → 공급사 → 원인을 말한 주체, PRD FR-7)
+        if (item.item === "production_period") return production && <div key={item.item} className="cb-check-item">
+          <h5>Production period</h5>
+          {production.evidence.map((e, i) => <p key={i} className="cb-src-text" lang="en">{e.text}</p>)}
+          {production.omitted > 0 && <p className="cb-muted">{production.omitted} more block(s) are not shown — see the report.</p>}
+          {production.unread > 0 && <p className="cb-muted">{production.unread} block(s) without a readable date are not shown — see the report.</p>}
+          <Report source={production.source} />
+        </div>;
+        if (item.item === "supplier") return supplier && <div key={item.item} className="cb-check-item">
+          <h5>Supplier</h5>
+          {supplier.names.map((name, i) => <p key={i} className="cb-src-text" lang="en">{name}</p>)}
+          <Report source={supplier.source} />
+        </div>;
+        return <div key={item.item} className="cb-check-item">
+          <h5>{itemLabel(item.item)}</h5>
+          {item.evidence.map((e, i) => <p key={i} className="cb-src-text" lang={langOf(e.text)}><span className="cb-muted">{fieldLabel(e.field)} · </span>{e.text}</p>)}
+        </div>;
+      })}
     </section>}
     {card.investigations.length > 0 && <section className="cb-block">
       <h4>NHTSA defect investigation <small>{card.investigations.length} linked, summary verbatim</small></h4>

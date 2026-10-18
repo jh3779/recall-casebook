@@ -8,7 +8,8 @@ import type { Card, HealthResponse, SearchResponse } from "../search/types";
 import EightdView from "../eightd/EightdView";
 import { adoptDraft } from "./adoptDraft";
 import { fieldLabel, itemLabel, plainItems } from "./checkItems";
-import { secondsLeft } from "./useCountdown";
+import { SearchError } from "./SearchError";
+import { countdownLeft, secondsLeft } from "./useCountdown";
 import { CaseDetail } from "./CaseDetail";
 import { CaseList } from "./CaseList";
 import CasebookView from "./CasebookView";
@@ -123,7 +124,7 @@ it("확인 항목 6종이 모두 근거 원문과 함께 보인다(PRD FR-7)", (
       kinds.add(item.item);
       if (item.item === "production_period" || item.item === "supplier") continue; // 둘은 출처 보고서와 함께 따로 그린다(위 시험)
       expect(markup).toContain(`<h5>${itemLabel(item.item)}</h5>`);
-      for (const e of item.evidence) { expect(markup).toContain(escaped(e.text)); expect(markup).toContain(fieldLabel(e.field)); }
+      for (const e of item.evidence) { expect(markup).toContain(escaped(e.text)); expect(fieldLabel(e.field)).not.toBe(e.field); expect(markup).toContain(fieldLabel(e.field)); } // 칸 이름은 내부 키가 아니라 사람이 읽는 이름으로 보인다
     }
     expect(plainItems(card).every((item) => !["production_period", "supplier"].includes(item.item))).toBe(true);
   }
@@ -139,4 +140,35 @@ it("결과 화면은 저장 안내와 복사 안내를 D4 칸과 메모 칸에 �
   const markup = renderToStaticMarkup(<Results {...resultsProps} checked={cards.slice(0, 1)} storeMessage="STORE-MSG-X" copyMessage="COPY-MSG-Y" />);
   expect(markup).toContain("STORE-MSG-X");
   expect(markup).toContain("COPY-MSG-Y");
+});
+it("확인 항목은 서버가 준 순서 그대로 그린다(같은 부품 → 생산 기간 → 고장 양상 → 시정 → 공급사 → 원인을 말한 주체)", () => {
+  const source = { campaign: "X", file: "odi/rcl/2026/RCLRPT-X.pdf", pdf_sha256: "c".repeat(64), submission_date: "20260710" };
+  const base = cards.find((c) => c.cause.status === "no_573_report")!;
+  const pick = (kind: string) => cards.flatMap((c) => c.checklist).find((i) => i.item === kind)!;
+  const production = { item: "production_period" as const, label: "생산 기간", evidence: [{ field: "573.production_dates", text: "Vehicle 1: 2015" }], omitted: 0, unread: 0, source };
+  const checklist = [pick("same_part"), production, pick("failure_mode"), pick("remedy"), pick("supplier"), pick("cause_speaker")];
+  const markup = renderToStaticMarkup(<CaseDetail card={{ ...base, cause: { status: "cause_empty" as const, campaign: "X" }, checklist } as Card} response={response} onRemove={() => {}} />);
+  const at = ["Same part", "Production period", "Failure mode", "Remedy", "Supplier", "Who said the cause"].map((h) => markup.indexOf(`<div class="cb-check-item"><h5>${h}</h5>`));
+  expect(at.every((n) => n >= 0)).toBe(true);
+  expect([...at].sort((a, b) => a - b)).toEqual(at);
+});
+it("남은 초는 마감이 바뀌면 옛 시각으로 세지 않고(막힌 채 1), 같은 마감이면 시각으로 센다", () => {
+  expect(countdownLeft(null, null)).toBe(0);
+  expect(countdownLeft(9000, null)).toBe(1);
+  expect(countdownLeft(9000, { deadline: 5000, at: 100 })).toBe(1); // 옛 마감 때 읽은 시각
+  expect(countdownLeft(9000, { deadline: 9000, at: 1000 })).toBe(8);
+  expect(countdownLeft(9000, { deadline: 9000, at: 9000 })).toBe(0);
+});
+it("429 안내는 기다리는 동안 Retry를 막고, 남은 초는 낭독기가 읽지 않는 곳에만 둔다", () => {
+  const waiting = renderToStaticMarkup(<SearchError message="Too many requests. Try again in 4 seconds." limited wait={3} onRetry={() => {}} />);
+  expect(waiting).toContain('<p role="alert">Too many requests. Try again in 4 seconds.</p>');
+  expect(waiting).toContain('<p aria-hidden="true">3s left</p>');
+  expect(waiting).toMatch(/<button[^>]*disabled=""[^>]*>Retry<span aria-hidden="true"> \(3\)<\/span><\/button>/);
+  expect(waiting).toContain('<p role="status" class="sr-only"></p>'); // 끝났을 때 채울 live 영역은 기다리는 동안에도 비어 있는 채로 먼저 있다
+  const done = renderToStaticMarkup(<SearchError message="Too many requests. Try again in 4 seconds." limited wait={0} onRetry={() => {}} />);
+  expect(done).not.toContain("disabled");
+  expect(done).toContain("You can search again.");
+  const other = renderToStaticMarkup(<SearchError message="Could not reach the server." limited={false} wait={0} onRetry={() => {}} />);
+  expect(other).not.toContain("You can search again.");
+  expect(other).not.toContain("disabled");
 });
