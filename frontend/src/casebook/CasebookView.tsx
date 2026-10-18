@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { search } from "../api";
+import { ApiError, search } from "../api";
 import type { Card, HealthState, SearchResponse } from "../search/types";
 import { adoptDraft } from "./adoptDraft";
 import { errorText } from "./errors";
@@ -7,6 +7,7 @@ import { Intro } from "./Intro";
 import { OverlayBoundary, OverlayLoading } from "./OverlayBoundary";
 import { pickedFor, toggleChecked } from "./questions";
 import { Results } from "./Results";
+import { useCountdown } from "./useCountdown";
 import { Write8dPlain } from "./Write8dBar";
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
@@ -19,14 +20,15 @@ const ModelOverlay = lazy(() => import("./ModelOverlay")); // three.js는 3D 창
 export default function CasebookView({ health, draft = null, onWrite8d }: { health: HealthState; draft?: { question: string; key: number } | null; onWrite8d?: (cards: readonly Card[], response: SearchResponse | null, fresh?: { question: string }) => void }) {
   const [question, setQuestion] = useState(draft?.question ?? "");
   const [draftKey, setDraftKey] = useState(draft?.key ?? 0);
-  const adopted = adoptDraft(draftKey, draft, question);
-  if (adopted.key !== draftKey) { setDraftKey(adopted.key); setQuestion(adopted.question); } // 3D 쇼룸에서 넘어온 질문을 입력창에 채운다(자동으로 검색하지는 않는다)
   const questionInput = useRef<HTMLInputElement>(null);
   useEffect(() => { if (draft) questionInput.current?.focus(); }, [draft]);
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [response, setResponse] = useState<SearchResponse | null>(null);
   const [checked, setChecked] = useState<Card[]>([]);
   const [error, setError] = useState("");
+  const [retryAt, setRetryAt] = useState<number | null>(null); // 호출 상한(429) 뒤 다시 보낼 수 있는 시각 — 그때까지 검색 단추를 막는다
+  const [slow, setSlow] = useState(false); // 3초가 지나도 응답이 없으면 서버가 깨어나는 중일 수 있다고 알린다
+  const wait = useCountdown(retryAt);
   const [caseInput, setCaseInput] = useState("");
   const [caseName, setCaseName] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -40,7 +42,14 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
   const request = useRef<AbortController | null>(null);
   const caseRef = useRef(caseName); // 검색이 오래 걸리는 동안 사건 이름이 붙으면 낡은 이름으로 화면 메모를 비우지 않게
   useEffect(() => { caseRef.current = caseName; }, [caseName]);
-  useEffect(() => () => request.current?.abort(), []);
+  const adopted = adoptDraft(draftKey, draft, question);
+  if (adopted.key !== draftKey) { // 3D 쇼룸에서 넘어온 새 질문 — 입력창을 채우고(자동 검색은 하지 않는다) 이전 질문의 결과를 비운다
+    setDraftKey(adopted.key); setQuestion(adopted.question);
+    if (adopted.reset) { setState("idle"); setResponse(null); setChecked([]); setPicked(null); setError(""); setRetryAt(null); setSlow(false); }
+  }
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { request.current?.abort(); if (slowTimer.current) clearTimeout(slowTimer.current); }, []);
+  useEffect(() => { if (draft) { request.current?.abort(); request.current = null; } }, [draft]); // 새 질문이 오면 진행 중이던 이전 요청은 취소하고 그 응답은 버린다
 
   // 사건 이름 없이 적은 메모가 있으면 새로고침·탭 닫기 전에 잃는다고 알린다
   const unsaved = isUnsaved(caseName, notes, saveFailed, !!storage);
@@ -80,7 +89,9 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
     const controller = new AbortController();
     request.current = controller;
     const timer = setTimeout(() => controller.abort(), 60_000);
-    setState("loading"); setError(""); setResponse(null); setChecked([]); setPicked(null);
+    setState("loading"); setError(""); setRetryAt(null); setResponse(null); setChecked([]); setPicked(null); setSlow(false);
+    if (slowTimer.current) clearTimeout(slowTimer.current);
+    slowTimer.current = setTimeout(() => setSlow(true), 3000);
     try {
       const result = await search(value, controller.signal);
       if (request.current !== controller) return;
@@ -88,8 +99,8 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
       setResponse(result); setState("done");
     } catch (e) {
       if (request.current !== controller) return;
-      setError(errorText(e, "search")); setState("error");
-    } finally { clearTimeout(timer); }
+      setError(errorText(e, "search")); setRetryAt(e instanceof ApiError ? e.retryAt ?? null : null); setState("error");
+    } finally { clearTimeout(timer); if (request.current === controller && slowTimer.current) clearTimeout(slowTimer.current); }
   }
   function changeNote(campno: string, text: string) {
     const r = applyNote(storage, caseName, notes, campno, text);
@@ -125,13 +136,13 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
     <form className="cb-search" onSubmit={(e) => { e.preventDefault(); void run(); }}>
       <label htmlFor="cb-question" className="sr-only">Defect description in English</label>
       <input id="cb-question" ref={questionInput} lang="en" value={question} maxLength={4000} onChange={(e) => setQuestion(e.target.value)} placeholder="Describe the defect in English — e.g. brake fluid leaking from front caliper" aria-invalid={noEnglish} />
-      <button type="submit" className="cb-btn" disabled={state === "loading" || !question.trim() || noEnglish}>{state === "loading" ? "Searching…" : "Find precedents"}</button>
+      <button type="submit" className="cb-btn" disabled={state === "loading" || wait > 0 || !question.trim() || noEnglish}>{state === "loading" ? "Searching…" : "Find precedents"}</button>
       <span className={`cb-muted${noEnglish ? " warn" : ""}`} aria-live="polite">{noEnglish ? "Needs English words." : "English questions only. NHTSA public recalls and Part 573 reports."}</span>
       {onWrite8d && <Write8dPlain question={question} response={response} onWrite8d={onWrite8d} />}
     </form>
-    {state === "error" && <p className="cb-error" role="alert">{error} <button type="button" className="cb-link" onClick={() => void run()}>Retry</button></p>}
+    {state === "error" && <div className="cb-error"><p role="alert">{error}</p>{wait > 0 && <p aria-hidden="true">{wait}s left</p>}<button type="button" className="cb-link" disabled={wait > 0} onClick={() => void run()}>Retry{wait > 0 && ` (${wait})`}</button></div>}
     {state === "idle" && <><p className="cb-empty">Describe a defect to see precedents from other manufacturers, with the cause text each one wrote and who said it.</p><Intro health={health} onExample={(q) => void run(q)} /></>}
-    {state === "loading" && <p className="cb-empty" role="status">Searching…</p>}
+    {state === "loading" && <p className="cb-empty" role="status">Searching…{slow && " The server may be waking up — the first request can take 13–16 seconds."}</p>}
 
     {state === "done" && response && <Results response={response} checked={checked} checkedKey={checkedKey} onToggle={togglePicked} on3d={(card, button) => setView3d({ card, opener: button })}
       notes={notes} onNoteChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase}

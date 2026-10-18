@@ -67,7 +67,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
 **2026-10-14 실측 기록**(작업 F): 1차 `vercel deploy`는 원본 쏘나타 때문에 업로드 129.8MiB(CLI 표시) 뒤 `File size limit exceeded (100 MB)`로 실패 — 업로드 목록에 `node_modules`·보관 모델은 없었다(하위 폴더 `.vercelignore`가 읽힘). 줄인 쏘나타로 2차 배포 성공(업로드 표시 42.2MiB — 1차에서 올라간 쏘렌토 등은 건너뛴 것으로 보인다, 빌드 16초, 첫 배포라 Production `lg-cns-rag-web.vercel.app`에 붙음). 공개 주소에서 받은 두 모델 지문이 1단계 값과 같고 `kona.glb`·`.env.local`은 404. API는 `ALLOWED_ORIGINS` 추가 뒤 재배포 — `/health` build `f1fe1843ed0f2c66`(첫 요청 13.1초), 화면 주소의 사전 요청·검색 모두 200에 `access-control-allow-origin: https://lg-cns-rag-web.vercel.app`, 검색 응답에 `access-control-expose-headers: Retry-After`(#117 호출 상한도 이 재배포로 적용). 헤드리스 Chrome으로 공개 화면 첫 화면의 "데이터 판본"이 build `f1fe1843ed0f2c66`으로 뜨는 것을 확인했다. 모바일 390px 쇼룸에서는 부품 분류 패널이 차량을 가린다(기존 화면 배치 — 이 작업 밖, 후속 #120).
 
 - **환경변수에 키를 넣지 않는다.** `VITE_*` 값은 빌드 결과(브라우저)에 그대로 들어간다(AGENTS.md 7절, DEC-032).
-- 공개 화면의 검색도 API의 IP별 호출 상한(1분 60회, DEC-057)을 받는다. 화면은 앱 429에 "Too many requests. Try again in N seconds." 문구를 보인다(`frontend/src/casebook/errors.ts`) — 남은 초를 세고 그동안 [다시 시도]를 막던 옛 화면의 안내(`frontend/src/search/Feedback.tsx`, DEC-057 ⑤)는 2026-10-18 선례 검색을 케이스북에 합치며 사라졌다(DEC-075). 2026-10-14 첫 배포본에는 429 안내가 없었고 같은 날 PR #119 병합 뒤 화면을 다시 배포해 들어갔다(그때 공개 화면 번들에 "호출이 너무 잦습니다" 문구가 있는 것을 확인 — 합친 화면을 다시 배포하면 이 문구는 번들에서 빠진다).
+- 공개 화면의 검색도 API의 IP별 호출 상한(1분 60회, DEC-057)을 받는다. 화면은 앱 429에 "Too many requests. Try again in N seconds."와 남은 초를 보이고 그동안 [Retry]와 [Find precedents]를 막는다(`frontend/src/casebook/errors.ts`·`useCountdown.ts`, DEC-057 ⑤ — 2026-10-18 선례 검색을 케이스북에 합치며 옛 `frontend/src/search/Feedback.tsx`의 동작을 영어 화면으로 옮겼다, DEC-075). 2026-10-14 첫 배포본에는 429 안내가 없었고 같은 날 PR #119 병합 뒤 화면을 다시 배포해 들어갔다(그때 공개 화면 번들에 "호출이 너무 잦습니다" 문구가 있는 것을 확인 — 합친 화면은 영어 문구라 번들의 한국어 문구가 빠지니, 번들로 확인하려면 "Too many requests"를 찾는다).
 
 ## 3. API 배포 — Vercel (서빙 묶음, 발표 전)
 
@@ -210,10 +210,10 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
    ok=0; if [ -z "$first" ]; then echo "실패 — 429가 한 번도 안 나옴(규칙 Action·한도·Publish 확인)"; elif grep -q "호출이 너무 잦습니다" "${first%.head}.body"; then echo "실패 — 앱 429임(WAF 한도가 앱보다 작은지 확인)"; else ok=1; echo "첫 WAF 429: $first"; grep -i "access-control-allow-origin" "$first" || echo "WAF 429에 CORS 머리글 없음"; fi; rm -rf "$T"; [ "$ok" -eq 1 ]
    ```
 4. 규칙을 원래대로(모든 경로·창 60초·한도 120·Default(429)) 되돌리고 Publish한 뒤 대시보드에서 값을 다시 확인한다.
-5. 결과(모든 경로 차단 여부, WAF 429의 CORS 머리글 있음/없음, 날짜)를 이 절과 DEC-057에 적는다. 머리글이 없으면 브라우저가 WAF 429의 본문을 읽지 못해 화면은 '서버에 연결하지 못했습니다(네트워크·CORS)'로 안내한다 — 화면의 429 안내("Too many requests. Try again in N seconds.")는 앱 429에만 나온다(작업 F, 지금은 `frontend/src/casebook/errors.ts` — 남은 초 표시는 옛 화면 것이었다).
+5. 결과(모든 경로 차단 여부, WAF 429의 CORS 머리글 있음/없음, 날짜)를 이 절과 DEC-057에 적는다. 머리글이 없으면 브라우저가 WAF 429의 본문을 읽지 못해 화면은 "Could not reach the server."로 안내한다 — 화면의 429 안내("Too many requests. Try again in N seconds."와 남은 초)는 앱 429에만 나온다(작업 F, 지금은 `frontend/src/casebook/errors.ts`).
 
 **공개 주소로 시연하는 날 (DEC-057 ④)**
 1. **시연 전날까지**: 앱 상한을 올려야 하면 `RATE_LIMIT_PER_MINUTE`를 바꿔 다시 배포한다 — 환경변수 변경은 재배포가 필요하고 재배포는 새 인스턴스라 워밍업이 사라지므로 시연 당일에 하지 않는다. 공개 화면(`https://lg-cns-rag-web.vercel.app`)에서 검색 한 건이 되는지도 본다(화면 주소는 `ALLOWED_ORIGINS`에 들어 있다 — 2절).
 2. 시연 날 WAF는 **Default(429) 그대로** 둔다 — Log로 바꾸면 폭주 안전망이 꺼진다. 시연장이 공유 IP라 상한이 걱정되면 전날까지 한도를 조정하거나, 공개 주소가 막히면 1절의 로컬 포트를 대체 수단으로 쓴다.
-3. **마지막 단계 — 시연 5분 전**: `curl -s https://lg-cns-rag.vercel.app/health`와 예시 검색 1회를 부른다 — 새 인스턴스가 서빙 묶음을 받아 시작하는 시간을 미리 쓴다. 중간에 인스턴스가 내려가면 첫 요청이 다시 느릴 수 있다(케이스북은 "Searching…"만 보이고 안내 없이 최대 60초까지 기다린다 — 옛 화면의 3초 뒤 '서버 시작 중' 안내는 합치며 사라졌으니 시연 전에 이 워밍업을 꼭 한다).
-4. 화면은 앱의 429에 "Too many requests. Try again in N seconds."(`Retry-After` 초)를 보인다 — 남은 초를 세거나 [Retry]를 막지는 않으니 시연 중에는 상한(1분 60회)에 닿지 않게 한다(작업 F, DEC-058, 옛 화면의 카운트다운은 DEC-075로 사라짐). 이 화면 변경은 PR 병합 뒤 화면을 다시 배포해야 공개 주소에 들어간다(2절 4단계).
+3. **마지막 단계 — 시연 5분 전**: `curl -s https://lg-cns-rag.vercel.app/health`와 예시 검색 1회를 부른다 — 새 인스턴스가 서빙 묶음을 받아 시작하는 시간을 미리 쓴다. 중간에 인스턴스가 내려가면 첫 요청이 다시 느릴 수 있다(케이스북은 3초가 지나도 응답이 없으면 "The server may be waking up — the first request can take 13–16 seconds."를 보이고 60초 뒤 취소한다 — 그래도 시연 전에 이 워밍업을 한다).
+4. 화면은 앱의 429에 "Too many requests. Try again in N seconds."와 남은 초(`Retry-After`)를 보이고 그동안 [Retry]·[Find precedents]를 막는다(작업 F, DEC-058, DEC-075로 케이스북에 옮김). 이 화면 변경은 PR 병합 뒤 화면을 다시 배포해야 공개 주소에 들어간다(2절 4단계).

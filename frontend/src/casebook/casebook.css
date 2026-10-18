@@ -167,3 +167,5 @@
 .cb-response-prov { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--cb-line, #d6dbe3); font-size: 12px; color: var(--cb-ink-3); }
 .cb-response-prov details { flex-basis: 100%; }
 .cb-sha { display: block; margin-top: 4px; word-break: break-all; font-family: var(--font-id); }
+.cb-error p { margin: 0 0 4px; }
+.cb-error button:disabled { opacity: 0.45; cursor: not-allowed; text-decoration: none; }

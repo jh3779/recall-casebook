@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { fmtDate } from "../recalls";
 import { highlight } from "../search/highlight";
 import { hasCauseText, type Card, type SearchResponse } from "../search/types";
+import { fieldLabel, itemLabel, plainItems } from "./checkItems";
 import { causeBadge, causeLine, langOf, productionItem, supplierView, type ReportSource } from "./sources";
 
 function Report({ source }: { source: ReportSource & { text_basis?: string } }) {
@@ -18,6 +19,7 @@ export function CaseDetail({ card, response, onRemove, on3d }: { card: Card; res
   const cause = card.cause;
   const supplier = supplierView(card);
   const production = productionItem(card);
+  const plain = plainItems(card);
   const badge = causeBadge(card);
   return <article className="cb-case" aria-label={`Recall ${card.campno}`}>
     <header className="cb-case-head">
@@ -45,7 +47,7 @@ export function CaseDetail({ card, response, onRemove, on3d }: { card: Card; res
       <p className="cb-status">{causeLine(card)}</p>
     </section>
 
-    {(production || supplier) && <section className="cb-block">
+    {(production || supplier || plain.length > 0) && <section className="cb-block">
       <h4>Items to check <small>evidence side by side; this tool does not say same or different</small></h4>
       {production && <div className="cb-check-item">
         <h5>Production period</h5>
@@ -59,6 +61,10 @@ export function CaseDetail({ card, response, onRemove, on3d }: { card: Card; res
         {supplier.names.map((name, i) => <p key={i} className="cb-src-text" lang="en">{name}</p>)}
         <Report source={supplier.source} />
       </div>}
+      {plain.map((item) => <div key={item.item} className="cb-check-item">
+        <h5>{itemLabel(item.item)}</h5>
+        {item.evidence.map((e, i) => <p key={i} className="cb-src-text" lang={langOf(e.text)}><span className="cb-muted">{fieldLabel(e.field)} · </span>{e.text}</p>)}
+      </div>)}
     </section>}
     {card.investigations.length > 0 && <section className="cb-block">
       <h4>NHTSA defect investigation <small>{card.investigations.length} linked, summary verbatim</small></h4>

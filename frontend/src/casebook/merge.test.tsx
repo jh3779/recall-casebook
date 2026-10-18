@@ -7,6 +7,8 @@ import fixture from "../search/__fixtures__/search_airbag.json";
 import type { Card, HealthResponse, SearchResponse } from "../search/types";
 import EightdView from "../eightd/EightdView";
 import { adoptDraft } from "./adoptDraft";
+import { fieldLabel, itemLabel, plainItems } from "./checkItems";
+import { secondsLeft } from "./useCountdown";
 import { CaseDetail } from "./CaseDetail";
 import { CaseList } from "./CaseList";
 import CasebookView from "./CasebookView";
@@ -73,9 +75,9 @@ it("8D 화면의 돌아가기 단추는 케이스북을 가리킨다", () => {
   expect(markup).not.toContain("선례 찾기로");
 });
 it("이미 떠 있는 케이스북은 새 draft가 올 때만 질문을 채우고, 쓰던 질문은 그대로 둔다", () => {
-  expect(adoptDraft(0, { question: "brake hose leak", key: 1 }, "typed by user")).toEqual({ key: 1, question: "brake hose leak" });
-  expect(adoptDraft(1, { question: "brake hose leak", key: 1 }, "typed after")).toEqual({ key: 1, question: "typed after" });
-  expect(adoptDraft(0, null, "typed")).toEqual({ key: 0, question: "typed" });
+  expect(adoptDraft(0, { question: "brake hose leak", key: 1 }, "typed by user")).toEqual({ key: 1, question: "brake hose leak", reset: true }); // 새 질문이 오면 이전 질문의 결과·체크·진행 중 요청을 비운다
+  expect(adoptDraft(1, { question: "brake hose leak", key: 1 }, "typed after")).toEqual({ key: 1, question: "typed after", reset: false });
+  expect(adoptDraft(0, null, "typed")).toEqual({ key: 0, question: "typed", reset: false });
 });
 it.each(synthetic)("합성 원인 상태 $status도 빈 블록으로 남지 않고 상태를 말한다", (cause) => {
   const markup = renderToStaticMarkup(<CaseDetail card={{ ...response.precedents[0], cause } as unknown as Card} response={response} onRemove={() => {}} />);
@@ -112,4 +114,29 @@ it("싣지 못한 생산 기간 블록이 0이면 안내를 그리지 않는다"
   expect(markup).toContain("Production period");
   expect(markup).not.toContain("not shown");
   expect(markup).not.toContain("without a readable date");
+});
+it("확인 항목 6종이 모두 근거 원문과 함께 보인다(PRD FR-7)", () => {
+  const kinds = new Set<string>();
+  for (const card of cards) {
+    const markup = renderToStaticMarkup(<CaseDetail card={card} response={response} onRemove={() => {}} />);
+    for (const item of card.checklist) {
+      kinds.add(item.item);
+      if (item.item === "production_period" || item.item === "supplier") continue; // 둘은 출처 보고서와 함께 따로 그린다(위 시험)
+      expect(markup).toContain(`<h5>${itemLabel(item.item)}</h5>`);
+      for (const e of item.evidence) { expect(markup).toContain(escaped(e.text)); expect(markup).toContain(fieldLabel(e.field)); }
+    }
+    expect(plainItems(card).every((item) => !["production_period", "supplier"].includes(item.item))).toBe(true);
+  }
+  expect([...kinds].sort()).toEqual(["cause_speaker", "failure_mode", "remedy", "same_part", "supplier"]); // 픽스처에는 생산 기간 항목이 없다(위 시험이 합성 카드로 지킨다)
+});
+it("호출 상한 뒤 남은 초는 올림으로 세고, 마감이 없거나 지났으면 0이다", () => {
+  expect(secondsLeft(null, 1000)).toBe(0);
+  expect(secondsLeft(500, 1000)).toBe(0);
+  expect(secondsLeft(8200, 1000)).toBe(8);
+  expect(secondsLeft(2000, 1000)).toBe(1);
+});
+it("결과 화면은 저장 안내와 복사 안내를 D4 칸과 메모 칸에 그대로 넘긴다", () => {
+  const markup = renderToStaticMarkup(<Results {...resultsProps} checked={cards.slice(0, 1)} storeMessage="STORE-MSG-X" copyMessage="COPY-MSG-Y" />);
+  expect(markup).toContain("STORE-MSG-X");
+  expect(markup).toContain("COPY-MSG-Y");
 });
