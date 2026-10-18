@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { GuideCard } from "./GuideCard";
-import { markerTitle } from "../showroom/guide";
+import { GUIDE_STEPS, markerTitle } from "../showroom/guide";
 
 const marks = [
   { id: "brakes:Brake disc", label: "Brake disc", estimated: true },
@@ -49,6 +49,7 @@ describe("안내 보기 카드", () => {
     for (const title of ["Assembled", "Unfold", "Zoom", "Parts"]) expect(html).toContain(`>${title}</li>`);
     expect(html).not.toContain("See-through");
     expect(html).not.toContain("transparent");
+    for (const s of GUIDE_STEPS) expect(`${s.title} ${s.text}`).not.toMatch(/see-through|transparent|x-ray/i); // 단계 문구가 투명화를 다시 말하지 않는다
   });
   it("모션 감소 설정에서는 Play를 쓸 수 없고 이유를 알리며, 재생 중에는 Pause로 바뀐다", () => {
     const reduced = renderToStaticMarkup(<GuideCard step={1} showParts={false} {...props} reducedMotion />);

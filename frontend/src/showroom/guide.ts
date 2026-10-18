@@ -44,6 +44,22 @@ export function guideView(step: number, category: CategoryKey | null): GuideView
   };
 }
 
+/** 안내 보기를 멈추고 직접 조작으로 넘어갈 때 이어받는 화면 상태(모드·층은 따로 넘긴다) */
+export interface Held {
+  highlight: boolean;
+  zoom: boolean;
+}
+export const NOT_HELD: Held = { highlight: false, zoom: false };
+export const holdOf = (view: GuideView): Held => ({ highlight: view.highlight, zoom: view.zoom });
+
+/**
+ * 지금 3D에 보여 줄 모드·강조·확대. 안내 중이면 단계 화면이고, 직접 조작 중이면 사용자가 고른 모드에 안내에서 이어받은 강조·확대를 더한다
+ * (안내 도중 층을 만졌다고 주황과 확대가 사라지지 않게 한다). 결함 투시는 늘 부품 가까이 본다.
+ */
+export function effectiveLook(view: GuideView | null, mode: Mode, held: Held): { mode: Mode; highlight: boolean; zoom: boolean } {
+  return view ? { mode: view.mode, highlight: view.highlight, zoom: view.zoom } : { mode, highlight: held.highlight, zoom: mode === "xray" || held.zoom };
+}
+
 /** Next/Back가 닿을 수 있는지 */
 export const guideMoves = (step: number) => ({ canBack: clampGuide(step) > 0, canNext: clampGuide(step) < GUIDE_LAST });
 

@@ -32,7 +32,7 @@ interface Entry {
   meshes: THREE.Mesh[];
   hotspots: Partial<Record<CategoryKey, Hotspot>>;
   rig: PeelBone[];
-  /** 분류별 부품 이름 마커(안내 보기 5단계) */
+  /** 분류별 부품 이름 마커(안내 보기 4단계) */
   markers: MarkersByCategory;
   markerIndex: Map<string, MarkerDef>;
 }
@@ -263,7 +263,7 @@ export class Showroom {
       const { visible, material } = meshLook(this.look, { cat: partOf(m).defect, estimated: !!m.userData.estimated });
       m.visible = visible;
       m.material = material === "base" ? m.userData.base : mat[material];
-      m.castShadow = material === "base"; // 외관의 원래 재질만 그림자를 만든다
+      m.castShadow = mode === "exterior"; // 외관은 모든 부품이 그림자를 만들고(주황 강조 부품도 같다) 결함 투시는 만들지 않는다
       m.renderOrder = material === "ghost" ? 1 : 0;
     }
   }
@@ -344,7 +344,7 @@ export class Showroom {
     else this.hotspotEls.delete(cat);
   }
 
-  /** 분류의 부품 이름 마커 목록(안내 보기 5단계). 모델을 올리기 전이면 빈 목록 */
+  /** 분류의 부품 이름 마커 목록(안내 보기 4단계). 모델을 올리기 전이면 빈 목록 */
   markersOf(cat: CategoryKey | null): readonly { id: string; label: string; estimated: boolean }[] {
     return cat ? (this.current?.markers[cat] ?? []).map(({ id, label, estimated }) => ({ id, label, estimated })) : [];
   }

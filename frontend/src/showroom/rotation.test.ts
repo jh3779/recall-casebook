@@ -69,6 +69,32 @@ describe("차량 중앙 회전축", () => {
     expect(estimated.visible).toBe(false);
   });
 
+  it("부품 표시 규칙(meshLook)을 재질·그림자·그리는 순서로 옮긴다 — 외관+강조는 주황·그림자 있음, 투시는 그림자 없음(DEC-078)", () => {
+    const { showroom } = fixture();
+    const mk = (defect: string, estimated = false) => {
+      const m = new Mesh(new BoxGeometry());
+      m.userData = { estimated, part: { defect }, base: m.material };
+      return m;
+    };
+    const seat = mk("seat"), engineEst = mk("engine", true), body = mk("other");
+    Object.assign(showroom, { current: { meshes: [seat, engineEst, body] } });
+    const { mat } = showroom as unknown as { mat: Record<string, unknown> };
+    showroom.setLook("exterior", "seat", new Set(["seat"]));
+    expect(seat.material).toBe(seat.userData.base);
+    expect(seat.castShadow).toBe(true);
+    showroom.setLook("exterior", "seat", new Set(["seat"]), true);
+    expect(seat.material).toBe(mat.hot);
+    expect(seat.castShadow).toBe(true);
+    expect(body.material).toBe(body.userData.base); // 차체는 불투명 원래 재질 그대로
+    expect(engineEst.visible).toBe(false); // 다른 분류의 설명용 도형은 숨김
+    showroom.setLook("xray", "seat", new Set(["seat"]));
+    expect(seat.material).toBe(mat.hot);
+    expect(seat.castShadow).toBe(false);
+    expect(body.material).toBe(mat.ghost);
+    expect(body.renderOrder).toBe(1);
+    expect(seat.renderOrder).toBe(0);
+  });
+
   it("부품을 선택해도 회전 중심은 차량 중앙에 머문다", () => {
     const { showroom, controls, camera } = fixture();
     const before = camera.position.clone();
