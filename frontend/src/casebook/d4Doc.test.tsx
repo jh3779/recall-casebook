@@ -1,7 +1,9 @@
 import JSZip from "jszip";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
+import { D4_EVIDENCE_TITLE } from "../eightd/document";
 import { patchDocx } from "../eightd/docxPatch";
+import { evidenceBlock } from "../eightd/evidenceText";
 import fixture from "../search/__fixtures__/search_airbag.json";
 import { hasCauseText, type SearchResponse } from "../search/types";
 import { D4_KEYS, d4Export, d4Values, docxContent, exportMessage } from "./d4Doc";
@@ -208,4 +210,70 @@ it("모델이 고른 확인 질문은 풀의 문장으로, 고르지 않았으�
   expect(withPicks).not.toContain("P99");
   expect(withPicks).not.toContain("lets the model pick more questions");
   for (const q of D4_QUESTIONS) expect(withPicks).toContain(q);
+});
+
+// D4 칸 본문에도 선례 원인 원문을 넣는다(DEC-076) — 기본은 꺼짐이고, 부록과 따로 또는 함께 고른다
+it("D4 본문 선택은 기본 꺼짐이라 고르지 않으면 D4 칸에 타사 원문도 제목도 들어가지 않는다", () => {
+  const out = d4Export({ values, cards: withText, includeAppendix: false, prov });
+  expect(out.bodyCount).toBe(0);
+  expect(out.steps[4].some((p) => p.text.includes("타사 선례") || p.text === D4_EVIDENCE_TITLE)).toBe(false);
+  expect(out.text).not.toContain(D4_EVIDENCE_TITLE);
+  expect(out.footer).toBeNull();
+});
+it("D4 본문을 고르면 엔지니어가 쓴 글 뒤에 타사 원문 제목과 인용이 붙고, 원인 글이 있는 선례만 들어가며 부록은 따로 비어 있다", () => {
+  const out = d4Export({ values, cards, includeBody: true, includeAppendix: false, prov });
+  const paras = out.steps[4];
+  expect(paras.slice(0, 2).map((p) => (p.prefix ?? "") + p.text)).toEqual(["Escape Cause: 검사 공정에서 탐지하지 못했다", "Root Cause: 우리 건의 근본 원인 초안"]);
+  expect(paras[2]).toEqual({ text: D4_EVIDENCE_TITLE, bold: true });
+  const body = paras.slice(3).map((p) => p.text).join("\n");
+  for (const c of withText) expect(body).toContain(evidenceBlock(c)!.split("\n")[1]); // 원문 줄이 한 글자도 바뀌지 않고 들어간다
+  expect(out.bodyCount).toBe(withText.length);
+  expect(out.skipped).toEqual(without.map((c) => c.campno));
+  expect(out.appendix).toEqual([]);
+  expect(out.appendixCount).toBe(0);
+  expect(out.footer).toContain(response.build_id);
+  expect(out.text).toContain(D4_EVIDENCE_TITLE);
+  expect(out.text.indexOf(D4_EVIDENCE_TITLE)).toBeGreaterThan(out.text.indexOf("우리 건의 근본 원인 초안"));
+});
+it("D4 본문과 부록을 둘 다 고르면 같은 인용이 두 곳에 각각 들어가고, 다른 단계 문단은 만들어지지 않는다", () => {
+  const out = d4Export({ values, cards: withText.slice(0, 2), includeBody: true, includeAppendix: true, prov });
+  expect(out.bodyCount).toBe(2);
+  expect(out.appendixCount).toBe(2);
+  expect(Object.keys(out.steps)).toEqual(["4"]); // 선례 내용은 D4에만
+  expect(out.appendix.length).toBeGreaterThan(0);
+});
+it("쓴 글이 없어도 D4 본문 선례만 골랐다면 내보낼 것이 있고, 원인 글이 하나도 없으면 빈 제목을 만들지 않는다", () => {
+  const empty = { escape: "", root: "", verify: "" };
+  expect(d4Export({ values: empty, cards: withText, includeBody: true, includeAppendix: false, prov }).hasContent).toBe(true);
+  const none = d4Export({ values: empty, cards: without, includeBody: true, includeAppendix: false, prov });
+  expect(none.hasContent).toBe(false);
+  expect(none.steps).toEqual({});
+});
+it(".docx로 내보내면 D4 칸 안(엔지니어 글 뒤)에 굵은 타사 원문 제목과 인용이 들어가고 부록은 따로 없다", async () => {
+  const out = d4Export({ values, cards: withText.slice(0, 2), includeBody: true, includeAppendix: false, prov });
+  const r = await patchDocx(await docxBlob(), docxContent(out, null));
+  expect(r.filled).toEqual([4]);
+  expect(r.appendixPlaced).toBeNull();
+  const xml = await read(r.blob);
+  const table = xml.indexOf("</w:tbl>");
+  const at = (s: string) => xml.indexOf(s);
+  expect(at("우리 건의 근본 원인 초안")).toBeGreaterThan(-1);
+  expect(at(D4_EVIDENCE_TITLE)).toBeGreaterThan(at("우리 건의 근본 원인 초안")); // 엔지니어 글 뒤
+  expect(at(D4_EVIDENCE_TITLE)).toBeLessThan(table); // 표 안(D4 칸)
+  expect(at("타사 선례")).toBeLessThan(table); // 인용도 D4 칸 안이고 표 뒤 부록은 없다
+  expect(xml).toMatch(new RegExp(`<w:rPr>[^]*?<w:b/>[^]*?</w:rPr><w:t xml:space="preserve">${D4_EVIDENCE_TITLE.replace(/[[\]]/g, "\\$&")}`)); // 제목 줄은 굵게
+  expect(xml).not.toContain(VERIFY);
+});
+it("내려받은 뒤 안내는 D4 칸에 들어간 타사 인용 수를 알린다", () => {
+  const msg = exportMessage({ filled: [4], missing: [], ambiguous: [], appendixPlaced: null }, "f.docx", 0, true, 3);
+  expect(msg).toContain("D4 text inserted (including 3 precedent quote(s) after your text)");
+  expect(exportMessage({ filled: [4], missing: [], ambiguous: [], appendixPlaced: null }, "f.docx", 0, true)).not.toContain("precedent quote");
+});
+it("D4 구역은 D4 칸 본문 선택과 부록 선택을 따로 보이고 둘 다 기본 꺼짐이며 다른 단계는 채우지 않는다고 밝힌다", () => {
+  const m = panel();
+  expect(m).toContain("in the D4 cell too, after what you wrote");
+  expect(m).toContain("as an appendix after the 8D table");
+  expect(m.match(/type="checkbox"/g)).toHaveLength(2);
+  expect(m).not.toMatch(/type="checkbox"[^>]*checked/);
+  expect(m).toContain("Write your Escape Cause or Root Cause, or tick a precedent option, to enable.");
 });

@@ -1,12 +1,14 @@
-import { ALL_STEPS, APPENDIX_KEY, APPENDIX_TITLE, shortLabel, STEPS, type Step } from "./document";
+import { ALL_STEPS, APPENDIX_KEY, APPENDIX_TITLE, D4_EVIDENCE_KEY, D4_EVIDENCE_TITLE, shortLabel, STEPS, type Step } from "./document";
 
 /** 칸 안의 글 — 칸에 쓴 글 그대로, 여러 칸이 한 단계에 있으면 칸 이름을 굵게 앞에 붙인다(실제 .docx 삽입 결과와 같은 모양) */
 function cell(step: Step, values: Record<string, string>) {
-  return step.fields.flatMap((f) => {
+  const own = step.fields.flatMap((f) => {
     const value = values[f.key]?.trim();
     if (!value) return [];
     return [<p key={f.key}>{step.fields.length > 1 && <b>{shortLabel(f.label)}: </b>}{value}</p>];
   });
+  const evidence = step.n === 4 ? values[D4_EVIDENCE_KEY]?.trim() : "";
+  return evidence ? [...own, <p key="d4-evidence-title"><b>{D4_EVIDENCE_TITLE}</b></p>, ...evidence.split("\n").map((line, i) => <p key={`d4-evidence-${i}`}>{line}</p>)] : own;
 }
 
 /** 양식에 적용된 모습 — 검증용 샘플 .docx(09_샘플8D)의 표 구조를 따른다. 고객사 양식 자체는 다음 단계(DEC-064) */
