@@ -13,3 +13,6 @@ export function errorText(e: unknown, what: "search" | "grouping"): string {
     default: return `The server returned an error${e.status ? ` (${e.status})` : ""}.`;
   }
 }
+
+/** 검색 오류 패널의 문구 — 호출 상한(429)이면 처음 받은 대기 초를 문구에 굳히지 않는다(남은 초는 패널이 따로 세고, 끝나면 안내한다). 대기 시간을 모르면 원래 문구 그대로 */
+export const searchErrorMessage = (message: string, limited: boolean) => (limited ? "Too many requests." : message);

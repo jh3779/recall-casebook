@@ -7,7 +7,9 @@ import fixture from "../search/__fixtures__/search_airbag.json";
 import type { Card, HealthResponse, SearchResponse } from "../search/types";
 import EightdView from "../eightd/EightdView";
 import { adoptDraft } from "./adoptDraft";
+import { ApiError } from "../api";
 import { fieldLabel, itemLabel, plainItems } from "./checkItems";
+import { errorText, searchErrorMessage } from "./errors";
 import { SearchError } from "./SearchError";
 import { countdownLeft, secondsLeft } from "./useCountdown";
 import { CaseDetail } from "./CaseDetail";
@@ -171,4 +173,22 @@ it("429 안내는 기다리는 동안 Retry를 막고, 남은 초는 낭독기�
   const other = renderToStaticMarkup(<SearchError message="Could not reach the server." limited={false} wait={0} onRetry={() => {}} />);
   expect(other).not.toContain("You can search again.");
   expect(other).not.toContain("disabled");
+});
+it("생산 기간과 공급사 근거에도 원문이 나온 칸 이름을 함께 보인다(PRD FR-7)", () => {
+  const source = { campaign: "X", file: "odi/rcl/2026/RCLRPT-X.pdf", pdf_sha256: "c".repeat(64), submission_date: "20260710" };
+  const production = { item: "production_period" as const, label: "생산 기간", evidence: [{ field: "573.production_dates", text: "Vehicle 1: 2015 | Apr 18, 2015 - Aug 24, 2015" }], omitted: 0, unread: 0, source };
+  const supplier = { item: "supplier" as const, label: "공급사", evidence: [{ field: "573.supplier_names", text: "ACME Parts, Inc." }] };
+  const card = { ...cards.find((c) => c.cause.status === "no_573_report")!, cause: { status: "cause_empty" as const, campaign: "X" }, checklist: [production, supplier] } as Card;
+  const markup = renderToStaticMarkup(<CaseDetail card={card} response={response} onRemove={() => {}} />);
+  expect(markup).toContain("Part 573 production dates · </span>Vehicle 1: 2015");
+  expect(markup).toContain("Part 573 supplier names · </span>ACME Parts, Inc.");
+  expect(markup).toContain(source.file); // 칸 이름이 붙어도 출처 보고서는 그대로 보인다
+  expect(fieldLabel("573.production_dates")).not.toBe("573.production_dates");
+});
+it("호출 상한 오류 문구에는 처음 받은 대기 초가 고정으로 남지 않는다(남은 초는 따로 센다)", () => {
+  const limited = errorText(new ApiError("rate_limit", "x", 429, undefined, 12), "search");
+  expect(limited).toContain("12 seconds"); // 대기 시간을 알 수 없는 경우(머리글 없음)의 문구는 그대로다
+  expect(searchErrorMessage(limited, true)).toBe("Too many requests.");
+  expect(searchErrorMessage(limited, false)).toBe(limited);
+  expect(searchErrorMessage("Could not reach the server.", false)).toBe("Could not reach the server.");
 });

@@ -1,8 +1,8 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApiError, search } from "../api";
 import type { Card, HealthState, SearchResponse } from "../search/types";
 import { adoptDraft } from "./adoptDraft";
-import { errorText } from "./errors";
+import { errorText, searchErrorMessage } from "./errors";
 import { Intro } from "./Intro";
 import { OverlayBoundary, OverlayLoading } from "./OverlayBoundary";
 import { pickedFor, toggleChecked } from "./questions";
@@ -50,7 +50,8 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
   }
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { request.current?.abort(); if (slowTimer.current) clearTimeout(slowTimer.current); }, []);
-  useEffect(() => { if (draft) { request.current?.abort(); request.current = null; } }, [draft]); // 새 질문이 오면 진행 중이던 이전 요청은 취소하고 그 응답은 버린다
+  // 새 질문이 오면 진행 중이던 이전 요청은 취소하고 그 응답은 버린다. 화면 상태를 비운 같은 커밋 안에서 끝내도록 레이아웃 효과로 둔다 — 일반 효과는 그리기 뒤라 그 사이에 늦게 도착한 이전 응답이 새 질문 밑에 다시 들어갈 수 있다(PR #164 Codex 리뷰)
+  useLayoutEffect(() => { if (draft) { request.current?.abort(); request.current = null; } }, [draft]);
 
   // 사건 이름 없이 적은 메모가 있으면 새로고침·탭 닫기 전에 잃는다고 알린다
   const unsaved = isUnsaved(caseName, notes, saveFailed, !!storage);
@@ -141,7 +142,7 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
       <span className={`cb-muted${noEnglish ? " warn" : ""}`} aria-live="polite">{noEnglish ? "Needs English words." : "English questions only. NHTSA public recalls and Part 573 reports."}</span>
       {onWrite8d && <Write8dPlain question={question} response={response} onWrite8d={onWrite8d} />}
     </form>
-    {state === "error" && <SearchError message={error} limited={retryAt !== null} wait={wait} onRetry={() => void run()} />}
+    {state === "error" && <SearchError message={searchErrorMessage(error, retryAt !== null)} limited={retryAt !== null} wait={wait} onRetry={() => void run()} />}
     {state === "idle" && <><p className="cb-empty">Describe a defect to see precedents from other manufacturers, with the cause text each one wrote and who said it.</p><Intro health={health} onExample={(q) => void run(q)} /></>}
     {state === "loading" && <p className="cb-empty" role="status">Searching…{slow && " The server may be waking up — the first request can take 13–16 seconds."}</p>}
 
