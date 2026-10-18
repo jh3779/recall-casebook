@@ -1,0 +1,86 @@
+import { describe, expect, it } from "vitest";
+import parts from "../../public/data/sorento_parts.json";
+import { CATEGORIES } from "../config";
+import { GUIDE_LAST, GUIDE_STEPS, NOT_HELD, clampGuide, effectiveLook, guideMoves, guideView, holdOf } from "./guide";
+import { MODEL_PART_BONES, TYPICAL_COMPONENTS, displayName } from "./partNames";
+import { CATEGORY_LAYER, PEEL_MAX, boneOfTitle } from "./peel";
+
+describe("안내 보기 단계", () => {
+  it("4단계: 완성 → 풀림 → 확대 → 부품 이름 — 차체를 투명하게 하는 단계는 없다(DEC-078)", () => {
+    expect(GUIDE_STEPS.map((s) => s.id)).toEqual(["assembled", "unfold", "zoom", "parts"]);
+    expect(GUIDE_LAST).toBe(3);
+  });
+  it("단계별 화면 상태: 모든 단계가 외관(불투명) 그대로이고, 2단계에 걷어내며 선택 분류를 주황으로 보이고, 3단계에 확대하고, 마지막에만 마커", () => {
+    expect(guideView(0, "engine")).toEqual({ mode: "exterior", highlight: false, layer: 0, zoom: false, markers: false });
+    expect(guideView(1, "engine")).toEqual({ mode: "exterior", highlight: true, layer: CATEGORY_LAYER.engine, zoom: false, markers: false });
+    expect(guideView(2, "engine")).toEqual({ mode: "exterior", highlight: true, layer: CATEGORY_LAYER.engine, zoom: true, markers: false });
+    expect(guideView(3, "engine")).toEqual({ mode: "exterior", highlight: true, layer: CATEGORY_LAYER.engine, zoom: true, markers: true });
+    for (let s = 0; s <= GUIDE_LAST; s++) expect(guideView(s, "brakes").mode, `step ${s}`).toBe("exterior"); // 어느 단계에서도 투시(xray)가 아니다
+  });
+  it("걷어내는 층은 선택한 분류가 드러나는 층이고 층 번호(0~4) 안이다 — 분류가 없으면 걷어내지 않고 강조도 없다", () => {
+    for (const cat of Object.keys(CATEGORIES) as (keyof typeof CATEGORIES)[]) {
+      for (let s = 0; s <= GUIDE_LAST; s++) {
+        const v = guideView(s, cat);
+        expect(v.layer).toBeGreaterThanOrEqual(0);
+        expect(v.layer).toBeLessThanOrEqual(PEEL_MAX);
+        if (s >= 1) expect(v.layer).toBe(CATEGORY_LAYER[cat]);
+      }
+    }
+    expect(guideView(3, null).layer).toBe(0);
+    for (let s = 0; s <= GUIDE_LAST; s++) expect(guideView(s, null).highlight).toBe(false);
+  });
+  it("범위 밖·잘못된 단계는 0~3(첫·끝 단계)으로 고정한다", () => {
+    expect(clampGuide(-2)).toBe(0);
+    expect(clampGuide(9)).toBe(3);
+    expect(clampGuide(Number.NaN)).toBe(0);
+    expect(guideView(99, "seat")).toEqual(guideView(3, "seat"));
+  });
+  it("Back은 첫 단계에서, Next는 마지막 단계에서 쓸 수 없다", () => {
+    expect(guideMoves(0)).toEqual({ canBack: false, canNext: true });
+    expect(guideMoves(1)).toEqual({ canBack: true, canNext: true });
+    expect(guideMoves(3)).toEqual({ canBack: true, canNext: false });
+  });
+  it("안내 문구에 판정·단정 표현이 없다", () => {
+    for (const s of GUIDE_STEPS) expect(s.text).not.toMatch(/applies|verdict|recall is required|caused by|the cause is/i); // principle-ok: 문구에 판정 표현이 없는지 검사
+  });
+});
+
+describe("부품 이름 표", () => {
+  const defectBones = new Set(
+    Object.values(parts as Record<string, { title: string; defect: string | null }>).filter((p) => p.defect).map((p) => boneOfTitle(p.title)),
+  );
+  it("분류가 붙은 쏘렌토 실제 부품(뼈대)은 모두 이름이 있고, 이름 표의 뼈대는 모두 그런 부품이다", () => {
+    for (const bone of defectBones) expect(MODEL_PART_BONES, bone).toContain(bone);
+    for (const bone of MODEL_PART_BONES) expect(defectBones.has(bone), bone).toBe(true);
+  });
+  it("실제 부품·설명용 도형 이름을 영어로 돌려주고, 표에 없으면 null이다(이름을 지어내지 않는다)", () => {
+    expect(displayName({ title: "seats_09 / 2021kiasorento" }, false)).toBe("Seats");
+    expect(displayName({ title: "코일 스프링 (추정 형상)" }, true)).toBe("Coil spring");
+    expect(displayName({ title: "코일 스프링" }, true)).toBe("Coil spring");
+    expect(displayName({ title: "bodyshell_030 / xromat" }, false)).toBeNull();
+    expect(displayName({ title: "알 수 없는 도형 (추정 형상)" }, true)).toBeNull();
+  });
+  it("모든 부품 분류에 일반 구성 목록이 있고, 이름은 영어 표의 이름과 겹친다", () => {
+    for (const cat of Object.keys(CATEGORIES)) expect(Array.isArray(TYPICAL_COMPONENTS[cat as keyof typeof TYPICAL_COMPONENTS]), cat).toBe(true);
+    for (const name of ["Engine block", "Oil pan", "Brake disc", "Door latch", "Coil spring"]) {
+      expect(Object.values(TYPICAL_COMPONENTS).flat()).toContain(name);
+    }
+  });
+});
+
+describe("안내 보기에서 직접 조작으로 넘어갈 때(DEC-078)", () => {
+  it("안내 중이면 단계 화면 그대로이고, 직접 조작 중이면 고른 모드에 이어받은 강조·확대를 더한다", () => {
+    const unfold = guideView(1, "engine");
+    expect(effectiveLook(unfold, "xray", NOT_HELD)).toEqual({ mode: "exterior", highlight: true, zoom: false });
+    expect(effectiveLook(null, "exterior", NOT_HELD)).toEqual({ mode: "exterior", highlight: false, zoom: false });
+    expect(effectiveLook(null, "xray", NOT_HELD)).toEqual({ mode: "xray", highlight: false, zoom: true }); // 결함 투시는 늘 부품 가까이
+  });
+  it("Unfold·Zoom에서 층을 만져 안내를 멈춰도 주황 강조는 남고 Zoom의 확대도 남는다 — 모드 버튼을 누르면 비운다", () => {
+    for (const [step, zoom] of [[1, false], [2, true], [3, true]] as const) {
+      const held = holdOf(guideView(step, "steering"));
+      expect(effectiveLook(null, "exterior", held)).toEqual({ mode: "exterior", highlight: true, zoom });
+    }
+    expect(effectiveLook(null, "exterior", holdOf(guideView(0, "steering")))).toEqual({ mode: "exterior", highlight: false, zoom: false });
+    expect(effectiveLook(null, "exterior", holdOf(guideView(1, null)))).toEqual({ mode: "exterior", highlight: false, zoom: false }); // 분류가 없으면 강조 없음
+  });
+});

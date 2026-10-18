@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
-import { STEPS } from "./document";
+import { D4_EVIDENCE_KEY, D4_EVIDENCE_TITLE, STEPS } from "./document";
 import { FormPreview } from "./FormPreview";
 
 it("양식 표 구조: 단계 8개와 제목·SUBJECT·머리글 띠가 있다", () => {
@@ -38,4 +38,17 @@ it("선례 근거 부록은 D4 적용 때만 표 아래 별도 영역에 보이�
   expect(table).toContain("자사 원인");
   expect(table).not.toContain("타사 선례");
   expect(renderToStaticMarkup(<FormPreview subject="" values={values} evidenceNote={null} only={new Set([2])} />)).not.toContain("선례 근거 부록");
+});
+
+it("D4 칸 미리보기에는 엔지니어 글 뒤에 타사 원문 제목과 인용이 붙고, 다른 단계 칸에는 선례 글이 없다(DEC-076)", () => {
+  const evidence = "[타사 선례 20V000001 · 회사 · 접수 2020-01-05]\n(원인 원문) \"원문 한 줄\"";
+  const markup = renderToStaticMarkup(<FormPreview subject="s" values={{ d2: "불량 사실", d4_root: "자사 원인", [D4_EVIDENCE_KEY]: evidence }} evidenceNote={null} />);
+  const rows = markup.split("<tr>").filter((r) => r.includes("fp-label"));
+  const d4 = rows.find((r) => r.includes("DISCIPLINE 4"))!;
+  expect(d4).toContain("자사 원인");
+  expect(d4).toContain(D4_EVIDENCE_TITLE);
+  expect(d4.indexOf(D4_EVIDENCE_TITLE)).toBeGreaterThan(d4.indexOf("자사 원인"));
+  expect(d4).toContain("원문 한 줄");
+  for (const r of rows.filter((x) => !x.includes("DISCIPLINE 4"))) expect(r).not.toContain("타사 선례");
+  expect(renderToStaticMarkup(<FormPreview subject="s" values={{ d4_root: "자사 원인" }} evidenceNote={null} />)).not.toContain(D4_EVIDENCE_TITLE);
 });

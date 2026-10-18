@@ -62,10 +62,11 @@ it("선례마다 Remove 버튼을 구분할 수 있고 화면 언어를 밝힌�
   expect(markup).toMatch(/lang="ko"[^>]*>[^<]*[가-힣]/); // 한국어 말한 주체 문구
   expect(renderToStaticMarkup(<CasebookView health="loading" />)).toContain('lang="en"');
 });
-it("앱 바에 케이스북 탭이 있고 현재 화면을 눌린 상태로 보인다", () => {
+it("앱 바에 케이스북 탭이 있고 현재 화면을 눌린 상태로 보이며, 선례 검색 탭은 없다(케이스북에 합쳤다, DEC-075)", () => {
   const markup = renderToStaticMarkup(<AppBar view="casebook" onView={() => {}} health="loading" />);
   expect(markup).toMatch(/aria-pressed="true"[^>]*>케이스북/);
-  expect(markup).toMatch(/aria-pressed="false"[^>]*>선례 검색/);
+  expect(markup).toMatch(/aria-pressed="false"[^>]*>3D 쇼룸/);
+  expect(markup).not.toContain("선례 검색");
 });
 it("케이스북 화면 문구에 영어 판정·단정 표현이 없다", () => {
   const forbidden = /applies|verdict|is_?applicable|recall[_\s-]?required|root\s+cause\s+is\b|is\s+the\s+cause\b|will\s+be\s+recalled/i; // principle-ok: 판정 문구가 화면에 없는지 검사하는 금지 패턴

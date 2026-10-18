@@ -7,16 +7,34 @@ import { createEstimatedParts } from "./estimatedParts";
 import { MODELS, PAINTS } from "../config";
 import type { CategoryKey, Mode, ModelKey, PartInfo, PartsMap } from "../types";
 import { DEFAULT_PANEL_SHIFT, panelOffset } from "./viewOffset";
+import { type MarkerDef, type MarkersByCategory, computeMarkers } from "./markers";
+import { type Look, meshLook } from "./look";
+import { PEEL_BONES, boneOfTitle, clampPeel, peelFraming, peelShift, smootherstep } from "./peel";
 
 interface Hotspot {
   point: THREE.Vector3;
   box: THREE.Box3;
+  /** 이 분류의 메시가 매달린 뼈대 이름. 걷어내면 핫스팟도 이 뼈대를 따라간다(추정 도형은 움직이지 않으므로 없다) */
+  bone?: string;
+}
+
+/** 걷어내기로 움직이는 뼈대: rest는 조립 상태의 로컬 위치, toLocal·scale은 차량 좌표의 이동량을 부모 뼈대 좌표로 바꾸는 값 */
+interface PeelBone {
+  name: string;
+  bone: THREE.Object3D;
+  rest: THREE.Vector3;
+  toLocal: THREE.Quaternion;
+  scale: number;
 }
 
 interface Entry {
   root: THREE.Object3D;
   meshes: THREE.Mesh[];
   hotspots: Partial<Record<CategoryKey, Hotspot>>;
+  rig: PeelBone[];
+  /** 분류별 부품 이름 마커(안내 보기 4단계) */
+  markers: MarkersByCategory;
+  markerIndex: Map<string, MarkerDef>;
 }
 
 const HOME = { pos: new THREE.Vector3(6.8, 2.6, -7.6), target: new THREE.Vector3(0, 0.8, 0) };
@@ -70,13 +88,28 @@ export class Showroom {
   private readonly entries = new Map<ModelKey, Entry>();
   private readonly hotspotEls = new Map<CategoryKey, HTMLElement>();
   private readonly v = new THREE.Vector3();
+  private readonly tmp = new THREE.Vector3();
   private current: Entry | null = null;
-  private look: { mode: Mode; category: CategoryKey | null; activeCats: ReadonlySet<CategoryKey> } = {
+  private look: Look = {
     mode: "exterior",
     category: null,
     activeCats: new Set(),
+    highlight: false,
   };
   private fly: { p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number; ms: number } | null = null;
+  /** 사용자가 직접 돌려 이동이 취소됐을 때, 보던 방향은 그대로 두고 거리·시선만 원래 목표로 마저 맞춘다 */
+  private settle: { t1: THREE.Vector3; dist: number | null } | null = null;
+  /** 곧 오는 조작이 휠이면 거리는 사용자가 정한다(자동 거리 보정을 걸지 않는다) */
+  private wheelNext = false;
+  private readonly markerEls = new Map<string, HTMLElement>();
+  private lastTick = 0;
+  private focusCat: CategoryKey | null = null;
+  /** 안내 보기의 확대: 부품에 더 가깝게 다가간다 */
+  private focusClose = false;
+  private aimScale = 1; // 지금 카메라 거리에 들어 있는 걷어내기 확대 배율
+  private peelNow = 0;
+  private peelTo = 0;
+  private peelAnim: { from: number; to: number; start: number; ms: number } | null = null;
   private raf = 0;
   private disposed = false;
   private readonly reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -101,6 +134,8 @@ export class Showroom {
     const pmrem = new THREE.PMREMGenerator(renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
+    // OrbitControls보다 먼저 등록해, 같은 휠 이벤트에서 controls의 start가 불리기 전에 휠임을 기록한다
+    renderer.domElement.addEventListener("wheel", () => { this.wheelNext = true; }, { passive: true });
     const controls = new OrbitControls(this.camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.07;
@@ -115,7 +150,14 @@ export class Showroom {
     // 사용자가 직접 돌리면 자동 회전·카메라 이동을 멈춘다
     controls.addEventListener("start", () => {
       controls.autoRotate = false;
+      const { fly } = this;
+      const wheel = this.wheelNext;
+      this.wheelNext = false;
       this.fly = null;
+      // 이동이 진행 중일 때 조작하면 시선(걷어낸 만큼 올라간 높이)은 마저 맞추고, 거리는 첫 조작이 방향 돌리기일 때만 마저 맞춘다.
+      // 휠이거나 이미 맞추는 중(settle)에 다시 조작하면 사용자가 직접 거리를 정하는 중이므로 거리는 건드리지 않는다.
+      if (fly) this.settle = { t1: fly.t1.clone(), dist: wheel ? null : fly.p1.distanceTo(fly.t1) };
+      else if (this.settle) this.settle = { t1: this.settle.t1, dist: null };
     });
     this.controls = controls;
 
@@ -173,50 +215,119 @@ export class Showroom {
     if (this.current) this.scene.remove(this.current.root);
     this.current = this.entries.get(key)!;
     this.scene.add(this.current.root);
+    this.applyPeel();
     this.applyLook();
   }
 
-  /** 외관: 도장·재질 그대로 / 결함 투시: 고른 부품은 주황, 나머지 결함 부품은 회색, 그 밖은 반투명 */
-  setLook(mode: Mode, category: CategoryKey | null, activeCats: ReadonlySet<CategoryKey>) {
-    this.look = { mode, category, activeCats };
+  /**
+   * 걷어내기 층(0 = 완성 … 3 = 차체 껍데기까지 … 4 = 시트·핸들까지)으로 옮긴다. 모션 감소 설정이면 바로 바뀌고, 아니면 ms(기본 0.7초)에 걸쳐 부드럽게 옮긴다.
+   * 부품이 나가는 만큼 카메라도 뒤로 빠진다(직접 돌려 둔 방향은 유지한다).
+   */
+  setPeel(level: number, ms = 700) {
+    const to = clampPeel(level);
+    const changed = to !== this.peelTo;
+    this.peelTo = to;
+    if (this.reducedMotion || to === this.peelNow) {
+      this.peelAnim = null;
+      this.peelNow = to;
+      this.applyPeel();
+    } else {
+      this.peelAnim = { from: this.peelNow, to, start: performance.now(), ms };
+    }
+    // 안내 보기의 확대 중에는 새 층 기준으로 다시 확대한다(칩 전환으로 분류·층이 함께 바뀔 때 거리가 어긋나지 않게). 그 밖에는 보던 방향을 유지한다
+    if (changed) this.aim(!(this.focusClose && this.focusCat));
+  }
+
+  private applyPeel() {
+    const entry = this.current;
+    if (!entry) return;
+    const shift = new THREE.Vector3();
+    for (const { name, bone, rest, toLocal, scale } of entry.rig) {
+      shift.set(...peelShift(name, this.peelNow)).applyQuaternion(toLocal).divideScalar(scale);
+      bone.position.copy(rest).add(shift);
+    }
+  }
+
+  /** 외관: 도장·재질 그대로 / 결함 투시: 고른 부품은 주황, 나머지 결함 부품은 회색, 그 밖은 반투명. highlight: 외관에서도 선택한 분류만 주황(안내 보기, `look.ts`) */
+  setLook(mode: Mode, category: CategoryKey | null, activeCats: ReadonlySet<CategoryKey>, highlight = false) {
+    this.look = { mode, category, activeCats, highlight };
     this.applyLook();
   }
 
   private applyLook() {
     const { mat } = this;
-    const { mode, category, activeCats } = this.look;
+    const { mode } = this.look;
     this.floor.visible = mode === "exterior";
     this.ring.material.color.set(mode === "xray" ? 0x3d4a5c : 0x9aa4b2);
     for (const m of this.current?.meshes ?? []) {
-      const cat = partOf(m).defect;
-      m.visible = !m.userData.estimated || (mode === "xray" && !!cat && activeCats.has(cat) && (!category || cat === category));
-      if (mode === "exterior") {
-        m.material = m.userData.base;
-        m.castShadow = true;
-      } else {
-        m.castShadow = false;
-        if (cat && cat === category) m.material = mat.hot;
-        else if (cat && !category && activeCats.has(cat)) m.material = mat.defect;
-        else m.material = mat.ghost;
-      }
-      m.renderOrder = m.material === mat.ghost ? 1 : 0;
+      const { visible, material } = meshLook(this.look, { cat: partOf(m).defect, estimated: !!m.userData.estimated });
+      m.visible = visible;
+      m.material = material === "base" ? m.userData.base : mat[material];
+      m.castShadow = mode === "exterior"; // 외관은 모든 부품이 그림자를 만들고(주황 강조 부품도 같다) 결함 투시는 만들지 않는다
+      m.renderOrder = material === "ghost" ? 1 : 0;
     }
   }
 
   /** 부품 쪽으로 시점을 옮겨도 차량 중앙의 회전축은 유지한다. null이면 처음 시점 */
-  focus(cat: CategoryKey | null) {
+  focus(cat: CategoryKey | null, close = false) {
+    this.focusCat = cat;
+    this.focusClose = close;
     this.controls.autoRotate = !cat && !this.reducedMotion;
-    if (!cat) {
-      this.flyTo(HOME.pos.clone(), HOME.target.clone());
+    this.aim(false);
+  }
+
+  /**
+   * 걷어낸 정도(peelTo)에 맞춰 카메라 위치·시선을 정한다. 시선은 차량 중앙 축(걷어낸 만큼 위로)이고 카메라는 그만큼 뒤로 빠진다(거리 × scale).
+   * keepDirection이면 지금 보는 방향을 유지하고 거리·높이만 바꾼다(분류를 고른 상태에서 층을 바꿀 때 포함).
+   */
+  private aim(keepDirection: boolean) {
+    const { scale, lift } = peelFraming(this.peelTo);
+    const lookAt = HOME.target.clone().setY(HOME.target.y + lift);
+    if (keepDirection) {
+      // 날아가는 중이거나 취소돼 마저 맞추는 중이면 지금 카메라가 아니라 그 목표를 기준으로 삼는다 — 층을 연달아 바꾸거나 이동을 취소해도 거리가 어긋나 쌓이지 않는다.
+      // 어느 경우든 그 거리는 마지막으로 요청한 배율(aimScale)로 만든 것이다.
+      const { fly, settle } = this;
+      const offset = fly ? fly.p1.clone().sub(fly.t1) : this.camera.position.clone().sub(this.controls.target);
+      const dist = (((fly ? undefined : settle?.dist) ?? offset.length()) * scale) / this.aimScale; // normalize()가 길이를 지우기 전에 잰다
+      this.go(lookAt.clone().addScaledVector(offset.normalize(), dist), lookAt, scale);
       return;
     }
-    const h = this.current?.hotspots[cat];
-    if (!h) return;
-    const target = h.point.clone();
-    const size = h.box.getSize(new THREE.Vector3()).length();
-    const dir = new THREE.Vector3(0.55, 0.42, -0.72).normalize();
-    if (target.y < 0.6) dir.set(0.5, 0.25, -0.83).normalize();
-    this.flyTo(target.clone().addScaledVector(dir, Math.max(6.8, size * 2.2)), HOME.target.clone());
+    const cat = this.focusCat;
+    const h = cat ? this.current?.hotspots[cat] : undefined;
+    if (cat && !h) return;
+    if (h) {
+      const point = h.point.clone().add(new THREE.Vector3(...(h.bone ? peelShift(h.bone, this.peelTo) : [0, 0, 0])));
+      const size = h.box.getSize(new THREE.Vector3()).length();
+      const dir = new THREE.Vector3(0.55, 0.42, -0.72).normalize();
+      if (point.y < 0.6) dir.set(0.5, 0.25, -0.83).normalize();
+      // 안내 보기의 확대(close)는 부품 가까이(걷어낸 배율을 곱하지 않는다), 보통은 걷어낸 만큼 뒤로 빠진다
+      const dist = this.focusClose ? Math.max(3.6, size * 1.3) : Math.max(6.8, size * 2.2) * scale;
+      // 안내 보기의 확대는 시선도 부품 높이로 맞춘다(회전축은 차량 중앙 수직축 그대로) — 아니면 높이가 다른 부품(엔진·변속기 등)이 화면 밖에 놓인다
+      const look = this.focusClose ? lookAt.clone().setY(point.y) : lookAt;
+      this.go(point.addScaledVector(dir, dist), look, this.focusClose ? 1 : scale);
+      return;
+    }
+    const dir = HOME.pos.clone().sub(HOME.target).normalize();
+    this.go(lookAt.clone().addScaledVector(dir, HOME.pos.distanceTo(HOME.target) * scale), lookAt, scale);
+  }
+
+  /** 카메라를 옮기고, 그 거리에 들어 있는 걷어내기 배율(aimScale)을 함께 기록한다 */
+  private go(pos: THREE.Vector3, target: THREE.Vector3, scale: number) {
+    this.aimScale = scale;
+    this.flyTo(pos, target);
+  }
+
+  /** 취소된 이동의 목표 거리·시선으로 부드럽게 다가간다. 방향(방위)은 사용자가 정한 대로 둔다 */
+  private settleStep(now: number) {
+    const { settle, camera, controls } = this;
+    if (!settle) return;
+    const k = 1 - Math.exp(-Math.min(0.1, Math.max(0, (now - this.lastTick) / 1000)) * 6);
+    const offset = camera.position.clone().sub(controls.target); // 시선을 옮기기 전의 방향·거리(사용자가 정한 값)
+    const len = offset.length();
+    controls.target.lerp(settle.t1, k);
+    const next = settle.dist === null ? len : len + (settle.dist - len) * k; // dist가 null이면 거리는 사용자가 정한 대로 둔다
+    camera.position.copy(controls.target).addScaledVector(offset.normalize(), next);
+    if ((settle.dist === null || Math.abs(next - settle.dist) < 1e-3) && controls.target.distanceTo(settle.t1) < 1e-3) this.settle = null;
   }
 
   setAutoRotate(on: boolean) {
@@ -231,6 +342,17 @@ export class Showroom {
   bindHotspot(cat: CategoryKey, el: HTMLElement | null) {
     if (el) this.hotspotEls.set(cat, el);
     else this.hotspotEls.delete(cat);
+  }
+
+  /** 분류의 부품 이름 마커 목록(안내 보기 4단계). 모델을 올리기 전이면 빈 목록 */
+  markersOf(cat: CategoryKey | null): readonly { id: string; label: string; estimated: boolean }[] {
+    return cat ? (this.current?.markers[cat] ?? []).map(({ id, label, estimated }) => ({ id, label, estimated })) : [];
+  }
+
+  /** 마커 요소를 등록한다. 매 프레임 화면 좌표로 옮기고(걷어낸 부품은 뼈대를 따라간다), 카메라 뒤면 data-behind를 단다 */
+  bindMarker(id: string, el: HTMLElement | null) {
+    if (el) this.markerEls.set(id, el);
+    else this.markerEls.delete(id);
   }
 
   dispose() {
@@ -262,7 +384,15 @@ export class Showroom {
     root.add(vehicle.root, ...estimated);
     root.updateMatrixWorld(true);
     const meshes = [...vehicle.meshes, ...estimated];
-    const entry = { root, meshes, hotspots: computeHotspots(meshes) };
+    for (const m of vehicle.meshes) if ((m as THREE.SkinnedMesh).isSkinnedMesh) m.frustumCulled = false; // 뼈대를 옮기면 원래 경계 밖으로 나간다
+    const hotspots = computeHotspots(meshes);
+    for (const [cat, bone] of Object.entries(hotspotBonesOf(vehicle.meshes)) as [CategoryKey, string][]) {
+      const h = hotspots[cat];
+      if (h) h.bone = bone;
+    }
+    const markers = computeMarkers(meshes, hotspots);
+    const markerIndex = new Map(Object.values(markers).flatMap((list) => list!.map((m) => [m.id, m] as const)));
+    const entry: Entry = { root, meshes, hotspots, rig: buildPeelRig(vehicle.root), markers, markerIndex };
     this.entries.set(key, entry);
     return entry;
   }
@@ -270,6 +400,7 @@ export class Showroom {
   // ------------------------------------------------------------ 카메라 · 그리기
 
   private flyTo(pos: THREE.Vector3, target: THREE.Vector3, ms = 1100) {
+    this.settle = null;
     if (this.reducedMotion) {
       this.camera.position.copy(pos);
       this.controls.target.copy(target);
@@ -298,24 +429,73 @@ export class Showroom {
       controls.target.lerpVectors(fly.t0, fly.t1, ease(t));
       if (t === 1) this.fly = null;
     }
+    this.settleStep(now);
+    this.lastTick = now;
+    const anim = this.peelAnim;
+    if (anim) {
+      const u = Math.min(1, (now - anim.start) / anim.ms);
+      this.peelNow = anim.from + (anim.to - anim.from) * smootherstep(u);
+      if (u === 1) { this.peelNow = anim.to; this.peelAnim = null; }
+      this.applyPeel();
+    }
     this.mat.hot.emissiveIntensity = this.reducedMotion ? 0.7 : 0.7 + 0.35 * Math.sin(now / 260);
     controls.update();
     this.renderer.render(this.scene, camera);
     this.updateHotspots();
+    this.updateMarkers();
     this.raf = requestAnimationFrame(this.tick);
   };
+
+  private updateMarkers() {
+    const { v } = this;
+    for (const [id, el] of this.markerEls) {
+      const m = this.current?.markerIndex.get(id);
+      if (!m) continue;
+      v.copy(m.point);
+      if (m.bone) v.add(this.tmp.set(...peelShift(m.bone, this.peelNow)));
+      v.project(this.camera);
+      el.toggleAttribute("data-behind", v.z > 1);
+      el.style.left = `${(v.x * 0.5 + 0.5) * this.container.clientWidth}px`;
+      el.style.top = `${(-v.y * 0.5 + 0.5) * this.container.clientHeight}px`;
+    }
+  }
 
   private updateHotspots() {
     const { v } = this;
     for (const [cat, el] of this.hotspotEls) {
       const h = this.current?.hotspots[cat];
       if (!h) continue;
-      v.copy(h.point).project(this.camera);
+      v.copy(h.point);
+      if (h.bone) v.add(this.tmp.set(...peelShift(h.bone, this.peelNow))); // 걷어낸 부품의 뼈대를 따라간다
+      v.project(this.camera);
       el.toggleAttribute("data-behind", v.z > 1);
       el.style.left = `${(v.x * 0.5 + 0.5) * this.container.clientWidth}px`;
       el.style.top = `${(-v.y * 0.5 + 0.5) * this.container.clientHeight}px`;
     }
   }
+}
+
+/** 걷어낼 뼈대를 모델에서 찾아 조립 상태의 위치와 좌표 변환값을 기록한다. 모델에 없는 뼈대는 건너뛴다 */
+function buildPeelRig(root: THREE.Object3D): PeelBone[] {
+  root.updateMatrixWorld(true);
+  const rig: PeelBone[] = [];
+  const q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+  for (const name of PEEL_BONES) {
+    const bone = root.getObjectByName(name);
+    if (!bone?.parent) continue;
+    bone.parent.matrixWorld.decompose(p, q, s);
+    rig.push({ name, bone, rest: bone.position.clone(), toLocal: q.clone().invert(), scale: s.x });
+  }
+  return rig;
+}
+
+function hotspotBonesOf(meshes: THREE.Mesh[]): Partial<Record<CategoryKey, string>> {
+  const out: Partial<Record<CategoryKey, string>> = {};
+  for (const m of meshes) {
+    const cat = partOf(m).defect;
+    if (cat && !out[cat]) out[cat] = boneOfTitle(partOf(m).title);
+  }
+  return out;
 }
 
 // 분류별 핫스팟 위치: 운전석 쪽(-z) 부품이 있으면 그쪽, 없으면 전체의 중심

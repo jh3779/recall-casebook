@@ -1,14 +1,16 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { search } from "../api";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ApiError, search } from "../api";
 import type { Card, HealthState, SearchResponse } from "../search/types";
-import { CaseDetail } from "./CaseDetail";
-import { CaseList } from "./CaseList";
-import { D4Panel } from "./D4Panel";
-import { errorText } from "./errors";
-import { GroupPanel } from "./GroupPanel";
-import { NotesPanel } from "./NotesPanel";
+import { adoptDraft } from "./adoptDraft";
+import { errorText, searchErrorMessage } from "./errors";
+import { Intro } from "./Intro";
 import { OverlayBoundary, OverlayLoading } from "./OverlayBoundary";
 import { pickedFor, toggleChecked } from "./questions";
+import { RequestGate } from "./requestGate";
+import { Results } from "./Results";
+import { SearchError } from "./SearchError";
+import { useCountdown } from "./useCountdown";
+import { Write8dPlain } from "./Write8dBar";
 import { adoptNotes, applyNote, browserStorage, clearNotes, isUnsaved, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, storageProblem } from "./notes";
 
 const ModelOverlay = lazy(() => import("./ModelOverlay")); // three.js는 3D 창을 열 때만 받는다
@@ -17,12 +19,18 @@ const ModelOverlay = lazy(() => import("./ModelOverlay")); // three.js는 3D 창
  * Recall Casebook. for Engineer (DEC-067) — 선례를 체크하면 원인 원문이 근거로 쌓이고, 선례별 메모와 원인 묶기를 오른쪽에 둔다.
  * 판정하지 않는다: 같다·다르다·해당한다를 표시하지 않고 자사 원인을 제안하지 않는다. 메모는 서버·LLM으로 보내지 않는다.
  */
-export default function CasebookView({ health }: { health: HealthState }) {
-  const [question, setQuestion] = useState("");
+export default function CasebookView({ health, draft = null, onWrite8d }: { health: HealthState; draft?: { question: string; key: number } | null; onWrite8d?: (cards: readonly Card[], response: SearchResponse | null, fresh?: { question: string }) => void }) {
+  const [question, setQuestion] = useState(draft?.question ?? "");
+  const [draftKey, setDraftKey] = useState(draft?.key ?? 0);
+  const questionInput = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (draft) questionInput.current?.focus(); }, [draft]);
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [response, setResponse] = useState<SearchResponse | null>(null);
   const [checked, setChecked] = useState<Card[]>([]);
   const [error, setError] = useState("");
+  const [retryAt, setRetryAt] = useState<number | null>(null); // 호출 상한(429) 뒤 다시 보낼 수 있는 시각 — 그때까지 검색 단추를 막는다
+  const [slow, setSlow] = useState(false); // 3초가 지나도 응답이 없으면 서버가 깨어나는 중일 수 있다고 알린다
+  const wait = useCountdown(retryAt);
   const [caseInput, setCaseInput] = useState("");
   const [caseName, setCaseName] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -33,10 +41,18 @@ export default function CasebookView({ health }: { health: HealthState }) {
   const [unsavedNotes, setUnsavedNotes] = useState<ReadonlySet<string>>(new Set()); // 저장소에 쓰지 못한 메모의 리콜 번호 — 하나라도 있으면 저장됐다고 말하지 않는다
   const saveFailed = unsavedNotes.size > 0;
   const storage = useMemo(() => browserStorage(), []);
-  const request = useRef<AbortController | null>(null);
+  const [gate] = useState(() => new RequestGate()); // 지금 요청 하나만 인정한다 — 새 질문이 오면 이전 요청의 응답은 버린다
   const caseRef = useRef(caseName); // 검색이 오래 걸리는 동안 사건 이름이 붙으면 낡은 이름으로 화면 메모를 비우지 않게
   useEffect(() => { caseRef.current = caseName; }, [caseName]);
-  useEffect(() => () => request.current?.abort(), []);
+  const adopted = adoptDraft(draftKey, draft, question);
+  if (adopted.key !== draftKey) { // 3D 쇼룸에서 넘어온 새 질문 — 입력창을 채우고(자동 검색은 하지 않는다) 이전 질문의 결과를 비운다
+    setDraftKey(adopted.key); setQuestion(adopted.question);
+    if (adopted.reset) { setState("idle"); setResponse(null); setChecked([]); setPicked(null); setError(""); setRetryAt(null); setSlow(false); }
+  }
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { gate.invalidate(); if (slowTimer.current) clearTimeout(slowTimer.current); }, [gate]);
+  // 새 질문이 오면 진행 중이던 이전 요청은 취소하고 그 응답은 버린다. 화면 상태를 비운 같은 커밋 안에서 끝내도록 레이아웃 효과로 둔다 — 일반 효과는 그리기 뒤라 그 사이에 늦게 도착한 이전 응답이 새 질문 밑에 다시 들어갈 수 있다(PR #164 Codex 리뷰)
+  useLayoutEffect(() => { if (draft) gate.invalidate(); }, [draft, gate]);
 
   // 사건 이름 없이 적은 메모가 있으면 새로고침·탭 닫기 전에 잃는다고 알린다
   const unsaved = isUnsaved(caseName, notes, saveFailed, !!storage);
@@ -67,24 +83,25 @@ export default function CasebookView({ health }: { health: HealthState }) {
     const next = toggleChecked({ checked, picked }, card);
     setChecked(next.checked); setPicked(next.picked);
   }
-  async function run() {
-    const value = question.trim();
+  async function run(example?: string) { // example: 예시 질문 버튼 — 입력창에도 채우고 바로 검색한다
+    const value = (example ?? question).trim();
+    if (example !== undefined) setQuestion(example);
     if (!value || !/[A-Za-z]/.test(value) || value.length > 4000) return;
     if (!caseName && unsaved && !confirm("Notes and D4 text without a case name will be discarded when you search again. Continue?")) return;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    const controller = gate.begin();
     const timer = setTimeout(() => controller.abort(), 60_000);
-    setState("loading"); setError(""); setResponse(null); setChecked([]); setPicked(null);
+    setState("loading"); setError(""); setRetryAt(null); setResponse(null); setChecked([]); setPicked(null); setSlow(false);
+    if (slowTimer.current) clearTimeout(slowTimer.current);
+    slowTimer.current = setTimeout(() => setSlow(true), 3000);
     try {
       const result = await search(value, controller.signal);
-      if (request.current !== controller) return;
+      if (!gate.accepts(controller)) return;
       if (!caseRef.current) setNotes({}); // 이름 없는 메모는 새 결과가 실제로 온 뒤에 비운다(검색이 실패하면 메모를 잃지 않게)
       setResponse(result); setState("done");
     } catch (e) {
-      if (request.current !== controller) return;
-      setError(errorText(e, "search")); setState("error");
-    } finally { clearTimeout(timer); }
+      if (!gate.accepts(controller)) return;
+      setError(errorText(e, "search")); setRetryAt(e instanceof ApiError ? e.retryAt ?? null : null); setState("error");
+    } finally { clearTimeout(timer); if (gate.accepts(controller) && slowTimer.current) clearTimeout(slowTimer.current); }
   }
   function changeNote(campno: string, text: string) {
     const r = applyNote(storage, caseName, notes, campno, text);
@@ -119,29 +136,18 @@ export default function CasebookView({ health }: { health: HealthState }) {
 
     <form className="cb-search" onSubmit={(e) => { e.preventDefault(); void run(); }}>
       <label htmlFor="cb-question" className="sr-only">Defect description in English</label>
-      <input id="cb-question" lang="en" value={question} maxLength={4000} onChange={(e) => setQuestion(e.target.value)} placeholder="Describe the defect in English — e.g. brake fluid leaking from front caliper" aria-invalid={noEnglish} />
-      <button type="submit" className="cb-btn" disabled={state === "loading" || !question.trim() || noEnglish}>{state === "loading" ? "Searching…" : "Find precedents"}</button>
+      <input id="cb-question" ref={questionInput} lang="en" value={question} maxLength={4000} onChange={(e) => setQuestion(e.target.value)} placeholder="Describe the defect in English — e.g. brake fluid leaking from front caliper" aria-invalid={noEnglish} />
+      <button type="submit" className="cb-btn" disabled={state === "loading" || wait > 0 || !question.trim() || noEnglish}>{state === "loading" ? "Searching…" : "Find precedents"}</button>
       <span className={`cb-muted${noEnglish ? " warn" : ""}`} aria-live="polite">{noEnglish ? "Needs English words." : "English questions only. NHTSA public recalls and Part 573 reports."}</span>
+      {onWrite8d && <Write8dPlain question={question} response={response} onWrite8d={onWrite8d} />}
     </form>
-    {state === "error" && <p className="cb-error" role="alert">{error} <button type="button" className="cb-link" onClick={() => void run()}>Retry</button></p>}
-    {state === "idle" && <p className="cb-empty">Describe a defect to see precedents from other manufacturers, with the cause text each one wrote and who said it.</p>}
-    {state === "loading" && <p className="cb-empty" role="status">Searching…</p>}
+    {state === "error" && <SearchError message={searchErrorMessage(error, retryAt !== null)} limited={retryAt !== null} wait={wait} onRetry={() => void run()} />}
+    {state === "idle" && <><p className="cb-empty">Describe a defect to see precedents from other manufacturers, with the cause text each one wrote and who said it.</p><Intro health={health} onExample={(q) => void run(q)} /></>}
+    {state === "loading" && <p className="cb-empty" role="status">Searching…{slow && " The server may be waking up — the first request can take 13–16 seconds."}</p>}
 
-    {state === "done" && response && <>
-    <div className="cb-grid">
-      <CaseList response={response} checked={checked} onToggle={togglePicked} />
-      <section className="cb-stack" aria-label="Checked precedents">
-        <h2 className="sr-only">Checked precedents</h2>
-        {!checked.length && <p className="cb-empty">Check precedents on the left. Each one stacks here with its original wording, who said it, and the report it came from.</p>}
-        {checked.map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => togglePicked(card)} on3d={(button) => setView3d({ card, opener: button })} />)}
-      </section>
-      <div className="cb-side">
-        <NotesPanel cards={checked} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase} copyMessage={copyMessage} />
-        <GroupPanel key={checkedKey} question={response.question} build={response} cards={checked} onPicked={(ids) => setPicked({ key: checkedKey, ids })} />
-      </div>
-    </div>
-    <D4Panel cards={checked} response={response} notes={notes} onChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} storeMessage={storeMessage} picked={pickedFor(picked, checkedKey)} />
-    </>}
+    {state === "done" && response && <Results response={response} checked={checked} checkedKey={checkedKey} onToggle={togglePicked} on3d={(card, button) => setView3d({ card, opener: button })}
+      notes={notes} onNoteChange={changeNote} caseName={caseName} persistent={persistent} storageBlocked={storageProblem(caseName, !!storage, saveFailed)} onCopy={() => void copyAll()} onClear={clearCase}
+      copyMessage={copyMessage} storeMessage={storeMessage} onGroupPicked={(ids) => setPicked({ key: checkedKey, ids })} picked={pickedFor(picked, checkedKey)} onWrite8d={onWrite8d} />}
     {view3d && <OverlayBoundary onClose={() => setView3d(null)} opener={view3d.opener}><Suspense fallback={<OverlayLoading onClose={() => setView3d(null)} opener={view3d.opener} />}><ModelOverlay card={view3d.card} opener={view3d.opener} onClose={() => setView3d(null)} /></Suspense></OverlayBoundary>}
   </main>;
 }

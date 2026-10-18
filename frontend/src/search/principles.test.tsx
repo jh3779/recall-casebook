@@ -4,15 +4,16 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
-import { PrecedentDetail } from "./PrecedentDetail";
-import { Welcome } from "./Welcome";
+import { CaseDetail } from "../casebook/CaseDetail";
+import { Intro } from "../casebook/Intro";
+import { Provenance } from "../casebook/Provenance";
 import type { SearchResponse } from "./types";
 import fixture from "./__fixtures__/search_airbag.json";
 
 const forbidden = /applies|verdict|is_?applicable|recall[_\s-]?required|리콜\s*대상(입니다|이다)|원인은\s.{0,30}입니다|해당(합니다|됩니다|되지\s*않습니다)|적용(됩니다|되지\s*않습니다)|root\s+cause\s+is\b|is\s+the\s+cause\b|this\s+recall\s+(applies|is\s+applicable)/; // principle-ok: 판정 문구가 화면에 없는지 검사하는 금지 패턴
 const response = fixture as SearchResponse;
 it("렌더 결과에 판정 필드·문구가 없다", () => {
-  const html = renderToStaticMarkup(<><Welcome health="loading" onExample={() => {}} onShowroom={() => {}} />{[...response.customer_precedents, ...response.precedents].map((card) => <PrecedentDetail key={card.campno} card={card} response={response} />)}</>);
+  const html = renderToStaticMarkup(<><Intro health="loading" onExample={() => {}} /><Provenance data={response} />{[...response.customer_precedents, ...response.precedents].map((card) => <CaseDetail key={card.campno} card={card} response={response} onRemove={() => {}} />)}</>);
   expect(html.match(forbidden)).toBeNull();
 });
 it("테스트와 설명 주석을 제외한 화면 소스에 판정 필드·문구가 없다", () => {
