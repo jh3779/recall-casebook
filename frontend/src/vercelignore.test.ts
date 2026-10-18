@@ -29,6 +29,10 @@ describe("화면 .vercelignore", () => {
   it("비밀값·빌드 산출물·의존성 폴더는 열지 않는다", () => {
     expect(allowed.some((path) => /^(\.env|dist|node_modules)/.test(path))).toBe(false);
   });
+  it("랜딩 배경 영상·포스터는 배포에 올리지 않는다(DEC-074)", () => {
+    expect(lines.indexOf("public/landing/*")).toBeGreaterThan(lines.indexOf("!public"));
+    expect(allowed.some((path) => path.startsWith("public/landing"))).toBe(false);
+  });
   it("3D 모델은 화면이 부르는 파일만 연다(#108)", () => {
     expect(lines.indexOf("public/models/*")).toBeGreaterThan(lines.indexOf("!public"));
     const models = allowed.filter((path) => path.startsWith("public/models/")).map((path) => path.replace("public/", ""));

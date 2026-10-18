@@ -13,3 +13,5 @@
 public/models/*
 !public/models/sonata.glb
 !public/models/sorento.glb
+# 랜딩 배경 영상·포스터는 로컬 전용(출처·라이선스 미확인, DEC-074) — CLI 배포에 올리지 않는다
+public/landing/*
