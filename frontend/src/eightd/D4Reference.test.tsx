@@ -5,6 +5,7 @@ import fixture from "../search/__fixtures__/search_airbag.json";
 import { hasCauseText, type SearchResponse } from "../search/types";
 import { D4Reference } from "./D4Reference";
 import { D4_EVIDENCE_KEY, d4EvidenceVisible, insertedCount } from "./document";
+import { DraftPanel } from "./DraftPanel";
 import { EvidenceCard } from "./EvidenceCard";
 
 const response = fixture as SearchResponse;
@@ -63,4 +64,14 @@ it("D4 근거 칸은 선례를 담았거나 이미 글이 있을 때 보이고, 
   expect(d4EvidenceVisible(2, {})).toBe(true);
   expect(d4EvidenceVisible(0, { [D4_EVIDENCE_KEY]: "남은 글" })).toBe(true);
   expect(d4EvidenceVisible(0, { [D4_EVIDENCE_KEY]: "   " })).toBe(false);
+});
+it("묶음 초안·확인 질문 버튼은 본문과 부록 어느 한쪽에 들어 있어도 켜진 것으로 보고, 누르면 같은 콜백을 부른다", () => {
+  const calls: unknown[][] = [];
+  const inserted = { "4|draft:gabc": "z", "4a|draft:gxyz": "w" };
+  const el = D4Reference({ cards: cards.slice(0, 1), response, customers: new Set(), inserted, onToggle: (...args) => { calls.push(args); } }) as ReactElement;
+  const [panel] = findAll(el, (e) => e.type === DraftPanel);
+  expect(panel.props.step).toBe("d4");
+  expect(Object.keys(panel.props.inserted as object).sort()).toEqual(["draft:gabc", "draft:gxyz"]); // 한쪽만 남은 것도 켜짐으로 본다
+  (panel.props.onToggle as (id: string, b: string) => void)("draft:q", "Q");
+  expect(calls).toEqual([["draft:q", "Q"]]);
 });

@@ -14,7 +14,7 @@ export function D4Reference({ cards, response, customers, inserted, onToggle }: 
   const count = insertedCount(inserted, new Set([4]));
   return <details className="ed-ref"><summary><span>선례 참고 열기 <span className="ed-opt">선택</span></span><span className={`ed-cnt${count ? " on" : ""}`}>넣음 {count}건</span></summary>
     <p className="note">{HINT} 넣기를 누르기 전에는 아무것도 들어가지 않습니다.</p>
-    {response && <DraftPanel key={`4|${response.question}|${cards.map((c) => c.campno).join(",")}`} step="d4" question={response.question} build={response} cards={cards} inserted={insertedFor(inserted, "4")} onToggle={onToggle} />}
+    {response && <DraftPanel key={`4|${response.question}|${cards.map((c) => c.campno).join(",")}`} step="d4" question={response.question} build={response} cards={cards} inserted={{ ...insertedFor(inserted, "4a"), ...insertedFor(inserted, "4") }} onToggle={onToggle} />}
     {cards.map((card) => <EvidenceCard key={card.campno} card={card} customer={customers.has(card.campno)} inserted={inserted[`4|${card.campno}`] !== undefined || inserted[`4a|${card.campno}`] !== undefined} onToggle={(block) => onToggle(card.campno, block)} />)}
   </details>;
 }

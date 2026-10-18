@@ -279,3 +279,15 @@ it("D4 구역은 체크박스 하나로 D4 칸 본문과 부록에 함께 넣고
   expect(m).not.toMatch(/type="checkbox"[^>]*checked/);
   expect(m).toContain("Write your Escape Cause or Root Cause, or tick a precedent option, to enable.");
 });
+it("칸에 글자 서식(rPr)이 있는 실제 양식에서도 제목 run은 굵고 엔지니어 글 run은 굵지 않다", async () => {
+  const row = `<w:tr>${tc(p("DISCIPLINE 4"), p("DEFINE THE PROBLEM CAUSE"))}${tc(p())}</w:tr>`;
+  expect(form).toContain(row); // 바꿀 자리가 실제로 있어야 시험이 의미 있다
+  const formatted = form.replace(row, `<w:tr>${tc(p("DISCIPLINE 4"), p("DEFINE THE PROBLEM CAUSE"))}${tc('<w:p><w:r><w:rPr><w:sz w:val="20"/></w:rPr></w:r></w:p>')}</w:tr>`);
+  const out = d4Export({ values, cards: withText.slice(0, 1), includeBody: true, includeAppendix: true, prov });
+  const r = await patchDocx(await docxBlob(formatted), docxContent(out, null));
+  expect(r.filled).toEqual([4]);
+  const xml = await read(r.blob);
+  expect(xml).toContain('<w:sz w:val="20"/>'); // 칸의 글자 서식을 이어받는다
+  expect(runOf(xml, D4_EVIDENCE_TITLE)).toContain("<w:b/>");
+  expect(runOf(xml, "우리 건의 근본 원인 초안")).not.toContain("<w:b/>");
+});

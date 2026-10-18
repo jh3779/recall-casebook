@@ -45,7 +45,7 @@ export function stepParagraphs(step: Step, values: Record<string, string>): Para
 }
 
 /**
- * D4 칸 안의 선례 근거 — 사용자가 "본문에 텍스트로 넣기"를 누른 타사 원인 원문. 엔지니어가 쓴 Escape·Root Cause 글 뒤에 제목 한 줄(굵게)을 두고 붙인다.
+ * D4 칸 안의 선례 근거 — 사용자가 "D4 본문·부록에 넣기"를 누른 타사 원인 원문(본문에 넣으면 부록에도 같이 들어간다). 엔지니어가 쓴 Escape·Root Cause 글 뒤에 제목 한 줄(굵게)을 두고 붙인다.
  * 제목과 각 인용의 머리줄 "[타사 선례 …]"이 타사 원문임을 밝혀, 서류를 훑는 사람이 타사 원인을 이 건의 근본 원인으로 읽지 않게 한다(DEC-076).
  */
 export const D4_EVIDENCE_KEY = "d4_evidence";

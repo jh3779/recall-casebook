@@ -135,12 +135,12 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
         </div>
         {reference(String(step.n))}
         {step.n === 4 && d4EvidenceVisible(cards.length, values) && <div className="ed-fields"><label className="ed-field"><span>선례 근거 — D4 칸에 들어가는 타사 원문 <em className="ed-own">D4 "본문·부록에 넣기"를 누른 인용만 — 자사 글은 위 Escape·Root Cause 칸에 쓰세요</em></span>
-          <textarea value={values[D4_EVIDENCE_KEY] ?? ""} rows={rowsFor(values[D4_EVIDENCE_KEY] ?? "")} placeholder="D4 선례 참고에서 본문에 넣은 타사 원인 원문이 여기 들어갑니다 — 엔지니어가 쓴 Escape·Root Cause 글 뒤에 '타사 선례' 제목과 함께 붙습니다" onChange={(e) => setValues((v) => ({ ...v, [D4_EVIDENCE_KEY]: e.target.value }))} /></label></div>}
+          <textarea value={values[D4_EVIDENCE_KEY] ?? ""} rows={rowsFor(values[D4_EVIDENCE_KEY] ?? "")} placeholder="D4 선례 참고에서 넣은 타사 원인 원문이 여기 들어갑니다 — 엔지니어가 쓴 Escape·Root Cause 글 뒤에 '타사 선례' 제목과 함께 붙습니다" onChange={(e) => setValues((v) => ({ ...v, [D4_EVIDENCE_KEY]: e.target.value }))} /></label></div>}
       </section>)}
       {applied.has(4) && <section className="ed-step" aria-labelledby="ed-h-appendix">
         <h2 id="ed-h-appendix"><span className="ed-n">부록</span>선례 근거 부록 — D4 타사 원인</h2>
         <div className="ed-fields"><label className="ed-field"><span>D4 인용 <em className="ed-own">D4 "본문·부록에 넣기"를 누른 인용도 여기 한 번 더 들어갑니다</em></span>
-          <textarea value={values[APPENDIX_KEY] ?? ""} rows={rowsFor(values[APPENDIX_KEY] ?? "")} placeholder="D4 선례 참고에서 부록에 넣은 타사 원인 원문이 여기 들어갑니다 — 8D 표 뒤 별도 문단이라 자사 근본 원인과 섞이지 않습니다" onChange={(e) => setValues((v) => ({ ...v, [APPENDIX_KEY]: e.target.value }))} /></label></div>
+          <textarea value={values[APPENDIX_KEY] ?? ""} rows={rowsFor(values[APPENDIX_KEY] ?? "")} placeholder="D4 선례 참고에서 넣은 타사 원인 원문이 부록에도 한 번 더 들어갑니다 — 8D 표 뒤 별도 문단이라 자사 근본 원인과 섞이지 않습니다" onChange={(e) => setValues((v) => ({ ...v, [APPENDIX_KEY]: e.target.value }))} /></label></div>
       </section>}
     </div>
     <section className="ed-bar" aria-label="파일 만들기">

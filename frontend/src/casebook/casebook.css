@@ -177,6 +177,6 @@
 .cb-grp li, .cb-grp li *, .cb-note-state, .cb-muted { overflow-wrap: anywhere; }
 .cb-note textarea { height: 72px; min-height: 56px; } /* 메모 칸을 낮춰 선례가 여러 건이어도 아래 "Group similar causes"가 같은 화면에 보이게 한다(늘리려면 끌어서 키운다) */
 @media (min-width: 1101px) {
-  .cb-list, .cb-side { position: sticky; top: 12px; max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .cb-list, .cb-side { position: sticky; top: 12px; max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 4px; margin: -4px; } /* 안쪽 스크롤 때문에 폭 100%인 입력칸·버튼의 키보드 초점선(바깥 3px)이 좌우에서 잘리지 않게 여백을 둔다 */
 }
 @media (min-width: 1768px) { .view-casebook { padding-inline: calc((100% - 1704px) / 2); } }

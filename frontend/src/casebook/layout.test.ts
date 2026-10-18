@@ -27,5 +27,6 @@ it("넓은 화면에서 좌우 열은 스크롤하는 동안에도 보이고(고
   expect(sticky).toMatch(/\.cb-list, \.cb-side \{[^}]*position:\s*sticky/);
   expect(sticky).toMatch(/max-height:\s*calc\(100dvh/);
   expect(sticky).toMatch(/overflow-y:\s*auto/);
+  expect(sticky).toMatch(/padding:\s*4px;\s*margin:\s*-4px/); // 안쪽 스크롤이 초점선(outline 3px)을 자르지 않게
   expect(css).toMatch(/@media \(max-width: 1100px\) \{\s*\.cb-grid \{ grid-template-columns: 1fr; \}/);
 });
