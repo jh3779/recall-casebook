@@ -27,7 +27,7 @@ export const PEEL_MOVES: readonly Readonly<Record<string, Vec>>[] = [
     taillight_l_046: [-1.0, 0.6, -0.4], taillight_r_047: [-1.0, 0.6, 0.4],
     indicator_lr_078: [-1.0, 0.4, -0.6], indicator_rr_079: [-1.0, 0.4, 0.6],
   },
-  { bodyshell_030: [0, 3.2, 0] },
+  { bodyshell_030: [0, 3.2, 0], extra_2_011: [0, 3.2, 0] }, // extra_2_011: 지붕 높이(y≈1.8)에 떠 있는 작은 부품 — 껍데기와 함께 올린다
   { seats_09: [0, 1.0, 0], steeringwheel_053: [0.4, 1.0, 0] },
 ];
 

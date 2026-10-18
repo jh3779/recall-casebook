@@ -75,8 +75,8 @@ describe("걷어내기: 뼈대 적용", () => {
     const { showroom, bones } = fixture();
     const quarter = new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI / 2); // 부모의 로컬 x → 차량의 y
     Object.assign(bones[0], { toLocal: quarter.clone().invert(), scale: 2 });
-    showroom.setPeel(3);
-    const shift = new Vector3(...peelShift("seats_09", 3)).applyQuaternion(quarter.clone().invert()).divideScalar(2);
+    showroom.setPeel(4); // 시트는 4층에서 움직인다(3·4층 순서를 바꾸기 전에는 3층이었다 — 시험의 층 번호만 따라 고쳤다)
+    const shift = new Vector3(...peelShift("seats_09", 4)).applyQuaternion(quarter.clone().invert()).divideScalar(2);
     expect(bones[0].bone.position.toArray()).toEqual(bones[0].rest.clone().add(shift).toArray());
   });
   it("애니메이션 도중에 다시 호출하면 지금 값에서 새로 시작한다", () => {
@@ -256,5 +256,32 @@ describe("걷어내기: 기본 모드(모션 감소 꺼짐)의 보간과 취소"
     const { scale, lift } = peelFraming(4);
     expect(offset(camera, controls).length()).toBeCloseTo(base * scale, 2);
     expect(controls.target.y).toBeCloseTo(HOME_TARGET.y + lift, 2);
+    expect(state(showroom).settle).toBeNull(); // 다 맞춘 뒤에는 끝난다
+  });
+  it("취소 뒤 마저 맞추는 동안에도 사용자가 돌린 방위는 그대로다", () => {
+    const { showroom, camera, controls, tick } = fixture(false);
+    showroom.setPeel(4);
+    tick(1000 + 110);
+    controls.dispatchEvent({ type: "start" } as never);
+    const rotated = offset(camera, controls).applyAxisAngle(new Vector3(0, 1, 0), 0.6); // 사용자가 돌렸다
+    camera.position.copy(controls.target).add(rotated);
+    const azimuth = Math.atan2(rotated.x, rotated.z);
+    for (let i = 1; i <= 80; i++) tick(1000 + 110 + i * 50);
+    const after = offset(camera, controls);
+    expect(Math.atan2(after.x, after.z)).toBeCloseTo(azimuth, 3);
+  });
+  it("맞추는 중(settle)에 사용자가 다시 조작해 거리를 정하면(휠 확대 등) 그 거리를 되돌리지 않는다", () => {
+    const { showroom, camera, controls, tick } = fixture(false);
+    showroom.setPeel(4);
+    tick(1000 + 110);
+    controls.dispatchEvent({ type: "start" } as never); // 첫 조작: 이동 취소, 마저 맞추기 시작
+    tick(1000 + 160);
+    controls.dispatchEvent({ type: "start" } as never); // 두 번째 조작(휠 확대): 사용자가 직접 거리를 정하는 중
+    expect(state(showroom).settle).toBeNull();
+    const zoomed = offset(camera, controls).multiplyScalar(0.6);
+    camera.position.copy(controls.target).add(zoomed);
+    const want = zoomed.length();
+    for (let i = 1; i <= 80; i++) tick(1000 + 160 + i * 50);
+    expect(offset(camera, controls).length()).toBeCloseTo(want, 6);
   });
 });

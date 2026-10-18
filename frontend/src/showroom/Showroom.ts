@@ -139,7 +139,8 @@ export class Showroom {
       controls.autoRotate = false;
       const { fly } = this;
       this.fly = null;
-      if (fly) this.settle = { t1: fly.t1.clone(), dist: fly.p1.distanceTo(fly.t1) };
+      // 이동이 진행 중일 때의 첫 조작만 이동을 마저 맞춘다. 이미 맞추는 중(settle)에 다시 조작하면 사용자가 직접 거리를 정하는 중이므로(휠 확대 등) 끈다
+      this.settle = fly ? { t1: fly.t1.clone(), dist: fly.p1.distanceTo(fly.t1) } : null;
     });
     this.controls = controls;
 
