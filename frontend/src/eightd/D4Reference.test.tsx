@@ -20,42 +20,41 @@ function findAll(node: ReactNode, pred: (el: ReactElement<Record<string, unknown
   return out;
 }
 
-it("본문 버튼은 D4 칸 본문(\"4\")으로, 부록 버튼은 부록(\"4a\")으로 간다 — 서로 바뀌지 않는다", () => {
+it("선례 버튼 하나가 그 선례의 번호와 블록으로 본문·부록 함께 넣기 콜백을 부른다", () => {
   const calls: unknown[][] = [];
   const el = D4Reference({ cards: cards.slice(0, 2), response, customers: new Set(), inserted: {}, onToggle: (...args) => { calls.push(args); } }) as ReactElement;
   const evidence = findAll(el, (e) => e.type === EvidenceCard);
   expect(evidence).toHaveLength(2);
-  (evidence[0].props.onToggleBody as (b: string) => void)("B1");
-  (evidence[0].props.onToggleAppendix as (b: string) => void)("B2");
-  (evidence[1].props.onToggleBody as (b: string) => void)("B3");
-  expect(calls).toEqual([["4", cards[0].campno, "B1"], ["4a", cards[0].campno, "B2"], ["4", cards[1].campno, "B3"]]);
+  (evidence[0].props.onToggle as (b: string) => void)("B1");
+  (evidence[1].props.onToggle as (b: string) => void)("B2");
+  expect(calls).toEqual([[cards[0].campno, "B1"], [cards[1].campno, "B2"]]);
 });
-it("넣음 표시는 본문과 부록을 따로 센다", () => {
-  const inserted = { [`4|${cards[0].campno}`]: "x", [`4a|${cards[1].campno}`]: "y" };
-  const el = D4Reference({ cards: cards.slice(0, 2), response, customers: new Set(), inserted, onToggle: () => {} }) as ReactElement;
-  const [a, b] = findAll(el, (e) => e.type === EvidenceCard);
-  expect([a.props.inBody, a.props.inAppendix]).toEqual([true, false]);
-  expect([b.props.inBody, b.props.inAppendix]).toEqual([false, true]);
+it("넣음 표시는 본문이나 부록 중 하나라도 들어 있으면 켜지고, 같은 선례는 한 건으로 센다", () => {
+  const inserted = { [`4|${cards[0].campno}`]: "x", [`4a|${cards[0].campno}`]: "x", [`4a|${cards[1].campno}`]: "y" };
+  const el = D4Reference({ cards: cards.slice(0, 3), response, customers: new Set(), inserted, onToggle: () => {} }) as ReactElement;
+  const [a, b, c] = findAll(el, (e) => e.type === EvidenceCard);
+  expect([a.props.inserted, b.props.inserted, c.props.inserted]).toEqual([true, true, false]);
   expect(renderToStaticMarkup(el)).toContain("넣음 2건");
 });
-it("EvidenceCard의 본문 버튼은 본문 콜백만, 부록 버튼은 부록 콜백만 부른다", () => {
+it("EvidenceCard는 버튼 하나이고 누르면 콜백을 부른다 — 본문·부록을 따로 고르는 버튼이 없다", () => {
   const seen: string[] = [];
-  const el = EvidenceCard({ card: cards[0], customer: false, inBody: false, inAppendix: false, onToggleBody: () => { seen.push("body"); }, onToggleAppendix: () => { seen.push("appendix"); } }) as ReactElement;
+  const el = EvidenceCard({ card: cards[0], customer: false, inserted: false, onToggle: (b) => { seen.push(b); } }) as ReactElement;
   const buttons = findAll(el, (e) => e.type === "button");
-  expect(buttons).toHaveLength(2);
-  expect(buttons[0].props.children).toBe("본문에 텍스트로 넣기");
-  expect(buttons[1].props.children).toBe("부록에 텍스트로 넣기");
+  expect(buttons).toHaveLength(1);
+  expect(buttons[0].props.children).toBe("D4 본문·부록에 넣기");
   (buttons[0].props.onClick as () => void)();
-  (buttons[1].props.onClick as () => void)();
-  expect(seen).toEqual(["body", "appendix"]);
+  expect(seen).toHaveLength(1);
+  expect(seen[0]).toContain(`[타사 선례 ${cards[0].campno}`);
+  const on = EvidenceCard({ card: cards[0], customer: false, inserted: true, onToggle: () => {} }) as ReactElement;
+  expect(findAll(on, (e) => e.type === "button")[0].props.children).toBe("D4 본문·부록에 넣음 ✓ (다시 누르면 뺌)");
 });
 it("선례를 담지 않았으면 D4 참고가 없다", () => {
   expect(D4Reference({ cards: [], response, customers: new Set(), inserted: {}, onToggle: () => {} })).toBeNull();
 });
-it("근거 데이터 꼬리줄의 기준: D4 본문('4|')과 부록('4a|') 키를 모두 4단계로 세고, D4를 적용하지 않으면 세지 않는다", () => {
+it("근거 데이터 꼬리줄의 기준: D4 본문('4|')과 부록('4a|') 키를 4단계로 세되 같은 선례는 한 건이고, D4를 적용하지 않으면 세지 않는다", () => {
   const inserted = { "4|20V000001": "a", "4a|20V000001": "b", "4|draft:q": "c" };
-  expect(insertedCount(inserted, new Set([4]))).toBe(3);
-  expect(insertedCount({ "4a|20V000001": "b" }, new Set([4]))).toBe(1); // 부록만 넣어도 꼬리줄이 붙는다
+  expect(insertedCount(inserted, new Set([4]))).toBe(2);
+  expect(insertedCount({ "4a|20V000001": "b" }, new Set([4]))).toBe(1); // 부록만 남아 있어도 꼬리줄이 붙는다
   expect(insertedCount(inserted, new Set([2, 3]))).toBe(0);
   expect(insertedCount({}, new Set([4]))).toBe(0);
 });

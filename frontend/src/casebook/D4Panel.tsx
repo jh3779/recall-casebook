@@ -19,13 +19,12 @@ function download(blob: Blob, name: string) {
  */
 export function D4Panel({ cards, response, notes, onChange, caseName, persistent, storageBlocked, storeMessage, picked }: { cards: readonly Card[]; response: SearchResponse; notes: Readonly<Record<string, string>>; onChange: (key: string, text: string) => void; caseName: string; persistent: boolean; storageBlocked: boolean; storeMessage: string; picked: readonly string[] }) {
   const values = d4Values(notes);
-  const [body, setBody] = useState(false);
-  const [appendix, setAppendix] = useState(false);
+  const [precedents, setPrecedents] = useState(false); // D4 칸 본문과 부록에 함께 — 본문에 넣으면 부록에도 같이 넣는다(DEC-076)
   const [docx, setDocx] = useState<{ file: File; view: Inspection } | null>(null);
   const [chosen, setChosen] = useState<Place | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const out = d4Export({ values, cards, includeBody: body, includeAppendix: appendix, prov: response });
+  const out = d4Export({ values, cards, includeBody: precedents, includeAppendix: precedents, prov: response });
   const questions = d4Questions(cards);
   const modelPicked = pickedQuestions(picked);
   const state = storageState(caseName, persistent, storageBlocked);
@@ -85,12 +84,9 @@ export function D4Panel({ cards, response, notes, onChange, caseName, persistent
 
     <div className="cb-d4-out">
       <h3>Output <small>.docx · the 8D form you upload is read in this browser and never leaves it; the original is not changed</small></h3>
-      <label className="cb-d4-opt"><input type="checkbox" checked={body} onChange={(e) => setBody(e.target.checked)} />
-        <span>Put the cause texts of the {cards.length} checked precedent(s) in the D4 cell too, after what you wrote <em>(off by default — nothing is added unless you tick this)</em></span></label>
-      {body && <p className="cb-muted">They follow your Escape and Root Cause text under the line “[선례 근거 — 타사 공개 원문과 도구 안내문이며 자사 사실이 아닙니다]”. Each quote keeps its “[타사 선례 …]” header and its source line (who said it · report file · submitted date · sha256), so another manufacturer’s cause is not read as yours. Other D steps are never filled from precedents.{out.skipped.length > 0 ? ` No cause text for ${out.skipped.join(", ")} — left out, nothing is filled in.` : ""}</p>}
-      <label className="cb-d4-opt"><input type="checkbox" checked={appendix} onChange={(e) => setAppendix(e.target.checked)} />
-        <span>Add the cause texts of the {cards.length} checked precedent(s) as an appendix after the 8D table <em>(off by default — nothing is added unless you tick this)</em></span></label>
-      {appendix && <p className="cb-muted">Each appendix quote keeps its header (recall number · maker · date) and its source line (who said it · report file · submitted date · sha256).{!body && out.skipped.length > 0 ? ` No cause text for ${out.skipped.join(", ")} — left out, nothing is filled in.` : ""}</p>}
+      <label className="cb-d4-opt"><input type="checkbox" checked={precedents} onChange={(e) => setPrecedents(e.target.checked)} />
+        <span>Put the cause texts of the {cards.length} checked precedent(s) in the D4 cell, after what you wrote, and also as an appendix after the 8D table <em>(off by default — nothing is added unless you tick this)</em></span></label>
+      {precedents && <p className="cb-muted">In the D4 cell they follow your Escape and Root Cause text under the line “[선례 근거 — 타사 공개 원문과 도구 안내문이며 자사 사실이 아닙니다]”; the appendix repeats them after the table. Each quote keeps its “[타사 선례 …]” header (recall number · maker · date) and its source line (who said it · report file · submitted date · sha256), so another manufacturer’s cause is not read as yours. Other D steps are never filled from precedents.{out.skipped.length > 0 ? ` No cause text for ${out.skipped.join(", ")} — left out, nothing is filled in.` : ""}</p>}
       <div className="cb-d4-file">
         <label>8D form (.docx)<input type="file" aria-label="8D form file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => void onFile(e.target.files?.[0])} /></label>
         {docx && <label>D4 cell

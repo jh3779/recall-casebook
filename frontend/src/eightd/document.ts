@@ -21,8 +21,9 @@ export const CORE_STEPS: ReadonlySet<number> = new Set([4]);
 export const toggleStep = (applied: ReadonlySet<number>, n: number): Set<number> => { const next = new Set(applied); if (!next.delete(n)) next.add(n); return next; };
 export const sameSteps = (a: ReadonlySet<number>, b: ReadonlySet<number>) => a.size === b.size && [...a].every((n) => b.has(n));
 
-/** 넣은 인용 수 — 키는 "4|번호"(D4 칸 본문)·"4a|번호"(부록)이고, 적용한 단계(D4)에 속한 것만 센다. 근거 데이터 꼬리줄을 붙일지의 기준이다 */
-export const insertedCount = (inserted: Readonly<Record<string, string>>, applied: ReadonlySet<number>): number => Object.keys(inserted).filter((k) => applied.has(parseInt(k, 10))).length;
+/** 넣은 항목 수 — 키는 "4|번호"(D4 칸 본문)·"4a|번호"(부록)이고, 적용한 단계(D4)에 속한 것만 센다. 근거 데이터 꼬리줄을 붙일지의 기준이다 */
+export const insertedCount = (inserted: Readonly<Record<string, string>>, applied: ReadonlySet<number>): number =>
+  new Set(Object.keys(inserted).filter((k) => applied.has(parseInt(k, 10))).map((k) => k.slice(k.indexOf("|") + 1))).size; // 본문과 부록에 함께 들어가므로 같은 선례는 한 건으로 센다
 /** D4 근거 칸을 보일지 — 선례를 담았거나 이미 글이 들어 있을 때(사용자가 쓴 글을 가리지 않는다) */
 export const d4EvidenceVisible = (cardCount: number, values: Readonly<Record<string, string>>): boolean => cardCount > 0 || !!values[D4_EVIDENCE_KEY]?.trim();
 
@@ -73,6 +74,29 @@ export function insertBlock(value: string, block: string): string {
 export function removeBlock(value: string, block: string): string | null {
   if (!value.includes(block)) return null;
   return value.replace(`\n\n${block}`, "").replace(block, "").trim();
+}
+
+/**
+ * 선례 인용을 D4 칸 본문("4|id")과 8D 표 뒤 부록("4a|id")에 함께 넣거나 함께 뺀다 — 본문에 넣으면 부록에도 같이 들어간다(DEC-076).
+ * 둘 중 하나라도 들어 있으면 빼는 쪽이다. 사용자가 직접 고쳐 더는 그대로 없는 쪽은 자동으로 못 빼므로 그대로 두고 blocked로 알린다.
+ */
+export function toggleEvidence(values: Readonly<Record<string, string>>, inserted: Readonly<Record<string, string>>, id: string, block: string): { values: Record<string, string>; inserted: Record<string, string>; blocked: boolean } {
+  const targets = (["4", "4a"] as const).map((step) => ({ key: `${step}|${id}`, field: TARGET[step] }));
+  const nextValues = { ...values };
+  const nextInserted = { ...inserted };
+  if (!targets.some((t) => inserted[t.key] !== undefined)) {
+    for (const t of targets) { nextValues[t.field] = insertBlock(nextValues[t.field] ?? "", block); nextInserted[t.key] = block; }
+    return { values: nextValues, inserted: nextInserted, blocked: false };
+  }
+  let blocked = false;
+  for (const t of targets) {
+    if (inserted[t.key] === undefined) continue;
+    const next = removeBlock(values[t.field] ?? "", inserted[t.key]);
+    if (next === null) { blocked = true; continue; }
+    nextValues[t.field] = next;
+    delete nextInserted[t.key];
+  }
+  return { values: nextValues, inserted: nextInserted, blocked };
 }
 
 /**

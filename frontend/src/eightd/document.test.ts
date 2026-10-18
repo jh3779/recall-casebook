@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { ALL_STEPS, composeDocument, CORE_STEPS, D4_EVIDENCE_KEY, D4_EVIDENCE_TITLE, d4EvidenceParagraphs, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep, APPENDIX_KEY, APPENDIX_TITLE, appendixParagraphs } from "./document";
+import { ALL_STEPS, composeDocument, toggleEvidence, CORE_STEPS, D4_EVIDENCE_KEY, D4_EVIDENCE_TITLE, d4EvidenceParagraphs, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep, APPENDIX_KEY, APPENDIX_TITLE, appendixParagraphs } from "./document";
 
 const prov = { build_id: "abc123", snapshot_date: "2026-10-06" };
 it("빈 칸에는 그대로, 글이 있으면 한 줄 띄우고 덧붙인다", () => {
@@ -150,4 +150,29 @@ it("같은 렌더에서 두 번 걷어 낼 때 첫 번째 결과(글·넣은 목
   expect(again.removed).toEqual([]);
   expect(again.blocked).toEqual([]);
   expect(pruneInserted(first.values, inserted, new Set(), true).blocked.length).toBe(2); // 옛 목록을 쓰면 이미 지운 글이 "못 뺀 것"으로 잡힌다 — 그래서 화면은 갱신한 목록을 쓴다
+});
+
+it("선례 인용은 D4 칸 본문과 부록에 함께 들어가고 함께 빠진다 — 본문에 넣으면 부록에도 같이(DEC-076)", () => {
+  const block = blockOf("20V000001");
+  const added = toggleEvidence({ [D4_EVIDENCE_KEY]: "내가 쓴 글" }, {}, "20V000001", block);
+  expect(added.values[D4_EVIDENCE_KEY]).toBe(`내가 쓴 글\n\n${block}`);
+  expect(added.values[APPENDIX_KEY]).toBe(block);
+  expect(Object.keys(added.inserted).sort()).toEqual(["4a|20V000001", "4|20V000001"].sort());
+  expect(added.blocked).toBe(false);
+  const removed = toggleEvidence(added.values, added.inserted, "20V000001", block);
+  expect(removed.values[D4_EVIDENCE_KEY]).toBe("내가 쓴 글");
+  expect(removed.values[APPENDIX_KEY]).toBe("");
+  expect(removed.inserted).toEqual({});
+  expect(removed.blocked).toBe(false);
+});
+it("한쪽만 남아 있어도 빼는 쪽이고, 직접 고쳐 못 빼는 쪽은 그대로 두고 blocked로 알린다", () => {
+  const block = blockOf("20V000001");
+  const onlyAppendix = toggleEvidence({ [APPENDIX_KEY]: block }, { "4a|20V000001": block }, "20V000001", block);
+  expect(onlyAppendix.values[APPENDIX_KEY]).toBe("");
+  expect(onlyAppendix.inserted).toEqual({});
+  const edited = toggleEvidence({ [D4_EVIDENCE_KEY]: "내가 고친 글", [APPENDIX_KEY]: block }, { "4|20V000001": block, "4a|20V000001": block }, "20V000001", block);
+  expect(edited.blocked).toBe(true);
+  expect(edited.values[D4_EVIDENCE_KEY]).toBe("내가 고친 글"); // 못 뺀 본문은 그대로
+  expect(edited.values[APPENDIX_KEY]).toBe(""); // 뺄 수 있는 부록은 빠진다
+  expect(Object.keys(edited.inserted)).toEqual(["4|20V000001"]);
 });

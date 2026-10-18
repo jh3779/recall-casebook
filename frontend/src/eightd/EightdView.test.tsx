@@ -18,8 +18,7 @@ it("담은 선례만 단계별 참고에 나오고, 넣기 전에는 본문이 �
   const markup = renderToStaticMarkup(<EightdView cards={picked} response={response} onBack={() => {}} />);
   expect(markup).toContain("8D 근거로 담은 선례 2건");
   for (const c of picked) expect(markup).toContain(c.campno);
-  expect(markup).toContain("본문에 텍스트로 넣기");
-  expect(markup).toContain("부록에 텍스트로 넣기");
+  expect(markup).toContain("D4 본문·부록에 넣기");
   expect(markup).toContain("D4에 넣은 선례 항목 0건");
   expect(markup).not.toContain("선례 근거 데이터");
   const others = [...response.customer_precedents, ...response.precedents].filter((c) => !picked.includes(c));
@@ -68,14 +67,15 @@ it("질문만 고쳐 선례 없이 열면 SUBJECT는 새 질문이고, 이전 �
   expect(markup).not.toContain(campno); // 이전 질문 검색 결과의 리콜 번호가 화면에 나오지 않는다
 });
 
-it("D4 선례 참고는 D4 칸 본문과 부록 둘 다 고를 수 있고, 본문 근거 칸과 부록 칸이 따로 있다. 다른 단계에는 넣기 버튼이 없다(DEC-076)", () => {
+it("D4 선례 참고는 버튼 하나로 D4 칸 본문과 부록에 함께 넣고, 본문 근거 칸과 부록 칸이 따로 있다. 다른 단계에는 넣기 버튼이 없다(DEC-076)", () => {
   const one = response.customer_precedents[0] ?? response.precedents[0];
   const markup = renderToStaticMarkup(<EightdView cards={[one]} response={response} onBack={() => {}} />);
-  expect(markup).toMatch(/D4 칸 본문\(엔지니어가 쓴 글 뒤\) 또는 아래 &#x27;선례 근거 부록&#x27;\(8D 표 뒤 별도 문단\)에 넣을 수 있습니다/);
+  expect(markup).toMatch(/넣으면 D4 칸 본문\(엔지니어가 쓴 글 뒤\)과 아래 &#x27;선례 근거 부록&#x27;\(8D 표 뒤 별도 문단\)에 함께 들어갑니다/);
   const d4 = markup.split('id="ed-h-4"')[1].split("</section>")[0]; // 안내 문장에도 같은 말이 있어 구역 안에서 센다
-  expect(d4.match(/본문에 텍스트로 넣기/g)).toHaveLength(1); // 담은 선례 1건 × D4 하나뿐
-  expect(d4.match(/부록에 텍스트로 넣기/g)).toHaveLength(1);
-  for (const n of [1, 2, 3, 5, 6, 7, 8]) expect(markup.split(`id="ed-h-${n}"`)[1].split("</section>")[0]).not.toContain("텍스트로 넣기");
+  expect(d4.match(/D4 본문·부록에 넣기/g)).toHaveLength(1); // 담은 선례 1건 × 버튼 하나
+  expect(markup).not.toContain("부록에 텍스트로 넣기");
+  expect(markup).not.toContain("본문에 텍스트로 넣기");
+  for (const n of [1, 2, 3, 5, 6, 7, 8]) expect(markup.split(`id="ed-h-${n}"`)[1].split("</section>")[0]).not.toContain("에 넣기");
   expect(markup).toContain("선례 근거 — D4 칸에 들어가는 타사 원문");
   expect(markup).toContain("선례 근거 부록 — D4 타사 원인");
   expect(markup).toContain("선례 내용은 <b>D4에만</b> 넣습니다");

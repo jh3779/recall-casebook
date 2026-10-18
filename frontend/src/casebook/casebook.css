@@ -169,3 +169,14 @@
 .cb-sha { display: block; margin-top: 4px; word-break: break-all; font-family: var(--font-id); }
 .cb-error p { margin: 0 0 4px; }
 .cb-error button:disabled { opacity: 0.45; cursor: not-allowed; text-decoration: none; }
+
+/* 화면 맞춤(DEC-077) — 열 안쪽 내용(묶음의 긴 파일명·해시)이 열 폭을 밀어내 오른쪽이 화면 밖으로 나가던 것을 막고, 좌우 열은 가운데 상세를 스크롤하는 동안에도 보이게 한다. 색은 바꾸지 않는다 */
+.cb-list, .cb-side, .cb-stack { min-width: 0; }
+.cb-side { grid-template-columns: minmax(0, 1fr); }
+.cb-notes, .cb-group, .cb-groups, .cb-grp { min-width: 0; }
+.cb-grp li, .cb-grp li *, .cb-note-state, .cb-muted { overflow-wrap: anywhere; }
+.cb-note textarea { height: 72px; min-height: 56px; } /* 메모 칸을 낮춰 선례가 여러 건이어도 아래 "Group similar causes"가 같은 화면에 보이게 한다(늘리려면 끌어서 키운다) */
+@media (min-width: 1101px) {
+  .cb-list, .cb-side { position: sticky; top: 12px; max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+}
+@media (min-width: 1768px) { .view-casebook { padding-inline: calc((100% - 1704px) / 2); } }
