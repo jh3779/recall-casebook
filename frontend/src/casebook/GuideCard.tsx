@@ -3,7 +3,7 @@ import { GUIDE_STEPS, type GuideMarker, guideMoves } from "../showroom/guide";
 
 /**
  * 3D 창 "안내 보기" 카드(DEC-073): 단계·단계 문구·Back/Next/Play, 마지막 단계에서는 부품 이름 목록.
- * 부품 이름 목록(5단계)에는 추정 표시와 "단순화한 일반 설명용이며 이 리콜 차량의 실제 구조·결함 위치가 아니다" 안내가 항상 함께 나온다 —
+ * 부품 이름 목록(4단계)에는 추정 표시와 "단순화한 일반 설명용이며 이 리콜 차량의 실제 구조·결함 위치가 아니다" 안내가 항상 함께 나온다 —
  * 이름이 보이는데 안내가 없는 경로가 없도록 한 묶음으로 그린다.
  */
 export function GuideCard({ step, showParts, markers, typical, isPlaying, reducedMotion, onBack, onNext, onPlay, backRef, nextRef }: {

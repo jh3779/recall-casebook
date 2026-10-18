@@ -3,7 +3,7 @@ import { CATEGORIES, MODELS } from "../config";
 import { Showroom } from "../showroom/Showroom";
 import type { Card } from "../search/types";
 import type { CategoryKey, Mode } from "../types";
-import { GUIDE_LAST, GUIDE_PLAY_MS, guideMoves, guideView, markerTitle } from "../showroom/guide";
+import { GUIDE_LAST, GUIDE_PLAY_MS, type Held, NOT_HELD, effectiveLook, guideMoves, guideView, holdOf, markerTitle } from "../showroom/guide";
 import { TYPICAL_COMPONENTS } from "../showroom/partNames";
 import { PEEL_LABELS, PEEL_MAX, peelControls } from "../showroom/peel";
 import { GuideCard } from "./GuideCard";
@@ -26,7 +26,8 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   const [category, setCategory] = useState<CategoryKey | null>(null);
   const [mode, setMode] = useState<Mode>("exterior");
   const [layer, setLayer] = useState(0);
-  /** 안내 보기의 단계(0~4). null이면 직접 조작 중이다 */
+  const [held, setHeld] = useState<Held>(NOT_HELD);
+  /** 안내 보기의 단계(0~3). null이면 직접 조작 중이다 */
   const [step, setStep] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [reducedMotion] = useState(() => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -39,7 +40,7 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   const cardCats = partCategories(card.components);
   /** 직접 조작하면 안내 보기를 멈춘다(보던 화면은 그대로 둔다) */
   const manual = () => {
-    if (view) { setMode(view.mode); setLayer(view.layer); } // 안내가 보여 주던 화면을 직접 조작의 시작점으로 넘긴다
+    if (view) { setMode(view.mode); setLayer(view.layer); setHeld(holdOf(view)); } // 안내가 보여 주던 화면(모드·층·강조·확대)을 직접 조작의 시작점으로 넘긴다
     setStep(null);
     setPlaying(false);
   };
@@ -51,9 +52,8 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   };
   const shown = cardCats.filter((c) => cats3d.has(c));
   const view = step === null ? null : guideView(step, category);
-  const effMode = view ? view.mode : mode;
+  const { mode: effMode, highlight: effHighlight, zoom } = effectiveLook(view, mode, held);
   const effLayer = view ? view.layer : layer;
-  const zoom = view ? view.zoom : mode === "xray";
   const peel = peelControls(effLayer, category);
   const markers = useMemo(() => readyShowroom?.markersOf(category) ?? [], [readyShowroom, category]);
   const isPlaying = playing && step !== null && step < GUIDE_LAST;
@@ -101,9 +101,9 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   useEffect(() => {
     const showroom = showroomRef.current;
     if (stage !== "ready" || !showroom) return;
-    showroom.setLook(effMode, category, new Set(category ? [category] : []));
+    showroom.setLook(effMode, category, new Set(category ? [category] : []), effHighlight);
     showroom.focus(zoom ? category : null, step !== null); // 안내 보기의 확대는 부품 가까이
-  }, [stage, effMode, category, zoom, step]);
+  }, [stage, effMode, effHighlight, category, zoom, step]);
 
   useEffect(() => {
     if (stage !== "ready") return;
@@ -169,8 +169,8 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
           </div>
         </div>
         <div className="cb-3d-mode" role="group" aria-label="View mode">
-          <button type="button" aria-pressed={effMode === "xray"} className={effMode === "xray" ? "on" : ""} onClick={() => { manual(); setMode("xray"); }}>See-through</button>
-          <button type="button" aria-pressed={effMode === "exterior"} className={effMode === "exterior" ? "on" : ""} onClick={() => { manual(); setMode("exterior"); }}>Exterior</button>
+          <button type="button" aria-pressed={effMode === "xray"} className={effMode === "xray" ? "on" : ""} onClick={() => { manual(); setMode("xray"); setHeld(NOT_HELD); }}>See-through</button>
+          <button type="button" aria-pressed={effMode === "exterior"} className={effMode === "exterior" ? "on" : ""} onClick={() => { manual(); setMode("exterior"); setHeld(NOT_HELD); }}>Exterior</button>
         </div>
       </>}
       <p className="cb-muted">3D: <a href={model.source} target="_blank" rel="noreferrer">{model.credit}</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a> · size and materials adjusted</p>
