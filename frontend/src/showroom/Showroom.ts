@@ -90,7 +90,7 @@ export class Showroom {
     category: null,
     activeCats: new Set(),
   };
-  private fly: { p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number; ms: number } | null = null;
+  private fly: { p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number; ms: number; scales?: { from: number; to: number } } | null = null;
   private focusCat: CategoryKey | null = null;
   private aimScale = 1; // 지금 카메라 거리에 들어 있는 걷어내기 확대 배율
   private peelNow = 0;
@@ -266,28 +266,38 @@ export class Showroom {
     const { scale, lift } = peelFraming(this.peelTo);
     const lookAt = HOME.target.clone().setY(HOME.target.y + lift);
     if (keepDirection) {
-      // 날아가는 중이면 지금 카메라가 아니라 그 이동의 목표를 기준으로 삼는다 — 층을 연달아 바꿔도 거리가 어긋나 쌓이지 않는다
+      // 날아가는 중이면 지금 카메라가 아니라 그 이동의 목표(와 그 목표의 배율)를 기준으로 삼는다 — 층을 연달아 바꿔도 거리가 어긋나 쌓이지 않는다
       const { fly } = this;
-      const offset = (fly ? fly.p1.clone().sub(fly.t1) : this.camera.position.clone().sub(this.controls.target));
-      const dist = (offset.length() * scale) / this.aimScale; // 기준 거리는 직전 scale로 만든 것이다
-      this.aimScale = scale;
-      this.flyTo(lookAt.clone().addScaledVector(offset.normalize(), dist), lookAt);
+      const offset = fly ? fly.p1.clone().sub(fly.t1) : this.camera.position.clone().sub(this.controls.target);
+      const base = fly?.scales?.to ?? this.aimScale; // offset이 만들어진 배율
+      const dist = (offset.length() * scale) / base; // normalize()가 길이를 지우기 전에 잰다
+      this.go(lookAt.clone().addScaledVector(offset.normalize(), dist), lookAt, scale);
       return;
     }
     const cat = this.focusCat;
     const h = cat ? this.current?.hotspots[cat] : undefined;
     if (cat && !h) return;
-    this.aimScale = scale;
     if (h) {
       const point = h.point.clone().add(new THREE.Vector3(...(h.bone ? peelShift(h.bone, this.peelTo) : [0, 0, 0])));
       const size = h.box.getSize(new THREE.Vector3()).length();
       const dir = new THREE.Vector3(0.55, 0.42, -0.72).normalize();
       if (point.y < 0.6) dir.set(0.5, 0.25, -0.83).normalize();
-      this.flyTo(point.addScaledVector(dir, Math.max(6.8, size * 2.2) * scale), lookAt);
+      this.go(point.addScaledVector(dir, Math.max(6.8, size * 2.2) * scale), lookAt, scale);
       return;
     }
     const dir = HOME.pos.clone().sub(HOME.target).normalize();
-    this.flyTo(lookAt.clone().addScaledVector(dir, HOME.pos.distanceTo(HOME.target) * scale), lookAt);
+    this.go(lookAt.clone().addScaledVector(dir, HOME.pos.distanceTo(HOME.target) * scale), lookAt, scale);
+  }
+
+  /**
+   * 카메라를 옮기고, 그 거리에 들어 있는 걷어내기 배율(aimScale)을 함께 기록한다. 날아가는 동안에는 tick이 지금 실제로 적용된 배율로 갱신하므로,
+   * 이동이 끝나기 전에 사용자가 직접 돌려 이동이 취소돼도 aimScale은 지금 카메라 거리와 맞는다.
+   */
+  private go(pos: THREE.Vector3, target: THREE.Vector3, scale: number) {
+    const from = this.aimScale;
+    this.flyTo(pos, target);
+    if (this.fly) this.fly.scales = { from, to: scale };
+    else this.aimScale = scale; // 모션 감소: 바로 이동했다
   }
 
   setAutoRotate(on: boolean) {
@@ -371,6 +381,7 @@ export class Showroom {
     const { fly, camera, controls } = this;
     if (fly) {
       const t = Math.min(1, (now - fly.start) / fly.ms);
+      if (fly.scales) this.aimScale = fly.scales.from + (fly.scales.to - fly.scales.from) * ease(t);
       camera.position.lerpVectors(fly.p0, fly.p1, ease(t));
       controls.target.lerpVectors(fly.t0, fly.t1, ease(t));
       if (t === 1) this.fly = null;

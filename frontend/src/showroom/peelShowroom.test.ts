@@ -150,6 +150,18 @@ describe("걷어내기: 카메라", () => {
     tick(1000 + 1200);
     expect(offset(camera, controls).length()).toBeCloseTo(base, 6);
   });
+  it("이동 도중 사용자가 직접 돌려 이동이 취소돼도, 다음 층 변경의 거리는 지금 카메라에 실제로 적용된 배율을 기준으로 한다", () => {
+    const { showroom, camera, controls, tick } = fixture(false);
+    const base = offset(camera, controls).length();
+    showroom.setPeel(4);
+    tick(1000 + 550); // 이동의 절반 — 지금 거리에는 걷어내기 배율이 일부만 들어 있다
+    expect(offset(camera, controls).length()).toBeGreaterThan(base);
+    expect(offset(camera, controls).length()).toBeLessThan(base * peelFraming(4).scale);
+    controls.dispatchEvent({ type: "start" } as never); // 사용자가 드래그를 시작해 이동이 취소된다
+    showroom.setPeel(0);
+    tick(1000 + 550 + 1200);
+    expect(offset(camera, controls).length()).toBeCloseTo(base, 6);
+  });
   it("걷어낸 상태에서 분류를 고른 뒤 되돌려도 거리가 어긋나지 않는다(분류 경로의 배율 기록)", () => {
     const { showroom, camera, controls } = fixture();
     showroom.setPeel(3);
