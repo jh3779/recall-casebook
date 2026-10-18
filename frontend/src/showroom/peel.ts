@@ -3,12 +3,12 @@ import type { CategoryKey } from "../types";
 /**
  * 3D 창의 "걷어내기" 층(DEC-072). 쏘렌토 GLB는 부품이 뼈대(스켈레톤) 이름 단위로 나뉘어 있어서, 뼈대를 차량 바깥쪽으로 옮기면 그 부품만 빠진다.
  * 이동량은 정규화한 차량 좌표(미터)다: 앞 +x, 운전석 쪽 −z, 위 +y. 아래 표의 뼈대는 모두 `chassis_02`의 직접 자식이라(문·범퍼 등의 자식 뼈대는 부모를 따라간다)
- * 층끼리 이동이 겹쳐 더해지지 않는다. 차체 껍데기(4층)는 가장 높이 들려 올라가고, 시트·핸들(3층)은 그 아래에 머물러 서로 뚫고 지나가지 않게 했다.
+ * 층끼리 이동이 겹쳐 더해지지 않는다. 차체 껍데기(3층)를 먼저 높이 들어 올려 차실을 드러낸 뒤 시트·핸들(4층)을 껍데기 아래에서 들어 올리므로 어느 층에서도 시트가 지붕을 뚫지 않는다(시트가 껍데기보다 먼저 올라가던 초안은 렌더링에서 지붕을 뚫어 순서를 바꿨다 — DEC-072).
  *
  * 설명용 연출일 뿐이다 — 정비·분해 순서나 이 차량(리콜 차종)의 실제 구조가 아니고, 결함 위치를 확정하지 않는다.
  * 출처: 단계별로 걷어내는 아이디어와 보간 방식은 `car-assembly-react`(팀 자료, 라이선스 파일 없음)를 참고했고 코드는 가져오지 않았다.
  */
-export const PEEL_LABELS = ["Assembled", "Panels", "Glass & lamps", "Interior", "Body shell"] as const;
+export const PEEL_LABELS = ["Assembled", "Panels", "Glass & lamps", "Body shell", "Interior"] as const;
 export const PEEL_MAX = PEEL_LABELS.length - 1;
 
 export type Vec = readonly [number, number, number];
@@ -27,16 +27,23 @@ export const PEEL_MOVES: readonly Readonly<Record<string, Vec>>[] = [
     taillight_l_046: [-1.0, 0.6, -0.4], taillight_r_047: [-1.0, 0.6, 0.4],
     indicator_lr_078: [-1.0, 0.4, -0.6], indicator_rr_079: [-1.0, 0.4, 0.6],
   },
-  { seats_09: [0, 1.0, 0], steeringwheel_053: [0.4, 1.0, 0] },
   { bodyshell_030: [0, 3.2, 0] },
+  { seats_09: [0, 1.0, 0], steeringwheel_053: [0.4, 1.0, 0] },
 ];
 
 export const PEEL_BONES: readonly string[] = [...new Set(PEEL_MOVES.flatMap((layer) => Object.keys(layer)))];
 
-/** 부품 분류가 눈에 드러나는 층. 설명용 배치이고 결함 위치의 근거가 아니다. 0 = 걷어내지 않아도 보인다 */
+/** 차체 껍데기가 올라가는 층 — 그 안의 부품(엔진·서스펜션 등)이 처음 드러난다 */
+export const SHELL_LAYER = 3;
+
+/**
+ * 부품 분류가 눈에 드러나는 층. 설명용 배치이고 결함 위치의 근거가 아니다. 0 = 걷어내지 않아도 보인다.
+ * 실제 메시가 있고 움직이는 분류(tailgate·seat·steering)는 그 뼈대가 움직이는 층이고, 그 밖의 분류(안쪽 추정 도형·움직이지 않는 부품)는 껍데기가 올라가는 층이다.
+ */
 export const CATEGORY_LAYER: Readonly<Record<CategoryKey, number>> = {
-  tailgate: 1, latches: 1, seat: 3, airbag: 3, steering: 3,
-  lighting: 4, engine: 4, transmission: 4, electrical: 4, fuel: 4, driveline: 4, suspension: 4, brakes: 4, other: 0,
+  tailgate: 1, latches: 1, seat: 4, steering: 4,
+  airbag: SHELL_LAYER, lighting: SHELL_LAYER, engine: SHELL_LAYER, transmission: SHELL_LAYER, electrical: SHELL_LAYER,
+  fuel: SHELL_LAYER, driveline: SHELL_LAYER, suspension: SHELL_LAYER, brakes: SHELL_LAYER, other: 0,
 };
 
 const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));

@@ -67,7 +67,7 @@ describe("걷어내기: 뼈대 적용", () => {
     const { showroom, bones } = fixture();
     showroom.setPeel(2);
     for (const { name, bone, rest } of bones) expect(bone.position.toArray(), name).toEqual(rest.clone().add(new Vector3(...peelShift(name, 2))).toArray());
-    expect(bones[1].bone.position.y).toBe(1); // 차체 껍데기는 4층에서야 움직인다
+    expect(bones[1].bone.position.y).toBe(1); // 차체 껍데기는 3층에서야 움직인다
     showroom.setPeel(0);
     for (const { bone, rest } of bones) expect(bone.position.toArray()).toEqual(rest.toArray());
   });
@@ -132,11 +132,11 @@ describe("걷어내기: 카메라", () => {
   });
   it("걷어낸 상태에서 분류를 고르면 부품(이동한 위치) 쪽으로 가되 거리에 확대 배율이 들어가고, 회전 중심은 걷어낸 만큼 올라간 중앙 축이다", () => {
     const { showroom, camera, controls, hotspot } = fixture();
-    showroom.setPeel(3);
+    showroom.setPeel(4);
     showroom.focus("steering");
-    const { scale, lift } = peelFraming(3);
+    const { scale, lift } = peelFraming(4);
     expect(controls.target.toArray()).toEqual([0, HOME_TARGET.y + lift, 0]);
-    const point = hotspot.point.clone().add(new Vector3(...peelShift("steeringwheel_053", 3)));
+    const point = hotspot.point.clone().add(new Vector3(...peelShift("steeringwheel_053", 4)));
     const size = hotspot.box.getSize(new Vector3()).length();
     expect(camera.position.distanceTo(point)).toBeCloseTo(Math.max(6.8, size * 2.2) * scale, 6);
   });
@@ -188,10 +188,73 @@ describe("걷어내기: 핫스팟 표시", () => {
     tick(1100);
     const top0 = parseFloat(el.style.top);
     const pose = { position: camera.position.clone(), target: controls.target.clone() };
-    showroom.setPeel(3); // 핸들은 3층에서 위로 올라간다
+    showroom.setPeel(4); // 핸들은 4층에서 위로 올라간다
     camera.position.copy(pose.position); // 카메라 이동은 빼고 핀의 이동량만 비교한다
     controls.target.copy(pose.target);
     tick(1200);
     expect(parseFloat(el.style.top)).toBeLessThan(top0);
+  });
+});
+
+describe("걷어내기: 기본 모드(모션 감소 꺼짐)의 보간과 취소", () => {
+  const state = (s: Showroom) => s as unknown as { peelNow: number; fly: unknown; settle: unknown; entries: Map<string, unknown> };
+
+  it("tick이 뼈대를 rest + 지금 이동량으로 옮기고, 끝나면 목표 이동량이 된다", () => {
+    const { showroom, bones, tick } = fixture(false);
+    showroom.setPeel(2);
+    tick(1000 + 350); // 700ms 중 절반
+    const mid = state(showroom).peelNow;
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(2);
+    for (const { name, bone, rest } of bones) {
+      const want = rest.clone().add(new Vector3(...peelShift(name, mid)));
+      for (let k = 0; k < 3; k++) expect(bone.position.getComponent(k), `${name} ${k}`).toBeCloseTo(want.getComponent(k), 9);
+    }
+    expect(bones[0].bone.position.y).toBe(1); // 시트는 4층에서야 움직인다
+    expect(bones[2].bone.position.y).toBeGreaterThan(1); // 문은 1층이라 이미 움직였다
+    tick(1000 + 800);
+    for (const { name, bone, rest } of bones) expect(bone.position.toArray(), name).toEqual(rest.clone().add(new Vector3(...peelShift(name, 2))).toArray());
+  });
+  it("핀은 목표가 아니라 지금(애니메이션 중간) 값을 따라간다", () => {
+    const { showroom, camera, controls, tick } = fixture(false);
+    const el = { style: { top: "", left: "" }, toggleAttribute() {} } as unknown as HTMLElement;
+    showroom.bindHotspot("steering", el);
+    const pose = { position: camera.position.clone(), target: controls.target.clone() };
+    const topAfter = (now: number) => {
+      state(showroom).fly = null; // 카메라 이동은 빼고 핀의 이동량만 비교한다
+      state(showroom).settle = null;
+      camera.position.copy(pose.position);
+      controls.target.copy(pose.target);
+      tick(now);
+      return parseFloat(el.style.top);
+    };
+    const top0 = topAfter(1000);
+    showroom.setPeel(4);
+    const mid = topAfter(1000 + 560); // 700ms 중 80% — 핸들(4층)이 일부만 올라간 상태
+    const end = topAfter(1000 + 800);
+    expect(end).toBeLessThan(mid);
+    expect(mid).toBeLessThan(top0);
+  });
+  it("show()는 직전에 걷어낸 정도를 새로 올리는 모델에도 적용한다", () => {
+    const { showroom } = fixture();
+    const bone = new Object3D();
+    bone.position.set(0, 1, 0);
+    const entry = { root: new Object3D(), meshes: [], hotspots: {}, rig: [{ name: "bodyshell_030", bone, rest: bone.position.clone(), toLocal: new Quaternion(), scale: 1 }] };
+    state(showroom).entries.set("sorento", entry);
+    showroom.setPeel(3);
+    showroom.show("sorento" as never);
+    expect(bone.position.y).toBeCloseTo(1 + 3.2, 9);
+  });
+  it("이동 도중 사용자가 돌려 이동이 취소돼도 아무것도 더 하지 않으면 거리와 시선이 목표까지 마저 맞춰진다", () => {
+    const { showroom, camera, controls, tick } = fixture(false);
+    const base = offset(camera, controls).length();
+    showroom.setPeel(4);
+    tick(1000 + 110); // 이동의 10%
+    controls.dispatchEvent({ type: "start" } as never);
+    expect(offset(camera, controls).length()).toBeLessThan(base * peelFraming(4).scale - 1); // 취소된 순간에는 아직 덜 빠져 있다
+    for (let i = 1; i <= 80; i++) tick(1000 + 110 + i * 50);
+    const { scale, lift } = peelFraming(4);
+    expect(offset(camera, controls).length()).toBeCloseTo(base * scale, 2);
+    expect(controls.target.y).toBeCloseTo(HOME_TARGET.y + lift, 2);
   });
 });

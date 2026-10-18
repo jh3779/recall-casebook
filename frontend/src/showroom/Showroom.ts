@@ -90,7 +90,10 @@ export class Showroom {
     category: null,
     activeCats: new Set(),
   };
-  private fly: { p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number; ms: number; scales?: { from: number; to: number } } | null = null;
+  private fly: { p0: THREE.Vector3; t0: THREE.Vector3; p1: THREE.Vector3; t1: THREE.Vector3; start: number; ms: number } | null = null;
+  /** 사용자가 직접 돌려 이동이 취소됐을 때, 보던 방향은 그대로 두고 거리·시선만 원래 목표로 마저 맞춘다 */
+  private settle: { t1: THREE.Vector3; dist: number } | null = null;
+  private lastTick = 0;
   private focusCat: CategoryKey | null = null;
   private aimScale = 1; // 지금 카메라 거리에 들어 있는 걷어내기 확대 배율
   private peelNow = 0;
@@ -134,7 +137,9 @@ export class Showroom {
     // 사용자가 직접 돌리면 자동 회전·카메라 이동을 멈춘다
     controls.addEventListener("start", () => {
       controls.autoRotate = false;
+      const { fly } = this;
       this.fly = null;
+      if (fly) this.settle = { t1: fly.t1.clone(), dist: fly.p1.distanceTo(fly.t1) };
     });
     this.controls = controls;
 
@@ -266,11 +271,11 @@ export class Showroom {
     const { scale, lift } = peelFraming(this.peelTo);
     const lookAt = HOME.target.clone().setY(HOME.target.y + lift);
     if (keepDirection) {
-      // 날아가는 중이면 지금 카메라가 아니라 그 이동의 목표(와 그 목표의 배율)를 기준으로 삼는다 — 층을 연달아 바꿔도 거리가 어긋나 쌓이지 않는다
-      const { fly } = this;
+      // 날아가는 중이거나 취소돼 마저 맞추는 중이면 지금 카메라가 아니라 그 목표를 기준으로 삼는다 — 층을 연달아 바꾸거나 이동을 취소해도 거리가 어긋나 쌓이지 않는다.
+      // 어느 경우든 그 거리는 마지막으로 요청한 배율(aimScale)로 만든 것이다.
+      const { fly, settle } = this;
       const offset = fly ? fly.p1.clone().sub(fly.t1) : this.camera.position.clone().sub(this.controls.target);
-      const base = fly?.scales?.to ?? this.aimScale; // offset이 만들어진 배율
-      const dist = (offset.length() * scale) / base; // normalize()가 길이를 지우기 전에 잰다
+      const dist = ((fly ? offset.length() : settle ? settle.dist : offset.length()) * scale) / this.aimScale; // normalize()가 길이를 지우기 전에 잰다
       this.go(lookAt.clone().addScaledVector(offset.normalize(), dist), lookAt, scale);
       return;
     }
@@ -289,15 +294,23 @@ export class Showroom {
     this.go(lookAt.clone().addScaledVector(dir, HOME.pos.distanceTo(HOME.target) * scale), lookAt, scale);
   }
 
-  /**
-   * 카메라를 옮기고, 그 거리에 들어 있는 걷어내기 배율(aimScale)을 함께 기록한다. 날아가는 동안에는 tick이 지금 실제로 적용된 배율로 갱신하므로,
-   * 이동이 끝나기 전에 사용자가 직접 돌려 이동이 취소돼도 aimScale은 지금 카메라 거리와 맞는다.
-   */
+  /** 카메라를 옮기고, 그 거리에 들어 있는 걷어내기 배율(aimScale)을 함께 기록한다 */
   private go(pos: THREE.Vector3, target: THREE.Vector3, scale: number) {
-    const from = this.aimScale;
+    this.aimScale = scale;
     this.flyTo(pos, target);
-    if (this.fly) this.fly.scales = { from, to: scale };
-    else this.aimScale = scale; // 모션 감소: 바로 이동했다
+  }
+
+  /** 취소된 이동의 목표 거리·시선으로 부드럽게 다가간다. 방향(방위)은 사용자가 정한 대로 둔다 */
+  private settleStep(now: number) {
+    const { settle, camera, controls } = this;
+    if (!settle) return;
+    const k = 1 - Math.exp(-Math.min(0.1, Math.max(0, (now - this.lastTick) / 1000)) * 6);
+    controls.target.lerp(settle.t1, k);
+    const offset = camera.position.clone().sub(controls.target);
+    const len = offset.length();
+    const next = len + (settle.dist - len) * k;
+    camera.position.copy(controls.target).addScaledVector(offset.normalize(), next);
+    if (Math.abs(next - settle.dist) < 1e-3 && controls.target.distanceTo(settle.t1) < 1e-3) this.settle = null;
   }
 
   setAutoRotate(on: boolean) {
@@ -357,6 +370,7 @@ export class Showroom {
   // ------------------------------------------------------------ 카메라 · 그리기
 
   private flyTo(pos: THREE.Vector3, target: THREE.Vector3, ms = 1100) {
+    this.settle = null;
     if (this.reducedMotion) {
       this.camera.position.copy(pos);
       this.controls.target.copy(target);
@@ -381,11 +395,12 @@ export class Showroom {
     const { fly, camera, controls } = this;
     if (fly) {
       const t = Math.min(1, (now - fly.start) / fly.ms);
-      if (fly.scales) this.aimScale = fly.scales.from + (fly.scales.to - fly.scales.from) * ease(t);
       camera.position.lerpVectors(fly.p0, fly.p1, ease(t));
       controls.target.lerpVectors(fly.t0, fly.t1, ease(t));
       if (t === 1) this.fly = null;
     }
+    this.settleStep(now);
+    this.lastTick = now;
     const anim = this.peelAnim;
     if (anim) {
       const u = Math.min(1, (now - anim.start) / anim.ms);
