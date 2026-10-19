@@ -2,8 +2,10 @@
 export type Theme = "dark" | "light";
 const KEY = "theme";
 
+let chosen: Theme | null = null; // 이번 방문에 직접 고른 값 — 저장소가 막혀 저장이 실패해도 기기 설정이 이 선택을 덮지 않게 한다
 function saved(): Theme | null {
-  try { const v = localStorage.getItem(KEY); return v === "light" || v === "dark" ? v : null; } catch { return null; }
+  try { const v = localStorage.getItem(KEY); if (v === "light" || v === "dark") return v; } catch { /* 읽을 수 없으면 아래 메모리 값 */ }
+  return chosen;
 }
 // 사용자가 고른 적이 없으면 기기·브라우저의 화면 모드 설정을 따른다(알 수 없으면 랜딩과 같은 어두운 화면).
 export function systemTheme(): Theme {
@@ -38,6 +40,7 @@ function switchWithMotion(theme: Theme) {
   window.setTimeout(() => root.classList.remove("theme-anim"), 500);
 }
 export function saveTheme(theme: Theme) {
+  chosen = theme;
   switchWithMotion(theme);
   try { localStorage.setItem(KEY, theme); } catch { /* 저장이 막혀도 이번 방문에는 적용된다 */ }
 }

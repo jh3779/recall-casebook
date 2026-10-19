@@ -132,4 +132,4 @@
 :root:not([data-theme="light"]) .view-eightd .ed-form, :root:not([data-theme="light"]) .view-eightd .ed-subject, :root:not([data-theme="light"]) .view-eightd .ed-step, :root:not([data-theme="light"]) .view-eightd .ed-step h2, :root:not([data-theme="light"]) .view-eightd .ed-n { border-color: var(--line-strong); }
 :root:not([data-theme="light"]) .view-eightd .ed-step h2 { background: var(--accent-soft); color: var(--ink); }
 /* 포인트 색(청록)은 최소로 — 파일을 만드는 주 실행 버튼에만 */
-:root:not([data-theme="light"]) .view-eightd .ed-bar .btn:not(.ghost) { background: #00aad2; color: #000; }
+:root:not([data-theme="light"]) .view-eightd .ed-bar .btn.primary { background: #00aad2; color: #000; }
