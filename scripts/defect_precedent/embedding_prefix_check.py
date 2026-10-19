@@ -10,17 +10,26 @@
         --model snowflake/snowflake-arctic-embed-m \\
         --prefix "Represent this sentence for searching relevant passages: "
 
-주의: 캐시는 파일 이름(모델)과 카드 수만 확인하고 `embed_cards`의 카드 글 해시·16장 지문 검증은 하지 않는다 — 카드 글이 바뀌었거나 같은 모델의 옛 캐시가 남아 있으면 낡은 벡터를 쓸 수 있으니, 먼저 `retrieval_compare dense`를 같은 입력으로 다시 돌려 캐시를 새로 만든다.
+캐시는 `embed_cards`와 같은 규칙으로 고른다 — 지금 카드 글의 해시로 경로를 계산하고, fastembed 판본과 카드 16장 지문을 확인한 뒤 쓴다(같은 행 수의 옛 캐시는 쓰지 않는다). 출력에 데이터 판본·캐시 이름·모델 지문이 들어간다.
 
 결과는 **사후 진단**이다 — 사전 고정 규칙(docs/실험_P4_임베딩모델비교.md)의 채택 판단에 쓰지 않는다.
 """
 
 import argparse
+import hashlib
 import json
 import sys
+from pathlib import Path
 
 from scripts.defect_precedent import retrieval_compare as rc
 from scripts.defect_precedent.bm25_baseline import tokenize
+
+
+def cache_file(model: str, texts: list[str], cache: Path | None = None) -> Path:
+    """`retrieval_compare.embed_cards`가 쓰는 것과 같은 규칙으로 **지금 카드 글**의 캐시 경로를 계산한다 —
+    카드 글 해시가 다른 옛 캐시는 같은 행 수여도 고르지 않는다."""
+    key = hashlib.sha256("\n".join(texts).encode()).hexdigest()[:12]
+    return (cache or rc.CACHE) / f"{model.replace('/', '_')}_{key}.npy"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -37,14 +46,25 @@ def main(argv: list[str] | None = None) -> None:
     cards, questions = rc.load()
     ids = [c["campno"] for c in cards]
     texts = [rc.card_text(c) for c in cards]
-    found = sorted(rc.CACHE.glob(f"{a.model.replace('/', '_')}_*.npy"))
-    if not found:
+    import fastembed
+
+    if fastembed.__version__ != rc.FASTEMBED_VERSION:
+        sys.exit(f"fastembed {fastembed.__version__} — 보고서는 {rc.FASTEMBED_VERSION}로 쟀다")
+    path = cache_file(a.model, texts)
+    if not path.exists():
         sys.exit(
-            f"카드 벡터 캐시가 없다 — 먼저 `retrieval_compare dense --model {a.model}`를 돌린다"
+            f"지금 카드의 벡터 캐시가 없다({path.name}) — 먼저 `retrieval_compare dense --model {a.model}`를 돌린다"
         )
-    vecs = np.load(found[-1])
+    vecs = np.load(path)
     if vecs.shape[0] != len(texts):
         sys.exit("캐시의 카드 수가 지금 카드와 다르다 — 캐시를 다시 만든다")
+    model = TextEmbedding(a.model)
+    # 캐시를 쓰기 전에 카드 16장을 지금 모델로 다시 임베딩해 캐시와 비교한다(`embed_cards`와 같은 검증)
+    probe_idx = list(range(0, len(texts), max(1, len(texts) // 16)))[:16]
+    probe = np.array(list(model.passage_embed([texts[i] for i in probe_idx])), dtype="float32")
+    if not np.allclose(vecs[probe_idx], probe, atol=1e-4):
+        sys.exit("캐시 벡터가 지금 모델의 계산과 다르다 — 캐시를 다시 만든다")
+    fingerprint = hashlib.sha256(np.round(probe, 4).tobytes()).hexdigest()[:16]
     vecs /= np.linalg.norm(vecs, axis=1, keepdims=True)
     model = TextEmbedding(a.model)
 
@@ -67,6 +87,10 @@ def main(argv: list[str] | None = None) -> None:
         }
 
     out = {
+        "data": rc.provenance(),
+        "fastembed": fastembed.__version__,
+        "cache": path.name,
+        "model_fingerprint": fingerprint,
         "model": a.model,
         "prefix": a.prefix,
         "v1_dense": hits(d),
