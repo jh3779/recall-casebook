@@ -6,6 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="NHTSA 공개 리콜과 Part 573 보고서에서 결함 선례·원인 원문·출처를 확인합니다." />
     <title>결함 선례 찾기</title>
+    <!-- 첫 화면이 그려지기 전에 테마를 정한다(깜빡임 방지). 규칙은 src/theme.ts의 readTheme과 같다 — 고른 값(light·dark)이 있으면 그것, 없으면 기기 화면 모드, 알 수 없으면 어두움. -->
+    <script>
+      try {
+        var t = localStorage.getItem("theme");
+        if (t !== "light" && t !== "dark") t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = t;
+      } catch (e) { document.documentElement.dataset.theme = "dark"; }
+    </script>
   </head>
   <body>
     <div id="root"></div>

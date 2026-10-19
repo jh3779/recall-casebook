@@ -195,3 +195,5 @@
 /* 포인트 색(청록)은 최소로 — 로고 마크와 주 실행 버튼(Find precedents 등)에만 */
 :root:not([data-theme="light"]) .cb-brand-mark { background: #fff; box-shadow: 7px 7px 0 -2px #00aad2; }
 :root:not([data-theme="light"]) .cb-btn:not(.ghost) { background: #00aad2; color: #000; }
+:root:not([data-theme="light"]) .cb-3d-body { background: linear-gradient(180deg, #101417, #000); }
+:root:not([data-theme="light"]) .cb-3d-failed { background: rgba(0, 0, 0, 0.96); }
