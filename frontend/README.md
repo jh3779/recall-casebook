@@ -116,3 +116,7 @@ node frontend/scripts/check-demo-against-cards.mjs data/processed/defect/recalls
 Pretendard, Source Serif 4(400·600), JetBrains Mono(400·600)는 npm 패키지에서 번들한다. 외부 글꼴 CDN 호출은 없다. [`React lazy`](https://react.dev/reference/react/lazy)·[`Vite 환경변수`](https://vite.dev/guide/env-and-mode) 공식 문서를 확인했다.
 
 실제 응답 픽스처와 갱신 규칙은 [`src/search/__fixtures__/README.md`](src/search/__fixtures__/README.md), 구현·검증 결과와 남은 확인은 [`docs/프런트_구현_검증.md`](../docs/프런트_구현_검증.md)에 기록한다.
+
+## 화면 모드(밝음·어두움)
+
+앱 바 오른쪽의 슬라이드 스위치로 바꾼다(DEC-080). 고른 적이 없으면 기기·브라우저의 화면 모드 설정을 따르고, 고르면 그 브라우저(`localStorage` 키 `theme`)에 저장한다. 밝은 모드는 기존 흰 화면 그대로이고 어두운 모드는 각 CSS 끝의 `:root:not([data-theme="light"])` 규칙이다. 구현은 `src/theme.ts`와 `AppBar.tsx`의 `ThemeToggle`, 모드 전환은 View Transitions(미지원 브라우저는 색 전환), 케이스북 ↔ 쇼룸 전환은 `search.css` 끝의 애니메이션이다. 움직임 줄이기 설정에서는 모두 꺼진다.

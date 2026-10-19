@@ -12,6 +12,10 @@ import "./eightd/eightd.css";
 import "./casebook/casebook.css";
 import "./landing/landing.css";
 import App from "./App";
+import { applyTheme, followSystemTheme, readTheme } from "./theme";
+
+applyTheme(readTheme());
+followSystemTheme();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -39,8 +39,8 @@ export default function App() {
   function navigate(next: View) { setFromApp(true); setView(next); location.hash = hashOfView(next); }
   return <div className="app-shell">
     {view === "landing" ? <Landing focusEnter={fromApp} onEnter={() => navigate("casebook")} /> : <AppBar view={view} onView={navigate} onHome={() => navigate("landing")} health={server} />}
-    <div hidden={view !== "casebook"}><CasebookView health={server} draft={draft} onWrite8d={(cards, response, fresh) => { setEightd((prev) => nextEightdInput(prev, cards, response, fresh)); navigate("8d"); }} /></div>
-    <div hidden={view !== "8d"}><EightdView fresh={eightd.fresh} freshQuestion={eightd.freshQuestion} cards={eightd.cards} response={eightd.response} onBack={() => navigate("casebook")} /></div>
+    <div className="view-pane" hidden={view !== "casebook"}><CasebookView health={server} draft={draft} onWrite8d={(cards, response, fresh) => { setEightd((prev) => nextEightdInput(prev, cards, response, fresh)); navigate("8d"); }} /></div>
+    <div className="view-pane" hidden={view !== "8d"}><EightdView fresh={eightd.fresh} freshQuestion={eightd.freshQuestion} cards={eightd.cards} response={eightd.response} onBack={() => navigate("casebook")} /></div>
     {view === "showroom" && <ShowroomBoundary><Suspense fallback={<div className="showroom-fallback" role="status">3D 쇼룸 불러오는 중…</div>}><ShowroomView onSearch={(question) => { setDraft((old) => ({ question, key: (old?.key ?? 0) + 1 })); navigate("casebook"); }} /></Suspense></ShowroomBoundary>}
   </div>;
 }

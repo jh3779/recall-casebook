@@ -11,10 +11,15 @@
 .app-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; }
 .app-brand-mark { width: 22px; height: 22px; border-radius: 7px; background: conic-gradient(from 210deg, var(--accent), #6f8fc4, var(--accent)); }
 .app-brand small { display: block; font-weight: 500; font-size: var(--fs-xs); color: var(--ink-2); }
-.view-tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: var(--radius-pill); }
+.view-tabs { position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: var(--radius-pill); }
+/* 선택 표시는 탭 사이를 미끄러진다(8D 작성 중에는 둘 다 선택이 아니라 숨긴다) */
+.view-tabs::before { content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 12px) / 2); border-radius: var(--radius-pill); background: var(--accent); transition: transform 0.38s cubic-bezier(0.34, 1.3, 0.5, 1), opacity 0.2s; }
+.view-tabs[data-view="showroom"]::before { transform: translateX(calc(100% + 4px)); }
+.view-tabs[data-view="8d"]::before, .view-tabs[data-view="landing"]::before { opacity: 0; }
+.view-tabs button { position: relative; z-index: 1; transition: color 0.25s; }
 .view-tabs button { border: 0; background: transparent; color: var(--ink-2); padding: 6px 14px; border-radius: var(--radius-pill); font: inherit; font-size: var(--fs-s); font-weight: 600; cursor: pointer; }
-.view-tabs button.on { background: var(--accent); color: var(--on-accent); }
-.view-tabs .demo { font-weight: 500; color: var(--ink-3); }
+.view-tabs button.on { color: var(--on-accent); }
+.view-tabs .demo { font-weight: 500; color: var(--ink-3); transition: color 0.3s ease; }
 .spacer { flex: 1; }
 .health { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-xs); color: var(--ink-2); }
 .health .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-2); }
@@ -242,3 +247,33 @@ input::placeholder { color: var(--ink-3); opacity: 1; }
 .app-home { display: grid; place-items: center; width: 32px; height: 32px; margin-right: -6px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--ink-2); cursor: pointer; }
 .app-home:hover { color: var(--ink); background: var(--surface-2); }
 .app-home svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 랜딩 화면과 이어지게 상단 바도 검정 — 경계는 포인트 색(청록) 선, 선택 탭은 청록 바탕 */
+:root:not([data-theme="light"]) .app-top { --ink: #fff; --ink-2: rgba(255, 255, 255, 0.72); --ink-3: #a3a3a3; --line: rgba(255, 255, 255, 0.4); --surface-2: transparent; --accent: #00aad2; --on-accent: #000; background: #000; color: #fff; backdrop-filter: none; }
+:root:not([data-theme="light"]) .app-brand-mark { background: conic-gradient(from 210deg, #00aad2, #aacae6, #00aad2); }
+:root:not([data-theme="light"]) .view-tabs { background: transparent; border: 1px solid rgba(255, 255, 255, 0.6); }
+:root:not([data-theme="light"]) .health .dot { background: #fff; }
+/* 화면 모드 슬라이드 스위치 — 둥근 막대 위에서 동그라미가 미끄러지고 해·달 아이콘이 돌며 바뀐다 */
+.theme-switch { position: relative; flex: none; width: 58px; height: 30px; padding: 0; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface-2); cursor: pointer; transition: background-color 0.35s, border-color 0.35s; }
+.theme-switch[aria-checked="true"] { background: rgba(255, 255, 255, 0.14); }
+.ts-thumb { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--bg-1); display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); transition: transform 0.38s cubic-bezier(0.34, 1.4, 0.5, 1), background-color 0.35s, color 0.35s; }
+.theme-switch[aria-checked="true"] .ts-thumb { transform: translateX(28px); }
+.ts-thumb svg { grid-area: 1 / 1; width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: opacity 0.25s, transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1); }
+.theme-switch[aria-checked="true"] .ts-sun { opacity: 0; transform: rotate(90deg) scale(0.4); }
+.theme-switch[aria-checked="false"] .ts-moon { opacity: 0; transform: rotate(-90deg) scale(0.4); }
+.theme-switch:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .theme-switch, .ts-thumb, .ts-thumb svg { transition: none; } }
+/* 전환하는 순간에만 화면 색을 부드럽게 바꾼다(theme.ts가 잠깐 붙였다 뗀다) */
+html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after { transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease, fill 0.35s ease, stroke 0.35s ease !important; }
+:root:not([data-theme="light"]) .app-top .theme-switch { border-color: rgba(255, 255, 255, 0.6); }
+:root:not([data-theme="light"]) .ts-thumb { background: #fff; color: #000; }
+:root:not([data-theme="light"]) body { background: #000; }
+/* 케이스북·8D·쇼룸이 바뀔 때 새 화면이 부드럽게 나타난다(쇼룸은 3D 캔버스라 투명도만) */
+@keyframes view-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes view-fade { from { opacity: 0; } }
+.view-pane:not([hidden]) { animation: view-in 0.4s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.view-showroom { animation: view-fade 0.45s ease; }
+@media (prefers-reduced-motion: reduce) { .view-tabs::before { transition: none; } .view-pane:not([hidden]), .view-showroom { animation: none; } }
+/* 화면 모드를 바꿀 때 전체 화면이 천천히 섞인다(View Transitions) */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.45s; animation-timing-function: ease; }
+@media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }

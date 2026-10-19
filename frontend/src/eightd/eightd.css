@@ -118,3 +118,18 @@
 .dq-text::before, .dq-text::after { content: none; }
 .dr-degraded { background: var(--cause-stated-bg); border: 1px solid var(--cause-stated-line); border-radius: var(--radius-s); padding: 6px 10px; margin: 0; }
 .dq-box { border-left-color: var(--ink-3); }
+
+/* 케이스북과 같은 어두운 테마 — 검정 바탕, 포인트 색 선. 양식 미리보기 종이(.fp-page)만 문서처럼 흰색 */
+:root:not([data-theme="light"]) .view-eightd {
+  color-scheme: dark;
+  --ink: #fff; --ink-2: #c4c9cc; --ink-3: #99a1a6; --line: rgba(255, 255, 255, 0.3); --line-strong: rgba(255, 255, 255, 0.7);
+  --surface: #000; --surface-2: #101417; --accent: #fff; --accent-2: #c4c9cc; --accent-soft: rgba(255, 255, 255, 0.1); --on-accent: #000;
+  --cause-text-line: #fff; --cause-stated-bg: #101417; --cause-stated-line: rgba(255, 255, 255, 0.4); --cause-none-line: #6b7479; --flag-line: #c4c9cc;
+  --focus: 0 0 0 3px rgba(255, 255, 255, 0.45); --shadow-panel: none;
+  background: #000; color: var(--ink); min-height: calc(100dvh - var(--app-bar-height, 60px)); box-shadow: 0 0 0 100vmax #000; clip-path: inset(0 -100vmax);
+}
+:root:not([data-theme="light"]) .view-eightd .fp-page { color: #111; }
+:root:not([data-theme="light"]) .view-eightd .ed-form, :root:not([data-theme="light"]) .view-eightd .ed-subject, :root:not([data-theme="light"]) .view-eightd .ed-step, :root:not([data-theme="light"]) .view-eightd .ed-step h2, :root:not([data-theme="light"]) .view-eightd .ed-n { border-color: var(--line-strong); }
+:root:not([data-theme="light"]) .view-eightd .ed-step h2 { background: var(--accent-soft); color: var(--ink); }
+/* 포인트 색(청록)은 최소로 — 파일을 만드는 주 실행 버튼에만 */
+:root:not([data-theme="light"]) .view-eightd .ed-bar .btn:not(.ghost) { background: #00aad2; color: #000; }
