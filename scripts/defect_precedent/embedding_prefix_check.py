@@ -66,7 +66,6 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit("캐시 벡터가 지금 모델의 계산과 다르다 — 캐시를 다시 만든다")
     fingerprint = hashlib.sha256(np.round(probe, 4).tobytes()).hexdigest()[:16]
     vecs /= np.linalg.norm(vecs, axis=1, keepdims=True)
-    model = TextEmbedding(a.model)
 
     def dense(qs: list[str]) -> list[list[str]]:
         # query_embed가 접두어를 붙이지 않는 모델이므로 접두어를 직접 붙이고 passage_embed로 임베딩한다
