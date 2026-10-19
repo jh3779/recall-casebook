@@ -10,6 +10,8 @@
         --model snowflake/snowflake-arctic-embed-m \\
         --prefix "Represent this sentence for searching relevant passages: "
 
+주의: 캐시는 파일 이름(모델)과 카드 수만 확인하고 `embed_cards`의 카드 글 해시·16장 지문 검증은 하지 않는다 — 카드 글이 바뀌었거나 같은 모델의 옛 캐시가 남아 있으면 낡은 벡터를 쓸 수 있으니, 먼저 `retrieval_compare dense`를 같은 입력으로 다시 돌려 캐시를 새로 만든다.
+
 결과는 **사후 진단**이다 — 사전 고정 규칙(docs/실험_P4_임베딩모델비교.md)의 채택 판단에 쓰지 않는다.
 """
 
