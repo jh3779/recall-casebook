@@ -76,6 +76,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
   gh pr comment <N> -b "merge-gate 재판정"
   ```
 - RAG 경로는 `scripts/ci/pr_verify.toml`의 `rag-paths`로 정한다 (대소문자 무시, `docs/`·루트 `*.md`·`tests/` 제외 — `prompts/*.md`는 포함). `pyproject.toml`에 두지 않는 이유는 G-09(pyproject를 바꾸면 uv.lock도) 규칙과 부딪히기 때문이다. 수치를 낼 수 없는 정당한 경우는 **"## 검증 방법" 섹션 안에** `[skip-rag-evidence: 이유]`를 적는다.
+- **작성자 제한(공개 저장소)**: `merge_gate.py`와 `merge-gate.yml`은 협업자(`author_association`이 OWNER·MEMBER·COLLABORATOR)가 쓴 코멘트·리뷰만 세고, 그 밖의 작성자가 쓴 "자동 리뷰"·"병합 전 검증 결과"·변경 요청은 판정에 쓰지 않는다. 미해결 리뷰 스레드(G-05)도 스레드를 연 첫 코멘트가 협업자의 것인 것만 센다. 개인 소유 저장소를 전제로 한 기준이라(`MEMBER`는 조직 소유일 때 쓰기 권한 없는 구성원도 포함) 조직으로 옮기면 권한 API 기준으로 바꾼다. 봇·GitHub App 계정이 올린 코멘트와 그 계정이 연 인라인 스레드는 협업자가 아니라 제외된다(지금은 같은 계정 토큰으로 올림 — 공식 리뷰 앱으로 바꾸면 이 기준을 다시 정한다). 제외한 외부인의 리뷰·코멘트·스레드는 게이트 요약에 개수가 나오며, 병합하는 사람이 한 번 읽는다. 사람이 읽을 때도 같은 기준이다(`pre-merge-check` 스킬).
 - **CI가 판정하지 못하는 것**: **G-02(리뷰를 누가 썼나 — 출처)**, G-04(지적 처리가 타당한가), G-06(diff를 실제로 읽었나·PR 설명이 맞나), G-09의 `.agent/` 갱신 필요성. 이것들은 결과 코멘트를 쓰는 에이전트와 **병합하는 사람이 직접 확인하는 수동 게이트**다. `merge-gate`는 "현재 head에 리뷰 표시와 ✅ 결과 표시가 순서대로 있는지"까지만 본다.
 - **⚠️ 알려진 한계 (CI)**
   - **같은 계정의 자기 인증 (G-02)**: 리뷰 에이전트·리뷰봇(Codex)·결과 코멘트가 모두 PR 작성자와 같은 `jh3779` 계정으로 올라간다. 그래서 작성자 혼자 표시 두 개를 달아 `merge-gate`를 통과시킬 수 있다. 리뷰 전용 계정(봇)·GitHub App으로 분리하면 막을 수 있지만, 병합을 소유자 한 명이 하는 팀 규모와 서버 리뷰봇의 토큰 교체·만료 관리 부담 때문에 **분리하지 않기로 했다** (DEC-017). 자동 리뷰봇(Codex)의 리뷰로 내용을 확인하고, 병합하는 사람이 결과 코멘트의 리뷰 출처로 확인한다. (한시, DEC-062 기간에는 병합자가 여럿일 수 있다 — 병합하는 사람이 결과 코멘트의 반박·지적 처리 내역을 직접 확인한다.)
@@ -84,7 +85,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
   - **코멘트 편집**: 결과 코멘트 **뒤에 수정된** 리뷰 코멘트는 새 리뷰로 보고(pending), 결과는 **마지막 결과 코멘트만** 기준이고 그것이 **수정됐으면 pending**이다(❌→✅ 고쳐 쓰기, 수정으로 앞선 ✅를 되살리기 차단). 그래서 결과는 고치지 말고 새 코멘트로 올린다. 변경 요청·미해결 스레드가 있으면 결과 코멘트가 수정됐어도 그 원인이 먼저 failure로 표시된다 (이슈 #3 O1). 다만 GitHub 리뷰(Review) 본문의 수정 시각은 API가 주지 않아 판정에 반영되지 않는다.
   - 수치 근거(G-08)는 형식(지표 이름 + `숫자 → 숫자`)만 본다. 같은 평가셋인지·수치가 맞는지는 사람이 본다.
   - 리뷰·코멘트·스레드는 REST/GraphQL 페이지네이션으로 끝까지 받는다(100개 초과도 누락 없음).
-  - Dependabot·fork PR에서의 동작은 확인하지 않았다. 현재 private·Dependabot 없음 — 도입하면 확인한다.
+  - Dependabot·fork PR에서의 동작은 확인하지 않았다. 외부 PR·Dependabot을 받기 시작하면 확인한다.
 
 로컬에서 미리 돌려 보기:
 
@@ -115,8 +116,8 @@ gh pr view $N --comments          # 본문까지 전부 읽기
 # G-05 미해결 리뷰 스레드 (100개 초과 시 누락 — 그 규모가 되면 페이지네이션 추가)
 gh api graphql -F o=${REPO%/*} -F r=${REPO#*/} -F n=$N -f query='
 query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
-  reviewThreads(first:100){nodes{isResolved path line comments(first:1){nodes{author{login} body}}}}}}}' \
-  -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not)]'
+  reviewThreads(first:100){nodes{isResolved path line comments(first:1){nodes{author{login} authorAssociation body}}}}}}}' \
+  -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not) | select((.comments.nodes[0].authorAssociation) as $a | $a == null or $a == "OWNER" or $a == "MEMBER" or $a == "COLLABORATOR")]'
 
 # G-06 diff
 gh pr diff $N

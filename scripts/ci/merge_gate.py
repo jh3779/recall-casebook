@@ -8,12 +8,15 @@
              - 코멘트형 리뷰: 첫 줄의 SHA가 head와 일치
                `## 🤖 자동 리뷰 (head <SHA>)` (리뷰 에이전트) 또는
                `### 🤖 자동 리뷰 (Codex) — 커밋 <SHA>` (리뷰봇)
-  G-05       미해결 리뷰 스레드가 0개인가
+  G-05       미해결 리뷰 스레드가 0개인가 (스레드를 연 첫 코멘트가 협업자의 것인 것만 센다)
   결과 코멘트 현재 head에 대한 가장 최근 `## ✅/❌ 병합 전 검증 결과 (head <SHA>)`가 ✅이고,
              그 **뒤에** 현재 head에 대한 새 자동 리뷰가 없는가 (있으면 그 리뷰를 처리하기 전이므로 pending)
 
 상태: 전부 충족 → success / ❌ 결과·미해결 스레드·변경 요청 → failure /
       리뷰 없음·결과 없음·결과 뒤 새 리뷰 → pending
+작성자 제한: 저장소가 공개돼도 리뷰·결과·재판정 코멘트와 GitHub 리뷰는 **협업자(author_association이
+OWNER·MEMBER·COLLABORATOR)가 쓴 것만** 센다. 그 밖의 작성자(외부 기여자·익명)가 남긴 "자동 리뷰"·"병합 전 검증
+결과"·변경 요청은 판정에 쓰지 않는다 (공개 저장소에서 누구나 코멘트를 달 수 있어 게이트를 통과시키거나 막는 것을 방지).
 G-04(지적을 제대로 처리했는가)·G-06(diff를 읽었는가)의 "내용"은 기계가 판정할 수 없다 —
 그 판단은 결과 코멘트를 쓴 에이전트와 병합하는 사람의 몫이고, 이 게이트는 그 코멘트가 현재 head에
 대해 ✅로 존재하는지까지만 강제한다.
@@ -31,6 +34,8 @@ import sys
 from dataclasses import dataclass
 
 CONTEXT = "merge-gate"
+# 판정에 쓰는 작성자 권한 — 이 밖의 작성자가 남긴 리뷰·코멘트는 세지 않는다 (author_association 값이 없으면 제외)
+TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
 # 첫 줄에 SHA는 하나만 쓴다 (MERGE_PROTOCOL 1절). 끝 경계: `커밋 addedfeature` 같은 영단어를 SHA로 읽지 않게
 REVIEW_MARKER = re.compile(
     r"^#{2,3}\s*🤖\s*자동 리뷰.*?(?:\(head|커밋)\s*`?([0-9a-f]{7,40})(?![0-9a-zA-Z])`?"
@@ -51,6 +56,29 @@ def first_line(body: str) -> str:
     return body.strip().split("\n", 1)[0].strip()
 
 
+def split_trusted(items: list[dict]) -> tuple[list[dict], int]:
+    """협업자가 쓴 항목만 남기고, 제외한 개수를 함께 돌려준다. `association`이 없으면 신뢰하지 않는다."""
+    kept = [i for i in items if i.get("association") in TRUSTED_ASSOCIATIONS]
+    return kept, len(items) - len(kept)
+
+
+def thread_starter(node: dict) -> str | None:
+    """리뷰 스레드를 연 첫 코멘트 작성자의 author_association (없으면 None)."""
+    first = (node.get("comments") or {}).get("nodes") or []
+    return first[0].get("authorAssociation") if first else None
+
+
+def counts_as_unresolved(node: dict) -> bool:
+    """미해결 스레드를 G-05에 셀지 — 연 사람이 협업자이거나 **알 수 없으면** 센다(알 수 없는데 통과시키면 안 된다).
+
+    외부인(협업자 아닌 것이 확인된 작성자)이 연 스레드만 뺀다.
+    """
+    if node["isResolved"]:
+        return False
+    starter = thread_starter(node)
+    return starter is None or starter in TRUSTED_ASSOCIATIONS
+
+
 def same_commit(short: str, head: str) -> bool:
     return len(short) >= 7 and head.startswith(short)
 
@@ -58,6 +86,7 @@ def same_commit(short: str, head: str) -> bool:
 def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: int) -> Gate:
     """reviews: [{"commit", "state", "body", "author", "at"}],
     comments: [{"body", "author", "at", "updated"}] — "at"은 작성 시각, "updated"는 마지막 수정 시각.
+    (작성자 권한 `association`은 여기서 보지 않는다 — 호출하는 쪽이 `split_trusted`로 먼저 거른다.)
 
     둘 다 시간순이고 시각은 ISO 8601(초 단위).
     선후 판정: 코멘트끼리는 목록 순서(같은 초도 구분), GitHub 리뷰와 결과 코멘트는 시각으로 비교하되
@@ -160,7 +189,7 @@ def gh_pages(path: str) -> list[dict]:
     return [item for page in pages for item in page]
 
 
-def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int]:
+def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int, int]:
     pr = json.loads(gh("api", f"repos/{repo}/pulls/{number}"))
     reviews = [
         {
@@ -169,6 +198,7 @@ def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int
             "state": r.get("state"),
             "body": r.get("body") or "",
             "at": r.get("submitted_at") or "",
+            "association": r.get("author_association"),
         }
         for r in gh_pages(f"repos/{repo}/pulls/{number}/reviews?per_page=100")
     ]
@@ -181,6 +211,7 @@ def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int
             "author": (c.get("user") or {}).get("login"),
             "at": c.get("created_at") or "",
             "updated": c.get("updated_at") or "",
+            "association": c.get("author_association"),
         }
         for c in sorted(raw, key=lambda c: (c.get("created_at") or "", c.get("id") or 0))
     ]
@@ -188,7 +219,8 @@ def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int
     query = (
         "query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){"
         "pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){"
-        "nodes{isResolved} pageInfo{hasNextPage endCursor}}}}}"
+        "nodes{isResolved comments(first:1){nodes{authorAssociation}}} "
+        "pageInfo{hasNextPage endCursor}}}}}"
     )
     pages = json.loads(
         gh(
@@ -206,24 +238,35 @@ def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int
             f"query={query}",
         )  # fmt: skip
     )
-    unresolved = sum(
-        1
+    # 미해결 스레드는 외부인이 연 것을 빼고 센다 — 외부인이 인라인 코멘트로 게이트를 막지 못하게(작성자를 알 수 없으면 센다)
+    nodes = [
+        n
         for p in pages
         for n in p["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
         if not n["isResolved"]
-    )
+    ]
+    unresolved = sum(counts_as_unresolved(n) for n in nodes)
+    dropped_threads = len(nodes) - unresolved
     state = "OPEN" if pr["state"] == "open" else pr["state"].upper()
-    return state, pr["head"]["sha"], reviews, comments, unresolved
+    return state, pr["head"]["sha"], reviews, comments, unresolved, dropped_threads
 
 
 def main() -> int:
     repo, number = os.environ["REPO"], os.environ["PR_NUMBER"]
-    state, head, reviews, comments, unresolved = fetch(repo, number)
+    state, head, reviews, comments, unresolved, dropped_threads = fetch(repo, number)
     if state != "OPEN":
         print(f"PR #{number}은 {state} — 평가하지 않음")
         return 0
 
+    reviews, dropped_reviews = split_trusted(reviews)
+    comments, dropped_comments = split_trusted(comments)
     gate = evaluate(head, reviews, comments, unresolved)
+    if dropped_reviews or dropped_comments or dropped_threads:
+        gate.lines.append(
+            f"- 협업자가 아닌 작성자의 리뷰 {dropped_reviews}개·코멘트 {dropped_comments}개·"
+            f"미해결 스레드 {dropped_threads}개는 판정에서 뺌 (판정 문구가 들었는지와 무관하게 센 개수 — "
+            "외부인의 지적이 실제 문제일 수 있으니 사람이 한 번 읽는다)"
+        )
     summary = (
         f"## 병합 게이트 (`{CONTEXT}`): {gate.state}\n\n{gate.description}\n\n"
         + "\n".join(gate.lines)
