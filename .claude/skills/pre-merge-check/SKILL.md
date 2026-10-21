@@ -24,7 +24,7 @@ description: >
 
 ```bash
 N=<PR 번호>
-REPO=jh3779/LG_CNS_RAG_main
+REPO=jh3779/recall-casebook
 gh pr view $N --json title,body,headRefName,headRefOid,state
 ```
 
@@ -129,7 +129,7 @@ gh pr comment $N -b "merge-gate 재판정"
 `merge-gate`가 필수 체크가 아닌 동안(2단계 도입 중, MERGE_PROTOCOL 2-1절)·Actions를 끈 동안에는 로컬에서 읽기 전용으로 돌린다 — 결과 코멘트를 쓰기 전에 한 번(출력을 G-02·G-03 근거에 붙임), 게시한 뒤 한 번(`success` 확인):
 
 ```bash
-REPO=jh3779/LG_CNS_RAG_main PR_NUMBER=$N uv run python scripts/ci/merge_gate.py   # POST_STATUS 없음 = 상태 게시 안 함
+REPO=jh3779/recall-casebook PR_NUMBER=$N uv run python scripts/ci/merge_gate.py   # POST_STATUS 없음 = 상태 게시 안 함
 ```
 
 - 전부 ✅ → 코멘트 마지막 줄에 병합할 사람을 `@태그`하고 "병합 전 검증 확인 요청드립니다".
