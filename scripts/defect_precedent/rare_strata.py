@@ -22,7 +22,7 @@ from pathlib import Path
 
 from scripts.defect_precedent import retrieval_compare as rc
 from scripts.defect_precedent.bm25_baseline import tokenize
-from scripts.defect_precedent.nhtsa import OUT_DIR, sha256_file
+from scripts.defect_precedent.nhtsa import OUT_DIR, sha256_file, verify_build
 
 BOUNDS = (50, 250)  # 드묾 ≤50 / 중간 51~250 / 흔함 >250 — 분포(건수)만 보고 정함
 RESULT_DIR = OUT_DIR / "rare_strata_20261021"
@@ -34,6 +34,9 @@ EXPECTED_ALL = {
     "BM25·회사이름뺌": 0.483,
     "RRF·회사이름뺌": 0.531,
 }
+# bge-small-en-v1.5의 모델 지문 — 실험 P4 결과(`embedding_compare_20261019/BAAI_bge-small-en-v1.5.json`)에서 읽은 값.
+# 같은 이름의 모델이어도 가중치·fastembed 판본이 바뀌면 지문이 달라져 "재현"으로 통과시키지 않는다.
+EXPECTED_MODEL_FINGERPRINT = "b5fe79bd9de4c0f2"
 Z95 = 1.96
 
 
@@ -67,17 +70,23 @@ def stratum_of(size: int, bounds: tuple[int, int] = BOUNDS) -> str:
     )
 
 
-def check_inputs() -> dict[str, str]:
-    """입력 파일 지문을 기준 파일과 대조한다 — 다르면 멈춘다."""
-    expected = json.loads(BASELINE.read_text(encoding="utf-8"))["build"]
+def check_inputs(out_dir: Path = OUT_DIR, baseline: Path = BASELINE) -> dict[str, str]:
+    """원본 manifest·카드·시험지 지문을 기준 파일과 대조한다 — 다르면 멈춘다(AGENTS.md 5-1).
+
+    원본 manifest 지문은 `build.json`에서 읽는다(`main`이 먼저 `verify_build`로 build.json이 지금 원본 manifest와
+    카드·시험지 파일을 가리키는지 확인한다).
+    """
+    expected = json.loads(baseline.read_text(encoding="utf-8"))["build"]
+    build = json.loads((out_dir / "build.json").read_text(encoding="utf-8"))
     got = {
-        "recalls_sha256": sha256_file(OUT_DIR / "recalls.jsonl"),
-        "eval_sha256": sha256_file(OUT_DIR / "eval.jsonl"),
+        "raw_manifest_sha256": build["raw_manifest_sha256"],
+        "recalls_sha256": sha256_file(out_dir / "recalls.jsonl"),
+        "eval_sha256": sha256_file(out_dir / "eval.jsonl"),
     }
     bad = {k: (expected[k][:12], v[:12]) for k, v in got.items() if expected[k] != v}
     if bad:
         sys.exit(
-            f"입력 지문이 {BASELINE.name}과 다르다 — '재현'이 아니라 '재평가'로 보고한다"
+            f"입력 지문이 {baseline.name}과 다르다 — '재현'이 아니라 '재평가'로 보고한다"
             f"(AGENTS.md 5-1). 기준 → 현재: {bad}"
         )
     return got
@@ -86,12 +95,18 @@ def check_inputs() -> dict[str, str]:
 def main() -> None:
     import numpy as np
 
+    build_info = verify_build()  # 원본 manifest·카드·시험지·회사명 대응표가 build.json과 같은지
     fingerprints = check_inputs()
     cards, questions = rc.load()
     ids = [c["campno"] for c in cards]
     texts = [rc.card_text(c) for c in cards]
     model, vecs, _, info = rc.embed_cards("BAAI/bge-small-en-v1.5", texts)
     print("입력 지문 일치, 캐시 검증:", info["cache_verified"], "fastembed", info["fastembed"])
+    model_ok = info["model_fingerprint"] == EXPECTED_MODEL_FINGERPRINT
+    if not model_ok:
+        print(
+            f"❌ 모델 지문이 기준과 다르다: {info['model_fingerprint']} ≠ {EXPECTED_MODEL_FINGERPRINT}"
+        )
     vecs /= np.linalg.norm(vecs, axis=1, keepdims=True)
 
     def dense(queries: list[str]) -> list[list[str]]:
@@ -140,16 +155,45 @@ def main() -> None:
         print(f"카드 ≤10장({len(rarest)}문항)", run_name, k)
 
     matches = {k: out["전체"][k]["rate"] == v for k, v in EXPECTED_ALL.items()}
-    print("전체 점수 기준 대조:", "✅ 일치" if all(matches.values()) else f"❌ 불일치 {matches}")
+    matches["모델 지문"] = model_ok
+    print(
+        "기준 대조(전체 점수·모델 지문):",
+        "✅ 일치" if all(matches.values()) else f"❌ 불일치 {matches}",
+    )
+    rarest_detail = [
+        {
+            "action_no": questions[i]["action_no"],
+            "gold": questions[i]["gold_campnos"],
+            "label_cards": rare[i],
+            **{
+                f"{name}_rank": next(
+                    (r + 1 for r, c in enumerate(ranking[i]) if c in questions[i]["gold_campnos"]),
+                    None,
+                )
+                for name, ranking in runs.items()
+                if name.endswith("원래")
+            },
+        }
+        for i in rarest
+    ]
     RESULT_DIR.mkdir(parents=True, exist_ok=True)
     record = {
         "inputs": fingerprints,
+        "build_json": {
+            k: v for k, v in build_info.items() if k.endswith("_sha256") or k == "snapshot_date"
+        },
+        "baseline_file": BASELINE.name,
         "snapshot_date": json.loads(BASELINE.read_text(encoding="utf-8"))["build"]["snapshot_date"],
         "model": {
             "name": "BAAI/bge-small-en-v1.5",
             "fastembed": info["fastembed"],
+            "model_fingerprint": info["model_fingerprint"],
+            "expected_model_fingerprint": EXPECTED_MODEL_FINGERPRINT,
             "cache": info["cache"],
+            "cache_verified": info["cache_verified"],
+            "cache_sha256": sha256_file(rc.CACHE / info["cache"]),
         },
+        "rarest_label_cards_le10": {"n": len(rarest), "detail": rarest_detail},
         "bounds": BOUNDS,
         "expected_all": EXPECTED_ALL,
         "matches_expected": matches,

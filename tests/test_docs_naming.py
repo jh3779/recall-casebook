@@ -29,10 +29,14 @@ PREFIX_DIR = {
 
 
 def tracked_docs() -> list[Path]:
-    out = subprocess.run(
-        ["git", "ls-files", "-z", "docs"], cwd=ROOT, capture_output=True, check=True
-    ).stdout.decode("utf-8")
-    return [Path(p) for p in out.split("\0") if p]
+    """추적 파일 — `.git`이 없는 사본에서는 파일 시스템을 훑는다(그때는 로컬 전용 파일도 보인다)."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-z", "docs"], cwd=ROOT, capture_output=True, check=True
+        ).stdout.decode("utf-8")
+        return [Path(p) for p in out.split("\0") if p]
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return [p.relative_to(ROOT) for p in (ROOT / "docs").rglob("*") if p.is_file()]
 
 
 def rule_docs() -> list[Path]:
@@ -92,11 +96,8 @@ def test_모든_문서가_README에_올라_있다():
     assert not missing, f"새 문서는 같은 PR에서 docs/README.md 표에 한 줄을 더한다(4절): {missing}"
 
 
-def test_README의_폴더_표에_모든_폴더가_있다():
+def test_README의_폴더_구조_표에_모든_폴더가_있다():
     readme = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
-    missing = [
-        d
-        for d in sorted(DOC_DIRS | OTHER_DIRS)
-        if f"`{d}/`" not in readme and f"]({d}/" not in readme
-    ]
-    assert not missing, f"README 폴더 구조 표에 없는 폴더: {missing}"
+    section = readme.split("## 폴더 구조", 1)[1].split("\n## ", 1)[0]  # 폴더 구조 표만
+    missing = [d for d in sorted(DOC_DIRS | OTHER_DIRS) if f"`{d}/`" not in section]
+    assert not missing, f"README '폴더 구조' 표에 없는 폴더: {missing}"
