@@ -1,6 +1,6 @@
 # docs/archive — 보관 문서
 
-이전 주제의 기획이나 이미 끝난 작업의 기록이다. **현행 판단의 근거로 쓰지 않는다** — 현행은 [`../PRD.md`](../product/PRD.md)·[`../기획_결함선례.md`](../product/기획_결함선례.md)다. 지우지 않고 `git mv`로 옮겼으므로 `git log --follow`로 이력이 이어진다.
+이전 주제의 기획이나 이미 끝난 작업의 기록이다. **현행 판단의 근거로 쓰지 않는다** — 현행은 [`../product/PRD.md`](../product/PRD.md)·[`../product/기획_결함선례.md`](../product/기획_결함선례.md)다. 지우지 않고 `git mv`로 옮겼으므로 `git log --follow`로 이력이 이어진다.
 
 ## 옛 경로 → 새 경로
 
