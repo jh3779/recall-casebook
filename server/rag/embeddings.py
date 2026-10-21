@@ -4,7 +4,7 @@
     uv run --env-file .env python -m server.rag.embeddings schema   # embeddings.sql 적용
     uv run --env-file .env python -m server.rag.embeddings load     # 로컬 build의 카드 30,350장 임베딩(CPU 약 9분, 캐시가 있으면 바로) → 적재
 
-- 카드 글·모델·fastembed 판본은 보고서(docs/실험_P2_검색방식비교.md)의 v2와 같다. 임베딩은 `retrieval_compare.embed_cards`를 그대로
+- 카드 글·모델·fastembed 판본은 보고서(docs/experiments/실험_P2_검색방식비교.md)의 v2와 같다. 임베딩은 `retrieval_compare.embed_cards`를 그대로
   써서 같은 캐시(`RETRIEVAL_CACHE`)를 공유한다.
 - 같은 (build, 모델)이 이미 있으면 덮어쓰지 않는다. 카드 글 해시·줄 수가 같으면 아무것도 하지 않고, 다르면 중단한다.
 - 서버는 읽은 벡터를 그대로 믿지 않는다: 카드 글 해시·줄 수·fastembed 판본을 대조하고, 카드 16장을 지금 모델로 다시 임베딩해

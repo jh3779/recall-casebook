@@ -1,7 +1,7 @@
 """시점 평가 채점 — 정답 표시 시트로 후보 묶음 한정 Hit@k·하한을 내고 BM25와 B 방식을 비교한다 (DEC-037 ⑦).
 
 사용법:
-    # 예비 5문항 두 사람 일치(합격선, docs/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
+    # 예비 5문항 두 사람 일치(합격선, docs/labeling/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
     uv run python -m scripts.defect_precedent.time_eval_score agreement --phase pilot --candidates <candidates_pilot.json> --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
     #   결과를 파일로 남긴다: … agreement … > agreement_pilot.json
     #   합격해도 한 사람만 yes인 후보는 두 시트에 같은 agreed_label과 합의 이유(note)를 적은 뒤 agreement를 다시 낸다

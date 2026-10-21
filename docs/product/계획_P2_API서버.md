@@ -30,5 +30,5 @@
 
 ## 3. 공통
 
-- PR마다: DEC 기록(확인 항목 틀·꼬리표 규칙·부품 범위), `server/README.md` 응답 칸, HANDOFF·SESSION_LOG, review-agent + Codex 리뷰, 병합 전 검증(Actions를 끈 동안 G-01은 `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 pgvector/pgvector:pg17> bash scripts/local_ci.sh`가 PR에 남긴 `### 🧪 local CI (엄격)` 코멘트 — `docs/MERGE_PROTOCOL.md` 7절).
+- PR마다: DEC 기록(확인 항목 틀·꼬리표 규칙·부품 범위), `server/README.md` 응답 칸, HANDOFF·SESSION_LOG, review-agent + Codex 리뷰, 병합 전 검증(Actions를 끈 동안 G-01은 `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 pgvector/pgvector:pg17> bash scripts/local_ci.sh`가 PR에 남긴 `### 🧪 local CI (엄격)` 코멘트 — `docs/guides/MERGE_PROTOCOL.md` 7절).
 - 판정 칸·판정 문구를 만들지 않는다(AGENTS.md 2-1). 꼬리표 이름도 "원인 미확인 표현 있음"처럼 글에 대한 사실로 쓴다.

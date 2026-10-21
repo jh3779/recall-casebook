@@ -53,7 +53,7 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 
 ## 자동 검증
 
-> ⏸️ **2026-10-10부터 GitHub Actions를 임시로 껐다**(계정 한도, DEC-040). 그동안 PR의 CI 체크는 돌지 않고 GitHub가 병합을 막지 않는다 — push 때 lefthook이 `scripts/local_ci.sh`를 돌리고(훅 우회 금지), 병합 전 검증 G-01은 저장소 소유자(우지훈)가 `LOCAL_CI_REQUIRE_PR=1` 엄격 모드로 돌리고 스크립트가 PR에 남긴 `### 🧪 local CI (엄격)` 코멘트로 확인한다(출력을 손으로 옮기지 않는다, `docs/MERGE_PROTOCOL.md` 7절). 프런트(`frontend/`)를 바꾸면 `npm ci`·`npm run lint`·`npm run build`·`npm test` 결과를 PR에 적는다. 한도가 생기면 7절 5단계로 되돌리고 이 안내를 지운다.
+> ⏸️ **2026-10-10부터 GitHub Actions를 임시로 껐다**(계정 한도, DEC-040). 그동안 PR의 CI 체크는 돌지 않고 GitHub가 병합을 막지 않는다 — push 때 lefthook이 `scripts/local_ci.sh`를 돌리고(훅 우회 금지), 병합 전 검증 G-01은 저장소 소유자(우지훈)가 `LOCAL_CI_REQUIRE_PR=1` 엄격 모드로 돌리고 스크립트가 PR에 남긴 `### 🧪 local CI (엄격)` 코멘트로 확인한다(출력을 손으로 옮기지 않는다, `docs/guides/MERGE_PROTOCOL.md` 7절). 프런트(`frontend/`)를 바꾸면 `npm ci`·`npm run lint`·`npm run build`·`npm test` 결과를 PR에 적는다. 한도가 생기면 7절 5단계로 되돌리고 이 안내를 지운다.
 
 - `.github/workflows/ci.yml` — uv로 설치 후 ruff lint·format 검사 + pytest (`uv sync --locked`라 `uv.lock` 누락도 잡음)
 - `.github/workflows/pr-verify.yml` — PR 내용 상세 검증: 판정 필드·비밀값·RAG 수치 근거·PR 본문 필수 항목 + 저장소 정합성(type 목록 일치·문서 링크·AGENTS import). `scripts/ci/pr_checks.py`
@@ -70,7 +70,7 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 
 ## 머지 규칙
 - **Squash merge만 허용** (merge commit/rebase merge 금지) · linear history 유지
-- **필수 리뷰어는 없다** (룰셋 승인 0명, DEC-006). 대신 병합 전에 [`docs/MERGE_PROTOCOL.md`](docs/MERGE_PROTOCOL.md)의 게이트를 돌린다 — 자동 리뷰가 최신 커밋 기준으로 있고, 그 지적이 전부 처리(반영/반박/후속 이슈)됐고, 리뷰 스레드가 모두 해결됐는지 확인한 결과 표가 **PR 코멘트로 ✅ 게시된 뒤에만** 병합한다
+- **필수 리뷰어는 없다** (룰셋 승인 0명, DEC-006). 대신 병합 전에 [`docs/guides/MERGE_PROTOCOL.md`](docs/guides/MERGE_PROTOCOL.md)의 게이트를 돌린다 — 자동 리뷰가 최신 커밋 기준으로 있고, 그 지적이 전부 처리(반영/반박/후속 이슈)됐고, 리뷰 스레드가 모두 해결됐는지 확인한 결과 표가 **PR 코멘트로 ✅ 게시된 뒤에만** 병합한다
 - 작성자는 자기 PR을 직접 close하지 않는다
 - **공동 작업 모드 (한시, ~2026-10-20, DEC-062)**: 작성자(PR을 만든 팀원) 외 팀원도 병합할 수 있고(기존처럼 작성자 본인도 가능, 게이트·PR 번호 지시·최신 main 확인은 그대로, 병합하는 사람의 이름은 결과 코멘트에 적는다), 문서만 바뀌는 PR의 G-03 재리뷰 생략은 스킬·스크립트 정합(이슈 #135) 전에는 쓰지 않는다. 담당 파트 밖 수정, 브랜치 소유, 인계 문서 충돌 방지, 조사·테스트의 외부 근거는 `AGENTS.md` 6-1절을 따른다.
 - 머지 후 원격 브랜치 삭제, 로컬은 정리(clean up)
@@ -84,7 +84,7 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 |---|---|---|
 | squash merge만 허용 (커밋 메시지 = PR 제목) | 저장소 설정 + 룰셋 `allowed_merge_methods` | ✅ 적용됨 |
 | 머지 후 원격 브랜치 삭제 | 저장소 설정: `delete_branch_on_merge` | ✅ 적용됨 |
-| 브랜치명·PR 제목 규칙 + lint·테스트 + PR 상세 검증 | CI 필수 상태 체크 4개 (`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`) | ✅ 적용됨 — 실패 시 병합 불가 (⏸️ 2026-10-10부터 필수 체크 해제·Actions 중단, DEC-040 — 복원은 `docs/MERGE_PROTOCOL.md` 7절 5단계) |
+| 브랜치명·PR 제목 규칙 + lint·테스트 + PR 상세 검증 | CI 필수 상태 체크 4개 (`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`) | ✅ 적용됨 — 실패 시 병합 불가 (⏸️ 2026-10-10부터 필수 체크 해제·Actions 중단, DEC-040 — 복원은 `docs/guides/MERGE_PROTOCOL.md` 7절 5단계) |
 | 병합 게이트 (`merge-gate`) | CI 필수 상태 체크 | ⏸️ 2단계 도입 중 (DEC-009) — main 병합 후 다음 PR에서 동작 확인 뒤 필수로 |
 | main 직접 push·force push·삭제 차단, PR 필수 | 룰셋 `main 보호` (Pro 플랜이라 private에서 동작) | ✅ 적용됨 — 필수 승인 0명, 대신 병합 전 검증 프로토콜(문서 규칙) |
 | CODEOWNERS 승인 게이트 | 룰셋 "Require review from Code Owners" | ⬜ 팀원 확정 후 결정 |

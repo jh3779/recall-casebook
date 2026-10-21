@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | D | [task-D-pr60-cleanup.md](task-D-pr60-cleanup.md) | `feat/frontend-showroom`(PR #60에 커밋을 더함) | #60 정리 — main 합치기, 데모 데이터 원문 정정, 문구, 쇼룸 토큰, DEC-052 | **완료** — #105에 통합(#60 대체·닫힘). 다시 실행하지 않는다 |
 | E | [task-E-search-view.md](task-E-search-view.md) | `feat/search-view` (D 병합 뒤 main에서) | 검색 전용 화면 + 공개 API 연동, DEC-053 | **완료** — #105에 통합. 다시 실행하지 않는다 |
-| F | [task-F-frontend-deploy.md](task-F-frontend-deploy.md) | `chore/frontend-vercel-deploy` (E 병합 뒤) | 화면 Vercel 배포 준비(설정·문서·런북). 실제 배포는 사람이 한다 | 실행 완료(2026-10-14, PR #119 리뷰 중) — 다시 실행하지 않는다. 지금 절차는 `docs/배포_Vercel.md` 2절 |
+| F | [task-F-frontend-deploy.md](task-F-frontend-deploy.md) | `chore/frontend-vercel-deploy` (E 병합 뒤) | 화면 Vercel 배포 준비(설정·문서·런북). 실제 배포는 사람이 한다 | 실행 완료(2026-10-14, PR #119 리뷰 중) — 다시 실행하지 않는다. 지금 절차는 `docs/guides/배포_Vercel.md` 2절 |
 
 한 작업이 병합된 뒤 다음 작업을 시작한다. 작업 하나 = PR 하나.
 
@@ -39,7 +39,7 @@
 - 브랜치 `<type>/<소문자-하이픈>`. 커밋·PR 제목 `<type>: <한국어 설명>` — type은 `feat fix refactor docs research data chore remove`, **설명 첫 글자를 영어 대문자로 시작하지 않는다**(훅이 막는다 — 한국어로 시작하면 안전).
 - **main에 직접 커밋·push 금지.** `--no-verify`·`LEFTHOOK=0` 금지. **이미 push한 커밋을 rebase·amend·force push하지 않는다** — 고칠 거리는 새 커밋으로.
 - PR 본문은 `.github/pull_request_template.md`의 절(변경 요약·변경 유형·체크리스트·검증 방법·병합 전 검증·관련 이슈)을 모두 채운다. 본문에 사람을 `@태그`하지 않는다.
-- **병합하지 않는다.** 병합 전 검증(`docs/MERGE_PROTOCOL.md` — 자동 리뷰·Codex 리뷰봇·엄격 local CI·결과 코멘트)과 병합은 Claude Code 세션과 사람이 한다. Codex는 PR을 열고 리뷰 지적이 오면 새 커밋으로 고친다.
+- **병합하지 않는다.** 병합 전 검증(`docs/guides/MERGE_PROTOCOL.md` — 자동 리뷰·Codex 리뷰봇·엄격 local CI·결과 코멘트)과 병합은 Claude Code 세션과 사람이 한다. Codex는 PR을 열고 리뷰 지적이 오면 새 커밋으로 고친다.
 - 커밋 훅이 1MB 넘는 파일을 막는다. 3D 모델 `.glb`(약 10MB·8MB)는 커밋하지 않는다(`frontend/public/models/`는 gitignore).
 
 **비밀값**

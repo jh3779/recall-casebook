@@ -6,7 +6,7 @@
 > **자동 리뷰를 받고, 그 지적을 하나도 빠짐없이 처리했는지**를 이 문서의 게이트로 확인한다.
 > 게이트 중 기계로 판정할 수 있는 것은 **CI가 필수 체크로 강제**한다(2-1절). 리뷰의 출처(G-02)와 내용 판단(지적을 제대로 처리했나, diff를 읽었나)은 기계가 못 하므로 **병합하는 사람이 직접 확인**한다.
 >
-> - 이 문서가 **기준(정본)** 이다. Claude Code의 실행 절차는 [`.claude/skills/pre-merge-check/SKILL.md`](../.claude/skills/pre-merge-check/SKILL.md).
+> - 이 문서가 **기준(정본)** 이다. Claude Code의 실행 절차는 [`.claude/skills/pre-merge-check/SKILL.md`](../../.claude/skills/pre-merge-check/SKILL.md).
 >   둘이 어긋나면 이 문서에 맞춰 스킬을 고친다.
 > - 다른 에이전트(Codex 등)는 이 문서의 명령을 그대로 실행한다.
 

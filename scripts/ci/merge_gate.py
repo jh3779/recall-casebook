@@ -1,4 +1,4 @@
-"""병합 게이트 — docs/MERGE_PROTOCOL.md의 리뷰 관련 게이트를 CI가 판정해 커밋 상태 `merge-gate`로 남긴다.
+"""병합 게이트 — docs/guides/MERGE_PROTOCOL.md의 리뷰 관련 게이트를 CI가 판정해 커밋 상태 `merge-gate`로 남긴다.
 
 판정 (PR의 현재 head 커밋 기준):
   G-03       자동 리뷰가 현재 head 기준으로 있는가 (리뷰가 "누가" 썼는지 = G-02 출처는 판정하지 못한다)

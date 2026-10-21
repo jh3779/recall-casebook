@@ -3,7 +3,7 @@
 #
 # 쓰는 곳:
 #   - lefthook pre-push(03-local-ci) — push 전에 자동으로 돈다.
-#   - Actions 한도가 바닥나 CI를 끈 동안의 병합 전 검증 G-01 근거(docs/MERGE_PROTOCOL.md 7절) — 이때는 반드시
+#   - Actions 한도가 바닥나 CI를 끈 동안의 병합 전 검증 G-01 근거(docs/guides/MERGE_PROTOCOL.md 7절) — 이때는 반드시
 #       git merge origin/main   # CI가 보던 "PR을 main에 합친 상태"와 맞춘다
 #       LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh
 #     로 돌린 출력만 쓴다. 이 모드는 열린 PR이 없거나, PR의 최신 커밋(headRefOid)이 검사한 커밋과 다르거나,

@@ -43,7 +43,7 @@ INSTRUCTIONS = (
     "For each recall, give the manufacturer's stated cause of the defect quoted exactly as written in its Part 573 "
     "report if you know it; leave the cause empty if you do not know it. Answer from your own knowledge."
 )
-# OpenAI 모델 문서(2026-10-12 확인, docs/실험_LLM_Luna비교.md 1절) — 100만 토큰당 달러, 비용 추정에만 쓴다
+# OpenAI 모델 문서(2026-10-12 확인, docs/experiments/실험_LLM_Luna비교.md 1절) — 100만 토큰당 달러, 비용 추정에만 쓴다
 PRICE = {"gpt-6-luna": (0.10, 0.50)}
 
 

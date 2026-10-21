@@ -15,7 +15,7 @@ name: merge-gate
 # 재판정: 판정에 쓰이는 코멘트(결과 코멘트·자동 리뷰·`merge-gate 재판정`)를 남기거나 고치거나 지우면 다시 돈다.
 #   그 밖의 코멘트에는 작업을 건너뛴다(건너뛴 작업은 과금되지 않음). 리뷰 제출·스레드 resolve는
 #   main 코드로 도는 트리거가 없으므로, 그 뒤에는 코멘트를 하나 남긴다 (`merge-gate 재판정`).
-#   (docs/MERGE_PROTOCOL.md 2-1절)
+#   (docs/guides/MERGE_PROTOCOL.md 2-1절)
 
 on:
   issue_comment:

@@ -44,7 +44,7 @@
    DB에서 고르게 뽑은 64줄(마지막 줄 포함)이 사본과 글자 그대로 같을 때만 사본을 쓴다(아니거나 사본이 깨졌으면 다시 받는다). 운영 Supabase 기준 처음 18~100초,
    사본이 있으면 약 8~10초(2026-10-10, 집 회선 실측 — 벡터 46MB를 약 1.8MB/s로 받는다).
 
-`POST /search`는 IP당 1분 60회(`RATE_LIMIT_PER_MINUTE`)를 넘으면 429와 `Retry-After`를 낸다 — `server/ratelimit.py`, 시험 `tests/test_rate_limit.py`, 배포 쪽 WAF 안전망은 `docs/배포_Vercel.md` 3-2절(이슈 #63, DEC-057).
+`POST /search`는 IP당 1분 60회(`RATE_LIMIT_PER_MINUTE`)를 넘으면 429와 `Retry-After`를 낸다 — `server/ratelimit.py`, 시험 `tests/test_rate_limit.py`, 배포 쪽 WAF 안전망은 `docs/guides/배포_Vercel.md` 3-2절(이슈 #63, DEC-057).
 
 요청은 `{"question": "<영어 결함 설명>"}` 하나만 받는다 — 모르는 칸이 있거나(예: `top_k`) 영어 단어가 없으면 422로 거부한다(2026-10-12, PR #86).
 
@@ -108,7 +108,7 @@ RAG_SOURCE=bundle SERVING_BUILD_ID=<build_id> SUPABASE_URL=<프로젝트 주소>
 - **기본은 꺼짐**: `DRAFT_ENABLED=1`과 `OPENAI_API_KEY`가 있어야 켜진다(키 없이 켜면 시작하지 않는다). 꺼져 있거나 LLM 호출이 실패하면 `degraded`(`disabled`·`llm_failed`)와 함께 묶음 없이 원문 목록(`ungrouped`)만 준다.
 - LLM: 기본 `gpt-6-luna`·추론 `none`(`DRAFT_MODEL`·`DRAFT_REASONING_EFFORT`), OpenAI Responses API를 표준 라이브러리로 부른다(`store: false`, 구조화 출력). 입력은 공개 선례 원문뿐이다. 키는 응답·오류에 싣지 않는다.
 - 호출 상한: IP당 1분 6회(`DRAFT_RATE_LIMIT_PER_MINUTE`, `/search` 상한과 따로 센다). 넘으면 429 + `Retry-After`.
-- 표본 관찰 스크립트: `uv run --env-file .env python -m scripts.defect_precedent.draft_sample --dry-run` — 기록은 `docs/실험_8D초안표본.md`.
+- 표본 관찰 스크립트: `uv run --env-file .env python -m scripts.defect_precedent.draft_sample --dry-run` — 기록은 `docs/experiments/실험_8D초안표본.md`.
 
 ## 검증
 

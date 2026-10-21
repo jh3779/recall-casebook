@@ -20,7 +20,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
 시연 전 점검: `curl localhost:8000/health`가 `build_id`를 돌려주는지, `/docs`에서 `POST /search` 한 건이 원인 출처(리콜 번호·PDF)와 함께 나오는지, 화면이 데모 스냅샷인지 API 연결 화면인지(아래 첫 항목).
 
 - 화면의 검색 탭은 API를 부른다(#105, DEC-053). 3D 쇼룸 탭은 정적 데모 스냅샷(쏘나타·쏘렌토 26건)이라 검색 결과가 아니다.
-- 서버가 시작할 때 읽는 로컬 파일: `data/processed/defect/`의 `build.json`·`recalls.jsonl`·`eval.jsonl`·`causes.jsonl`·`causes.manifest.json`, `data/raw/nhtsa/`의 `manifest.json`·`FLAT_INV.zip`. **드라이브의 `data.zip`·`defect_data_2026-10-08` 사본으로는 서버가 뜨지 않는다**(`docs/환경셋팅.md` 4절 주의) — 서버용 묶음 `defect_data_2026-10-12_dec047`(드라이브 업로드 뒤 위치를 `docs/환경셋팅.md` 4절에 적는다)을 쓴다.
+- 서버가 시작할 때 읽는 로컬 파일: `data/processed/defect/`의 `build.json`·`recalls.jsonl`·`eval.jsonl`·`causes.jsonl`·`causes.manifest.json`, `data/raw/nhtsa/`의 `manifest.json`·`FLAT_INV.zip`. **드라이브의 `data.zip`·`defect_data_2026-10-08` 사본으로는 서버가 뜨지 않는다**(`docs/guides/환경셋팅.md` 4절 주의) — 서버용 묶음 `defect_data_2026-10-12_dec047`(드라이브 업로드 뒤 위치를 `docs/guides/환경셋팅.md` 4절에 적는다)을 쓴다.
 - 시작할 때 **Supabase 접속(인터넷)**이 필요하고(DB 명세·벡터 대조), 임베딩 모델 캐시가 없으면 모델(약 67MB)도 내려받는다 — **발표 전에 시연 장소 네트워크에서 한 번 띄워 둔다.**
 - CORS는 기본으로 `http://localhost:5173`만 허용한다(환경변수 `ALLOWED_ORIGINS`로 바꿈, DEC-050).
 
