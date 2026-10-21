@@ -1,6 +1,6 @@
 # docs/ 문서 지도
 
-> **처음 오면** 하는 일에 맞춰 고른다. 에이전트의 시작 순서는 `AGENTS.md` 0절이다. 문서를 새로 만들면 **아래 폴더 중 하나에 두고 이 지도에 한 줄을 더한다.** 끝난 작업·이전 주제 문서는 지우지 않고 [`archive/`](archive/README.md)로 옮긴다(git 이력 유지).
+> **처음 오면** 하는 일에 맞춰 고른다. 에이전트의 시작 순서는 `AGENTS.md` 0절이다. 문서를 새로 만들면 [이름 규칙](guides/문서_이름_규칙.md)에 따라 **아래 폴더 중 하나에 두고 이 지도에 한 줄을 더한다.** 끝난 작업·이전 주제 문서는 지우지 않고 [`archive/`](archive/README.md)로 옮긴다(git 이력 유지).
 
 ## 어디부터 읽나
 
@@ -57,6 +57,7 @@
 | [`git_명령어.md`](guides/git_명령어.md) | 이 저장소에서 쓰는 git·gh 명령 사전 |
 | [`MERGE_PROTOCOL.md`](guides/MERGE_PROTOCOL.md) | 병합 전 검증 게이트 |
 | [`배포_Vercel.md`](guides/배포_Vercel.md) | 화면·API Vercel 배포와 호출 상한(DEC-048·057·058) |
+| [`문서_이름_규칙.md`](guides/문서_이름_규칙.md) | docs 문서의 폴더·파일 이름·접두어 규칙, 이름을 바꿀 때의 절차(DEC-083) |
 
 ## labeling — 사람이 하는 표시 작업 안내
 
