@@ -26,9 +26,9 @@ permissions:
   pull-requests: read
   statuses: write
 
-# 판정에 쓰이는 코멘트만 같은 그룹에 넣는다 — 무관한 코멘트가 진행 중인 판정을 취소하지 않게(무관한 코멘트는 run_id로 따로).
+# 판정에 쓰이는 **협업자의** 코멘트만 같은 그룹에 넣는다 — 무관한 코멘트(외부인의 코멘트 포함)가 진행 중인 판정을 취소하지 않게(그 밖은 run_id로 따로).
 concurrency:
-  group: merge-gate-${{ github.event.issue.number }}-${{ (contains(github.event.comment.body, '병합 전 검증 결과') || contains(github.event.comment.body, '자동 리뷰') || contains(github.event.comment.body, 'merge-gate 재판정') || contains(github.event.changes.body.from, '병합 전 검증 결과') || contains(github.event.changes.body.from, '자동 리뷰') || contains(github.event.changes.body.from, 'merge-gate 재판정')) && 'gate' || github.run_id }}
+  group: merge-gate-${{ github.event.issue.number }}-${{ (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) && (contains(github.event.comment.body, '병합 전 검증 결과') || contains(github.event.comment.body, '자동 리뷰') || contains(github.event.comment.body, 'merge-gate 재판정') || contains(github.event.changes.body.from, '병합 전 검증 결과') || contains(github.event.changes.body.from, '자동 리뷰') || contains(github.event.changes.body.from, 'merge-gate 재판정'))) && 'gate' || github.run_id }}
   cancel-in-progress: true
 
 jobs:

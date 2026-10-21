@@ -8,7 +8,7 @@
              - 코멘트형 리뷰: 첫 줄의 SHA가 head와 일치
                `## 🤖 자동 리뷰 (head <SHA>)` (리뷰 에이전트) 또는
                `### 🤖 자동 리뷰 (Codex) — 커밋 <SHA>` (리뷰봇)
-  G-05       미해결 리뷰 스레드가 0개인가
+  G-05       미해결 리뷰 스레드가 0개인가 (스레드를 연 첫 코멘트가 협업자의 것인 것만 센다)
   결과 코멘트 현재 head에 대한 가장 최근 `## ✅/❌ 병합 전 검증 결과 (head <SHA>)`가 ✅이고,
              그 **뒤에** 현재 head에 대한 새 자동 리뷰가 없는가 (있으면 그 리뷰를 처리하기 전이므로 pending)
 
@@ -62,6 +62,12 @@ def split_trusted(items: list[dict]) -> tuple[list[dict], int]:
     return kept, len(items) - len(kept)
 
 
+def thread_starter(node: dict) -> str | None:
+    """리뷰 스레드를 연 첫 코멘트 작성자의 author_association (없으면 None)."""
+    first = (node.get("comments") or {}).get("nodes") or []
+    return first[0].get("authorAssociation") if first else None
+
+
 def same_commit(short: str, head: str) -> bool:
     return len(short) >= 7 and head.startswith(short)
 
@@ -69,6 +75,7 @@ def same_commit(short: str, head: str) -> bool:
 def evaluate(head: str, reviews: list[dict], comments: list[dict], unresolved: int) -> Gate:
     """reviews: [{"commit", "state", "body", "author", "at"}],
     comments: [{"body", "author", "at", "updated"}] — "at"은 작성 시각, "updated"는 마지막 수정 시각.
+    (작성자 권한 `association`은 여기서 보지 않는다 — 호출하는 쪽이 `split_trusted`로 먼저 거른다.)
 
     둘 다 시간순이고 시각은 ISO 8601(초 단위).
     선후 판정: 코멘트끼리는 목록 순서(같은 초도 구분), GitHub 리뷰와 결과 코멘트는 시각으로 비교하되
@@ -201,7 +208,8 @@ def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int
     query = (
         "query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){"
         "pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){"
-        "nodes{isResolved} pageInfo{hasNextPage endCursor}}}}}"
+        "nodes{isResolved comments(first:1){nodes{authorAssociation}}} "
+        "pageInfo{hasNextPage endCursor}}}}}"
     )
     pages = json.loads(
         gh(
@@ -219,11 +227,12 @@ def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int
             f"query={query}",
         )  # fmt: skip
     )
+    # 미해결 스레드도 첫 코멘트를 쓴 사람이 협업자인 것만 센다 — 외부인이 인라인 코멘트로 게이트를 막지 못하게
     unresolved = sum(
         1
         for p in pages
         for n in p["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
-        if not n["isResolved"]
+        if not n["isResolved"] and thread_starter(n) in TRUSTED_ASSOCIATIONS
     )
     state = "OPEN" if pr["state"] == "open" else pr["state"].upper()
     return state, pr["head"]["sha"], reviews, comments, unresolved
@@ -241,7 +250,8 @@ def main() -> int:
     gate = evaluate(head, reviews, comments, unresolved)
     if dropped_reviews or dropped_comments:
         gate.lines.append(
-            f"- 협업자가 아닌 작성자의 리뷰 {dropped_reviews}개·코멘트 {dropped_comments}개는 세지 않음"
+            f"- 협업자가 아닌 작성자의 리뷰 {dropped_reviews}개·코멘트 {dropped_comments}개는 판정에서 뺌"
+            "(판정 문구가 들었는지와 무관하게 센 개수)"
         )
     summary = (
         f"## 병합 게이트 (`{CONTEXT}`): {gate.state}\n\n{gate.description}\n\n"
