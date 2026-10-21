@@ -1,64 +1,111 @@
 # Recall Casebook — 결함 선례 찾기 도우미
 
-LG CNS AI Campus RAG 팀 프로젝트 — **결함 선례 찾기 도우미** (DEC-030).
+원인을 모르는 결함 신고를 받은 부품사 품질·제품안전 엔지니어가, 미국 정부(NHTSA) 공개 리콜·결함 조사에서 **같은 부품의 다른 회사 선례와 그 원인 서술을 원문 그대로(쪽 머리말·꼬리말 제거와 공백 정리 외에는 바꾸지 않고), 리콜 번호와 함께** 찾아 주는 RAG(검색 기반 답변) 서비스입니다.
 
-한국 부품사에서 북미 수출 차종을 맡은 품질·제품안전 엔지니어가 원인 모를 결함을 받았을 때, 미국 정부(NHTSA) 공개 리콜·결함 조사에서
-같은 부품의 다른 회사 선례와 그 원인 서술을 **원문 그대로, 리콜 번호와 함께** 찾아 주는 RAG 서비스. 판정("리콜 대상입니다")은 하지 않는다. <!-- principle-ok: 금지 문구 인용 -->
+판정("리콜 대상입니다")은 하지 않습니다. <!-- principle-ok: 금지 문구 인용 --> 선례·원인 원문(말한 주체 표시)·확인할 항목만 보여 주고, 판단은 사람이 합니다.
 
-> 시연: 화면 <https://lg-cns-rag-web.vercel.app> · API <https://lg-cns-rag.vercel.app> (영어 질문만). 라이선스: [MIT](LICENSE), 데이터·3D 모델 출처는 [NOTICE](NOTICE).
->
-> 기획 상세: [`docs/product/기획_결함선례.md`](docs/product/기획_결함선례.md). 데이터·시험지·기준 점수 재현: [`scripts/defect_precedent/README.md`](scripts/defect_precedent/README.md).
-> 이전 주제 문서 — 온보딩 RAG [`docs/archive/기획v1.md`](docs/archive/기획v1.md)(DEC-010), Compliance AI [`docs/archive/기획.md`](docs/archive/기획.md) — 는 참고용이다.
+> LG CNS AI Campus RAG 팀 프로젝트(2026-10-06 주제 전환 ~ 10-20 발표, 4인)로 만들었습니다. 라이선스는 [MIT](LICENSE), 데이터·3D 모델 출처는 [NOTICE](NOTICE)에 있습니다.
 
-## 지금 어디까지 왔나
+## 써 보기
 
-- **주제**: 결함 선례 찾기 도우미 (DEC-030, 2026-10-06 전환). 데이터는 NHTSA 공개 리콜 30,350건·결함 조사 5,349건과 리콜 원본 보고서(Part 573, 원인·공급사 칸).
-- **역할**: A 데이터·시험지 박예원 · B RAG 우지훈 · C 검사·화면·발표 박성호 · D 근거·품질 확인 이승노 (이슈 #24).
-- **기준선**: 시험 문제 749개(정부가 기록한 조사 → 리콜, 대리 평가)에서 단순 검색 Hit@10 0.510. 재현 방법은 [`scripts/defect_precedent/README.md`](scripts/defect_precedent/README.md).
-- **일정**: 발표 2026-10-20, 10/8~10 준비, 개발 10/12~14. 파트별 일정·역할은 이슈 #24, 할 일·위험은 [`.agent/HANDOFF.md`](.agent/HANDOFF.md). ([`docs/archive/진행계획.md`](docs/archive/진행계획.md)는 이전 주제(온보딩) 기준이라 참고용이다 — 결함 선례 기준 개정은 HANDOFF 할 일.)
-- **지금 할 일·열린 결정**은 [`.agent/HANDOFF.md`](.agent/HANDOFF.md)에 있다. 이슈 대신 이 문서가 할 일 목록을 가진다.
-
-## 데이터 받기
-
-원본(NHTSA 공개 파일·리콜 원본 보고서 PDF)과 결과물은 커밋하지 않는다 (`data/raw/`, `data/processed/`는 `.gitignore`). 스크립트로 받아 만든다:
+- 화면: <https://lg-cns-rag-web.vercel.app> — 영어로 결함을 한 줄 넣으면 선례가 나옵니다. 한국어 질문은 지원하지 않습니다.
+- API: 같은 질문을 직접 보낼 수도 있습니다.
 
 ```bash
-uv run python -m scripts.defect_precedent.nhtsa fetch      # 원본 받기 + manifest
-uv run python -m scripts.defect_precedent.nhtsa build      # 리콜 카드 · 시험지
-uv run python -m scripts.defect_precedent.bm25_baseline    # 기준 점수
+curl -s -X POST https://lg-cns-rag.vercel.app/search \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"loss of power steering assist electric motor driven steering"}'
 ```
 
-실행 순서·기준 파일·재현 조건은 `scripts/defect_precedent/README.md`. 이전 주제(온보딩)의 핸드북 데이터셋은 `uv run python scripts/fetch_handbook_dataset.py`로 받는다(데이터셋 안내서는 삭제 — git 이력 `6d12818`의 `docs/handbook/README.md`).
+서버가 한동안 쓰이지 않았다면 첫 요청은 약 15초 걸리고 그 뒤에는 0.3초 안팎입니다(2026-10-21 측정). 검색 호출은 IP당 1분 60회를 상한으로 두었습니다(서버리스라 인스턴스마다 따로 세므로 정확한 값은 아닙니다. Vercel 방화벽 규칙은 안전망으로 설계했지만 2026-10-21 기준 저장소 기록상 **설정 전**입니다 — `server/ratelimit.py`, `docs/guides/배포_Vercel.md`).
 
-## 시작하기
+응답에는 같은 질문에 대한 **고객사(현대·기아) 선례 최대 5건**과 **타사 선례 10건**이 들어 있고, 각 선례에 리콜 번호(`CAMPNO`)와 출처가 붙고, 원인 원문이 있으면 말한 주체·출처 파일과 함께 보여 줍니다(원인 칸이 있는 리콜은 전체의 약 27%라 없는 선례도 많습니다). 원인 칸이 없거나 제조사가 "조사 중"이라고만 쓴 경우에는 지어내지 않고 그렇게 표시합니다.
 
-> 처음이라면 **[`docs/guides/시작하기.md`](docs/guides/시작하기.md)** 를 위에서부터 따라 한다 (도구 설치 → 첫 PR → 관리자 설정).
+## 성능과 한계
+
+같은 평가셋(749문항: 정부가 결함 조사와 리콜을 이어 둔 기록으로 만든 시험지) 위에서 숫자로 정했습니다. 자세한 근거는 [`실험_P2_검색방식비교.md`](docs/experiments/실험_P2_검색방식비교.md)입니다.
+
+| 지표 | 값 | 설명 |
+|---|---|---|
+| 선례 검색 Hit@10(대리 평가) | 단어 검색 0.510 → 단어+뜻 검색 0.542 | 정답 리콜이 상위 10개 안에 든 비율. 질문 속 회사 이름을 뺀 경우 0.483 → 0.531(+0.048). 합친 검색의 이득은 +0.032(원래 질문 기준)로 기준 폭(0.03)을 간신히 넘었고, 이득은 주로 상위 10에서 나왔습니다(상위 1·3·5는 기준 폭 안) |
+| 원인 근거가 있는 리콜 | 2014-08 이후 리콜에서 31.0% → 약 78%(77.5~77.7%) | 리콜 설명·조사 요약에 원인이 적힌 비율이 31%뿐이어서, 원본 보고서(Part 573 PDF 11,719/11,737건)를 읽어 왔습니다. 분모를 바꾸면 값이 달라집니다 — 전체 30,350건 기준은 30.7% → 49.2%입니다([`기획_결함선례.md`](docs/product/기획_결함선례.md) 5절) |
+
+이 숫자들이 말하지 않는 것:
+
+- **대리 평가의 한계**: 정답 리콜의 99.6%가 조사가 시작된 뒤에 접수돼, "과거 선례를 찾는가"는 이 시험으로 재지 못합니다. 그래서 시점 평가(질문 기준일 이전 리콜만 색인)를 따로 설계했지만, 사람이 표시한 정답을 받지 못해 **공식 상태는 "미측정"**입니다. 발표 때는 AI가 표시한 비공식 탐색 값을 참고로만 제시했고, 한시 예외이며 성능 근거가 아니어서(DEC-079) 이 문서에는 숫자를 싣지 않습니다.
+- **정답이 상위 10개 안에 없는 질문이 46%**입니다. 원인 칸이 있는 리콜은 전체의 약 27%이고, 2014-08 이전 리콜(약 1만 8천 장)은 정형 양식이 아닌 서신·스캔본이라 원인 칸을 읽어 오지 못했습니다.
+- **"원인 근거가 있다"는 원인 글이 있다는 뜻입니다.** 그 글이 원인을 말하는 글인지는 사람이 표시한 원인 품질 채점(대기 중)이 끝나기 전에는 알지 못하고, 채점이 끝나도 "맞는 원인인지"는 판정하지 않습니다.
+- **사용자 가치는 측정하지 못했습니다.** 실제 엔지니어에게 써 보게 한 검증과 시간 절감은 하지 않았습니다. 업무 시나리오([`업무시나리오_도메인.md`](docs/project/업무시나리오_도메인.md))는 가설입니다.
+- 데이터는 2026-10-06에 받은 스냅샷에 고정돼 있고 갱신 주기는 정하지 않았습니다.
+- 사례가 적은 부품에서의 성능은 사후 분석으로 따로 읽었습니다([`실험_P5_희소부품층화.md`](docs/experiments/실험_P5_희소부품층화.md)). "사례가 적은 부품에 강하다"는 결론은 아닙니다.
+
+실패하거나 버린 시도(DB 내장 검색, 부품 분류로 순위 올리기, 생성형 답변, 임베딩 모델 5종 — 실행 당시 규칙으로는 채택 후보가 없었고 arctic 계열은 질문 접두어를 붙이면 점수가 오르지만 사후 진단이라 미확정입니다)도 [`docs/experiments/`](docs/experiments/)에 기록해 두었습니다.
+
+## 서비스 원칙 — 문구가 아니라 코드 구조로 지킵니다
+
+1. **판정하지 않는다.** 응답 스키마에 판정 필드 자체를 만들지 않습니다.
+2. **근거 없는 말은 하지 않는다.** 모든 선례와 원인 문장에 리콜 번호와 출처를 달고, 원인 문장은 쪽 머리말·꼬리말 제거와 공백 정리 외에는 원문을 바꾸지 않고(정리 방식은 응답의 `text_basis`로 밝힙니다) 옮긴 뒤 글자 대조를 통과한 것만 보여 줍니다.
+3. **추측하지 않는다.** 원문에 없으면 "원문에서 원인 서술을 찾지 못함"처럼 비워 둡니다.
+4. **추적할 수 있어야 한다.** 답변 → 리콜·조사 번호 → 원본 파일(sha256) → 스냅샷 날짜까지 되짚을 수 있습니다.
+
+전문은 [`AGENTS.md`](AGENTS.md) 2절입니다.
+
+## 어떻게 동작하나
+
+```text
+NHTSA 공개 파일 + Part 573 PDF ──▶ 리콜 카드 30,350장(원인·공급사 칸 포함)
+                                        │
+영어 결함 한 줄 ──▶ 단어 검색(BM25) + 뜻 검색(bge-small-en-v1.5) ──▶ 순위 합치기(RRF)
+                                        │
+                  선례 10건 + 고객사 선례 5건 ──▶ 원인 원문·출처·확인 항목 ──▶ 화면(React) / API(FastAPI)
+```
+
+- 검색은 서버가 시작할 때 메모리에 올린 카드 전체를 대상으로 합니다. DB(Postgres + pgvector)는 보관과 추적에만 씁니다.
+- 원인 표시에는 생성형 AI를 쓰지 않아 호출 비용이 없습니다. AI는 8D 작성 보조(`POST /draft`)에서 원문을 묶고 고정 확인 질문의 번호를 고르는 데만 쓰며, 코드에서는 기본 꺼짐이며(켜지 않아도 묶음 없는 원문 목록을 줍니다), 위 공개 서버는 이 기능이 들어가기 전 판(2026-10-14 배포)이라 `/draft`가 없습니다.
+- 설계 결정과 기각한 대안은 [`.agent/DECISIONS.md`](.agent/DECISIONS.md)에, 제품 요구·데이터 구조는 [`docs/product/`](docs/product/)에 있습니다.
+
+## 직접 돌려 보기
+
+Python은 [uv](https://docs.astral.sh/uv/), 화면은 npm을 씁니다(버전은 `pyproject.toml`·`frontend/.nvmrc`).
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/jh3779/recall-casebook.git
 cd recall-casebook
-uv sync                # Python 3.12 + 의존성 설치 (.venv)
-lefthook install       # git 훅 설치
-cp .env.example .env   # 실제 키는 .env에만 — 절대 커밋하지 않는다
-uv run pytest          # 확인
+uv sync                # Python 3.12 + 의존성 (.venv)
+uv run pytest          # 테스트 (DB가 필요한 것은 건너뜁니다)
+
+cd frontend && npm ci && npm run dev   # 화면 개발 서버
 ```
 
-도구 설치(uv·lefthook)와 패키지 추가·노트북·문제 해결은 [`docs/guides/개발환경.md`](docs/guides/개발환경.md)를 본다.
+원본 데이터·전체 카드·749문항 시험지·벡터 인덱스는 저장소에 담지 않습니다(화면 데모용 파생 데이터 일부만 들어 있고 그 이용 조건은 [`NOTICE`](NOTICE)를 따릅니다). 원본 받기·카드와 시험지 만들기·기준 점수 재현은 [`scripts/defect_precedent/README.md`](scripts/defect_precedent/README.md)를, API 서버를 로컬에서 띄우는 방법은 [`server/README.md`](server/README.md)를 보세요. 기준 파일(`--baseline` — 어떤 파일을 쓰는지는 [`scripts/defect_precedent/README.md`](scripts/defect_precedent/README.md)의 안내를 따릅니다)을 주면 입력 지문이 다를 때 멈추고, `--allow-drift`를 더하면 "재평가(재현 아님)"로 표시하며 계속합니다.
 
-## 협업 규칙
+```bash
+uv run python -m scripts.defect_precedent.nhtsa fetch      # 원본 받기 + manifest (약 27MB)
+uv run python -m scripts.defect_precedent.nhtsa build      # 리콜 카드 · 시험지
+uv run python -m scripts.defect_precedent.bm25_baseline    # 기준 점수(현재 받은 데이터로 재면 값이 다를 수 있음 — 0.510은 10/6 사본 기준)
+```
 
-AI 에이전트로 작업할 때의 규칙은 [`AGENTS.md`](AGENTS.md)에 있다.
+NHTSA는 같은 주소에 매일 새 파일을 덮어쓰고 옛 파일을 주지 않으므로, 2026-10-06 기준 값(0.510)은 그날의 원본 사본이 있을 때만 같은 숫자로 다시 만들 수 있고, 그 사본은 팀 내부에 있어 외부에서는 구하기 어렵습니다. 외부에서 새로 받으면 "재현"이 아니라 "재평가"로 읽어야 합니다.
 
-브랜치·커밋·PR 규칙은 [`CONTRIBUTING.md`](CONTRIBUTING.md)를 따른다.
+## 문서 지도
 
-## 디렉터리
+[`docs/README.md`](docs/README.md)가 전체 지도입니다. 처음 보신다면 이 순서를 권합니다.
+
+1. [`docs/product/기획_결함선례.md`](docs/product/기획_결함선례.md) — 무엇을 왜 만들었나
+2. [`docs/project/WBS_역할분배_시간예산.md`](docs/project/WBS_역할분배_시간예산.md) — 계획 대비 실제, 역할, 시간
+3. [`docs/experiments/`](docs/experiments/) — 실험 기록(결과와 기각 이유)
+4. [`docs/guides/시작하기.md`](docs/guides/시작하기.md) — 개발 환경과 작업 흐름
+
+## 기여·협업 규칙
+
+이 저장소는 팀 프로젝트 기록입니다. 브랜치·커밋·PR 규칙은 [`CONTRIBUTING.md`](CONTRIBUTING.md), AI 에이전트로 작업할 때의 규칙은 [`AGENTS.md`](AGENTS.md), 보안 문제 보고는 [`SECURITY.md`](SECURITY.md)를 따릅니다. 병합 전에는 [`docs/guides/MERGE_PROTOCOL.md`](docs/guides/MERGE_PROTOCOL.md)의 검증을 거칩니다.
 
 | 경로 | 용도 |
 |---|---|
-| `docs/` | 기획(`기획_결함선례.md` — 현행, DEC-030 / 이전 주제 `archive/기획v1.md`·`archive/기획.md`)·제품 요구 `PRD.md`·데이터 구조 `ERD.md`·개발환경·병합 전 검증 프로토콜(`MERGE_PROTOCOL.md`) 등 문서 |
+| `server/` | FastAPI 서버(검색·원문·출처), 호출 상한 |
+| `frontend/` | React 19 + TypeScript(Vite) 화면, 3D 쇼룸 |
+| `scripts/defect_precedent/` | 데이터 수집·카드·시험지·평가 스크립트 |
+| `scripts/ci/` | 병합 전 검사 스크립트 |
 | `tests/` | pytest 테스트 |
-| `AGENTS.md` · `CLAUDE.md` | AI 에이전트 행동강령 (원본은 AGENTS.md) |
-| `.claude/settings.json` | Claude Code 팀 공유 권한 설정 |
-| `.agent/` | AI 에이전트 세션 인계 문서 (PROJECT_CONTEXT · HANDOFF · DECISIONS · SESSION_LOG) |
-| `.github/` | PR 템플릿, CODEOWNERS, CI 워크플로 |
-| `scripts/` | lefthook이 호출하는 검사 스크립트, CI 로직(`ci/`), 결함 선례 데이터·평가 스크립트(`defect_precedent/`), 이전 주제 핸드북 데이터셋 재현(`fetch_handbook_dataset.py`) |
+| `docs/` | 기획·실험 기록·가이드·표시자 안내 |
+| `.agent/` | AI 에이전트 세션 인계 문서(HANDOFF·DECISIONS 등) |

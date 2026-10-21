@@ -45,9 +45,6 @@ docs/handbook/
 # 개인 메모
 RETROSPECTIVE.md
 
-# 환각 시험 결과 문서 — 열람 제한은 2026-10-21 해제(DEC-082)됐지만 main에는 올리지 않고 우지훈이 따로 보관한다(올릴지는 HANDOFF 할 일 61)
-docs/실험_생성형RAG환각.md
-
 # IDE
 .idea/
 .vscode/
