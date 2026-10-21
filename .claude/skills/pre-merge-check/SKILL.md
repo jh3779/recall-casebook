@@ -76,11 +76,11 @@ gh pr view $N --comments
 ```bash
 gh api graphql -F o=${REPO%/*} -F r=${REPO#*/} -F n=$N -f query='
 query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
-  reviewThreads(first:100){nodes{isResolved path line comments(first:1){nodes{author{login} body}}}}}}}' \
-  -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not)]'
+  reviewThreads(first:100){nodes{isResolved path line comments(first:1){nodes{author{login} authorAssociation body}}}}}}}' \
+  -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not) | select((.comments.nodes[0].authorAssociation) as $a | $a == null or $a == "OWNER" or $a == "MEMBER" or $a == "COLLABORATOR")]'
 ```
 
-결과가 `[]`여야 한다 (100개 초과 시 누락 — 그 규모가 되면 페이지네이션 추가). 남은 스레드는 3절처럼 처리한 뒤 답글로 처리 내역을 남긴다. 스레드를 resolve하는 것은 사람이 하거나, 처리 내역을 답글로 남긴 뒤에만 한다.
+외부인(협업자가 아닌 작성자)이 연 스레드는 이 명령이 걸러 낸다(`merge_gate.py`와 같은 기준 — 작성자를 알 수 없으면 센다). 걸러진 스레드도 사람이 한 번 읽는다. 결과가 `[]`여야 한다 (100개 초과 시 누락 — 그 규모가 되면 페이지네이션 추가). 남은 스레드는 3절처럼 처리한 뒤 답글로 처리 내역을 남긴다. 스레드를 resolve하는 것은 사람이 하거나, 처리 내역을 답글로 남긴 뒤에만 한다.
 
 ## 5. G-06 diff 정독 · PR 설명 일치
 

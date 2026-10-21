@@ -324,6 +324,10 @@ def thread(resolved: bool, association: str | None) -> dict:
 def run_main(monkeypatch, capsys, comments, reviews, threads):
     def fake_gh(*args):
         if args[:2] == ("api", "graphql"):
+            query = next(a for a in args if a.startswith("query="))
+            assert (
+                "authorAssociation" in query
+            )  # 쿼리에서 작성자 권한이 빠지면 스레드 필터가 무력해진다
             data = {"repository": {"pullRequest": {"reviewThreads": {"nodes": threads}}}}
             return json.dumps([{"data": data}])
         path = args[1]
@@ -351,12 +355,18 @@ def owner_pair() -> list[dict]:
     ]
 
 
+def test_main_unknown_thread_starter_is_counted_not_ignored(monkeypatch, capsys):
+    # 첫 코멘트 정보가 없는 미해결 스레드는 작성자를 알 수 없으므로 막는 쪽(failure)으로 센다
+    out = run_main(monkeypatch, capsys, owner_pair(), [], [{"isResolved": False}])
+    assert "`merge-gate`): failure" in out
+
+
 def test_main_ignores_outsider_noise_end_to_end(monkeypatch, capsys):
     comments = owner_pair() + [rest_comment(result("❌", HEAD)["body"], "NONE", 3, "stranger")]
     reviews = [rest_review("CHANGES_REQUESTED", "막는다", "CONTRIBUTOR", "stranger")]
     out = run_main(monkeypatch, capsys, comments, reviews, [thread(False, "NONE")])
     assert "`merge-gate`): success" in out
-    assert "협업자가 아닌 작성자의 리뷰 1개·코멘트 1개" in out
+    assert "협업자가 아닌 작성자의 리뷰 1개·코멘트 1개·미해결 스레드 1개" in out
 
 
 def test_main_outsider_only_result_stays_pending(monkeypatch, capsys):
