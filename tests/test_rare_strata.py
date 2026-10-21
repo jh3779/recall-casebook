@@ -5,7 +5,17 @@ import json
 
 import pytest
 
-from scripts.defect_precedent.rare_strata import BOUNDS, check_inputs, rarity, stratum_of, wilson
+from scripts.defect_precedent.rare_strata import (
+    BOUNDS,
+    EXPECTED_ALL,
+    EXPECTED_MODEL_FINGERPRINT,
+    check_inputs,
+    compare_expected,
+    model_record,
+    rarity,
+    stratum_of,
+    wilson,
+)
 
 
 def test_wilson은_알려진_값과_맞다():
@@ -107,3 +117,42 @@ def test_입력_지문이_다르면_재현이_아니라_재평가로_멈춘다(t
         check_inputs(out, baseline)
     assert "재평가" in str(stop.value)
     assert field in str(stop.value)  # 어느 지문이 다른지 메시지에 나온다
+
+
+def _overall(**override):
+    rates = {**EXPECTED_ALL, **override}
+    return {k: {"rate": v} for k, v in rates.items()}
+
+
+def test_기준과_점수_모델_지문이_모두_같으면_전부_참이다():
+    matches = compare_expected(_overall(), EXPECTED_MODEL_FINGERPRINT)
+    assert set(matches) == {*EXPECTED_ALL, "모델 지문"}
+    assert all(matches.values())
+
+
+def test_모델_지문이_다르면_모델_지문만_거짓이다():
+    matches = compare_expected(_overall(), "0" * 16)
+    assert matches.pop("모델 지문") is False
+    assert all(matches.values())
+
+
+def test_전체_점수가_기준과_다르면_그_항목만_거짓이다():
+    matches = compare_expected(_overall(**{"RRF·원래": 0.543}), EXPECTED_MODEL_FINGERPRINT)
+    assert matches["RRF·원래"] is False
+    assert matches["BM25·원래"] is True
+    assert matches["모델 지문"] is True
+
+
+def test_결과_파일의_모델_추적_정보가_빠지지_않는다():
+    info = {
+        "fastembed": "0.9.0",
+        "model_fingerprint": "abc",
+        "cache": "x.npy",
+        "cache_verified": True,
+    }
+    record = model_record(info, "f" * 64)
+    assert record["model_fingerprint"] == "abc"
+    assert record["expected_model_fingerprint"] == EXPECTED_MODEL_FINGERPRINT
+    assert record["cache_verified"] is True
+    assert record["cache_sha256"] == "f" * 64
+    assert {"name", "fastembed", "cache"} <= set(record)

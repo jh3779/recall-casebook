@@ -92,6 +92,26 @@ def check_inputs(out_dir: Path = OUT_DIR, baseline: Path = BASELINE) -> dict[str
     return got
 
 
+def compare_expected(overall: dict, model_fingerprint: str) -> dict[str, bool]:
+    """전체 749문항 점수와 모델 지문을 기준과 대조한다 — 하나라도 False면 '재현'으로 보고하지 않는다."""
+    matches = {k: overall[k]["rate"] == v for k, v in EXPECTED_ALL.items()}
+    matches["모델 지문"] = model_fingerprint == EXPECTED_MODEL_FINGERPRINT
+    return matches
+
+
+def model_record(info: dict, cache_sha256: str) -> dict:
+    """result.json의 모델 추적 정보 — 어떤 모델·캐시로 쟀는지 되짚을 수 있어야 한다(서비스 원칙 4)."""
+    return {
+        "name": "BAAI/bge-small-en-v1.5",
+        "fastembed": info["fastembed"],
+        "model_fingerprint": info["model_fingerprint"],
+        "expected_model_fingerprint": EXPECTED_MODEL_FINGERPRINT,
+        "cache": info["cache"],
+        "cache_verified": info["cache_verified"],
+        "cache_sha256": cache_sha256,
+    }
+
+
 def main() -> None:
     import numpy as np
 
@@ -102,8 +122,7 @@ def main() -> None:
     texts = [rc.card_text(c) for c in cards]
     model, vecs, _, info = rc.embed_cards("BAAI/bge-small-en-v1.5", texts)
     print("입력 지문 일치, 캐시 검증:", info["cache_verified"], "fastembed", info["fastembed"])
-    model_ok = info["model_fingerprint"] == EXPECTED_MODEL_FINGERPRINT
-    if not model_ok:
+    if info["model_fingerprint"] != EXPECTED_MODEL_FINGERPRINT:
         print(
             f"❌ 모델 지문이 기준과 다르다: {info['model_fingerprint']} ≠ {EXPECTED_MODEL_FINGERPRINT}"
         )
@@ -154,8 +173,7 @@ def main() -> None:
         k = sum(any(g in ranking[i][:10] for g in questions[i]["gold_campnos"]) for i in rarest)
         print(f"카드 ≤10장({len(rarest)}문항)", run_name, k)
 
-    matches = {k: out["전체"][k]["rate"] == v for k, v in EXPECTED_ALL.items()}
-    matches["모델 지문"] = model_ok
+    matches = compare_expected(out["전체"], info["model_fingerprint"])
     print(
         "기준 대조(전체 점수·모델 지문):",
         "✅ 일치" if all(matches.values()) else f"❌ 불일치 {matches}",
@@ -184,15 +202,7 @@ def main() -> None:
         },
         "baseline_file": BASELINE.name,
         "snapshot_date": json.loads(BASELINE.read_text(encoding="utf-8"))["build"]["snapshot_date"],
-        "model": {
-            "name": "BAAI/bge-small-en-v1.5",
-            "fastembed": info["fastembed"],
-            "model_fingerprint": info["model_fingerprint"],
-            "expected_model_fingerprint": EXPECTED_MODEL_FINGERPRINT,
-            "cache": info["cache"],
-            "cache_verified": info["cache_verified"],
-            "cache_sha256": sha256_file(rc.CACHE / info["cache"]),
-        },
+        "model": model_record(info, sha256_file(rc.CACHE / info["cache"])),
         "rarest_label_cards_le10": {"n": len(rarest), "detail": rarest_detail},
         "bounds": BOUNDS,
         "expected_all": EXPECTED_ALL,
