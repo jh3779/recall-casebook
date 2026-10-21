@@ -1,7 +1,7 @@
 # git 명령어 설명서
 
 이 저장소에서 실제로 쓰는 git·gh 명령이 **무엇을 하는지, 언제 쓰는지, 무엇을 조심하는지**를 정리한 사전이다.
-매일의 작업 순서는 [`시작하기.md`](시작하기.md) 4절, 브랜치·커밋·PR 규칙 원문은 [`CONTRIBUTING.md`](../CONTRIBUTING.md)에 있다.
+매일의 작업 순서는 [`시작하기.md`](시작하기.md) 4절, 브랜치·커밋·PR 규칙 원문은 [`CONTRIBUTING.md`](../../CONTRIBUTING.md)에 있다.
 
 ---
 
@@ -105,7 +105,7 @@ git switch -c docs/setup-guide-fix          # 2. 브랜치
 # ... 파일 수정 ...
 git status && git diff                      # 3. 무엇이 바뀌었나
 uv run ruff check . && uv run ruff format --check . && uv run pytest   # 4. 검사 (AGENTS.md 4절)
-git add docs/환경셋팅.md                     # 5. 고르기
+git add docs/guides/환경셋팅.md                     # 5. 고르기
 git commit -m "docs: 환경셋팅 안내 오타 수정"  # 6. 저장 (훅 검사)
 git push -u origin docs/setup-guide-fix     # 7. 올리기 (훅 검사)
 gh pr create --title "docs: 환경셋팅 안내 오타 수정" --body-file pr.md   # 8. PR (본문은 템플릿 섹션대로) → 리뷰 → 병합 전 검증 → squash merge

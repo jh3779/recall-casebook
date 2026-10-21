@@ -1,4 +1,4 @@
-"""PR 내용 상세 검증 — docs/MERGE_PROTOCOL.md 게이트 중 기계로 판정할 수 있는 것을 CI에서 돌린다.
+"""PR 내용 상세 검증 — docs/guides/MERGE_PROTOCOL.md 게이트 중 기계로 판정할 수 있는 것을 CI에서 돌린다.
 
 검사 (실패 시 exit 1):
   principles   G-07  코드에 판정 필드·판정 문구가 새로 들어왔는가

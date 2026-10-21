@@ -3,7 +3,7 @@
 - 기본은 `POST /search`만 센다(`route`로 다른 경로를 따로 센다 — `POST /draft`는 유료 호출이라 별도 상한). `/health`와 CORS 사전 요청(OPTIONS)은 세지 않는다.
 - 최근 `window`초 안의 호출이 `limit`번이면 429와 `Retry-After`를 낸다. 상한에 걸린 호출은 세지 않아 기다리면 풀린다.
 - 서버리스는 인스턴스마다 메모리가 따로라 인스턴스 수만큼 상한이 느슨해진다 → 폭주는 Vercel WAF 규칙이 막는다
-  (앱 60/분보다 느슨한 안전망, `docs/배포_Vercel.md`).
+  (앱 60/분보다 느슨한 안전망, `docs/guides/배포_Vercel.md`).
 - CORS 미들웨어 **안쪽**에 둬야 429 응답에도 `Access-Control-Allow-Origin`이 붙는다(`server/api.py` `create_app`).
 """
 

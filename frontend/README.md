@@ -18,7 +18,7 @@ npm run dev       # http://localhost:5173
 
 - 기본 API: `https://lg-cns-rag.vercel.app`. 요청은 `POST /search`의 `{ "question": "..." }`, 판본은 `GET /health`다. 서버 계약은 `server/api.py`를 따른다.
 - 다른 API를 쓰려면 `frontend/.env.development.local`에 `VITE_API_BASE=http://localhost:8000`을 지정한 뒤 개발 서버를 다시 시작한다. `.env.example`에는 키 이름만 있다. `VITE_*`는 브라우저에 공개되므로 비밀값을 넣지 않는다.
-- 공개 API의 CORS 허용 주소는 공개 화면 `https://lg-cns-rag-web.vercel.app`과 `http://localhost:5173`이다(2026-10-14 작업 F, DEC-058). `127.0.0.1`이나 다른 포트·미리보기 배포 주소에서는 연결이 거부될 수 있다. 화면 배포 절차는 [`docs/배포_Vercel.md`](../docs/배포_Vercel.md) 2절.
+- 공개 API의 CORS 허용 주소는 공개 화면 `https://lg-cns-rag-web.vercel.app`과 `http://localhost:5173`이다(2026-10-14 작업 F, DEC-058). `127.0.0.1`이나 다른 포트·미리보기 배포 주소에서는 연결이 거부될 수 있다. 화면 배포 절차는 [`docs/guides/배포_Vercel.md`](../docs/guides/배포_Vercel.md) 2절.
 - 원문은 React 텍스트 노드로만 그린다. 원인 상태 9종과 모르는 값을 모두 알리며, 문구의 잠정 정본은 [`cause-status.md`](../docs/design-system/copy/cause-status.md)다. 이슈 #53 게시·합의는 별도다.
 - 원인 꼬리표는 Python 코드포인트 좌표와 원문을 대조한 구간만 감싼다. 목록·확인 항목의 긴 글은 CSS로만 접고 문자열을 자르지 않는다. 573 파일의 주소는 추측하지 않으며 파일명·SHA-256·제출일·글 정리 방식을 펼쳐 볼 수 있다.
 - 3초가 지나도 응답이 없으면 "The server may be waking up…" 안내, 60초 뒤 취소, 입력/호출 상한(429 — 남은 초를 세고 그동안 Retry·Find precedents를 막음)/연결/시간 초과/서버/응답 형식 오류를 구분한다(`casebook/errors.ts`, `casebook/useCountdown.ts`). 실패해도 질문은 유지한다. 화면 전환 시 검색 상태도 유지한다. 쇼룸의 분류 검색은 케이스북 질문창을 채우기만 하고 자동 전송하지 않으며, 새 질문이 오면 이전 질문의 결과·체크·진행 중 요청을 비운다(DEC-075).
@@ -46,7 +46,7 @@ cp ~/Downloads/kia_sorento.glb public/models/sorento.glb
 node scripts/prepare-vehicle-parts.mjs
 ```
 
-`public/models/`는 gitignore다. 화면용 두 파일은 공개 화면에서도 받을 수 있다: `https://lg-cns-rag-web.vercel.app/models/sonata.glb`·`/models/sorento.glb`(받은 뒤 `public/data/vehicle-sources.json` 지문과 대조). 쏘나타 화면용 파일은 원본에서 쓰이지 않는 텍스처 좌표(TEXCOORD)만 지운 것이다 — 스크립트는 출력을 다시 읽어 남은 정점 속성·인덱스 바이트와 재질 값·텍스처(이미지 지문·texCoord·샘플러)·재질·노드·메시 이름 목록을 원본과 대조하고, 출력 크기·SHA-256·지운 속성 수가 기록값과 같을 때만 쓴다(노드 변환은 `matrix`가 TRS로 다시 쓰여 float32 오차만큼 다를 수 있고 비교하지 않는다. 재질 확장이 있는 모델은 거부 — 이 모델 전용), 원본 지문은 `vehicle-sources.json`의 `derivedFrom.from`에 있다. 화면에는 CC BY 4.0 변경 사항으로 "미사용 UV 제거"를 표시한다. 그 밖에도 다른 환경에서는 원본 파일을 준비해야 하며 모델이 없으면 실패 안내·검색 복귀 버튼이 뜬다. 원본 메시·재질·본 이름으로 확인된 분류는 원본 형상을 사용한다. 없는 엔진·변속기·연료 배관 등은 일반적인 전륜구동 배치를 단순화한 도형으로 보완한다. 추정 도형은 투시에서만 보이고 실제 기록이 있는 분류에만 연결한다. 화면·핫스팟·패널에 설명용 추정임을 밝힌다. 기타 장비처럼 위치가 하나로 특정되지 않는 분류는 기록만 연다. 쏘나타 화면용 GLB는 약 42MiB(원본 약 111MiB)라 첫 로딩 비용이 여전히 크다. [구현·검증 기록](../docs/프런트_현대기아_모델.md).
+`public/models/`는 gitignore다. 화면용 두 파일은 공개 화면에서도 받을 수 있다: `https://lg-cns-rag-web.vercel.app/models/sonata.glb`·`/models/sorento.glb`(받은 뒤 `public/data/vehicle-sources.json` 지문과 대조). 쏘나타 화면용 파일은 원본에서 쓰이지 않는 텍스처 좌표(TEXCOORD)만 지운 것이다 — 스크립트는 출력을 다시 읽어 남은 정점 속성·인덱스 바이트와 재질 값·텍스처(이미지 지문·texCoord·샘플러)·재질·노드·메시 이름 목록을 원본과 대조하고, 출력 크기·SHA-256·지운 속성 수가 기록값과 같을 때만 쓴다(노드 변환은 `matrix`가 TRS로 다시 쓰여 float32 오차만큼 다를 수 있고 비교하지 않는다. 재질 확장이 있는 모델은 거부 — 이 모델 전용), 원본 지문은 `vehicle-sources.json`의 `derivedFrom.from`에 있다. 화면에는 CC BY 4.0 변경 사항으로 "미사용 UV 제거"를 표시한다. 그 밖에도 다른 환경에서는 원본 파일을 준비해야 하며 모델이 없으면 실패 안내·검색 복귀 버튼이 뜬다. 원본 메시·재질·본 이름으로 확인된 분류는 원본 형상을 사용한다. 없는 엔진·변속기·연료 배관 등은 일반적인 전륜구동 배치를 단순화한 도형으로 보완한다. 추정 도형은 투시에서만 보이고 실제 기록이 있는 분류에만 연결한다. 화면·핫스팟·패널에 설명용 추정임을 밝힌다. 기타 장비처럼 위치가 하나로 특정되지 않는 분류는 기록만 연다. 쏘나타 화면용 GLB는 약 42MiB(원본 약 111MiB)라 첫 로딩 비용이 여전히 크다. [구현·검증 기록](../docs/experiments/프런트_현대기아_모델.md).
 
 ## 현재 쇼룸 데모 데이터
 
@@ -115,7 +115,7 @@ node frontend/scripts/check-demo-against-cards.mjs data/processed/defect/recalls
 
 Pretendard, Source Serif 4(400·600), JetBrains Mono(400·600)는 npm 패키지에서 번들한다. 외부 글꼴 CDN 호출은 없다. [`React lazy`](https://react.dev/reference/react/lazy)·[`Vite 환경변수`](https://vite.dev/guide/env-and-mode) 공식 문서를 확인했다.
 
-실제 응답 픽스처와 갱신 규칙은 [`src/search/__fixtures__/README.md`](src/search/__fixtures__/README.md), 구현·검증 결과와 남은 확인은 [`docs/프런트_구현_검증.md`](../docs/프런트_구현_검증.md)에 기록한다.
+실제 응답 픽스처와 갱신 규칙은 [`src/search/__fixtures__/README.md`](src/search/__fixtures__/README.md), 구현·검증 결과와 남은 확인은 [`docs/experiments/프런트_구현_검증.md`](../docs/experiments/프런트_구현_검증.md)에 기록한다.
 
 ## 화면 모드(밝음·어두움)
 

@@ -1,4 +1,4 @@
-"""리콜 카드에 NHTSA 결함 조사 요약을 원문 그대로 붙인다 (docs/계획_P2_API서버.md 1절).
+"""리콜 카드에 NHTSA 결함 조사 요약을 원문 그대로 붙인다 (docs/product/계획_P2_API서버.md 1절).
 
 - 말한 주체는 NHTSA 결함 조사(조사관이 쓴 요약)다 — 573 원인 칸(리콜 제조사)과 따로 싣는다.
 - 원본은 `data/raw/nhtsa/FLAT_INV.zip`. 서버는 시작할 때 `manifest.json`의 sha256이 build의 `raw_manifest_sha256`과 같고

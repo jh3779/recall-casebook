@@ -9,7 +9,7 @@
 #                 + ruff check --fix / ruff format (staged .py만, uv.lock에 고정된 ruff 사용)
 #   - commit-msg: Conventional Commits 형식
 #   - pre-push:   main 직접 push 차단 → 브랜치명 규칙 → CI 필수 검사 4개를 커밋된 HEAD로 로컬 실행
-#                 (scripts/local_ci.sh — Actions 한도가 바닥나 CI를 꺼도 같은 검사가 돈다, docs/MERGE_PROTOCOL.md 7절)
+#                 (scripts/local_ci.sh — Actions 한도가 바닥나 CI를 꺼도 같은 검사가 돈다, docs/guides/MERGE_PROTOCOL.md 7절)
 #
 # ⚠️ 클라이언트 측 방어선이다. `lefthook install`을 안 했거나 `--no-verify`로 우회하면
 #    통과된다. 서버 쪽은 CI(branch-name-check · pr-title-check)가 한 번 더 검사한다.

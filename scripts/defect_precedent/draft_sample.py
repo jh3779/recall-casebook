@@ -33,7 +33,7 @@ QUESTIONS = [
     "brake fluid leaking from front caliper",
     "rearview camera image does not display",
 ]
-# OpenAI 모델 문서(2026-10-12 확인, docs/실험_LLM_Luna비교.md 1절) — 100만 토큰당 달러, 비용 추정에만 쓴다
+# OpenAI 모델 문서(2026-10-12 확인, docs/experiments/실험_LLM_Luna비교.md 1절) — 100만 토큰당 달러, 비용 추정에만 쓴다
 PRICE = {"gpt-6-luna": (0.10, 0.50)}
 
 

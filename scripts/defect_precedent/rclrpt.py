@@ -31,7 +31,7 @@ PDF 텍스트 추출에 poppler의 `pdftotext`가 필요하다 (macOS: `brew ins
   결과가 최신처럼 남아 `load_db`가 올리지 않게 한다.
 - `all` 모드는 **실패가 하나도 없거나 `--accept-failures`로 수용했을 때만** `causes.jsonl`을 만든다 (일부만 담긴 파일이 완성본으로 올라가는 것을 막는다).
   실패가 있으면 `causes.partial.jsonl`과 `causes_failures.jsonl`만 남기니, 원인을 보고 다시 실행한다 (실패한 건만 다시 받는다).
-- 시점 평가에서는 질문 기준일 이전 판본만 써야 한다 (docs/기획_결함선례.md 6절) — 여기서는 최신 판본만 만든다.
+- 시점 평가에서는 질문 기준일 이전 판본만 써야 한다 (docs/product/기획_결함선례.md 6절) — 여기서는 최신 판본만 만든다.
 """
 
 import argparse

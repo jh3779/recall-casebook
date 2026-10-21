@@ -1,5 +1,5 @@
 name: PR Verify
-# PR 내용 상세 검증 — docs/MERGE_PROTOCOL.md 게이트 중 기계로 판정할 수 있는 것 (G-07·G-08)
+# PR 내용 상세 검증 — docs/guides/MERGE_PROTOCOL.md 게이트 중 기계로 판정할 수 있는 것 (G-07·G-08)
 # + 저장소 내부 정합성 (type 목록 일치, 문서 링크, CLAUDE.md → AGENTS.md import).
 # 검사 로직: scripts/ci/pr_checks.py (테스트: tests/test_pr_checks.py)
 

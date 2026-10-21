@@ -39,7 +39,7 @@ from scripts.defect_precedent.rules import UNKNOWN_RE, check
 SEED = 20261008
 # 추론 모델(gpt-6-luna 등)의 reasoning.effort 허용 값 — OpenAI 모델 문서(developers.openai.com/api/docs/models/gpt-6-luna, 2026-10-12 확인)
 REASONING_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
-# 기본 모델 — 사용자 지정 2026-10-12(운영 선택, 품질 우위 근거 아님 — docs/실험_LLM_Luna비교.md 4절).
+# 기본 모델 — 사용자 지정 2026-10-12(운영 선택, 품질 우위 근거 아님 — docs/experiments/실험_LLM_Luna비교.md 4절).
 # 모델 정확도의 사람 평가는 하지 않기로 했다(DEC-056) — 기본값은 품질 확인 없이 남은 운영 선택이다.
 DEFAULT_MODEL, DEFAULT_EFFORT = "gpt-6-luna", "none"
 

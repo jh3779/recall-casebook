@@ -15,7 +15,7 @@ description: >
 
 # Pre-Merge Check — recall-casebook
 
-정본 기준: [`docs/MERGE_PROTOCOL.md`](../../../docs/MERGE_PROTOCOL.md). 이 스킬은 그 문서의 게이트를
+정본 기준: [`docs/guides/MERGE_PROTOCOL.md`](../../../docs/guides/MERGE_PROTOCOL.md). 이 스킬은 그 문서의 게이트를
 실제로 수행하는 절차다. 둘이 어긋나면 문서가 정본 — 이 스킬을 고친다.
 
 **원칙: 하나라도 ❌면 병합하지 않는다.** 필수 리뷰어가 없는 저장소라 이 게이트가 사람 승인을 대신한다.
@@ -113,7 +113,7 @@ gh pr diff $N --name-only | grep -E '^(pyproject\.toml|uv\.lock|\.agent/)' || ec
 
 ## 9. 결과 게시
 
-`docs/MERGE_PROTOCOL.md` 4절 형식으로 결과 표 + 지적 처리 내역을 만들어 **PR 코멘트로 게시**한다. 첫 줄에 **head 짧은 SHA**를, 마지막 줄에 병합에 쓸 **head 전체 SHA**를 넣는다. 게시한 결과 코멘트는 **고치지 말고** 틀렸으면 새 코멘트로 다시 올린다(수정하면 `merge-gate`가 무효로 본다). G-02 근거에는 리뷰 출처(도구·에이전트 이름)를 적는다.
+`docs/guides/MERGE_PROTOCOL.md` 4절 형식으로 결과 표 + 지적 처리 내역을 만들어 **PR 코멘트로 게시**한다. 첫 줄에 **head 짧은 SHA**를, 마지막 줄에 병합에 쓸 **head 전체 SHA**를 넣는다. 게시한 결과 코멘트는 **고치지 말고** 틀렸으면 새 코멘트로 다시 올린다(수정하면 `merge-gate`가 무효로 본다). G-02 근거에는 리뷰 출처(도구·에이전트 이름)를 적는다.
 
 ```bash
 gh pr comment $N --body-file <결과.md>

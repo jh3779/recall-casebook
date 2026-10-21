@@ -1,4 +1,4 @@
-"""P2 실험 v3 — 부품 범위 좁히기: 질문에 나온 부품 분류의 카드를 순위 안에서 올린다 (docs/계획_P2_API서버.md 2절, 연구용).
+"""P2 실험 v3 — 부품 범위 좁히기: 질문에 나온 부품 분류의 카드를 순위 안에서 올린다 (docs/product/계획_P2_API서버.md 2절, 연구용).
 
 사용법:
     RETRIEVAL_CACHE=<카드 벡터 캐시 폴더> uv run python -m scripts.defect_precedent.parts_boost

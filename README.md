@@ -7,7 +7,7 @@ LG CNS AI Campus RAG 팀 프로젝트 — **결함 선례 찾기 도우미** (DE
 
 > 시연: 화면 <https://lg-cns-rag-web.vercel.app> · API <https://lg-cns-rag.vercel.app> (영어 질문만). 라이선스: [MIT](LICENSE), 데이터·3D 모델 출처는 [NOTICE](NOTICE).
 >
-> 기획 상세: [`docs/기획_결함선례.md`](docs/기획_결함선례.md). 데이터·시험지·기준 점수 재현: [`scripts/defect_precedent/README.md`](scripts/defect_precedent/README.md).
+> 기획 상세: [`docs/product/기획_결함선례.md`](docs/product/기획_결함선례.md). 데이터·시험지·기준 점수 재현: [`scripts/defect_precedent/README.md`](scripts/defect_precedent/README.md).
 > 이전 주제 문서 — 온보딩 RAG [`docs/archive/기획v1.md`](docs/archive/기획v1.md)(DEC-010), Compliance AI [`docs/archive/기획.md`](docs/archive/기획.md) — 는 참고용이다.
 
 ## 지금 어디까지 왔나
@@ -32,7 +32,7 @@ uv run python -m scripts.defect_precedent.bm25_baseline    # 기준 점수
 
 ## 시작하기
 
-> 처음이라면 **[`docs/시작하기.md`](docs/시작하기.md)** 를 위에서부터 따라 한다 (도구 설치 → 첫 PR → 관리자 설정).
+> 처음이라면 **[`docs/guides/시작하기.md`](docs/guides/시작하기.md)** 를 위에서부터 따라 한다 (도구 설치 → 첫 PR → 관리자 설정).
 
 ```bash
 git clone <repo-url>
@@ -43,7 +43,7 @@ cp .env.example .env   # 실제 키는 .env에만 — 절대 커밋하지 않는
 uv run pytest          # 확인
 ```
 
-도구 설치(uv·lefthook)와 패키지 추가·노트북·문제 해결은 [`docs/개발환경.md`](docs/개발환경.md)를 본다.
+도구 설치(uv·lefthook)와 패키지 추가·노트북·문제 해결은 [`docs/guides/개발환경.md`](docs/guides/개발환경.md)를 본다.
 
 ## 협업 규칙
 
