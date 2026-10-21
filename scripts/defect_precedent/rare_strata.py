@@ -9,9 +9,10 @@
   한 카드에 라벨이 여럿이면 최솟값. 구간 경계는 `BOUNDS`(분포만 보고 정함).
 - 지표 = any@10(정답 중 하나라도 상위 10에 든 비율), 구간별 Wilson 95% 신뢰구간.
 - 사후 층화 분석이다 — 튜닝에 쓰지 않고, 대리 평가·시점 평가 점수와 합치지 않는다(AGENTS.md 5-2).
-실행 전에 입력 파일(recalls·eval)의 sha256을 기준 파일과 대조해 다르면 멈춘다(AGENTS.md 5-1: 입력이 다르면
-"재현"이 아니라 "재평가"). 끝에는 전체 점수를 기준과 대조해 출력하고, 입력 지문·구간 경계·대조 결과를
-`result.json`에 기록한다. 같은 폴더에 다시 실행하면 `result.json`을 덮어쓴다.
+실행 전에 `verify_build`로 원본 manifest·카드·시험지가 `build.json`과 같은지 확인하고, 원본 manifest·recalls·eval의
+sha256을 기준 파일과 대조해 다르면 멈춘다(AGENTS.md 5-1: 입력이 다르면 "재현"이 아니라 "재평가"). 끝에는 전체 점수와
+모델 지문을 기준과 대조해 출력하고, 입력 지문·모델·구간 경계·대조 결과를 `result.json`에 기록한 뒤, 하나라도 다르면
+종료 코드 1로 끝난다. 같은 폴더에 다시 실행하면 불일치로 끝난 실행도 `result.json`을 덮어쓴다.
 """
 
 import collections
@@ -112,6 +113,39 @@ def model_record(info: dict, cache_sha256: str) -> dict:
     }
 
 
+def ensure_reproduced(matches: dict[str, bool]) -> None:
+    """하나라도 기준과 다르면 비정상 종료한다 — '재현'으로 통과시키지 않는다(AGENTS.md 5-1)."""
+    if not all(matches.values()):
+        sys.exit(1)
+
+
+def build_result_record(
+    *,
+    fingerprints: dict[str, str],
+    build_info: dict,
+    snapshot_date: str,
+    model: dict,
+    rarest_detail: list[dict],
+    matches: dict[str, bool],
+    strata: dict[str, dict],
+) -> dict:
+    """result.json의 내용 — 입력 지문·모델·기준 대조·구간 수치를 한 곳에 모아 되짚을 수 있게 한다."""
+    return {
+        "inputs": fingerprints,
+        "build_json": {
+            k: v for k, v in build_info.items() if k.endswith("_sha256") or k == "snapshot_date"
+        },
+        "baseline_file": BASELINE.name,
+        "snapshot_date": snapshot_date,
+        "model": model,
+        "rarest_label_cards_le10": {"n": len(rarest_detail), "detail": rarest_detail},
+        "bounds": BOUNDS,
+        "expected_all": EXPECTED_ALL,
+        "matches_expected": matches,
+        "strata": strata,
+    }
+
+
 def main() -> None:
     import numpy as np
 
@@ -195,25 +229,19 @@ def main() -> None:
         for i in rarest
     ]
     RESULT_DIR.mkdir(parents=True, exist_ok=True)
-    record = {
-        "inputs": fingerprints,
-        "build_json": {
-            k: v for k, v in build_info.items() if k.endswith("_sha256") or k == "snapshot_date"
-        },
-        "baseline_file": BASELINE.name,
-        "snapshot_date": json.loads(BASELINE.read_text(encoding="utf-8"))["build"]["snapshot_date"],
-        "model": model_record(info, sha256_file(rc.CACHE / info["cache"])),
-        "rarest_label_cards_le10": {"n": len(rarest), "detail": rarest_detail},
-        "bounds": BOUNDS,
-        "expected_all": EXPECTED_ALL,
-        "matches_expected": matches,
-        "strata": out,
-    }
+    record = build_result_record(
+        fingerprints=fingerprints,
+        build_info=build_info,
+        snapshot_date=json.loads(BASELINE.read_text(encoding="utf-8"))["build"]["snapshot_date"],
+        model=model_record(info, sha256_file(rc.CACHE / info["cache"])),
+        rarest_detail=rarest_detail,
+        matches=matches,
+        strata=out,
+    )
     (RESULT_DIR / "result.json").write_text(
         json.dumps(record, ensure_ascii=False, indent=1), encoding="utf-8"
     )
-    if not all(matches.values()):
-        sys.exit(1)
+    ensure_reproduced(matches)
 
 
 if __name__ == "__main__":

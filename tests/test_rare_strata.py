@@ -9,8 +9,10 @@ from scripts.defect_precedent.rare_strata import (
     BOUNDS,
     EXPECTED_ALL,
     EXPECTED_MODEL_FINGERPRINT,
+    build_result_record,
     check_inputs,
     compare_expected,
+    ensure_reproduced,
     model_record,
     rarity,
     stratum_of,
@@ -156,3 +158,40 @@ def test_결과_파일의_모델_추적_정보가_빠지지_않는다():
     assert record["cache_verified"] is True
     assert record["cache_sha256"] == "f" * 64
     assert {"name", "fastembed", "cache"} <= set(record)
+
+
+def test_기준과_다르면_비정상_종료한다():
+    ensure_reproduced({"BM25·원래": True, "모델 지문": True})  # 전부 같으면 아무 일 없다
+    with pytest.raises(SystemExit) as stop:
+        ensure_reproduced({"BM25·원래": True, "모델 지문": False})
+    assert stop.value.code == 1
+
+
+def test_결과_레코드에_추적_정보가_모두_들어간다():
+    model = model_record(
+        {
+            "fastembed": "0.9.0",
+            "model_fingerprint": "abc",
+            "cache": "x.npy",
+            "cache_verified": True,
+        },
+        "f" * 64,
+    )
+    matches = {"모델 지문": False}
+    record = build_result_record(
+        fingerprints={"raw_manifest_sha256": "a", "recalls_sha256": "b", "eval_sha256": "c"},
+        build_info={"recalls_sha256": "b", "snapshot_date": "2026-10-06", "ignored": 1},
+        snapshot_date="2026-10-06",
+        model=model,
+        rarest_detail=[{"action_no": "PE1"}],
+        matches=matches,
+        strata={"전체": {"n": 749}},
+    )
+    assert record["inputs"]["eval_sha256"] == "c"
+    assert record["build_json"] == {"recalls_sha256": "b", "snapshot_date": "2026-10-06"}
+    assert record["model"]["expected_model_fingerprint"] == EXPECTED_MODEL_FINGERPRINT
+    assert record["model"]["cache_sha256"] == "f" * 64
+    assert record["matches_expected"] == matches
+    assert record["rarest_label_cards_le10"]["n"] == 1
+    assert record["bounds"] == BOUNDS
+    assert record["strata"]["전체"]["n"] == 749
