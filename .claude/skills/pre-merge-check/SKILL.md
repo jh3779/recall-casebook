@@ -1,7 +1,7 @@
 ---
 name: pre-merge-check
 description: >
-  Run the pre-merge verification protocol for LG_CNS_RAG before ANY pull request
+  Run the pre-merge verification protocol for recall-casebook before ANY pull request
   in this repository is merged. This repo requires no human reviewers, so this
   skill confirms an automated review exists for the latest head commit, that
   every review finding was handled (fixed / rebutted with evidence / tracked as
@@ -13,7 +13,7 @@ description: >
   before every merge in this repo, not only when explicitly asked.
 ---
 
-# Pre-Merge Check — LG_CNS_RAG
+# Pre-Merge Check — recall-casebook
 
 정본 기준: [`docs/MERGE_PROTOCOL.md`](../../../docs/MERGE_PROTOCOL.md). 이 스킬은 그 문서의 게이트를
 실제로 수행하는 절차다. 둘이 어긋나면 문서가 정본 — 이 스킬을 고친다.
@@ -24,7 +24,7 @@ description: >
 
 ```bash
 N=<PR 번호>
-REPO=jh3779/LG_CNS_RAG_main
+REPO=jh3779/recall-casebook
 gh pr view $N --json title,body,headRefName,headRefOid,state
 ```
 
@@ -129,7 +129,7 @@ gh pr comment $N -b "merge-gate 재판정"
 `merge-gate`가 필수 체크가 아닌 동안(2단계 도입 중, MERGE_PROTOCOL 2-1절)·Actions를 끈 동안에는 로컬에서 읽기 전용으로 돌린다 — 결과 코멘트를 쓰기 전에 한 번(출력을 G-02·G-03 근거에 붙임), 게시한 뒤 한 번(`success` 확인):
 
 ```bash
-REPO=jh3779/LG_CNS_RAG_main PR_NUMBER=$N uv run python scripts/ci/merge_gate.py   # POST_STATUS 없음 = 상태 게시 안 함
+REPO=jh3779/recall-casebook PR_NUMBER=$N uv run python scripts/ci/merge_gate.py   # POST_STATUS 없음 = 상태 게시 안 함
 ```
 
 - 전부 ✅ → 코멘트 마지막 줄에 병합할 사람을 `@태그`하고 "병합 전 검증 확인 요청드립니다".

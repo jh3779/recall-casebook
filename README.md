@@ -1,10 +1,12 @@
-# LG_CNS_RAG
+# Recall Casebook — 결함 선례 찾기 도우미
 
 LG CNS AI Campus RAG 팀 프로젝트 — **결함 선례 찾기 도우미** (DEC-030).
 
 한국 부품사에서 북미 수출 차종을 맡은 품질·제품안전 엔지니어가 원인 모를 결함을 받았을 때, 미국 정부(NHTSA) 공개 리콜·결함 조사에서
 같은 부품의 다른 회사 선례와 그 원인 서술을 **원문 그대로, 리콜 번호와 함께** 찾아 주는 RAG 서비스. 판정("리콜 대상입니다")은 하지 않는다. <!-- principle-ok: 금지 문구 인용 -->
 
+> 시연: 화면 <https://lg-cns-rag-web.vercel.app> · API <https://lg-cns-rag.vercel.app> (영어 질문만). 라이선스: [MIT](LICENSE), 데이터·3D 모델 출처는 [NOTICE](NOTICE).
+>
 > 기획 상세: [`docs/기획_결함선례.md`](docs/기획_결함선례.md). 데이터·시험지·기준 점수 재현: [`scripts/defect_precedent/README.md`](scripts/defect_precedent/README.md).
 > 이전 주제 문서 — 온보딩 RAG [`docs/archive/기획v1.md`](docs/archive/기획v1.md)(DEC-010), Compliance AI [`docs/archive/기획.md`](docs/archive/기획.md) — 는 참고용이다.
 
@@ -34,7 +36,7 @@ uv run python -m scripts.defect_precedent.bm25_baseline    # 기준 점수
 
 ```bash
 git clone <repo-url>
-cd LG_CNS_RAG_main
+cd recall-casebook
 uv sync                # Python 3.12 + 의존성 설치 (.venv)
 lefthook install       # git 훅 설치
 cp .env.example .env   # 실제 키는 .env에만 — 절대 커밋하지 않는다

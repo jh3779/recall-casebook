@@ -91,7 +91,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 ```bash
 BASE_SHA=$(git merge-base origin/main HEAD) HEAD_SHA=HEAD PR_BODY="$(gh pr view <N> --json body -q .body)" \
   python3 scripts/ci/pr_checks.py
-REPO=jh3779/LG_CNS_RAG_main PR_NUMBER=<N> python3 scripts/ci/merge_gate.py   # 상태는 게시하지 않음
+REPO=jh3779/recall-casebook PR_NUMBER=<N> python3 scripts/ci/merge_gate.py   # 상태는 게시하지 않음
 ```
 
 ---
@@ -100,7 +100,7 @@ REPO=jh3779/LG_CNS_RAG_main PR_NUMBER=<N> python3 scripts/ci/merge_gate.py   # �
 
 ```bash
 N=<PR 번호>
-REPO=jh3779/LG_CNS_RAG_main
+REPO=jh3779/recall-casebook
 
 # G-01 CI
 gh pr checks $N
@@ -195,13 +195,13 @@ G-07 grep에 걸렸다고 바로 실패는 아니다 — 문서·테스트에서
 2. **필수 체크 해제** — GitHub → Settings → Rules → Rulesets → `main 보호` → "Require status checks to pass"를 끈다(나머지 규칙 — 삭제 금지·force push 금지·PR 필수 — 는 그대로). 명령으로 하려면 룰셋 JSON에서 `required_status_checks` 규칙만 빼서 다시 넣는다:
    ```bash
    B=~/lgcns_ruleset_backup.json   # 저장소 밖에 둔다(커밋에 딸려 들어가지 않게)
-   gh api repos/jh3779/LG_CNS_RAG_main/rulesets/24290303 > $B
+   gh api repos/jh3779/recall-casebook/rulesets/24290303 > $B
    # 먼저 아무것도 빼지 않은 본문으로 PUT이 200을 내는지 확인한다(읽기 전용 필드는 jq로 뺀다)
-   jq '{name, target, enforcement, conditions, bypass_actors, rules}' $B | gh api -X PUT repos/jh3779/LG_CNS_RAG_main/rulesets/24290303 --input - > /dev/null
+   jq '{name, target, enforcement, conditions, bypass_actors, rules}' $B | gh api -X PUT repos/jh3779/recall-casebook/rulesets/24290303 --input - > /dev/null
    # 필수 체크 규칙만 뺀다
    jq '{name, target, enforcement, conditions, bypass_actors, rules: [.rules[] | select(.type != "required_status_checks")]}' $B \
-     | gh api -X PUT repos/jh3779/LG_CNS_RAG_main/rulesets/24290303 --input -
+     | gh api -X PUT repos/jh3779/recall-casebook/rulesets/24290303 --input -
    ```
-3. **Actions 끄기(되돌릴 수 있는 쪽을 먼저)** — Settings → Actions → General → "Disable actions", 또는 `gh api -X PUT repos/jh3779/LG_CNS_RAG_main/actions/permissions -F enabled=false`. 워크플로 파일은 남겨 둔다. **파일까지 지우는 것**(`git rm .github/workflows/*.yml`을 PR로)은 한도가 다음 달에도 모자랄 것이 확실할 때만 — 되살리려면 그 PR을 revert한다.
-4. **병합 전 검증(4절)은 그대로** — PR 브랜치에 `origin/main`을 먼저 합치고(CI가 보던 "main에 합친 상태"와 맞춤) push한 뒤, `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh`로 돌린다. 통과하면 스크립트가 결과 줄(커밋 SHA·DB 테스트 실행됨·PR 번호)·pytest 요약·로그 전체 sha256(tee가 로그를 다 쓴 뒤 계산)을 PR 코멘트 `### 🧪 local CI (엄격) — 커밋 <SHA>`로 **직접** 남기고, 코멘트를 남기지 못하면 실패로 끝난다. G-01 근거는 **그 PR 코멘트뿐**이다 — 출력을 손으로 옮긴 줄은 근거로 쓰지 않는다(같은 계정이라 위조를 완전히 막지는 못한다, DEC-046). 이 모드는 열린 PR이 없거나 PR 최신 커밋과 검사 커밋이 다르거나 최신 `origin/main`이 검사 커밋에 들어 있지 않거나 검사 도중 main이 바뀌거나 `scripts/`·`lefthook.yml`에 커밋하지 않은 변경이 있거나 `scripts/`·`server/`·`tests/`에 추적하지 않는 새 파일이 있거나 `TEST_DATABASE_URL`이 전용 시험 DB(실제 접속 대상 `host`·`hostaddr`·`PGHOSTADDR`가 localhost·127.0.0.1이고 DB 이름 `lgcns_test` — `scripts/ci/db_guard.py`)가 아니거나 DB 테스트를 건너뛰거나 PR 코멘트를 남기지 못하면 실패하고, 통과하면 "엄격 — 병합 근거로 쓸 수 있음" 줄로 끝난다(기본 모드 출력은 근거로 쓰지 않는다). main을 합치면 head가 바뀌므로 자동 리뷰도 그 head로 다시 받는다(G-03). `frontend/`는 이 스크립트가 보지 않으므로(프런트 CI는 필수가 아님) 전환 중 프런트를 바꾸면 `cd frontend && npm ci && npm run lint && npm run build && npm test`를 따로 돌려 근거에 적는다. `merge-gate` 상태는 붙지 않으므로 결과 코멘트를 쓰기 전에 **로컬에서 `merge_gate.py`를 읽기 전용으로 돌려**(`REPO=jh3779/LG_CNS_RAG_main PR_NUMBER=<N> uv run python scripts/ci/merge_gate.py` — `POST_STATUS`를 주지 않으면 상태를 게시하지 않는다) 출력(`success`/`pending`/`failure`와 사유)을 G-02·G-03 근거에 붙이고, 결과 코멘트를 게시한 뒤 한 번 더 돌려 `success`인지 확인한다(DEC-046). 자동 리뷰(리뷰봇·리뷰 에이전트)는 Actions와 무관하게 돈다.
-5. **되돌리기(한도가 다시 생기면)** — Actions 켜기(`-F enabled=true`) → 백업에서 읽기 전용 필드를 뺀 본문으로 필수 체크 복원: `jq '{name, target, enforcement, conditions, bypass_actors, rules}' ~/lgcns_ruleset_backup.json | gh api -X PUT repos/jh3779/LG_CNS_RAG_main/rulesets/24290303 --input -` → 열린 PR에 빈 커밋을 올려 CI를 한 번 돌린다.
+3. **Actions 끄기(되돌릴 수 있는 쪽을 먼저)** — Settings → Actions → General → "Disable actions", 또는 `gh api -X PUT repos/jh3779/recall-casebook/actions/permissions -F enabled=false`. 워크플로 파일은 남겨 둔다. **파일까지 지우는 것**(`git rm .github/workflows/*.yml`을 PR로)은 한도가 다음 달에도 모자랄 것이 확실할 때만 — 되살리려면 그 PR을 revert한다.
+4. **병합 전 검증(4절)은 그대로** — PR 브랜치에 `origin/main`을 먼저 합치고(CI가 보던 "main에 합친 상태"와 맞춤) push한 뒤, `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh`로 돌린다. 통과하면 스크립트가 결과 줄(커밋 SHA·DB 테스트 실행됨·PR 번호)·pytest 요약·로그 전체 sha256(tee가 로그를 다 쓴 뒤 계산)을 PR 코멘트 `### 🧪 local CI (엄격) — 커밋 <SHA>`로 **직접** 남기고, 코멘트를 남기지 못하면 실패로 끝난다. G-01 근거는 **그 PR 코멘트뿐**이다 — 출력을 손으로 옮긴 줄은 근거로 쓰지 않는다(같은 계정이라 위조를 완전히 막지는 못한다, DEC-046). 이 모드는 열린 PR이 없거나 PR 최신 커밋과 검사 커밋이 다르거나 최신 `origin/main`이 검사 커밋에 들어 있지 않거나 검사 도중 main이 바뀌거나 `scripts/`·`lefthook.yml`에 커밋하지 않은 변경이 있거나 `scripts/`·`server/`·`tests/`에 추적하지 않는 새 파일이 있거나 `TEST_DATABASE_URL`이 전용 시험 DB(실제 접속 대상 `host`·`hostaddr`·`PGHOSTADDR`가 localhost·127.0.0.1이고 DB 이름 `lgcns_test` — `scripts/ci/db_guard.py`)가 아니거나 DB 테스트를 건너뛰거나 PR 코멘트를 남기지 못하면 실패하고, 통과하면 "엄격 — 병합 근거로 쓸 수 있음" 줄로 끝난다(기본 모드 출력은 근거로 쓰지 않는다). main을 합치면 head가 바뀌므로 자동 리뷰도 그 head로 다시 받는다(G-03). `frontend/`는 이 스크립트가 보지 않으므로(프런트 CI는 필수가 아님) 전환 중 프런트를 바꾸면 `cd frontend && npm ci && npm run lint && npm run build && npm test`를 따로 돌려 근거에 적는다. `merge-gate` 상태는 붙지 않으므로 결과 코멘트를 쓰기 전에 **로컬에서 `merge_gate.py`를 읽기 전용으로 돌려**(`REPO=jh3779/recall-casebook PR_NUMBER=<N> uv run python scripts/ci/merge_gate.py` — `POST_STATUS`를 주지 않으면 상태를 게시하지 않는다) 출력(`success`/`pending`/`failure`와 사유)을 G-02·G-03 근거에 붙이고, 결과 코멘트를 게시한 뒤 한 번 더 돌려 `success`인지 확인한다(DEC-046). 자동 리뷰(리뷰봇·리뷰 에이전트)는 Actions와 무관하게 돈다.
+5. **되돌리기(한도가 다시 생기면)** — Actions 켜기(`-F enabled=true`) → 백업에서 읽기 전용 필드를 뺀 본문으로 필수 체크 복원: `jq '{name, target, enforcement, conditions, bypass_actors, rules}' ~/lgcns_ruleset_backup.json | gh api -X PUT repos/jh3779/recall-casebook/rulesets/24290303 --input -` → 열린 PR에 빈 커밋을 올려 CI를 한 번 돌린다.
