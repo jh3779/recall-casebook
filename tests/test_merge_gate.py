@@ -1,6 +1,9 @@
-"""scripts/ci/merge_gate.py 판정 로직 테스트 — GitHub 호출 없이 evaluate()만 검증한다."""
+"""scripts/ci/merge_gate.py 판정 로직 테스트 — GitHub 호출 없이 evaluate()·split_trusted()와 가짜 gh로 돌린 main()을 검증한다."""
 
-from scripts.ci.merge_gate import evaluate
+import json
+
+from scripts.ci import merge_gate as mg
+from scripts.ci.merge_gate import evaluate, split_trusted
 
 HEAD = "b86f4ef0efa700cc53388958f6252ec117ed9922"
 OLD = "937597a0000000000000000000000000000000000"
@@ -233,3 +236,156 @@ def test_unresolved_threads_beat_edited_result():
     gate = evaluate(HEAD, [], [review(HEAD, "2026-10-01T14:00:00Z"), tampered], 2)
     assert gate.state == "failure"
     assert "2개" in gate.description
+
+
+def by(association: str | None, item: dict) -> dict:
+    return {**item, "association": association}
+
+
+def test_split_trusted_keeps_only_collaborators():
+    items = [
+        by("OWNER", review(HEAD)),
+        by("MEMBER", review(HEAD)),
+        by("COLLABORATOR", review(HEAD)),
+        by("CONTRIBUTOR", review(HEAD)),
+        by("NONE", review(HEAD)),
+        by("FIRST_TIME_CONTRIBUTOR", review(HEAD)),
+        review(HEAD),  # association 없음 — 신뢰하지 않는다
+    ]
+    kept, dropped = split_trusted(items)
+    assert [i["association"] for i in kept] == ["OWNER", "MEMBER", "COLLABORATOR"]
+    assert dropped == 4
+
+
+def test_outsider_result_comment_cannot_pass_the_gate():
+    # 협업자의 리뷰만 있고, ✅ 결과 코멘트는 외부 사용자가 올렸다 → 결과 없음으로 본다
+    comments, _ = split_trusted([by("OWNER", review(HEAD)), by("NONE", result("✅", HEAD))])
+    gate = evaluate(HEAD, [], comments, 0)
+    assert gate.state == "pending"
+    assert "검증 결과 코멘트 없음" in gate.description
+
+
+def test_outsider_review_marker_does_not_count_as_review():
+    comments, _ = split_trusted([by("NONE", review(HEAD)), by("OWNER", result("✅", HEAD))])
+    assert evaluate(HEAD, [], comments, 0).state == "pending"
+
+
+def test_outsider_fail_result_cannot_block_the_gate():
+    comments, _ = split_trusted(
+        [by("OWNER", review(HEAD)), by("OWNER", result("✅", HEAD)), by("NONE", result("❌", HEAD))]
+    )
+    assert evaluate(HEAD, [], comments, 0).state == "success"
+
+
+def test_outsider_changes_requested_review_is_ignored():
+    reviews, dropped = split_trusted(
+        [by("NONE", gh_review(HEAD, state="CHANGES_REQUESTED", body="막기", author="stranger"))]
+    )
+    gate = evaluate(HEAD, reviews, [by("OWNER", review(HEAD)), by("OWNER", result("✅", HEAD))], 0)
+    assert dropped == 1
+    assert gate.state == "success"
+
+
+def test_collaborator_changes_requested_still_blocks():
+    reviews, _ = split_trusted(
+        [by("COLLABORATOR", gh_review(HEAD, state="CHANGES_REQUESTED", author="mate"))]
+    )
+    gate = evaluate(HEAD, reviews, [by("OWNER", review(HEAD)), by("OWNER", result("✅", HEAD))], 0)
+    assert gate.state == "failure"
+
+
+# --- fetch → main 연결 (가짜 gh) ---------------------------------------------------
+def rest_comment(body: str, association: str | None, n: int, author: str = "u") -> dict:
+    return {
+        "id": n,
+        "body": body,
+        "user": {"login": author},
+        "created_at": f"2026-10-21T00:00:{n:02d}Z",
+        "updated_at": f"2026-10-21T00:00:{n:02d}Z",
+        "author_association": association,
+    }
+
+
+def rest_review(state: str, body: str, association: str | None, author: str) -> dict:
+    return {
+        "commit_id": HEAD,
+        "user": {"login": author},
+        "state": state,
+        "body": body,
+        "submitted_at": "2026-10-21T00:00:30Z",
+        "author_association": association,
+    }
+
+
+def thread(resolved: bool, association: str | None) -> dict:
+    return {"isResolved": resolved, "comments": {"nodes": [{"authorAssociation": association}]}}
+
+
+def run_main(monkeypatch, capsys, comments, reviews, threads):
+    def fake_gh(*args):
+        if args[:2] == ("api", "graphql"):
+            query = next(a for a in args if a.startswith("query="))
+            assert (
+                "authorAssociation" in query
+            )  # 쿼리에서 작성자 권한이 빠지면 스레드 필터가 무력해진다
+            data = {"repository": {"pullRequest": {"reviewThreads": {"nodes": threads}}}}
+            return json.dumps([{"data": data}])
+        path = args[1]
+        if path.endswith("/pulls/7"):
+            return json.dumps({"state": "open", "head": {"sha": HEAD}})
+        if "/pulls/7/reviews" in path:
+            return json.dumps([reviews])
+        if "/issues/7/comments" in path:
+            return json.dumps([comments])
+        raise AssertionError(f"예상 밖 호출: {args}")
+
+    monkeypatch.setattr(mg, "gh", fake_gh)
+    monkeypatch.setenv("REPO", "o/r")
+    monkeypatch.setenv("PR_NUMBER", "7")
+    monkeypatch.delenv("POST_STATUS", raising=False)
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    assert mg.main() == 0
+    return capsys.readouterr().out
+
+
+def owner_pair() -> list[dict]:
+    return [
+        rest_comment(review(HEAD)["body"], "OWNER", 1, "owner"),
+        rest_comment(result("✅", HEAD)["body"], "OWNER", 2, "owner"),
+    ]
+
+
+def test_main_unknown_thread_starter_is_counted_not_ignored(monkeypatch, capsys):
+    # 첫 코멘트 정보가 없는 미해결 스레드는 작성자를 알 수 없으므로 막는 쪽(failure)으로 센다
+    out = run_main(monkeypatch, capsys, owner_pair(), [], [{"isResolved": False}])
+    assert "`merge-gate`): failure" in out
+
+
+def test_main_ignores_outsider_noise_end_to_end(monkeypatch, capsys):
+    comments = owner_pair() + [rest_comment(result("❌", HEAD)["body"], "NONE", 3, "stranger")]
+    reviews = [rest_review("CHANGES_REQUESTED", "막는다", "CONTRIBUTOR", "stranger")]
+    out = run_main(monkeypatch, capsys, comments, reviews, [thread(False, "NONE")])
+    assert "`merge-gate`): success" in out
+    assert "협업자가 아닌 작성자의 리뷰 1개·코멘트 1개·미해결 스레드 1개" in out
+
+
+def test_main_outsider_only_result_stays_pending(monkeypatch, capsys):
+    comments = [
+        rest_comment(review(HEAD)["body"], "OWNER", 1, "owner"),
+        rest_comment(result("✅", HEAD)["body"], "NONE", 2, "stranger"),
+    ]
+    out = run_main(monkeypatch, capsys, comments, [], [])
+    assert "`merge-gate`): pending" in out
+
+
+def test_main_collaborator_unresolved_thread_still_fails(monkeypatch, capsys):
+    out = run_main(monkeypatch, capsys, owner_pair(), [], [thread(False, "OWNER")])
+    assert "`merge-gate`): failure" in out
+    assert "미해결 리뷰 스레드 1개" in out
+
+
+def test_main_collaborator_changes_requested_review_blocks(monkeypatch, capsys):
+    reviews = [rest_review("CHANGES_REQUESTED", "고쳐 주세요", "COLLABORATOR", "mate")]
+    out = run_main(monkeypatch, capsys, owner_pair(), reviews, [])
+    assert "`merge-gate`): failure" in out
+    assert "변경 요청 리뷰 남아 있음 (mate)" in out
