@@ -14,6 +14,9 @@
 
 상태: 전부 충족 → success / ❌ 결과·미해결 스레드·변경 요청 → failure /
       리뷰 없음·결과 없음·결과 뒤 새 리뷰 → pending
+작성자 제한: 저장소가 공개돼도 리뷰·결과·재판정 코멘트와 GitHub 리뷰는 **협업자(author_association이
+OWNER·MEMBER·COLLABORATOR)가 쓴 것만** 센다. 그 밖의 작성자(외부 기여자·익명)가 남긴 "자동 리뷰"·"병합 전 검증
+결과"·변경 요청은 판정에 쓰지 않는다 (공개 저장소에서 누구나 코멘트를 달 수 있어 게이트를 통과시키거나 막는 것을 방지).
 G-04(지적을 제대로 처리했는가)·G-06(diff를 읽었는가)의 "내용"은 기계가 판정할 수 없다 —
 그 판단은 결과 코멘트를 쓴 에이전트와 병합하는 사람의 몫이고, 이 게이트는 그 코멘트가 현재 head에
 대해 ✅로 존재하는지까지만 강제한다.
@@ -31,6 +34,8 @@ import sys
 from dataclasses import dataclass
 
 CONTEXT = "merge-gate"
+# 판정에 쓰는 작성자 권한 — 이 밖의 작성자가 남긴 리뷰·코멘트는 세지 않는다 (author_association 값이 없으면 제외)
+TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
 # 첫 줄에 SHA는 하나만 쓴다 (MERGE_PROTOCOL 1절). 끝 경계: `커밋 addedfeature` 같은 영단어를 SHA로 읽지 않게
 REVIEW_MARKER = re.compile(
     r"^#{2,3}\s*🤖\s*자동 리뷰.*?(?:\(head|커밋)\s*`?([0-9a-f]{7,40})(?![0-9a-zA-Z])`?"
@@ -49,6 +54,12 @@ class Gate:
 
 def first_line(body: str) -> str:
     return body.strip().split("\n", 1)[0].strip()
+
+
+def split_trusted(items: list[dict]) -> tuple[list[dict], int]:
+    """협업자가 쓴 항목만 남기고, 제외한 개수를 함께 돌려준다. `association`이 없으면 신뢰하지 않는다."""
+    kept = [i for i in items if i.get("association") in TRUSTED_ASSOCIATIONS]
+    return kept, len(items) - len(kept)
 
 
 def same_commit(short: str, head: str) -> bool:
@@ -169,6 +180,7 @@ def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int
             "state": r.get("state"),
             "body": r.get("body") or "",
             "at": r.get("submitted_at") or "",
+            "association": r.get("author_association"),
         }
         for r in gh_pages(f"repos/{repo}/pulls/{number}/reviews?per_page=100")
     ]
@@ -181,6 +193,7 @@ def fetch(repo: str, number: str) -> tuple[str, str, list[dict], list[dict], int
             "author": (c.get("user") or {}).get("login"),
             "at": c.get("created_at") or "",
             "updated": c.get("updated_at") or "",
+            "association": c.get("author_association"),
         }
         for c in sorted(raw, key=lambda c: (c.get("created_at") or "", c.get("id") or 0))
     ]
@@ -223,7 +236,13 @@ def main() -> int:
         print(f"PR #{number}은 {state} — 평가하지 않음")
         return 0
 
+    reviews, dropped_reviews = split_trusted(reviews)
+    comments, dropped_comments = split_trusted(comments)
     gate = evaluate(head, reviews, comments, unresolved)
+    if dropped_reviews or dropped_comments:
+        gate.lines.append(
+            f"- 협업자가 아닌 작성자의 리뷰 {dropped_reviews}개·코멘트 {dropped_comments}개는 세지 않음"
+        )
     summary = (
         f"## 병합 게이트 (`{CONTEXT}`): {gate.state}\n\n{gate.description}\n\n"
         + "\n".join(gate.lines)

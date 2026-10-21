@@ -35,9 +35,11 @@ jobs:
   evaluate:
     # PR 코멘트 중 판정에 쓰일 수 있는 것만 — merge_gate.py의 RESULT_MARKER·REVIEW_MARKER·RETRIGGER_MARKER 문구가 있을 때.
     # 정규식은 공백을 유연하게 받으므로 첫 줄 고정 비교 대신 문구 포함으로 넓게 거른다(놓치는 쪽보다 한 번 더 도는 쪽이 안전).
+    # 작성자는 협업자(OWNER·MEMBER·COLLABORATOR)만 — 공개 저장소에서 외부인의 코멘트가 판정을 돌리지 못하게 한다(merge_gate.py도 같은 기준으로 거른다).
     # edited는 수정 전 본문(changes.body.from)도 본다 — 결과 코멘트를 고치며 문구를 지워도 무효화가 빠지지 않게.
     if: >-
-      github.event.issue.pull_request && (
+      github.event.issue.pull_request &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) && (
         contains(github.event.comment.body, '병합 전 검증 결과') ||
         contains(github.event.comment.body, '자동 리뷰') ||
         contains(github.event.comment.body, 'merge-gate 재판정') ||

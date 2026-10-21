@@ -1,6 +1,6 @@
 """scripts/ci/merge_gate.py 판정 로직 테스트 — GitHub 호출 없이 evaluate()만 검증한다."""
 
-from scripts.ci.merge_gate import evaluate
+from scripts.ci.merge_gate import evaluate, split_trusted
 
 HEAD = "b86f4ef0efa700cc53388958f6252ec117ed9922"
 OLD = "937597a0000000000000000000000000000000000"
@@ -233,3 +233,59 @@ def test_unresolved_threads_beat_edited_result():
     gate = evaluate(HEAD, [], [review(HEAD, "2026-10-01T14:00:00Z"), tampered], 2)
     assert gate.state == "failure"
     assert "2개" in gate.description
+
+
+def by(association: str | None, item: dict) -> dict:
+    return {**item, "association": association}
+
+
+def test_split_trusted_keeps_only_collaborators():
+    items = [
+        by("OWNER", review(HEAD)),
+        by("MEMBER", review(HEAD)),
+        by("COLLABORATOR", review(HEAD)),
+        by("CONTRIBUTOR", review(HEAD)),
+        by("NONE", review(HEAD)),
+        by("FIRST_TIME_CONTRIBUTOR", review(HEAD)),
+        review(HEAD),  # association 없음 — 신뢰하지 않는다
+    ]
+    kept, dropped = split_trusted(items)
+    assert [i["association"] for i in kept] == ["OWNER", "MEMBER", "COLLABORATOR"]
+    assert dropped == 4
+
+
+def test_outsider_result_comment_cannot_pass_the_gate():
+    # 협업자의 리뷰만 있고, ✅ 결과 코멘트는 외부 사용자가 올렸다 → 결과 없음으로 본다
+    comments, _ = split_trusted([by("OWNER", review(HEAD)), by("NONE", result("✅", HEAD))])
+    gate = evaluate(HEAD, [], comments, 0)
+    assert gate.state == "pending"
+    assert "검증 결과 코멘트 없음" in gate.description
+
+
+def test_outsider_review_marker_does_not_count_as_review():
+    comments, _ = split_trusted([by("NONE", review(HEAD)), by("OWNER", result("✅", HEAD))])
+    assert evaluate(HEAD, [], comments, 0).state == "pending"
+
+
+def test_outsider_fail_result_cannot_block_the_gate():
+    comments, _ = split_trusted(
+        [by("OWNER", review(HEAD)), by("OWNER", result("✅", HEAD)), by("NONE", result("❌", HEAD))]
+    )
+    assert evaluate(HEAD, [], comments, 0).state == "success"
+
+
+def test_outsider_changes_requested_review_is_ignored():
+    reviews, dropped = split_trusted(
+        [by("NONE", gh_review(HEAD, state="CHANGES_REQUESTED", body="막기", author="stranger"))]
+    )
+    gate = evaluate(HEAD, reviews, [by("OWNER", review(HEAD)), by("OWNER", result("✅", HEAD))], 0)
+    assert dropped == 1
+    assert gate.state == "success"
+
+
+def test_collaborator_changes_requested_still_blocks():
+    reviews, _ = split_trusted(
+        [by("COLLABORATOR", gh_review(HEAD, state="CHANGES_REQUESTED", author="mate"))]
+    )
+    gate = evaluate(HEAD, reviews, [by("OWNER", review(HEAD)), by("OWNER", result("✅", HEAD))], 0)
+    assert gate.state == "failure"
