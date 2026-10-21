@@ -7,7 +7,7 @@ Recall Casebook (결함 선례 찾기 도우미)
    (https://catalog.data.gov/dataset/nhtsas-office-of-defects-investigation-odi-recalls-recalls-flat-file)
    원본 파일과 보고서 PDF는 이 저장소에 담지 않는다(스크립트로 다시 받는다 — scripts/defect_precedent/README.md).
    Part 573 보고서는 제조사가 제출한 문서이므로 그 내용의 이용 조건은 확인하지 못했다. 이 서비스는 원문을 출처(리콜 번호·보고서 파일)와 함께 그대로 보여 줄 뿐 판정하지 않는다.
-   저장소에는 리콜 기록에서 만든 파생 데이터(frontend/public/data/*.json, scripts/defect_precedent/maker_aliases.csv 등)가 들어 있다.
+   저장소에는 리콜 기록에서 만든 파생 데이터(frontend/public/data/*.json, scripts/defect_precedent/maker_aliases.csv, frontend/src/search/__fixtures__/*.json 등)가 들어 있다.
    이 파생 데이터에 위의 MIT 라이선스가 적용되는지는 정하지 않았다(원본의 이용 조건을 따른다).
    서비스 화면의 결과는 참고 자료이며 리콜 범위·보고 판단을 대신하지 않는다.
 

@@ -1,7 +1,7 @@
 ---
 name: pre-merge-check
 description: >
-  Run the pre-merge verification protocol for LG_CNS_RAG before ANY pull request
+  Run the pre-merge verification protocol for recall-casebook before ANY pull request
   in this repository is merged. This repo requires no human reviewers, so this
   skill confirms an automated review exists for the latest head commit, that
   every review finding was handled (fixed / rebutted with evidence / tracked as
@@ -13,7 +13,7 @@ description: >
   before every merge in this repo, not only when explicitly asked.
 ---
 
-# Pre-Merge Check — LG_CNS_RAG
+# Pre-Merge Check — recall-casebook
 
 정본 기준: [`docs/MERGE_PROTOCOL.md`](../../../docs/MERGE_PROTOCOL.md). 이 스킬은 그 문서의 게이트를
 실제로 수행하는 절차다. 둘이 어긋나면 문서가 정본 — 이 스킬을 고친다.
