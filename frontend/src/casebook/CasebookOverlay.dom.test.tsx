@@ -46,6 +46,7 @@ it("3D 코드를 받는 중에 Esc로 닫으면 연 버튼으로 초점이 돌�
 });
 
 it("3D 창을 연 채 다른 화면의 주소로 이동하면 닫히고, 케이스북 주소로의 이동은 닫지 않는다", async () => {
+  gate.open(); // 이 시험만 단독으로 골라 돌려도 가짜 3D 코드가 도착하도록 스스로 연다(이미 열려 있으면 아무 일도 없다)
   const { user, opener } = await openFirstCard();
   await user.click(opener);
   expect(await screen.findByRole("dialog", { name: `fake 3D ${card.campno}` })).toBeTruthy();
