@@ -4,7 +4,7 @@
 
 ## 실행
 
-Node **24** (`.nvmrc`), npm을 사용한다.
+Node **24.15 이상 24.x** (`.nvmrc`의 `24`는 설치 때 최신 24.x가 된다. `jsdom` 30이 24.15.0 이상을 요구해 `package.json`의 `engines`도 `^24.15.0`이다), npm을 사용한다.
 
 ```bash
 cd frontend
@@ -14,7 +14,7 @@ npm run dev       # http://localhost:5173
 
 `npm run lint`는 oxlint, `npm run build`는 TypeScript 검사와 Vite 빌드, `npm test`는 vitest다. 기본 포트 5173을 이미 쓰면 자동으로 다른 포트로 넘어가지 않고 안내한다.
 
-시험은 기본이 Node 환경(`renderToStaticMarkup`)이다. 클릭·입력 같은 실제 DOM 동작이 필요한 시험만 파일 맨 위에 `// @vitest-environment jsdom`을 쓰고 `@testing-library/react`·`@testing-library/user-event`로 그린다(예: `src/theme.dom.test.tsx`). 전역 환경을 jsdom으로 바꾸면 `file:` URL로 파일을 읽는 시험이 깨진다. vitest 설정에 `globals`가 없어 Testing Library의 자동 정리가 돌지 않으므로, 한 파일에 시험이 여럿이면 `afterEach(cleanup)`을 넣는다.
+시험은 기본이 Node 환경(`renderToStaticMarkup`)이다. 클릭·입력 같은 실제 DOM 동작이 필요한 시험만 파일 맨 위에 `// @vitest-environment jsdom`을 쓰고 `@testing-library/react`·`@testing-library/user-event`로 그린다(예: `src/theme.dom.test.tsx`). 전역 환경을 jsdom으로 바꾸면 `file:` URL로 파일을 읽는 시험이 깨진다. vitest 설정에 `globals`가 없어 Testing Library의 자동 정리가 돌지 않으므로, 한 파일에 시험이 여럿이면 `afterEach(cleanup)`을 넣고, 테마처럼 `localStorage`·`document.documentElement.dataset`을 건드리는 시험은 시험마다 그 값도 비운다.
 
 ## 검색과 API
 
