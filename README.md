@@ -9,6 +9,7 @@
 ## 써 보기
 
 - 화면: <https://lg-cns-rag-web.vercel.app> — 영어로 결함을 한 줄 넣으면 선례가 나옵니다. 한국어 질문은 지원하지 않습니다.
+- 시연 영상(2분 26초, 2026-10-18 화면 기준 — 이후 화면이 바뀌었을 수 있습니다): [릴리스 `demo-2026-10-18`](https://github.com/jh3779/recall-casebook/releases/tag/demo-2026-10-18)
 - API: 같은 질문을 직접 보낼 수도 있습니다.
 
 ```bash
