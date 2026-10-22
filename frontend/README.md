@@ -14,6 +14,8 @@ npm run dev       # http://localhost:5173
 
 `npm run lint`는 oxlint, `npm run build`는 TypeScript 검사와 Vite 빌드, `npm test`는 vitest다. 기본 포트 5173을 이미 쓰면 자동으로 다른 포트로 넘어가지 않고 안내한다.
 
+시험은 기본이 Node 환경(`renderToStaticMarkup`)이다. 클릭·입력 같은 실제 DOM 동작이 필요한 시험만 파일 맨 위에 `// @vitest-environment jsdom`을 쓰고 `@testing-library/react`·`@testing-library/user-event`로 그린다(예: `src/theme.dom.test.tsx`). 전역 환경을 jsdom으로 바꾸면 `file:` URL로 파일을 읽는 시험이 깨진다. vitest 설정에 `globals`가 없어 Testing Library의 자동 정리가 돌지 않으므로, 한 파일에 시험이 여럿이면 `afterEach(cleanup)`을 넣는다.
+
 ## 검색과 API
 
 - 기본 API: `https://lg-cns-rag.vercel.app`. 요청은 `POST /search`의 `{ "question": "..." }`, 판본은 `GET /health`다. 서버 계약은 `server/api.py`를 따른다.
