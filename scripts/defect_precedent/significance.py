@@ -11,7 +11,7 @@
 
 (3) `paired_permutation_p`의 0 판정·동률 허용오차가 원본의 고정 절댓값(1e-15)이었는데, 모든 차이에 같은 양수를 곱한(단위를 바꾼)
 입력에서 결과가 달라지는 결함이라(Codex 리뷰, 예: [1.0]*10 → 0.00195, [2e-15]*10 → 0.109) 정확히 0만 빼고 합은 math.fsum으로,
-동률 비교는 상대 오차로 바꿨다. 축척 불변 시험이 `tests/test_significance.py`에 있다.
+동률 비교는 자료의 크기에 비례하는 허용오차(평균 절댓값의 1e-12배)로 바꿨다. 축척 불변 시험이 `tests/test_significance.py`에 있다.
 
 이 모듈은 아무 곳에서도 import하지 않는다 — 검색·점수·서비스 응답을 바꾸지 않는다. 어떤 평가 점수도 만들지 않으며,
 유효한 평가 라벨이 없으면 이 함수들로 성능을 주장하지 않는다(AGENTS.md 5-1·5-2).
@@ -40,12 +40,6 @@ def exact_mcnemar(a_wins: int, b_wins: int) -> float:
     return min(1.0, 2 * tail)
 
 
-def _at_least(value: float, observed: float) -> bool:
-    """value >= observed. 부동소수 합산 오차로 같은 값이 아주 조금 작게 나오는 경우만 같다고 본다 — 상대 오차라서 모든 차이에
-    같은 양수를 곱해도(단위를 바꿔도) 판정이 변하지 않는다."""
-    return value >= observed or math.isclose(value, observed, rel_tol=1e-9, abs_tol=0.0)
-
-
 def paired_permutation_p(differences: list[float], seed: int, samples: int = 100_000) -> float:
     """평균 차이의 양측 paired sign-flip permutation p값.
 
@@ -60,18 +54,22 @@ def paired_permutation_p(differences: list[float], seed: int, samples: int = 100
     if not diffs:
         return 1.0
     observed = abs(math.fsum(diffs) / len(diffs))
+    # 부동소수 합산 오차로 같은 값이 아주 조금 작게 나오는 경우만 같다고 본다. 허용오차를 자료 자체의 크기(평균 절댓값)에 맞추므로
+    # 모든 차이에 같은 양수를 곱하면(단위를 바꾸면) 허용오차도 같은 배율로 변해 판정이 달라지지 않는다. 합이 0으로 상쇄되는
+    # 입력과 값의 크기 차이가 큰 입력에서도 정의대로 센다.
+    tol = 1e-12 * math.fsum(abs(x) for x in diffs) / len(diffs)
     if len(diffs) <= 20:
         extreme = 0
         total = 1 << len(diffs)
         for mask in range(total):
             mean = math.fsum(x if mask & (1 << i) else -x for i, x in enumerate(diffs)) / len(diffs)
-            extreme += _at_least(abs(mean), observed)
+            extreme += abs(mean) >= observed - tol
         return extreme / total
     rng = random.Random(seed)
     extreme = 0
     for _ in range(samples):
         mean = math.fsum(x if rng.getrandbits(1) else -x for x in diffs) / len(diffs)
-        extreme += _at_least(abs(mean), observed)
+        extreme += abs(mean) >= observed - tol
     return (extreme + 1) / (samples + 1)
 
 

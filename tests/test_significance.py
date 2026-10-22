@@ -195,3 +195,15 @@ def test_permutation_모든_차이에_같은_양수를_곱해도_p값이_같다_
 def test_permutation_아주_작은_값도_정확히_0이_아니면_버리지_않는다():
     # 원본은 |x|<=1e-15를 0으로 버려 [1e-16]*10이 1.0이 됐다
     assert paired_permutation_p([1e-16] * 10, seed=0) == 2 / 1024
+
+
+def test_permutation_십진수로는_합이_정확히_0인_입력은_1이다():
+    # 이진 부동소수에서는 합이 1e-17대로 남지만 십진수로는 정확히 0 → 모든 부호 조합이 극단이므로 p=1.0
+    diffs = [0.9, -0.8, 0.2, -0.2, 0.2, -0.4, 0.4, 0.8, -0.5, -0.6, -0.6, 0.8, -1.0, 0.8]
+    assert paired_permutation_p(diffs, seed=0) == 1.0
+
+
+def test_permutation_값의_크기_차이가_매우_커도_다른_합을_같다고_묶지_않는다():
+    # [1, 1e-10]: 합 1±1e-10 두 가지. 부호 조합 4개 중 관측(둘 다 +, 둘 다 -)만 극단 → 2/4
+    assert paired_permutation_p([1.0, 1e-10], seed=0) == 0.5
+    assert paired_permutation_p([1.0, 1e-12], seed=0) == 0.5
