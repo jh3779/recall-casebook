@@ -50,7 +50,7 @@ export interface MatrixRow {
 export interface Dashboard {
   /** 이번 응답에 실린 선례(리콜 번호 중복 없이). 고객사 구역과 그 밖 구역 */
   precedents: { all: Bucket; customer: Bucket; other: Bucket };
-  /** 회사(`maker`) 분포 — 법인명 대응 전 원문 표기 */
+  /** 회사(`maker`) 분포 — 회사명 대응표가 반영된 응답의 표시명(신고서 원문 표기는 서버 응답에 없는 `raw_maker`에 보존된다) */
   makers: Distribution;
   /** 부품 분류(`components`) 분포 — NHTSA 분류 문자열 그대로, 한 선례가 여러 분류를 가질 수 있다 */
   components: Distribution;

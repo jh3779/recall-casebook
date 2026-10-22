@@ -68,7 +68,7 @@ it("출처 종류: 결함 조사·573 원인 글·생산 기간을 리콜 번호
   expect(data.sources.part573.count).toBe(6); // 원인 글 5 + 미보고 표현 1
   expect(data.sources.productionPeriod.count).toBe(0); // 이 응답에는 생산 기간 항목이 없다
   const source = { campaign: "X", file: "p.pdf", pdf_sha256: "a".repeat(64), submission_date: "20200101" };
-  const production = { item: "production_period" as const, label: "p", evidence: [], omitted: 0, unread: 0, source };
+  const production = { item: "production_period" as const, label: "p", evidence: [{ field: "573.production_dates", text: "Production dates: 2018-01-01 to 2018-06-30" }], omitted: 0, unread: 0, source };
   const d = deriveDashboard({ precedents: [card({ campno: "D1", cause: { status: "no_573_report" }, checklist: [production] })] });
   expect(d.sources.productionPeriod.campnos).toEqual(["D1"]);
   expect(d.sources.part573.campnos).toEqual(["D1"]);
