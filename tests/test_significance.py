@@ -166,3 +166,32 @@ def test_세_함수를_이어_쓰는_입력_형식_예():
     adjusted = holm_adjust({"hit": p_hit, "cont": p_cont})
     # 오름차순 cont(0.0625)x2=0.125, hit(0.0703125)x1 → 누적 최댓값 0.125
     assert adjusted == pytest.approx({"cont": 0.125, "hit": 0.125})
+
+
+# ---------- 축척(단위) 불변 ----------
+
+
+@pytest.mark.parametrize("scale", [1e-16, 2e-15, 1e-3, 1e3, 1e12])
+def test_permutation_모든_차이에_같은_양수를_곱해도_p값이_같다_전수(scale):
+    base = [1.0] * 10
+    assert (
+        paired_permutation_p([x * scale for x in base], seed=0)
+        == paired_permutation_p(base, seed=0)
+        == 2 / 1024
+    )
+    mixed = [1.0, -2.0, 3.0, 1.0, -1.0, 2.0, 4.0, -1.0]
+    assert paired_permutation_p([x * scale for x in mixed], seed=0) == paired_permutation_p(
+        mixed, seed=0
+    )
+
+
+@pytest.mark.parametrize("scale", [1e-16, 1e-3, 1e3])
+def test_permutation_모든_차이에_같은_양수를_곱해도_p값이_같다_몬테카를로(scale):
+    base = [1.0] * 14 + [-1.0] * 7  # 21개라 몬테카를로 경로
+    expected = paired_permutation_p(base, seed=3, samples=2000)
+    assert paired_permutation_p([x * scale for x in base], seed=3, samples=2000) == expected
+
+
+def test_permutation_아주_작은_값도_정확히_0이_아니면_버리지_않는다():
+    # 원본은 |x|<=1e-15를 0으로 버려 [1e-16]*10이 1.0이 됐다
+    assert paired_permutation_p([1e-16] * 10, seed=0) == 2 / 1024

@@ -5,9 +5,13 @@
 이슈 #179 1절에 따라 가져와 독립 모듈로 옮겼다. 출처 커밋은 `93be7082a433b0638c5baa2bf67594b09cd0c3ef`,
 원문 위치는 `docs/experiments/실험_자동규칙라벨재감사.md`에 적었다.
 
-원본과 다른 점은 둘이다. (1) `holm_adjust`가 소수 여섯째 자리 반올림을 하지 않는다 — 순수 함수는 값을 그대로
+원본과 다른 점은 셋이다. (1) `holm_adjust`가 소수 여섯째 자리 반올림을 하지 않는다 — 순수 함수는 값을 그대로
 돌려주고 표시용 반올림은 부르는 쪽이 한다. (2) 이 파일은 `eval_v2.py`의 라벨 읽기·지표(Hit@10·nDCG 등)를
 가져오지 않는다. 그쪽에는 빈 라벨을 0점으로 치는 등 고쳐야 할 결함이 남아 있어(이슈 #179 1절) 가져오지 않았다.
+
+(3) `paired_permutation_p`의 0 판정·동률 허용오차가 원본의 고정 절댓값(1e-15)이었는데, 모든 차이에 같은 양수를 곱한(단위를 바꾼)
+입력에서 결과가 달라지는 결함이라(Codex 리뷰, 예: [1.0]*10 → 0.00195, [2e-15]*10 → 0.109) 정확히 0만 빼고 합은 math.fsum으로,
+동률 비교는 상대 오차로 바꿨다. 축척 불변 시험이 `tests/test_significance.py`에 있다.
 
 이 모듈은 아무 곳에서도 import하지 않는다 — 검색·점수·서비스 응답을 바꾸지 않는다. 어떤 평가 점수도 만들지 않으며,
 유효한 평가 라벨이 없으면 이 함수들로 성능을 주장하지 않는다(AGENTS.md 5-1·5-2).
@@ -36,6 +40,12 @@ def exact_mcnemar(a_wins: int, b_wins: int) -> float:
     return min(1.0, 2 * tail)
 
 
+def _at_least(value: float, observed: float) -> bool:
+    """value >= observed. 부동소수 합산 오차로 같은 값이 아주 조금 작게 나오는 경우만 같다고 본다 — 상대 오차라서 모든 차이에
+    같은 양수를 곱해도(단위를 바꿔도) 판정이 변하지 않는다."""
+    return value >= observed or math.isclose(value, observed, rel_tol=1e-9, abs_tol=0.0)
+
+
 def paired_permutation_p(differences: list[float], seed: int, samples: int = 100_000) -> float:
     """평균 차이의 양측 paired sign-flip permutation p값.
 
@@ -44,22 +54,24 @@ def paired_permutation_p(differences: list[float], seed: int, samples: int = 100
     20개 이하는 모든 부호 조합을 열거해 정확값을 내고, 그보다 크면 고정 시드 Monte Carlo를 쓴다
     (이때 값은 (극단 횟수 + 1) / (samples + 1)이라 0이 되지 않는다).
     """
-    diffs = [x for x in differences if abs(x) > 1e-15]
+    diffs = [
+        x for x in differences if x != 0
+    ]  # 정확히 0인 값만 뺀다 — 고정 허용오차는 단위(축척)에 따라 결과를 바꾼다
     if not diffs:
         return 1.0
-    observed = abs(sum(diffs) / len(diffs))
+    observed = abs(math.fsum(diffs) / len(diffs))
     if len(diffs) <= 20:
         extreme = 0
         total = 1 << len(diffs)
         for mask in range(total):
-            mean = sum(x if mask & (1 << i) else -x for i, x in enumerate(diffs)) / len(diffs)
-            extreme += abs(mean) >= observed - 1e-15
+            mean = math.fsum(x if mask & (1 << i) else -x for i, x in enumerate(diffs)) / len(diffs)
+            extreme += _at_least(abs(mean), observed)
         return extreme / total
     rng = random.Random(seed)
     extreme = 0
     for _ in range(samples):
-        mean = sum(x if rng.getrandbits(1) else -x for x in diffs) / len(diffs)
-        extreme += abs(mean) >= observed - 1e-15
+        mean = math.fsum(x if rng.getrandbits(1) else -x for x in diffs) / len(diffs)
+        extreme += _at_least(abs(mean), observed)
     return (extreme + 1) / (samples + 1)
 
 
