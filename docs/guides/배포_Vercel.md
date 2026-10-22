@@ -32,7 +32,7 @@ cd frontend && npm ci && npm run dev    # http://localhost:5173
 |---|---|
 | `frontend/vercel.json` | `framework: vite`, `installCommand: npm ci`, `buildCommand: npm run build`, `outputDirectory: dist` |
 | `frontend/.vercelignore` | **허용 목록**(`/*` 뒤 `!…`) — `index.html`·`package*.json`·`.nvmrc`·`tsconfig*.json`·`vite.config.ts`·`vercel.json`·`src`·`public`, 모델은 화면이 부르는 `sonata.glb`·`sorento.glb`만(보관 트럭·코나 제외, #108). `node_modules`·`dist`·`.env*`는 올라가지 않는다. 시험 `frontend/src/vercelignore.test.ts` |
-| `frontend/package.json` `engines.node` | `24.x` — `engines.node`가 프로젝트 설정을 덮어쓴다(Vercel Node.js 버전 문서 — `.nvmrc`는 그 문서에 언급이 없어 쓰지 않는다). 지금 Vercel 기본값도 24.x라 고정 효과다 |
+| `frontend/package.json` `engines.node` | `^24.15.0` — `engines.node`가 프로젝트 설정을 덮어쓴다(Vercel Node.js 버전 문서 — `.nvmrc`는 그 문서에 언급이 없어 쓰지 않는다). 문서상 24 대의 semver 범위는 최신 24.x로 배포된다. 하한 24.15는 시험용 `jsdom` 30의 요구다(2026-10-22, 전에는 `24.x`) |
 
 **크기 한도 — 쏘나타는 줄여서 올린다**: Vercel 한도 문서는 Hobby CLI 배포의 **업로드 소스 합계 100MB**로 적는다(MB·MiB 중 어느 단위인지는 확인하지 못했다 — 아래 CLI 표시 크기는 MiB 값과 맞는다)(vercel.com/docs/limits "Static file uploads"). 실패 문구 `File size limit exceeded (100 MB)`로는 파일 하나 기준인지 합계 기준인지 가르지 못했다(2026-10-14 실측: 원본 쏘나타 116,543,736바이트가 든 업로드 129.8MiB(CLI 표시) → 실패). 어느 쪽이든 원본 쏘나타는 혼자 100MB를 넘는다. 지금 올리는 소스 합계는 약 61MiB(쏘나타 배포본 42.2MiB + 쏘렌토 17.9MiB + 코드)라 합계 기준이면 여유가 약 36MB뿐이다 — 모델·데이터를 허용 목록에 더하기 전에 합계를 잰다. 원본 쏘나타에는 재질이 쓰지 않는 텍스처 좌표(TEXCOORD) 속성이 정점마다 여러 벌 붙어 있어, 그것만 지운 배포본(44,211,620바이트)을 쓴다 — 스크립트는 출력을 다시 읽어 남은 정점 속성·인덱스 바이트와 재질 값·텍스처(이미지 지문·texCoord·샘플러)·재질·노드·메시 이름 목록을 원본과 대조하고, 출력 크기·SHA-256·지운 속성 수가 기록값과 같을 때만 쓴다(노드 변환은 `matrix`가 TRS로 다시 쓰여 float32 오차만큼 다를 수 있고 비교하지 않는다. 재질 확장이 있는 모델은 거부 — 이 모델 전용). 원본·배포본 지문은 `frontend/public/data/vehicle-sources.json`(`derivedFrom`)에 있다.
 
