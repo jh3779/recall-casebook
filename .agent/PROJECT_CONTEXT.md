@@ -49,7 +49,7 @@ RAG 팀 프로젝트 — **결함 선례 찾기 도우미** (DEC-030, 2026-10-06
 
 **요청받았을 때만 한다** (AGENTS.md 6절)
 - 커밋, push, PR 생성
-- 병합: 사용자가 그 PR의 병합을 명시적으로 지시하고 `MERGE_PROTOCOL.md` 게이트가 전부 ✅일 때만 `gh pr merge <N> --squash` (에이전트 병합은 우지훈이 그 세션에서 PR 번호를 들어 직접 지시한 경우만)
+- 병합: 사용자가 그 PR의 병합을 명시적으로 지시하고 `MERGE_PROTOCOL.md` 게이트가 전부 ✅일 때만 `gh pr merge <N> --squash`
 - force push: 요청 시에만 `--force-with-lease`
 
 **먼저 묻고 확인받는다** (AGENTS.md 5·7절)
