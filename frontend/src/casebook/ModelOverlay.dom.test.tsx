@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import fixture from "../search/__fixtures__/search_airbag.json";
@@ -33,6 +33,8 @@ async function openReady() {
   const user = userEvent.setup();
   render(<ModelOverlay card={card} opener={null} onClose={() => {}} />);
   await screen.findByRole("group", { name: "Part category to show" });
+  // 쇼룸에 시각 상태를 넘기는 효과는 화면이 그려진 뒤 늦게 돌 수 있다 — 첫 호출을 기다린 뒤 읽어야 간헐 실패(room is not iterable)가 없다
+  await waitFor(() => expect(room().setLook).toHaveBeenCalled());
   return user;
 }
 const button = (name: string) => screen.getByRole("button", { name });
