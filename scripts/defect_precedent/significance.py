@@ -48,7 +48,8 @@ def _decimal_ints(values: list[float]) -> list[int]:
     이진 부동소수의 합산 오차로 같은 합이 다르게 나오는 문제(예: 0.1+0.2)와, 이를 가리려고 쓰는 허용오차가 단위(축척)에
     따라 결과를 바꾸는 문제를 함께 피한다. 모든 값에 같은 양수를 곱해도(곱셈이 십진수로 정확할 때) 정수 비율이 같아 p값이 같다.
     """
-    fractions = [Fraction(repr(x)) for x in values]
+    # numpy 스칼라의 repr은 'np.float64(0.1)'이라 float로 먼저 바꾼다(정수는 그대로).
+    fractions = [Fraction(x) if isinstance(x, int) else Fraction(repr(float(x))) for x in values]
     scale = math.lcm(*(f.denominator for f in fractions))
     return [int(f * scale) for f in fractions]
 

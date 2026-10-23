@@ -6,6 +6,7 @@
 import itertools
 import math
 
+import numpy as np
 import pytest
 
 from scripts.defect_precedent.significance import exact_mcnemar, holm_adjust, paired_permutation_p
@@ -208,3 +209,10 @@ def test_permutation_십진수로는_합이_정확히_0인_입력은_1이다():
     diffs = [0.9, -0.8, 0.2, -0.2, 0.2, -0.4, 0.4, 0.8, -0.5, -0.6, -0.6, 0.8, -1.0, 0.8]
     assert paired_permutation_p(diffs, seed=0) == 1.0
     assert paired_permutation_p([0.1, 0.2, -0.3], seed=0) == 1.0
+
+
+def test_permutation_numpy_스칼라도_파이썬_float와_같은_값이다():
+    values = [0.1, 0.2, -0.3, 0.45, -0.05]
+    expected = paired_permutation_p(values, seed=0)
+    assert paired_permutation_p([np.float64(x) for x in values], seed=0) == expected
+    assert paired_permutation_p(list(np.array(values)), seed=0) == expected
