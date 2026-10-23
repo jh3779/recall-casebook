@@ -121,4 +121,4 @@ RAG_SOURCE=bundle SERVING_BUILD_ID=<build_id> SUPABASE_URL=<프로젝트 주소>
 
 ## 아직 없는 것
 
-배포 화면 주소의 CORS 값(작업 F — 허용 주소는 `ALLOWED_ORIGINS`로 바꿀 수 있다), 화면의 429 처리(작업 F), 화면 문구(박성호 님, PR #60). 부품 범위 좁히기는 시험 뒤 기각했다(DEC-045).
+배포 화면 주소의 CORS 값(작업 F — 허용 주소는 `ALLOWED_ORIGINS`로 바꿀 수 있다), 화면의 429 처리(작업 F), 화면 문구(박성호 님, PR #60). 최상위 부품 분류 카드 순위 올리기는 시험 뒤 기각했다(DEC-045 — 하위 분류 깊이는 열려 있다).
