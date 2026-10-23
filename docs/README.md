@@ -43,6 +43,7 @@
 | [`실험_P2_검색방식비교.md`](experiments/실험_P2_검색방식비교.md) | BM25 · 뜻 검색 · RRF 비교, 30건 원인 추출 시험(DEC-039) |
 | [`실험_P4_임베딩모델비교.md`](experiments/실험_P4_임베딩모델비교.md) | 임베딩 모델 비교 — 다른 계열·더 큰 모델 5종, 접두어 없는 기본 설정에서는 채택 후보 없음(arctic 계열은 P4b 전까지 미확정) |
 | [`실험_P5_희소부품층화.md`](experiments/실험_P5_희소부품층화.md) | 사례가 적은 부품에서의 성능 — 사후 층화 분석(드묾 0.613 / 중간 0.566 / 흔함 0.429), 재현 스크립트 `scripts/defect_precedent/rare_strata.py` |
+| [`실험_자동규칙라벨재감사.md`](experiments/실험_자동규칙라벨재감사.md) | 닫은 PR #133의 실패 기록 — 규칙으로 붙인 평가 라벨을 30행 재감사해 13.3~33.3%가 바뀌어 무효 처리, 평가 아님(이슈 #179), 검정 함수 `scripts/defect_precedent/significance.py` |
 | [`실험_LLM_Luna비교.md`](experiments/실험_LLM_Luna비교.md) | gpt-6-luna와 gpt-4o-mini 비교(2026-10-12) |
 | [`실험_8D초안표본.md`](experiments/실험_8D초안표본.md) | 8D D2·D4 묶음 초안 표본 관찰 — 평가 아님(DEC-065) |
 | [`실험_LLM단독기준선.md`](experiments/실험_LLM단독기준선.md) | 검색 없이 LLM에게만 물은 기준선 — D ② 열람 제한 문서였으나 2026-10-21에 해제됨(DEC-082) |
