@@ -43,7 +43,7 @@ export function currentTheme(): Theme {
 function switchWithMotion(theme: Theme) {
   const root = document.documentElement;
   let reduce = false;
-  try { reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches; } catch { /* 조회가 막힌 환경에서도 전환은 된다 — 움직임 없이 바로 적용 */ }
+  try { reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches; } catch { reduce = true; /* 움직임 설정을 읽지 못하면 움직임 없이 바로 적용한다 */ }
   if (reduce) { applyTheme(theme); return; }
   const start = (document as Document & { startViewTransition?: (update: () => void) => unknown }).startViewTransition;
   if (start) { start.call(document, () => applyTheme(theme)); return; }

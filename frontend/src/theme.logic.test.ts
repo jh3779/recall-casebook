@@ -132,6 +132,10 @@ it("matchMedia가 예외를 던지는 환경에서도 스위치를 누르면 적
   expect(env.dataset.theme).toBe("light");
   expect(env.store.theme).toBe("light");
   expect(seen).toEqual(["light"]);
+  // 움직임 설정을 읽지 못하면 애니메이션 없이 바로 적용한다 — 화면 전환도 색 전환 클래스도 쓰지 않는다
+  expect(env.calls).not.toContain("vt");
+  expect(env.classes.has("theme-anim")).toBe(false);
+  expect(env.timers).toHaveLength(0);
 });
 it("고르면 구독자에게 알린다 — 앱 바가 여럿이어도 스위치가 함께 바뀐다", async () => {
   const t = await load();
