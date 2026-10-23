@@ -211,6 +211,7 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
    ```
 4. 규칙을 원래대로(모든 경로·창 60초·한도 120·Default(429)) 되돌리고 Publish한 뒤 대시보드에서 값을 다시 확인한다.
 5. 결과(모든 경로 차단 여부, WAF 429의 CORS 머리글 있음/없음, 날짜)를 이 절과 DEC-057에 적는다. 머리글이 없으면 브라우저가 WAF 429의 본문을 읽지 못해 화면은 "Could not reach the server."로 안내한다 — 화면의 429 안내("Too many requests."와 남은 초("N s left", 끝나면 "You can search again."))는 앱 429에만 나온다(작업 F, 지금은 `frontend/src/casebook/errors.ts`).
+6. (IPv6 확인, 이슈 #118) 같은 순서를 IPv6 클라이언트(`curl -6`)로도 한 번 해 보고, 앱 상한이 IPv6를 /64 단위로 세는지(DEC-057 추가 결정)와 WAF가 IPv6를 어떻게 묶는지(지금은 미확인)를 결과에 적는다. 사업자가 /56·/48을 위임하면 /64가 여럿이라 앱 상한만으로는 피해질 수 있고 그때 안전망은 WAF다.
 
 **공개 주소로 시연하는 날 (DEC-057 ④)**
 1. **시연 전날까지**: 앱 상한을 올려야 하면 `RATE_LIMIT_PER_MINUTE`를 바꿔 다시 배포한다 — 환경변수 변경은 재배포가 필요하고 재배포는 새 인스턴스라 워밍업이 사라지므로 시연 당일에 하지 않는다. 공개 화면(`https://lg-cns-rag-web.vercel.app`)에서 검색 한 건이 되는지도 본다(화면 주소는 `ALLOWED_ORIGINS`에 들어 있다 — 2절).

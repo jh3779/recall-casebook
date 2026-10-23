@@ -78,7 +78,7 @@ def counting_key(ip: str) -> str:
     except ValueError:
         return ip
     if isinstance(addr, ipaddress.IPv6Address):
-        if addr.ipv4_mapped:
+        if addr.ipv4_mapped is not None:
             return str(addr.ipv4_mapped)
         return str(ipaddress.ip_network((int(addr), 64), strict=False))
     return str(addr)
