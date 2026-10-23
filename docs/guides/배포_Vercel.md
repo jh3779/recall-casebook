@@ -168,7 +168,7 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 
 | 겹 | 위치 | 기준 | 하는 일 |
 |---|---|---|---|
-| 앱 | `server/ratelimit.py` (CORS 미들웨어 안쪽) | `POST /search`, IP당 1분 `RATE_LIMIT_PER_MINUTE`(기본 60) | 넘으면 429 + `Retry-After`. 429에도 `Access-Control-Allow-Origin`이 붙고 `Retry-After`는 `Access-Control-Expose-Headers`로 화면이 읽을 수 있다 |
+| 앱 | `server/ratelimit.py` (CORS 미들웨어 안쪽) | `POST /search`, IP당 1분 `RATE_LIMIT_PER_MINUTE`(기본 60) — IPv6는 앞 64비트(/64)로 묶어 센다(DEC-057 추가 결정) | 넘으면 429 + `Retry-After`. 429에도 `Access-Control-Allow-Origin`이 붙고 `Retry-After`는 `Access-Control-Expose-Headers`로 화면이 읽을 수 있다 |
 | WAF | Vercel 방화벽 규칙 1개 (Hobby 한도 1개) | **모든 경로**, IP당 1분 120회 *(한도는 에이전트 제안·사용자 채택 2026-10-13. 경로 범위는 PR #117 리뷰로 `/search` → 모든 경로)* | 앱을 우회하는 폭주를 엣지에서 차단. `/health`나 없는 주소도 새 인스턴스를 깨워 서빙 묶음(약 155MB)을 받게 하므로 함께 센다 |
 
 - 앱 60 < WAF 120인 이유: WAF가 막은 429에 CORS 머리글이 붙는지 Vercel 문서에 없다. 정상 사용은 앱의 429(머리글 있음)가 먼저 나가게 한다. WAF는 모든 경로를 세므로 검색 60회에 CORS 사전 요청(OPTIONS)·`/health`가 더해진다 — 사전 요청은 브라우저가 `Access-Control-Max-Age`(Starlette 기본 600초) 동안 재사용해 검색마다 붙지 않는다.
