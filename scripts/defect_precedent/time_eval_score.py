@@ -50,6 +50,8 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
+from scripts.defect_precedent.time_eval_candidates import CODE_FILES
+
 LABELS = ("yes", "no", "unsure")
 KS = (1, 3, 5, 10)
 METHODS = ("bm25", "b_rrf")
@@ -561,6 +563,9 @@ def unusable_build_info(c: dict) -> list[str]:
         or not all(isinstance(v, str) and SHA256_RE.fullmatch(v) for v in scripts.values())
     ):
         bad.append("code.script_sha256")
+    else:
+        # 후보 생성기가 기록하는 세 스크립트가 모두 있어야 한다 — 수동 편집·파일 손상으로 일부가 빠져도 해시 하나만 있으면 통과하던 틈(이슈 #77)
+        bad += [f"code.script_sha256.{f}" for f in CODE_FILES if f not in scripts]
     return bad
 
 

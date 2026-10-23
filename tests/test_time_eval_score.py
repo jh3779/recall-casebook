@@ -5,11 +5,16 @@
 
 import csv
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 from scripts.defect_precedent import time_eval_score as ts
+from scripts.defect_precedent.time_eval_candidates import CODE_FILES, ROOT
+
+# 후보 생성기가 기록하는 세 스크립트 경로 — 정식 채점이 받는 판본 정보에는 모두 있어야 한다(이슈 #77)
+SCRIPTS = {f: "a" * 64 for f in CODE_FILES}
 
 PINNED_BOOTSTRAP = (-0.125, 0.325)  # 아래 부트스트랩 고정 테스트의 기댓값
 COLS = ["action_no", "campno", "dup_group", "label", "agreed_label", "labeler_id", "note"]
@@ -266,7 +271,7 @@ def test_cli_score_prints_inputs_and_note(tmp_path, capsys):
             {
                 **_cand(
                     "main",
-                    code={"dirty": False, "commit": "abc", "script_sha256": {"x.py": "a" * 64}},
+                    code={"dirty": False, "commit": "abc", "script_sha256": SCRIPTS},
                 ),
                 "items": items(("PE1", {"A": {"bm25": 1, "b_rrf": 2}})),
             }
@@ -533,7 +538,7 @@ def _cand(set_name, **kw):
     base = {
         "set": set_name,
         "data": {"recalls_sha256_full": "r", "eval_sha256": "e", "causes_sha256": "c"},
-        "code": {"dirty": False, "script_sha256": {"x.py": "a" * 64}},
+        "code": {"dirty": False, "script_sha256": SCRIPTS},
         "model": "m",
         "embedding": {"fastembed": "0.9.0", "model_fingerprint": "f", "cache_verified": True},
         "top": 20,
@@ -557,7 +562,7 @@ def test_candidate_files_must_share_data_code_and_model():
         ts.check_same_build([_cand("main"), _cand("r1"), _cand("r2", model="other")])
     for change in (
         {"data": {"recalls_sha256_full": "other"}},
-        {"code": {"dirty": False, "script_sha256": {"x.py": "other"}}},
+        {"code": {"dirty": False, "script_sha256": {**SCRIPTS, CODE_FILES[0]: "other"}}},
         {"model": "other"},
         {"top": 30},
         {"embedding": {"fastembed": "0.9.0", "model_fingerprint": "other", "cache_verified": True}},
@@ -571,7 +576,7 @@ def test_candidate_files_must_share_data_code_and_model():
 
 
 def test_dirty_candidates_are_refused_unless_partial():
-    dirty = _cand("main", code={"dirty": True, "script_sha256": {"x.py": "a" * 64}})
+    dirty = _cand("main", code={"dirty": True, "script_sha256": SCRIPTS})
     with pytest.raises(SystemExit, match="커밋하지 않은"):
         ts.check_same_build([dirty])
     ts.check_same_build([dirty], partial=True)
@@ -607,7 +612,7 @@ def _cand_file(tmp_path, name, set_name, action, **kw):
 
 def test_cli_score_refuses_dirty_candidates_unless_partial(tmp_path, capsys):
     """--partial이 실행 명령에서 check_same_build로 전달되는지(연결부) — 정식 채점은 dirty 후보를 거부한다."""
-    dirty = {"code": {"dirty": True, "script_sha256": {"x.py": "a" * 64}}}
+    dirty = {"code": {"dirty": True, "script_sha256": SCRIPTS}}
     cand = _cand_file(tmp_path, "candidates_main.json", "main", "PE1", **dirty)
     sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes")])
     with pytest.raises(SystemExit, match="커밋하지 않은"):
@@ -834,7 +839,7 @@ def test_cli_partial_with_dirty_candidates_is_interim_even_without_skipped(tmp_p
     pool = {f"PE{i}": {"A": {"bm25": 1, "b_rrf": 1}} for i in range(34)}
     pool.update({f"PB{i}": {"A": {"b_rrf": 1}} for i in range(6)})
     p = tmp_path / "candidates_main.json"
-    dirty = {"code": {"dirty": True, "script_sha256": {"x.py": "a" * 64}}}
+    dirty = {"code": {"dirty": True, "script_sha256": SCRIPTS}}
     p.write_text(
         json.dumps({**_cand("main", **dirty), "items": items(*pool.items())}), encoding="utf-8"
     )
@@ -1299,20 +1304,50 @@ def test_single_candidate_file_needs_build_info_unless_partial():
         _cand("main", top=True),
         _cand("main", embedding={"fastembed": "", "model_fingerprint": "f"}),
         _cand("main", embedding={"fastembed": "0.9.0", "model_fingerprint": None}),
-        _cand("main", code={"script_sha256": {"x.py": "a" * 64}}),  # dirty 칸 없음
-        _cand("main", code={"dirty": 0, "script_sha256": {"x.py": "a" * 64}}),
+        _cand("main", code={"script_sha256": SCRIPTS}),  # dirty 칸 없음
+        _cand("main", code={"dirty": 0, "script_sha256": SCRIPTS}),
         _cand("main", code={"dirty": False, "script_sha256": {}}),
         # 이름은 있지만 지문 값이 비었거나 SHA-256 형식이 아닌 파일도 거부한다
         _cand("main", data={"recalls_sha256_full": "", "eval_sha256": "e", "causes_sha256": "c"}),
         _cand("main", data={"recalls_sha256_full": "r", "eval_sha256": "e"}),  # 필수 지문 누락
-        _cand("main", code={"dirty": False, "script_sha256": {"x.py": ""}}),
-        _cand("main", code={"dirty": False, "script_sha256": {"x.py": "not-a-sha"}}),
-        _cand("main", code={"dirty": False, "script_sha256": {"x.py": "a" * 64, "y.py": None}}),
+        _cand("main", code={"dirty": False, "script_sha256": {**SCRIPTS, CODE_FILES[0]: ""}}),
+        _cand(
+            "main", code={"dirty": False, "script_sha256": {**SCRIPTS, CODE_FILES[0]: "not-a-sha"}}
+        ),
+        _cand("main", code={"dirty": False, "script_sha256": {**SCRIPTS, "y.py": None}}),
         _cand("main", code={"dirty": False, "script_sha256": None}),
     ):
         with pytest.raises(SystemExit, match="판본 정보가 없는"):
             ts.check_same_build([broken])
         ts.check_same_build([broken], partial=True)  # 중간 결과는 막지 않는다
+
+
+def test_required_script_paths_are_the_three_scripts_the_candidate_builder_hashes():
+    """채점 도구가 요구하는 스크립트 경로는 후보 생성기가 해시하는 세 파일과 같다 — 어느 쪽이 바뀌면 이 시험이 먼저 깨진다."""
+    assert ts.CODE_FILES is CODE_FILES  # 한 곳(time_eval_candidates.CODE_FILES)에서 가져온다
+    assert list(CODE_FILES) == [
+        "scripts/defect_precedent/time_eval_candidates.py",
+        "scripts/defect_precedent/retrieval_compare.py",
+        "scripts/defect_precedent/bm25_baseline.py",
+    ]
+    assert all(
+        (ROOT / f).is_file() for f in CODE_FILES
+    )  # 실제 경로라서 후보 생성기가 해시할 수 있다
+
+
+@pytest.mark.parametrize("missing", CODE_FILES)
+def test_formal_scoring_refuses_a_candidate_file_missing_one_required_script(missing):
+    """세 스크립트 중 하나라도 `code.script_sha256`에 없으면 정식 채점은 거부하고, 중간 결과(--partial)는 막지 않는다(이슈 #77)."""
+    partial_scripts = {f: h for f, h in SCRIPTS.items() if f != missing}
+    broken = _cand("main", code={"dirty": False, "script_sha256": partial_scripts})
+    with pytest.raises(SystemExit, match=re.escape(f"code.script_sha256.{missing}")):
+        ts.check_same_build([broken])
+    # 두 파일이 서로 같아도(둘 다 같은 것이 빠져도) 통과시키지 않는다
+    with pytest.raises(SystemExit, match="판본 정보가 없는"):
+        ts.check_same_build(
+            [broken, _cand("r1", code={"dirty": False, "script_sha256": partial_scripts})]
+        )
+    ts.check_same_build([broken], partial=True)
 
 
 def test_candidate_files_pair_with_empty_build_info_is_refused_too():
