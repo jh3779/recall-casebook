@@ -369,6 +369,14 @@ def test_main_ignores_outsider_noise_end_to_end(monkeypatch, capsys):
     assert "협업자가 아닌 작성자의 리뷰 1개·코멘트 1개·미해결 스레드 1개" in out
 
 
+def test_main_summary_line_appears_when_only_an_outsider_thread_was_dropped(monkeypatch, capsys):
+    """리뷰·코멘트는 하나도 안 빠지고 스레드만 빠진 경우에도 요약 줄이 나온다 — 풀린 스레드(`isResolved`)는 개수에서 뺀다(이슈 #183)."""
+    threads = [thread(False, "NONE"), thread(True, "NONE")]
+    out = run_main(monkeypatch, capsys, owner_pair(), [], threads)
+    assert "`merge-gate`): success" in out
+    assert "협업자가 아닌 작성자의 리뷰 0개·코멘트 0개·미해결 스레드 1개" in out
+
+
 def test_main_outsider_only_result_stays_pending(monkeypatch, capsys):
     comments = [
         rest_comment(review(HEAD)["body"], "OWNER", 1, "owner"),

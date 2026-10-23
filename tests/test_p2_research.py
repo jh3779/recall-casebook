@@ -97,6 +97,21 @@ def test_storage_bench_latency_uses_p95_only_with_100_samples():
     assert big["p95_ms"] == 95.0 and "max_ms" not in big
 
 
+def test_storage_bench_accepts_only_a_local_host_and_refuses_hostaddr():
+    from scripts.defect_precedent import storage_bench as sb
+
+    sb.check_local_db("postgresql://u:p@localhost:54330/postgres")
+    sb.check_local_db("postgresql://u:p@LOCALHOST:54330/postgres")  # 대소문자 무시
+    sb.check_local_db("postgresql://u:p@127.0.0.1:54330/postgres")
+    for url in (
+        "postgresql://u:p@db.example.com:5432/postgres",
+        "postgresql://u:p@localhost/postgres?hostaddr=10.0.0.5",  # 이름은 localhost, 실제는 다른 곳
+        "postgresql:///postgres",  # host 없음
+    ):
+        with pytest.raises(SystemExit, match="로컬 Postgres"):
+            sb.check_local_db(url)
+
+
 def test_time_eval_indexed_before_excludes_open_date_itself():
     from scripts.defect_precedent import time_eval_candidates as te
 
@@ -121,6 +136,7 @@ def test_cause_trials_score_counts_only_real_empty_lists_as_llm_unknown():
         {"campaign": "d", "returned": [], "spans": [], "rule_unknown": False, "parse_failed": True},
     ]
     out = ct.score_rows(rows, labels)
+    assert out["llm_empty"]["n"] == 3  # 해석 실패 1건은 분모에서 빠진다
     assert out["llm_empty"]["tp"] == 1 and out["llm_empty"]["fp"] == 0
     assert out["parse_failed"] == 1 and out["returned_but_all_dropped"] == 1
     assert out["rule"]["fp"] == 1  # mixed에 걸림
@@ -481,6 +497,13 @@ def test_cause_trials_score_rule_needs_no_result_file_and_prints_rule_only(tmp_p
     }
     assert out["rule_basis"]["unknown_re"] == ct.UNKNOWN_RE.pattern  # 어느 규칙으로 쟀는지 남긴다
     assert len(out["rule_basis"]["rules_py_sha256"]) == 64
+    # 정규식 단위 지문 = 패턴 글자 + 플래그(정수)의 sha256 — 파일 해시와 별개로 규칙이 그대로인지 가린다(이슈 #116)
+    import hashlib
+
+    expected = hashlib.sha256(
+        f"{ct.UNKNOWN_RE.pattern}\n{ct.UNKNOWN_RE.flags}".encode()
+    ).hexdigest()
+    assert out["rule_basis"]["unknown_re_sha256"] == expected
     assert out["rule"] == ct.confusion([True, False, True], [True, False, False])
     assert out["rule_vs_unknown_or_mixed"] == ct.confusion([True, False, True], [True, False, True])
     assert out["verified"] == meta

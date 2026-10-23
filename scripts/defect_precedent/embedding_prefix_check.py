@@ -19,17 +19,9 @@ import argparse
 import hashlib
 import json
 import sys
-from pathlib import Path
 
 from scripts.defect_precedent import retrieval_compare as rc
 from scripts.defect_precedent.bm25_baseline import tokenize
-
-
-def cache_file(model: str, texts: list[str], cache: Path | None = None) -> Path:
-    """`retrieval_compare.embed_cards`가 쓰는 것과 같은 규칙으로 **지금 카드 글**의 캐시 경로를 계산한다 —
-    카드 글 해시가 다른 옛 캐시는 같은 행 수여도 고르지 않는다."""
-    key = hashlib.sha256("\n".join(texts).encode()).hexdigest()[:12]
-    return (cache or rc.CACHE) / f"{model.replace('/', '_')}_{key}.npy"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -50,7 +42,8 @@ def main(argv: list[str] | None = None) -> None:
 
     if fastembed.__version__ != rc.FASTEMBED_VERSION:
         sys.exit(f"fastembed {fastembed.__version__} — 보고서는 {rc.FASTEMBED_VERSION}로 쟀다")
-    path = cache_file(a.model, texts)
+    # embed_cards와 같은 식 — 지금 카드 글의 캐시만 고른다
+    path = rc.card_cache_path(a.model, texts)
     if not path.exists():
         sys.exit(
             f"지금 카드의 벡터 캐시가 없다({path.name}) — 먼저 `retrieval_compare dense --model {a.model}`를 돌린다"

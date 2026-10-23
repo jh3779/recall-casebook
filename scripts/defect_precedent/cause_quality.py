@@ -326,13 +326,16 @@ def score(rows: list[dict]) -> dict:
 
 
 def cmd_score(a) -> None:
-    with a.sheet.open(encoding="utf-8-sig", newline="") as f:
-        rows = list(csv.DictReader(f))
+    try:
+        with a.sheet.open(encoding="utf-8-sig", newline="") as f:
+            rows = list(csv.DictReader(f))
+    except UnicodeDecodeError:  # 스프레드시트가 cp949 등으로 저장한 경우
+        sys.exit(f"{a.sheet.name}을 UTF-8로 읽지 못한다 — 스프레드시트에서 'CSV UTF-8'로 저장한다")
     meta_path = a.sheet.with_name(a.sheet.name + ".meta.json")
     meta = json.loads(meta_path.read_text("utf-8")) if meta_path.exists() else None
     if meta is None:
         sys.exit(f"{meta_path.name}이 없다 — 시트를 만든 기록 없이 채점하지 않는다")
-    # 출처별 시트만 채점한다 — 버린 섞인 시트(메타에 source 없음)·출처가 섞인 줄은 거부(리뷰 acaa624). 줄 수는 표본 지문이 본다
+    # 출처별 시트만 채점한다 — 버린 섞인 시트(메타에 source 없음)·출처가 섞인 줄은 거부(리뷰 acaa624). 줄 수는 아래에서 n·N과 직접 대조한다
     if meta.get("source") not in SOURCES:
         sys.exit(
             f"메타에 출처(source)가 없거나 알 수 없다({meta.get('source')!r}) — 버린 옛 시트일 수 있다. 출처별 시트({list(SOURCES.values())})를 쓴다"
@@ -353,6 +356,9 @@ def cmd_score(a) -> None:
             "시트의 읽기 전용 칸이 만들 때와 다르다 — 스프레드시트가 값을 바꿨을 수 있다(모든 칸을 텍스트로 가져온다): "
             + "; ".join(changed[:5])
         )
+    # 표본 지문도 줄 추가·삭제를 잡지만, 줄 수 불일치를 직접 알려 준다
+    if not meta.get("n") == len(rows) == N:
+        sys.exit(f"시트의 줄 수 {len(rows)}가 메타의 n={meta.get('n')!r}·표본 크기 {N}와 다르다")
     if sample_fingerprint(rows) != meta["sample_sha256"]:
         sys.exit(
             "시트의 표본이 만들 때와 다르다(줄을 빼거나 더했거나 리콜·원인 글이 바뀌었다 — 줄 순서는 상관없다)"

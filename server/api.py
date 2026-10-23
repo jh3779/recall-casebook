@@ -86,7 +86,7 @@ def allowed_origins() -> list[str]:
 
 
 def load_state() -> RagState:
-    """시작 경로는 RAG_SOURCE로 고른다: 없거나 `local`이면 로컬 build 파일(시연), `bundle`이면 서빙 묶음(배포, DEC-049)."""
+    """시작 경로는 RAG_SOURCE로 고른다: 없거나 비어 있거나 `local`이면 로컬 build 파일(시연), `bundle`이면 서빙 묶음(배포, DEC-049)."""
     source = (
         os.environ.get("RAG_SOURCE", "").strip() or "local"
     )  # .env.example을 복사한 빈 값(RAG_SOURCE=)도 로컬

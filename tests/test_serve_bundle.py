@@ -1,6 +1,7 @@
 """배포 경로(RAG_SOURCE=bundle, DEC-049) — 서버가 DB 기록과 같은 서빙 묶음만 받아 쓰고, 로컬 경로와 같은 대조를 하는지."""
 
 import contextlib
+import os
 from types import SimpleNamespace
 
 import numpy as np
@@ -375,7 +376,10 @@ def test_download_keeps_the_bundle_folder_private(tmp_path, monkeypatch):
 
     monkeypatch.setattr(bundle.urllib.request, "urlopen", lambda *a, **k: Body(b"tar"))
     folder = tmp_path / "serving"
-    folder.mkdir(mode=0o755)  # 이미 있던 폴더도 좁힌다
+    folder.mkdir()
+    os.chmod(
+        folder, 0o755
+    )  # 이미 있던 넓은 폴더도 좁힌다 (mkdir의 mode는 umask에 깎여 환경에 따라 비게 된다)
     bundle._download("https://x/a", folder / "x.tar")
     assert (folder / "x.tar").read_bytes() == b"tar"
     assert folder.stat().st_mode & 0o777 == 0o700

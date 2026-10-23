@@ -4,7 +4,7 @@
     # 예비 5문항 두 사람 일치(합격선, docs/labeling/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
     uv run python -m scripts.defect_precedent.time_eval_score agreement --phase pilot --candidates <candidates_pilot.json> --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
     #   결과를 파일로 남긴다: … agreement … > agreement_pilot.json
-    #   합격해도 한 사람만 yes인 후보는 두 시트에 같은 agreed_label과 합의 이유(note)를 적은 뒤 agreement를 다시 낸다
+    #   합격해도 한 사람만 yes인 후보는 두 시트에 같은 agreed_label을, 합의 이유(note)는 두 시트 중 한 곳 이상에 적은 뒤 agreement를 다시 낸다
     #   (resolution_complete가 참이어야 score가 받는다 — 일치율은 label로만 계산하므로 다시 내도 pass는 그대로)
     # 예비 미달이면 재확인 3문항(안내서 4절 — 질문 파일 main 앞 3개)만 추린 두 사람의 시트로:
     #   agreement --phase recheck --candidates <candidates_main.json> --sheets … > agreement_recheck.json
@@ -45,6 +45,7 @@ import csv
 import hashlib
 import json
 import math
+import re
 import sys
 from importlib.metadata import version
 from pathlib import Path
@@ -312,7 +313,7 @@ def require_resolved(g: dict, name: str) -> None:
     if g.get("resolution_complete") is not True:
         sys.exit(
             f"{name} 결과가 합격했지만 한 사람만 yes로 표시한 후보 {(g.get('unresolved_one_sided_yes') or [])[:3]}가 합의로 해소되지 않았다 — "
-            "두 시트 모두에 같은 agreed_label과 합의 이유(note)를 적고 agreement를 다시 낸다(안내서 4절 2항)"
+            "두 시트 모두에 같은 agreed_label을, 합의 이유(note)는 두 시트 중 한 곳 이상에 적고 agreement를 다시 낸다(안내서 4절 2항)"
         )
 
 
@@ -525,20 +526,63 @@ def build_diff(first: dict, c: dict) -> list[str]:
     return diff
 
 
+# 후보 생성기(`time_eval_candidates.py`)가 항상 기록하는 데이터 지문 — 정식 채점은 이 값이 실제로 있어야 받는다
+REQUIRED_DATA_HASHES = ("recalls_sha256_full", "eval_sha256", "causes_sha256")
+SHA256_RE = re.compile(r"[0-9a-f]{64}")
+
+
+def unusable_build_info(c: dict) -> list[str]:
+    """정식 채점에 쓸 수 없는 판본 정보 항목 — 칸이 없거나, 있어도 비었거나 형식이 틀린 것."""
+    bad = []
+    data = c.get("data") if isinstance(c.get("data"), dict) else {}
+    bad += [
+        f"data.{k}"
+        for k in REQUIRED_DATA_HASHES
+        if not isinstance(data.get(k), str) or not data[k].strip()
+    ]
+    if not isinstance(c.get("model"), str) or not c["model"].strip():
+        bad.append("model")
+    top = c.get("top")
+    if isinstance(top, bool) or not isinstance(top, int) or top <= 0:
+        bad.append("top")
+    emb = c.get("embedding") if isinstance(c.get("embedding"), dict) else {}
+    bad += [
+        f"embedding.{k}"
+        for k in EMBEDDING_KEYS
+        if not isinstance(emb.get(k), str) or not emb[k].strip()
+    ]
+    code = c.get("code") if isinstance(c.get("code"), dict) else {}
+    if not isinstance(code.get("dirty"), bool):
+        bad.append("code.dirty")
+    scripts = code.get("script_sha256")
+    if (
+        not isinstance(scripts, dict)
+        or not scripts
+        or not all(isinstance(v, str) and SHA256_RE.fullmatch(v) for v in scripts.values())
+    ):
+        bad.append("code.script_sha256")
+    return bad
+
+
 def check_same_build(cands: list[dict], partial: bool = False) -> None:
     dirty = [c.get("set") for c in cands if (c.get("code") or {}).get("dirty")]
     if dirty and not partial:
         sys.exit(
             f"커밋하지 않은 코드로 만든 후보 파일이다 {dirty} — 정식 채점에 쓰지 않는다(중간 결과는 --partial)"
         )
-    if len(cands) < 2:
-        return
     first = cands[0]
     for c in cands[1:]:
         if diff := build_diff(first, c):
             sys.exit(
                 f"후보 파일 {first.get('set')}·{c.get('set')}의 {diff}가 없거나 다르다 — 같은 데이터·스크립트·모델로 만든 회차만 합친다(DEC-037 ⑦(c))"
             )
+    # 정식 채점은 판본 정보(데이터·모델·임베딩·스크립트 해시)가 실제 값으로 적힌 파일만 받는다 — 서로 같아도 칸만 있고 비어 있으면 거부한다
+    if not partial:
+        for c in cands:
+            if missing := unusable_build_info(c):
+                sys.exit(
+                    f"후보 파일 {c.get('set')}의 {missing}가 없거나 비어 있다 — 판본 정보가 없는 파일은 정식 채점에 쓰지 않는다(중간 결과는 --partial)"
+                )
 
 
 def main(argv: list[str] | None = None) -> None:

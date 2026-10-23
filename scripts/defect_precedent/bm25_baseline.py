@@ -16,7 +16,7 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from scripts.defect_precedent.nhtsa import OUT_DIR, verify_build
+from scripts.defect_precedent.nhtsa import OUT_DIR, same_baseline_inputs, verify_build
 
 K1, B, EPSILON = 1.5, 0.75, 0.25
 KS = (1, 3, 5, 10)
@@ -79,10 +79,7 @@ def main(baseline: Path | None = None, allow_drift: bool = False) -> None:
             sys.exit(f"기준 질문 중 지금 시험지에 없는 것 {len(gone)}개: {gone[:5]}")
         questions = [by_action[a] for a in base["eval_action_nos"]]
         info = verify_build()
-        same = all(
-            info[k] == base["build"][k]
-            for k in ("raw_manifest_sha256", "recalls_sha256", "eval_sha256")
-        )
+        same = same_baseline_inputs(info, base["build"])
         if same:
             label = f"대리 평가 · {baseline.name} 재현 (원본·카드·시험지 sha256 일치)"
         elif allow_drift:
