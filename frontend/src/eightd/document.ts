@@ -21,9 +21,11 @@ export const CORE_STEPS: ReadonlySet<number> = new Set([4]);
 export const toggleStep = (applied: ReadonlySet<number>, n: number): Set<number> => { const next = new Set(applied); if (!next.delete(n)) next.add(n); return next; };
 export const sameSteps = (a: ReadonlySet<number>, b: ReadonlySet<number>) => a.size === b.size && [...a].every((n) => b.has(n));
 
-/** 넣은 항목 수 — 키는 "4|번호"(D4 칸 본문)·"4a|번호"(부록)이고, 적용한 단계(D4)에 속한 것만 센다. 근거 데이터 꼬리줄을 붙일지의 기준이다 */
+/** 선례(항목) 건수 — 키는 "4|번호"(D4 칸 본문)·"4a|번호"(부록)이고, 본문과 부록에 함께 들어가므로 `|` 뒤 항목 번호가 같으면 한 건으로 센다 */
+export const itemCount = (keys: readonly string[]): number => new Set(keys.map((k) => k.slice(k.indexOf("|") + 1))).size;
+/** 넣은 항목 수 — 적용한 단계(D4)에 속한 것만 센다. 근거 데이터 꼬리줄을 붙일지의 기준이다 */
 export const insertedCount = (inserted: Readonly<Record<string, string>>, applied: ReadonlySet<number>): number =>
-  new Set(Object.keys(inserted).filter((k) => applied.has(parseInt(k, 10))).map((k) => k.slice(k.indexOf("|") + 1))).size; // 본문과 부록에 함께 들어가므로 같은 선례는 한 건으로 센다
+  itemCount(Object.keys(inserted).filter((k) => applied.has(parseInt(k, 10))));
 /** D4 근거 칸을 보일지 — 선례를 담았거나 이미 글이 들어 있을 때(사용자가 쓴 글을 가리지 않는다) */
 export const d4EvidenceVisible = (cardCount: number, values: Readonly<Record<string, string>>): boolean => cardCount > 0 || !!values[D4_EVIDENCE_KEY]?.trim();
 

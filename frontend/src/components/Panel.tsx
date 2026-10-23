@@ -9,8 +9,8 @@ interface Props {
   category: CategoryKey | null;
   cats3d: ReadonlySet<CategoryKey>;
   onSelect: (cat: CategoryKey | null) => void;
-  /** 같은 부품을 다른 차종에서 보기 */
   onSearch: (question: string) => void;
+  /** 같은 부품을 다른 차종에서 보기 */
   onCross: (model: ModelKey, cat: CategoryKey) => void;
 }
 
