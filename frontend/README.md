@@ -121,4 +121,4 @@ Pretendard, Source Serif 4(400·600), JetBrains Mono(400·600)는 npm 패키지�
 
 ## 화면 모드(밝음·어두움)
 
-앱 바 오른쪽의 슬라이드 스위치로 바꾼다(DEC-080). 고른 적이 없으면 기기·브라우저의 화면 모드 설정을 따르고, 고르면 그 브라우저(`localStorage` 키 `theme`)에 저장한다. 밝은 모드는 기존 흰 화면과 색이 같고(탭 폭·화면 전환 애니메이션은 두 모드 공통으로 바뀜), 어두운 모드는 각 CSS 끝의 `:root:not([data-theme="light"])` 규칙이다. 구현은 `src/theme.ts`와 `AppBar.tsx`의 `ThemeToggle`, 모드 전환은 View Transitions(미지원 브라우저는 색 전환), 케이스북 ↔ 쇼룸 전환은 `search.css` 끝의 애니메이션이다. 움직임 줄이기 설정에서는 모두 꺼진다.
+앱 바 오른쪽의 슬라이드 스위치로 바꾼다(DEC-080). 고른 적이 없으면 기기·브라우저의 화면 모드 설정을 따르고, 고르면 그 브라우저(`localStorage` 키 `theme`)에 저장하고, 다른 탭에서 고른 값도 따라간다(`storage` 이벤트). 밝은 모드는 기존 흰 화면과 색이 같고(탭 폭·화면 전환 애니메이션은 두 모드 공통으로 바뀜), 어두운 모드는 각 CSS 끝의 `:root:not([data-theme="light"])` 규칙이다. 구현은 `src/theme.ts`와 `AppBar.tsx`의 `ThemeToggle`, 모드 전환은 View Transitions(미지원 브라우저는 색 전환), 케이스북 ↔ 쇼룸 전환은 `search.css` 끝의 애니메이션이다. 움직임 줄이기 설정에서는 모두 꺼진다.

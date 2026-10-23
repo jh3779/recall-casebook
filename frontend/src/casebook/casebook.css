@@ -126,8 +126,8 @@
 .cb-3d-layer-btns { display: flex; flex-wrap: wrap; gap: 6px; }
 .cb-3d-layer-btns button { font: inherit; font-size: 12.5px; padding: 5px 11px; border-radius: 999px; border: 1.5px solid var(--cb-blue); background: var(--cb-paper, #fff); color: var(--cb-blue); cursor: pointer; }
 .cb-3d-layer-btns button:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--cb-sand); }
-.cb-3d-failed { grid-template-columns: 1fr; grid-template-rows: 1fr; place-items: center; background: rgba(255,255,255,0.96); }
-.cb-3d-failed .cb-3d-msg { position: static; display: grid; gap: 12px; max-width: 520px; box-shadow: 0 6px 24px rgba(0, 44, 95, 0.18); }
+.cb-3d-notice { grid-template-columns: 1fr; grid-template-rows: 1fr; place-items: center; background: rgba(255,255,255,0.96); }
+.cb-3d-notice .cb-3d-msg { position: static; display: grid; gap: 12px; max-width: 520px; box-shadow: 0 6px 24px rgba(0, 44, 95, 0.18); }
 .cb-3d-note { margin: 0; padding: 8px 10px; background: var(--cb-light); border-radius: 8px; border-left: 3px solid var(--cb-red); font-size: 12.5px; color: var(--cb-ink-2); }
 @media (max-width: 900px) { .cb-3d { grid-template-columns: 1fr; grid-template-rows: auto minmax(260px, 45vh) 1fr; } .cb-3d-side { border-left: 0; border-top: 1px solid var(--cb-sand); } }
 /* D4 작성 칸(DEC-069) — 전체 폭 구역 */
@@ -181,8 +181,8 @@
 }
 @media (min-width: 1768px) { .view-casebook { padding-inline: calc((100% - 1704px) / 2); } }
 
-/* 랜딩 화면과 이어지는 어두운 테마(기본, 앱 바의 토글로 밝은 테마와 전환) — 흰 블록 없이 검정 바탕에 포인트 색(청록·빨강) 선으로만 경계를 둔다.
-   위 :root 변수(현대 CI 팔레트)는 그대로 두고, 이 화면에서만 바탕·글자·선을 덮어쓴다. 남색은 검정 위에서 안 보여 청록(Active Blue)으로 대신한다. */
+/* 랜딩 화면과 이어지는 어두운 테마(기본, 앱 바의 토글로 밝은 테마와 전환) — 흰 블록 없이 검정 바탕에 흰 선으로 경계를 둔다(청록은 로고 마크와 주 실행 버튼에만, 아래).
+   위 :root 변수(현대 CI 팔레트)는 그대로 두고, 이 화면에서만 바탕·글자·선을 덮어쓴다. 남색은 검정 위에서 안 보여 흰색으로 대신한다. */
 :root:not([data-theme="light"]) .view-casebook {
   color-scheme: dark;
   --cb-blue: #fff; --cb-active: #fff; --cb-sand: rgba(255, 255, 255, 0.55); --cb-light: #101417; --cb-paper: #000; --cb-on: #000;
@@ -196,4 +196,4 @@
 :root:not([data-theme="light"]) .cb-brand-mark { background: #fff; box-shadow: 7px 7px 0 -2px #00aad2; }
 :root:not([data-theme="light"]) .cb-search .cb-btn, :root:not([data-theme="light"]) .cb-group > .cb-btn, :root:not([data-theme="light"]) .cb-actions .cb-btn:not(.ghost) { background: #00aad2; color: #000; } /* 청록은 Find precedents·Group the checked causes·Download .docx에만 — 나머지 채운 버튼은 흰색 */
 :root:not([data-theme="light"]) .cb-3d-body { background: linear-gradient(180deg, #101417, #000); }
-:root:not([data-theme="light"]) .cb-3d-failed { background: rgba(0, 0, 0, 0.96); }
+:root:not([data-theme="light"]) .cb-3d-notice { background: rgba(0, 0, 0, 0.96); }

@@ -192,7 +192,7 @@ input::placeholder { color: var(--ink-3); opacity: 1; }
 @media (max-width: 767px) {
   :root { --app-bar-height: 146px; --app-bar-min: 146px; }
   .app-top { padding: 14px 16px; gap: 10px; flex-wrap: wrap; align-content: center; }
-  .app-brand { flex: 1; } /* 첫 줄: ← 이름 · 모드 스위치, 둘째 줄: 탭, 셋째 줄: 판본(아주 좁으면 스위치가 둘째 줄로 내려간다) */
+  .app-brand { flex: 1; } /* 폭에 따라 다르다 — 360~390px: 첫 줄 ← 이름 · 모드 스위치, 둘째 줄 탭, 셋째 줄 판본 / 600~767px: 이름 · 스위치 · 탭이 한 줄, 판본만 둘째 줄 */
   .app-top .theme-switch { order: 2; }
   .app-top .view-tabs { order: 3; }
   .app-top .health { order: 4; width: 100%; }
@@ -251,7 +251,7 @@ input::placeholder { color: var(--ink-3); opacity: 1; }
 .app-home:hover { color: var(--ink); background: var(--surface-2); }
 .app-home svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-/* 랜딩 화면과 이어지게 상단 바도 검정 — 경계는 포인트 색(청록) 선, 선택 탭은 청록 바탕 */
+/* 랜딩 화면과 이어지게 상단 바도 검정 — 경계는 흰 선(--line), 선택 탭은 청록 바탕 */
 :root:not([data-theme="light"]) .app-top { --ink: #fff; --ink-2: rgba(255, 255, 255, 0.72); --ink-3: #a3a3a3; --line: rgba(255, 255, 255, 0.4); --surface-2: transparent; --accent: #00aad2; --on-accent: #000; background: #000; color: #fff; backdrop-filter: none; }
 :root:not([data-theme="light"]) .app-brand-mark { background: conic-gradient(from 210deg, #00aad2, #aacae6, #00aad2); }
 :root:not([data-theme="light"]) .view-tabs { background: transparent; border: 1px solid rgba(255, 255, 255, 0.6); }

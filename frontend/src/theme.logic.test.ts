@@ -2,16 +2,24 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 // vitest에는 브라우저가 없다 — 테마 규칙(저장값 > 기기 설정 > 어두움, 전환 동작)이 쓰는 전역을 가짜로 세워 시험한다.
 type Store = Record<string, string>;
-type Env = { store: Store; light: boolean; reduced: boolean; viewTransition: boolean; changeListeners: Array<() => void>; timers: Array<() => void>; calls: string[]; classes: Set<string>; dataset: Record<string, string> };
+type Env = { store: Store; light: boolean; reduced: boolean; viewTransition: boolean; legacyMedia: boolean; mediaThrows: boolean; changeListeners: Array<() => void>; windowHandlers: Record<string, Array<(e: unknown) => void>>; timers: Array<() => void>; calls: string[]; classes: Set<string>; dataset: Record<string, string> };
 
 function setup(over: Partial<Env> = {}): Env {
-  const env: Env = { store: {}, light: false, reduced: false, viewTransition: true, changeListeners: [], timers: [], calls: [], classes: new Set(), dataset: {}, ...over };
+  const env: Env = { store: {}, light: false, reduced: false, viewTransition: true, legacyMedia: false, mediaThrows: false, changeListeners: [], windowHandlers: {}, timers: [], calls: [], classes: new Set(), dataset: {}, ...over };
   const doc: Record<string, unknown> = { documentElement: { dataset: env.dataset, classList: { add: (c: string) => env.classes.add(c), remove: (c: string) => env.classes.delete(c) } } };
   if (env.viewTransition) doc.startViewTransition = (update: () => void) => { env.calls.push("vt"); update(); };
   vi.stubGlobal("document", doc);
   vi.stubGlobal("localStorage", { getItem: (k: string) => env.store[k] ?? null, setItem: (k: string, v: string) => { env.store[k] = v; } });
+  // legacyMedia: Safari 14 미만처럼 addEventListener 없이 addListener만 있는 MediaQueryList
+  const media = (q: string) => {
+    if (env.mediaThrows) throw new Error("matchMedia blocked");
+    const list = { matches: q.includes("reduced-motion") ? env.reduced : q.includes("prefers-color-scheme: light") ? env.light : false };
+    const add = (fn: () => void) => { env.changeListeners.push(fn); };
+    return env.legacyMedia ? { ...list, addListener: add } : { ...list, addEventListener: (_: string, fn: () => void) => add(fn) };
+  };
   vi.stubGlobal("window", {
-    matchMedia: (q: string) => ({ matches: q.includes("reduced-motion") ? env.reduced : q.includes("prefers-color-scheme: light") ? env.light : false, addEventListener: (_: string, fn: () => void) => { env.changeListeners.push(fn); } }),
+    matchMedia: media,
+    addEventListener: (type: string, fn: (e: unknown) => void) => { (env.windowHandlers[type] ??= []).push(fn); },
     setTimeout: (fn: () => void) => { env.timers.push(fn); return 0; },
   });
   return env;
@@ -87,15 +95,65 @@ it("고른 적이 없으면 기기 설정이 바뀔 때 따라가고, 고른 값
 });
 it("저장이 막혀도 이번 방문에 직접 고른 값은 기기 설정이 바뀌어도 지킨다", async () => {
   const t = await load();
-  const env = setup({ light: false });
+  const env = setup({ light: false }); // 기기는 어둡다
   vi.stubGlobal("localStorage", { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } });
   t.followSystemTheme();
   t.saveTheme("light");
   expect(env.dataset.theme).toBe("light");
-  env.light = false; // 기기 설정이 어둡게 바뀌어도
+  env.light = true; // 기기 설정이 실제로 밝게 바뀌었다가
+  env.changeListeners.forEach((fn) => fn());
+  env.light = false; // 다시 어둡게 바뀌어도(저장소는 막혀 있다)
+  env.changeListeners.forEach((fn) => fn());
+  expect(env.dataset.theme).toBe("light"); // 직접 고른 값이 기기 설정을 이긴다
+  expect(t.readTheme()).toBe("light");
+});
+it("MediaQueryList에 addEventListener가 없는 옛 브라우저(Safari 14 미만)는 addListener로 기기 설정을 따라간다", async () => {
+  const t = await load();
+  const env = setup({ light: false, legacyMedia: true });
+  expect(() => t.followSystemTheme()).not.toThrow();
+  expect(env.changeListeners).toHaveLength(1);
+  env.light = true;
+  env.changeListeners[0]();
+  expect(env.dataset.theme).toBe("light");
+});
+it("matchMedia가 예외를 던져도 어두운 화면으로 시작하고 렌더가 멈추지 않는다(첫 화면 스크립트와 같은 규칙)", async () => {
+  const t = await load();
+  setup({ mediaThrows: true });
+  expect(t.systemTheme()).toBe("dark");
+  expect(t.readTheme()).toBe("dark");
+  expect(() => t.followSystemTheme()).not.toThrow();
+});
+it("고르면 구독자에게 알린다 — 앱 바가 여럿이어도 스위치가 함께 바뀐다", async () => {
+  const t = await load();
+  setup();
+  const seen: string[] = [];
+  const off = t.subscribeTheme((theme) => seen.push(theme));
+  t.saveTheme("light");
+  t.saveTheme("dark");
+  off();
+  t.saveTheme("light");
+  expect(seen).toEqual(["light", "dark"]);
+});
+it("다른 탭이 고른 값(storage 이벤트)을 따라가고 직접 고른 값으로 지키며, 다른 키·잘못된 값은 무시한다", async () => {
+  const t = await load();
+  const env = setup({ light: false });
+  const seen: string[] = [];
+  t.subscribeTheme((theme) => seen.push(theme));
+  t.followSystemTheme();
+  const onStorage = (e: { key: string | null; newValue: string | null }) => env.windowHandlers.storage.forEach((fn) => fn(e));
+  onStorage({ key: "other", newValue: "light" });
+  onStorage({ key: "theme", newValue: "sepia" });
+  onStorage({ key: "theme", newValue: null });
+  expect(env.dataset.theme).toBeUndefined();
+  expect(seen).toEqual([]);
+
+  onStorage({ key: "theme", newValue: "light" });
+  expect(env.dataset.theme).toBe("light");
+  expect(seen).toEqual(["light"]);
+  env.light = false; // 기기 설정이 바뀌어도 다른 탭에서 고른 값이 남는다
+  vi.stubGlobal("localStorage", { getItem: () => { throw new Error("blocked"); }, setItem: () => {} });
   env.changeListeners.forEach((fn) => fn());
   expect(env.dataset.theme).toBe("light");
-  expect(t.readTheme()).toBe("light");
 });
 it("matchMedia가 없어도 어두운 화면으로 시작하고 오류가 나지 않는다", async () => {
   const t = await load();
