@@ -45,6 +45,7 @@ import csv
 import hashlib
 import json
 import math
+import re
 import sys
 from importlib.metadata import version
 from pathlib import Path
@@ -525,11 +526,20 @@ def build_diff(first: dict, c: dict) -> list[str]:
     return diff
 
 
+# 후보 생성기(`time_eval_candidates.py`)가 항상 기록하는 데이터 지문 — 정식 채점은 이 값이 실제로 있어야 받는다
+REQUIRED_DATA_HASHES = ("recalls_sha256_full", "eval_sha256", "causes_sha256")
+SHA256_RE = re.compile(r"[0-9a-f]{64}")
+
+
 def unusable_build_info(c: dict) -> list[str]:
     """정식 채점에 쓸 수 없는 판본 정보 항목 — 칸이 없거나, 있어도 비었거나 형식이 틀린 것."""
     bad = []
-    if not isinstance(c.get("data"), dict) or not c["data"]:
-        bad.append("data")
+    data = c.get("data") if isinstance(c.get("data"), dict) else {}
+    bad += [
+        f"data.{k}"
+        for k in REQUIRED_DATA_HASHES
+        if not isinstance(data.get(k), str) or not data[k].strip()
+    ]
     if not isinstance(c.get("model"), str) or not c["model"].strip():
         bad.append("model")
     top = c.get("top")
@@ -544,7 +554,12 @@ def unusable_build_info(c: dict) -> list[str]:
     code = c.get("code") if isinstance(c.get("code"), dict) else {}
     if not isinstance(code.get("dirty"), bool):
         bad.append("code.dirty")
-    if not isinstance(code.get("script_sha256"), dict) or not code["script_sha256"]:
+    scripts = code.get("script_sha256")
+    if (
+        not isinstance(scripts, dict)
+        or not scripts
+        or not all(isinstance(v, str) and SHA256_RE.fullmatch(v) for v in scripts.values())
+    ):
         bad.append("code.script_sha256")
     return bad
 

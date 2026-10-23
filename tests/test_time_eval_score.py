@@ -265,7 +265,8 @@ def test_cli_score_prints_inputs_and_note(tmp_path, capsys):
         json.dumps(
             {
                 **_cand(
-                    "main", code={"dirty": False, "commit": "abc", "script_sha256": {"x.py": "s"}}
+                    "main",
+                    code={"dirty": False, "commit": "abc", "script_sha256": {"x.py": "a" * 64}},
                 ),
                 "items": items(("PE1", {"A": {"bm25": 1, "b_rrf": 2}})),
             }
@@ -531,8 +532,8 @@ def test_double_labeled_question_needs_every_candidate_from_both(tmp_path):
 def _cand(set_name, **kw):
     base = {
         "set": set_name,
-        "data": {"recalls_sha256_full": "r"},
-        "code": {"dirty": False, "script_sha256": {"x.py": "s"}},
+        "data": {"recalls_sha256_full": "r", "eval_sha256": "e", "causes_sha256": "c"},
+        "code": {"dirty": False, "script_sha256": {"x.py": "a" * 64}},
         "model": "m",
         "embedding": {"fastembed": "0.9.0", "model_fingerprint": "f", "cache_verified": True},
         "top": 20,
@@ -570,7 +571,7 @@ def test_candidate_files_must_share_data_code_and_model():
 
 
 def test_dirty_candidates_are_refused_unless_partial():
-    dirty = _cand("main", code={"dirty": True, "script_sha256": {"x.py": "s"}})
+    dirty = _cand("main", code={"dirty": True, "script_sha256": {"x.py": "a" * 64}})
     with pytest.raises(SystemExit, match="커밋하지 않은"):
         ts.check_same_build([dirty])
     ts.check_same_build([dirty], partial=True)
@@ -606,7 +607,7 @@ def _cand_file(tmp_path, name, set_name, action, **kw):
 
 def test_cli_score_refuses_dirty_candidates_unless_partial(tmp_path, capsys):
     """--partial이 실행 명령에서 check_same_build로 전달되는지(연결부) — 정식 채점은 dirty 후보를 거부한다."""
-    dirty = {"code": {"dirty": True, "script_sha256": {"x.py": "s"}}}
+    dirty = {"code": {"dirty": True, "script_sha256": {"x.py": "a" * 64}}}
     cand = _cand_file(tmp_path, "candidates_main.json", "main", "PE1", **dirty)
     sheet = write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes")])
     with pytest.raises(SystemExit, match="커밋하지 않은"):
@@ -833,7 +834,7 @@ def test_cli_partial_with_dirty_candidates_is_interim_even_without_skipped(tmp_p
     pool = {f"PE{i}": {"A": {"bm25": 1, "b_rrf": 1}} for i in range(34)}
     pool.update({f"PB{i}": {"A": {"b_rrf": 1}} for i in range(6)})
     p = tmp_path / "candidates_main.json"
-    dirty = {"code": {"dirty": True, "script_sha256": {"x.py": "s"}}}
+    dirty = {"code": {"dirty": True, "script_sha256": {"x.py": "a" * 64}}}
     p.write_text(
         json.dumps({**_cand("main", **dirty), "items": items(*pool.items())}), encoding="utf-8"
     )
@@ -1298,9 +1299,15 @@ def test_single_candidate_file_needs_build_info_unless_partial():
         _cand("main", top=True),
         _cand("main", embedding={"fastembed": "", "model_fingerprint": "f"}),
         _cand("main", embedding={"fastembed": "0.9.0", "model_fingerprint": None}),
-        _cand("main", code={"script_sha256": {"x.py": "s"}}),  # dirty 칸 없음
-        _cand("main", code={"dirty": 0, "script_sha256": {"x.py": "s"}}),
+        _cand("main", code={"script_sha256": {"x.py": "a" * 64}}),  # dirty 칸 없음
+        _cand("main", code={"dirty": 0, "script_sha256": {"x.py": "a" * 64}}),
         _cand("main", code={"dirty": False, "script_sha256": {}}),
+        # 이름은 있지만 지문 값이 비었거나 SHA-256 형식이 아닌 파일도 거부한다
+        _cand("main", data={"recalls_sha256_full": "", "eval_sha256": "e", "causes_sha256": "c"}),
+        _cand("main", data={"recalls_sha256_full": "r", "eval_sha256": "e"}),  # 필수 지문 누락
+        _cand("main", code={"dirty": False, "script_sha256": {"x.py": ""}}),
+        _cand("main", code={"dirty": False, "script_sha256": {"x.py": "not-a-sha"}}),
+        _cand("main", code={"dirty": False, "script_sha256": {"x.py": "a" * 64, "y.py": None}}),
         _cand("main", code={"dirty": False, "script_sha256": None}),
     ):
         with pytest.raises(SystemExit, match="판본 정보가 없는"):
