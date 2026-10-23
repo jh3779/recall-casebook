@@ -31,7 +31,8 @@ async function openFirstCard() {
   return { user, opener };
 }
 
-// 이 파일의 첫 시험이 3D 코드가 아직 도착하지 않은 상태를 쓰므로 순서를 바꾸지 않는다 — 두 번째 시험부터는 가짜 코드가 도착해 있다
+// 이 시험은 3D 코드가 아직 도착하지 않은 상태가 필요하고, 한 번 도착하면 모듈에 남는다(React.lazy 캐시) — 그래서 이 파일에는 이 시험 하나만 둔다.
+// 코드가 도착한 상태를 쓰는 시험은 CasebookOverlay.hash.dom.test.tsx로 나눠, 실행 순서를 섞어도(--sequence.shuffle) 서로 영향을 주지 않게 한다
 it("3D 코드를 받는 중에 Esc로 닫으면 연 버튼으로 초점이 돌아가고, 코드가 늦게 도착해도 닫힌 창이 되살아나지 않는다", async () => {
   const { user, opener } = await openFirstCard();
   await user.click(opener);
@@ -42,17 +43,5 @@ it("3D 코드를 받는 중에 Esc로 닫으면 연 버튼으로 초점이 돌�
   expect(document.activeElement).toBe(opener);
 
   await act(async () => { gate.open(); await gate.arrived; });
-  expect(screen.queryByRole("dialog")).toBeNull();
-});
-
-it("3D 창을 연 채 다른 화면의 주소로 이동하면 닫히고, 케이스북 주소로의 이동은 닫지 않는다", async () => {
-  gate.open(); // 이 시험만 단독으로 골라 돌려도 가짜 3D 코드가 도착하도록 스스로 연다(이미 열려 있으면 아무 일도 없다)
-  const { user, opener } = await openFirstCard();
-  await user.click(opener);
-  expect(await screen.findByRole("dialog", { name: `fake 3D ${card.campno}` })).toBeTruthy();
-
-  act(() => { history.replaceState(null, "", "/#casebook"); window.dispatchEvent(new HashChangeEvent("hashchange")); });
-  expect(screen.getByRole("dialog", { name: `fake 3D ${card.campno}` })).toBeTruthy();
-  act(() => { history.replaceState(null, "", "/#8d"); window.dispatchEvent(new HashChangeEvent("hashchange")); });
   expect(screen.queryByRole("dialog")).toBeNull();
 });
