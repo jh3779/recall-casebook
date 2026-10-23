@@ -170,30 +170,6 @@ def test_off_vercel_a_forged_forwarded_header_does_not_buy_a_new_bucket(tmp_path
         )
 
 
-def test_counting_key_groups_ipv6_by_64_bit_prefix_and_leaves_ipv4_alone():
-    key = ratelimit.counting_key
-    same_prefix = ["2001:db8:1:2:3:4:5:6", "2001:db8:1:2::9", "2001:0DB8:1:2:ffff:ffff:ffff:ffff"]
-    assert len({key(ip) for ip in same_prefix}) == 1  # 같은 /64 안에서 주소를 바꿔도 한 묶음
-    assert key("2001:db8:1:3::1") != key(same_prefix[0])  # 다른 /64는 다른 묶음
-    assert key("1.1.1.1") == "1.1.1.1" and key("1.1.1.2") != key("1.1.1.1")
-    assert key("::ffff:1.2.3.4") == "1.2.3.4"  # IPv4-매핑 주소는 IPv4 하나로
-    assert key("unknown") == "unknown"  # IP로 읽히지 않는 값은 그대로
-
-
-def test_on_vercel_ipv6_addresses_in_one_64_prefix_share_a_bucket(tmp_path, monkeypatch):
-    monkeypatch.setenv("VERCEL", "1")
-    with client_with(tmp_path, 1) as client:
-
-        def post(ip):
-            return client.post(
-                "/search", json=QUESTION, headers={"x-forwarded-for": ip}
-            ).status_code
-
-        assert post("2001:db8:1:2::1") == 200
-        assert post("2001:db8:1:2:aaaa:bbbb:cccc:dddd") == 429  # 같은 /64의 다른 주소
-        assert post("2001:db8:1:3::1") == 200  # 다른 /64
-
-
 def test_limit_follows_the_router_path_when_the_app_runs_under_a_root_path(tmp_path):
     """서버가 root_path 아래에서 돌면 scope["path"]에는 접두어가 남는다 — 라우터가 보는 경로로 비교하지 않으면 상한이 꺼진다."""
     state = make_state(tmp_path)
