@@ -525,6 +525,30 @@ def build_diff(first: dict, c: dict) -> list[str]:
     return diff
 
 
+def unusable_build_info(c: dict) -> list[str]:
+    """정식 채점에 쓸 수 없는 판본 정보 항목 — 칸이 없거나, 있어도 비었거나 형식이 틀린 것."""
+    bad = []
+    if not isinstance(c.get("data"), dict) or not c["data"]:
+        bad.append("data")
+    if not isinstance(c.get("model"), str) or not c["model"].strip():
+        bad.append("model")
+    top = c.get("top")
+    if isinstance(top, bool) or not isinstance(top, int) or top <= 0:
+        bad.append("top")
+    emb = c.get("embedding") if isinstance(c.get("embedding"), dict) else {}
+    bad += [
+        f"embedding.{k}"
+        for k in EMBEDDING_KEYS
+        if not isinstance(emb.get(k), str) or not emb[k].strip()
+    ]
+    code = c.get("code") if isinstance(c.get("code"), dict) else {}
+    if not isinstance(code.get("dirty"), bool):
+        bad.append("code.dirty")
+    if not isinstance(code.get("script_sha256"), dict) or not code["script_sha256"]:
+        bad.append("code.script_sha256")
+    return bad
+
+
 def check_same_build(cands: list[dict], partial: bool = False) -> None:
     dirty = [c.get("set") for c in cands if (c.get("code") or {}).get("dirty")]
     if dirty and not partial:
@@ -532,18 +556,18 @@ def check_same_build(cands: list[dict], partial: bool = False) -> None:
             f"커밋하지 않은 코드로 만든 후보 파일이다 {dirty} — 정식 채점에 쓰지 않는다(중간 결과는 --partial)"
         )
     first = cands[0]
-    if len(cands) < 2:
-        # 파일이 하나뿐이어도 정식 채점은 판본 정보(데이터·모델·임베딩·스크립트 해시)가 적힌 파일만 받는다
-        if not partial and (missing := build_diff(first, first)):
-            sys.exit(
-                f"후보 파일 {first.get('set')}에 {missing}가 없다 — 판본 정보가 없는 파일은 정식 채점에 쓰지 않는다(중간 결과는 --partial)"
-            )
-        return
     for c in cands[1:]:
         if diff := build_diff(first, c):
             sys.exit(
                 f"후보 파일 {first.get('set')}·{c.get('set')}의 {diff}가 없거나 다르다 — 같은 데이터·스크립트·모델로 만든 회차만 합친다(DEC-037 ⑦(c))"
             )
+    # 정식 채점은 판본 정보(데이터·모델·임베딩·스크립트 해시)가 실제 값으로 적힌 파일만 받는다 — 서로 같아도 칸만 있고 비어 있으면 거부한다
+    if not partial:
+        for c in cands:
+            if missing := unusable_build_info(c):
+                sys.exit(
+                    f"후보 파일 {c.get('set')}의 {missing}가 없거나 비어 있다 — 판본 정보가 없는 파일은 정식 채점에 쓰지 않는다(중간 결과는 --partial)"
+                )
 
 
 def main(argv: list[str] | None = None) -> None:

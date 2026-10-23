@@ -264,7 +264,9 @@ def test_cli_score_prints_inputs_and_note(tmp_path, capsys):
     cand_path.write_text(
         json.dumps(
             {
-                **_cand("main", code={"commit": "abc", "script_sha256": {"x.py": "s"}}),
+                **_cand(
+                    "main", code={"dirty": False, "commit": "abc", "script_sha256": {"x.py": "s"}}
+                ),
                 "items": items(("PE1", {"A": {"bm25": 1, "b_rrf": 2}})),
             }
         ),
@@ -1286,10 +1288,36 @@ def test_single_candidate_file_needs_build_info_unless_partial():
         {k: v for k, v in _cand("main").items() if k != "model"},
         _cand("main", embedding={}),
         _cand("main", code={"dirty": False}),
+        # 칸만 있고 값이 비었거나 형식이 틀린 파일도 거부한다 — 어느 데이터·모델·코드로 만든 점수인지 알 수 없다
+        _cand("main", data={}),
+        _cand("main", data=None),
+        _cand("main", model=None),
+        _cand("main", model="  "),
+        _cand("main", top=None),
+        _cand("main", top=0),
+        _cand("main", top=True),
+        _cand("main", embedding={"fastembed": "", "model_fingerprint": "f"}),
+        _cand("main", embedding={"fastembed": "0.9.0", "model_fingerprint": None}),
+        _cand("main", code={"script_sha256": {"x.py": "s"}}),  # dirty 칸 없음
+        _cand("main", code={"dirty": 0, "script_sha256": {"x.py": "s"}}),
+        _cand("main", code={"dirty": False, "script_sha256": {}}),
+        _cand("main", code={"dirty": False, "script_sha256": None}),
     ):
         with pytest.raises(SystemExit, match="판본 정보가 없는"):
             ts.check_same_build([broken])
         ts.check_same_build([broken], partial=True)  # 중간 결과는 막지 않는다
+
+
+def test_candidate_files_pair_with_empty_build_info_is_refused_too():
+    """두 파일이 같은 빈 판본 정보를 가져도 '같다'고 통과시키지 않는다."""
+    empty = {
+        "data": {},
+        "model": None,
+        "top": None,
+    }  # 임베딩·코드 칸은 정상이라 두 파일이 서로 같다
+    with pytest.raises(SystemExit, match="판본 정보가 없는"):
+        ts.check_same_build([_cand("main", **empty), _cand("r1", **empty)])
+    ts.check_same_build([_cand("main", **empty), _cand("r1", **empty)], partial=True)
 
 
 def test_labeler_id_with_stray_spaces_is_still_one_person(tmp_path):

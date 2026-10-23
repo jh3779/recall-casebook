@@ -335,7 +335,7 @@ def cmd_score(a) -> None:
     meta = json.loads(meta_path.read_text("utf-8")) if meta_path.exists() else None
     if meta is None:
         sys.exit(f"{meta_path.name}이 없다 — 시트를 만든 기록 없이 채점하지 않는다")
-    # 출처별 시트만 채점한다 — 버린 섞인 시트(메타에 source 없음)·출처가 섞인 줄은 거부(리뷰 acaa624). 줄 수는 표본 지문이 본다
+    # 출처별 시트만 채점한다 — 버린 섞인 시트(메타에 source 없음)·출처가 섞인 줄은 거부(리뷰 acaa624). 줄 수는 아래에서 n·N과 직접 대조한다
     if meta.get("source") not in SOURCES:
         sys.exit(
             f"메타에 출처(source)가 없거나 알 수 없다({meta.get('source')!r}) — 버린 옛 시트일 수 있다. 출처별 시트({list(SOURCES.values())})를 쓴다"
