@@ -11,13 +11,13 @@ flowchart LR
         FLAT["flat 파일 zip<br/>FLAT_RCL · FLAT_INV 등"]
         PDF["Part 573 PDF<br/>RCLRPT-*.PDF"]
     end
-    subgraph LOCAL["로컬 파일 (커밋 안 함, data/processed/defect/)"]
-        RAWM["manifest.json<br/>원본 sha256"]
+    subgraph LOCAL["로컬 파일 (커밋 안 함)"]
+        RAWM["data/raw/nhtsa/<br/>manifest.json(원본 sha256) +<br/>FLAT_INV.zip 사본"]
         RECJ["recalls.jsonl<br/>리콜 카드"]
         EVALJ["eval.jsonl<br/>시험 질문 749"]
         CAUJ["causes.jsonl +<br/>causes.manifest.json<br/>573 원인·공급사·생산 기간"]
         BUILDJ["build.json"]
-        MODEL["임베딩 모델 파일<br/>bge-small (로컬 폴더)"]
+        MODEL["fastembed 모델 캐시<br/>bge-small (bundle build가 폴더째 읽음)"]
         TAR["serving_BUILD_ID.tar<br/>(로컬 묶음 파일)"]
     end
     subgraph DB["Supabase (Postgres + pgvector, build 단위 보관)"]
@@ -33,13 +33,14 @@ flowchart LR
     PDF -->|"rclrpt all (pdftotext)"| CAUJ
     RECJ --> BUILDJ
     RECJ & EVALJ & CAUJ -->|load_db| T
+    RECJ -->|"embeddings load: 카드 벡터"| T
     RECJ & CAUJ -->|"bundle build: 카드·원인·명세"| TAR
-    FLAT -->|"조사 요약(FLAT_INV 원본 대조)"| TAR
+    RAWM -->|"조사 요약(manifest·FLAT_INV sha256 대조)"| TAR
     T -->|"벡터 가져오기 + 검사 대조"| TAR
     MODEL -->|"model/ 폴더째"| TAR
     TAR -->|"bundle upload"| STOR
     STOR -->|"공개 주소에서 받아 sha256 재검사 → 경로·해시 기록"| T
-    T -->|"serving_bundles에서 경로·해시 읽기"| MEM
+    T -->|"serving_bundles에서 경로·해시 읽기 + 명세·벡터 대조"| MEM
     STOR -->|"묶음 받기 (RAG_SOURCE=bundle)"| MEM
     MEM -->|POST /search| API["SearchResponse<br/>(4절)"]
 ```

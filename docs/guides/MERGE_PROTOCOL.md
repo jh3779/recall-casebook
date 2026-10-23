@@ -49,7 +49,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
 
 | ID | 게이트 | 통과 기준 | 확인 방법 |
 |---|---|---|---|
-| G-01 | **CI** | 필수 체크(`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`) 모두 pass. `merge-gate`는 결과 코멘트를 게시해야 통과하므로 결과 코멘트 작성 시점에는 보지 않는다 (지금은 2단계 도입 중이라 필수 아님, 2-1절) | `gh pr checks <N>` |
+| G-01 | **CI** | 필수 체크(`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`) 모두 pass. `merge-gate`는 결과 코멘트를 게시해야 통과하므로 결과 코멘트 작성 시점에는 보지 않는다 (지금은 2단계 도입 중이라 필수 아님, 2-1절) | `gh pr checks <N>` · Actions를 끈 동안은 7절 4단계의 `### 🧪 local CI (엄격) — 커밋 <SHA>` 코멘트이고, 그 **제목의 SHA가 현재 head와 같은지** 본다(다르면 그 코멘트는 근거가 아니다 — 새 head로 다시 돌린다) |
 | G-02 | **자동 리뷰 존재** | 자동 리뷰가 1건 이상 있다. 없으면 **직접 돌려서** PR 코멘트로 남긴 뒤 진행 | `gh pr view <N> --json reviews,comments` |
 | G-03 | **리뷰가 최신 커밋 기준** | 자동 리뷰의 기준 커밋 = 현재 head (1절 조건). 리뷰 뒤에 커밋이 추가됐으면 재리뷰 | 리뷰 `.commit.oid` 또는 코멘트 첫 줄의 SHA vs `headRefOid` (커밋 **시각** 비교는 rebase·amend 때 틀리므로 쓰지 않는다) |
 | G-04 | **지적 전부 처리** | 모든 지적에 처리 결과가 있다: **반영**(커밋 SHA) / **반박**(근거 `파일:줄`) / **후속 이슈**(이슈 링크 — 링크 없는 "후속"·"다음 체크포인트"는 불가). 이 셋 밖의 분류("확인"·"반박(선택)" 등)는 쓰지 않는다 — 선택 개선을 하지 않으면 반박으로 근거를 적는다. **🟡(Codex 중)은 반영하거나 근거 있는 반박만, 🟢(Codex 하)는 반영·반박 외에 후속 이슈(여러 건을 이슈 하나로 묶어도 된다)로 넘길 수 있다** — 차수마다 새 🟢가 나와 병합이 끝나지 않는 것을 막는다(2026-10-11 사용자 결정, DEC-046). 🔴 심각(버그·보안·데이터 손실·서비스 원칙 위반, Codex 위험도 상) 지적은 **반영만** 허용. 반영으로 커밋이 늘면 G-01·G-03부터 다시 | 리뷰 본문을 전부 읽고 표로 정리 |
@@ -75,7 +75,7 @@ PR의 **현재 head 커밋**을 대상으로, 사람이 아닌 리뷰어가 남�
   ```bash
   gh pr comment <N> -b "merge-gate 재판정"
   ```
-- RAG 경로는 `scripts/ci/pr_verify.toml`의 `rag-paths`로 정한다 (대소문자 무시, `docs/`·루트 `*.md`·`tests/` 제외 — `prompts/*.md`는 포함). `pyproject.toml`에 두지 않는 이유는 G-09(pyproject를 바꾸면 uv.lock도) 규칙과 부딪히기 때문이다. 수치를 낼 수 없는 정당한 경우는 **"## 검증 방법" 섹션 안에** `[skip-rag-evidence: 이유]`를 적는다.
+- RAG 경로는 `scripts/ci/pr_verify.toml`의 `rag-paths`로 정한다 (대소문자 무시, `docs/`·루트 `*.md`·`tests/` 제외 — `prompts/*.md`는 포함). G-08의 고정 명령 경로(`server scripts/defect_precedent`)는 이 `rag-paths`보다 좁다 — **두 폴더 밖에 `rag-paths`에 걸리는 추적 파일이 생기면 `rag-paths`나 고정 경로를 바꾸는 PR에서 G-08 고정 명령도 함께 고친다**(2026-10-23 `git ls-files`를 `pr_checks.py`와 같은 규칙으로 걸러 본 결과 그런 파일은 없다). `pyproject.toml`에 두지 않는 이유는 G-09(pyproject를 바꾸면 uv.lock도) 규칙과 부딪히기 때문이다. 수치를 낼 수 없는 정당한 경우는 **"## 검증 방법" 섹션 안에** `[skip-rag-evidence: 이유]`를 적는다.
 - **작성자 제한(공개 저장소)**: `merge_gate.py`와 `merge-gate.yml`은 협업자(`author_association`이 OWNER·MEMBER·COLLABORATOR)가 쓴 코멘트·리뷰만 세고, 그 밖의 작성자가 쓴 "자동 리뷰"·"병합 전 검증 결과"·변경 요청은 판정에 쓰지 않는다. 미해결 리뷰 스레드(G-05)도 스레드를 연 첫 코멘트가 협업자의 것인 것만 센다. 개인 소유 저장소를 전제로 한 기준이라(`MEMBER`는 조직 소유일 때 쓰기 권한 없는 구성원도 포함) 조직으로 옮기면 권한 API 기준으로 바꾼다. 봇·GitHub App 계정이 올린 코멘트와 그 계정이 연 인라인 스레드는 협업자가 아니라 제외된다(지금은 같은 계정 토큰으로 올림 — 공식 리뷰 앱으로 바꾸면 이 기준을 다시 정한다). 제외한 외부인의 리뷰·코멘트·스레드는 게이트 요약에 개수가 나오며, 병합하는 사람이 한 번 읽는다. 사람이 읽을 때도 같은 기준이다(`pre-merge-check` 스킬).
 - **CI가 판정하지 못하는 것**: **G-02(리뷰를 누가 썼나 — 출처)**, G-04(지적 처리가 타당한가), G-06(diff를 실제로 읽었나·PR 설명이 맞나), G-09의 `.agent/` 갱신 필요성. 이것들은 결과 코멘트를 쓰는 에이전트와 **병합하는 사람이 직접 확인하는 수동 게이트**다. `merge-gate`는 "현재 head에 리뷰 표시와 ✅ 결과 표시가 순서대로 있는지"까지만 본다.
 - **⚠️ 알려진 한계 (CI)**
@@ -118,6 +118,13 @@ gh api graphql -F o=${REPO%/*} -F r=${REPO#*/} -F n=$N -f query='
 query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
   reviewThreads(first:100){nodes{isResolved path line comments(first:1){nodes{author{login} authorAssociation body}}}}}}}' \
   -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not) | select((.comments.nodes[0].authorAssociation) as $a | $a == null or $a == "OWNER" or $a == "MEMBER" or $a == "COLLABORATOR")]'
+
+# G-05 걸러진 스레드 조회 — 위 명령이 지운, 외부인(협업자가 아닌 작성자)이 연 미해결 스레드. 쿼리는 같고 select 조건만 반대다. 병합하는 사람이 한 번 읽는다
+# (개수만 보려면 `python3 scripts/ci/merge_gate.py`의 "미해결 스레드 N개는 판정에서 뺌" 줄 — Actions를 끈 동안은 로컬 실행으로만 본다)
+gh api graphql -F o=${REPO%/*} -F r=${REPO#*/} -F n=$N -f query='
+query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
+  reviewThreads(first:100){nodes{isResolved path line comments(first:1){nodes{author{login} authorAssociation body}}}}}}}' \
+  -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not) | select((.comments.nodes[0].authorAssociation) as $a | $a != null and $a != "OWNER" and $a != "MEMBER" and $a != "COLLABORATOR")]'
 
 # G-06 diff
 gh pr diff $N
@@ -169,15 +176,12 @@ G-07 grep에 걸렸다고 바로 실패는 아니다 — 문서·테스트에서
 
 - 기본은 **사람**이 위 코멘트를 보고 squash merge 한다.
 - 에이전트는 사용자가 **그 PR의 병합을 명시적으로 지시한 경우에만** 병합할 수 있고, 그때도 4절 코멘트가 ✅로 게시된 뒤여야 한다. (Claude Code는 `.claude/settings.json`에서 이 명령이 매번 확인을 묻도록 돼 있다.) **지시에 PR 번호가 없으면**("병합해 줘") 어느 PR인지 번호로 되물어 확인한다(DEC-046).
-- **병합 직전 main 재확인** — 결과 코멘트 뒤에 다른 PR이 병합돼 main이 바뀌었을 수 있다(PR #69는 #68 병합 31초 뒤 이 상태로 병합됐다). 병합 명령 바로 앞에서 확인하고, 실패하면 main을 합쳐 push한 뒤 G-01·G-03부터 다시 한다. 여러 PR을 연달아 병합할 때는 앞 PR을 병합할 때마다 다음 PR에서 이 확인부터 한다.
+- **병합 직전 main 재확인** — 결과 코멘트 뒤에 다른 PR이 병합돼 main이 바뀌었을 수 있다(PR #69는 #68 병합 31초 뒤 이 상태로 병합됐다). 병합 명령 바로 앞에서 확인하고, 실패하면 main을 합쳐 push한 뒤 G-01·G-03부터 다시 한다. 여러 PR을 연달아 병합할 때는 앞 PR을 병합할 때마다 다음 PR에서 이 확인부터 한다. **확인과 병합 명령은 아래처럼 한 블록으로 함께 실행한다** — 따로 나눠 실행하면 확인이 실패한 뒤에도 병합 명령을 칠 수 있다.
+- 병합 명령에는 **결과 코멘트에 적힌 head SHA를 반드시 붙인다.** 코멘트 게시 뒤에 push가 들어왔으면 GitHub이 병합을 거부한다.
   ```bash
   if ! git fetch origin main || ! git merge-base --is-ancestor origin/main <head 전체 SHA>; then
     echo "❌ main이 바뀜 — 합치고 다시 검증"; exit 1
   fi
-  # 위가 통과했을 때만 아래 병합 명령으로 간다
-  ```
-- 병합 명령에는 **결과 코멘트에 적힌 head SHA를 반드시 붙인다.** 코멘트 게시 뒤에 push가 들어왔으면 GitHub이 병합을 거부한다.
-  ```bash
   gh pr merge <N> --squash --match-head-commit <결과 코멘트의 head SHA(전체)>
   ```
 - 사람이 웹에서 병합할 때도 결과 코멘트의 head SHA가 PR의 최신 커밋과 같은지 보고 누른다.
@@ -203,5 +207,5 @@ G-07 grep에 걸렸다고 바로 실패는 아니다 — 문서·테스트에서
      | gh api -X PUT repos/jh3779/recall-casebook/rulesets/24290303 --input -
    ```
 3. **Actions 끄기(되돌릴 수 있는 쪽을 먼저)** — Settings → Actions → General → "Disable actions", 또는 `gh api -X PUT repos/jh3779/recall-casebook/actions/permissions -F enabled=false`. 워크플로 파일은 남겨 둔다. **파일까지 지우는 것**(`git rm .github/workflows/*.yml`을 PR로)은 한도가 다음 달에도 모자랄 것이 확실할 때만 — 되살리려면 그 PR을 revert한다.
-4. **병합 전 검증(4절)은 그대로** — PR 브랜치에 `origin/main`을 먼저 합치고(CI가 보던 "main에 합친 상태"와 맞춤) push한 뒤, `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh`로 돌린다. 통과하면 스크립트가 결과 줄(커밋 SHA·DB 테스트 실행됨·PR 번호)·pytest 요약·로그 전체 sha256(tee가 로그를 다 쓴 뒤 계산)을 PR 코멘트 `### 🧪 local CI (엄격) — 커밋 <SHA>`로 **직접** 남기고, 코멘트를 남기지 못하면 실패로 끝난다. G-01 근거는 **그 PR 코멘트뿐**이다 — 출력을 손으로 옮긴 줄은 근거로 쓰지 않는다(같은 계정이라 위조를 완전히 막지는 못한다, DEC-046). 이 모드는 열린 PR이 없거나 PR 최신 커밋과 검사 커밋이 다르거나 최신 `origin/main`이 검사 커밋에 들어 있지 않거나 검사 도중 main이 바뀌거나 `scripts/`·`lefthook.yml`에 커밋하지 않은 변경이 있거나 `scripts/`·`server/`·`tests/`에 추적하지 않는 새 파일이 있거나 `TEST_DATABASE_URL`이 전용 시험 DB(실제 접속 대상 `host`·`hostaddr`·`PGHOSTADDR`가 localhost·127.0.0.1이고 DB 이름 `lgcns_test` — `scripts/ci/db_guard.py`)가 아니거나 DB 테스트를 건너뛰거나 PR 코멘트를 남기지 못하면 실패하고, 통과하면 "엄격 — 병합 근거로 쓸 수 있음" 줄로 끝난다(기본 모드 출력은 근거로 쓰지 않는다). main을 합치면 head가 바뀌므로 자동 리뷰도 그 head로 다시 받는다(G-03). `frontend/`는 이 스크립트가 보지 않으므로(프런트 CI는 필수가 아님) 전환 중 프런트를 바꾸면 `cd frontend && npm ci && npm run lint && npm run build && npm test`를 따로 돌려 근거에 적는다. `merge-gate` 상태는 붙지 않으므로 결과 코멘트를 쓰기 전에 **로컬에서 `merge_gate.py`를 읽기 전용으로 돌려**(`REPO=jh3779/recall-casebook PR_NUMBER=<N> uv run python scripts/ci/merge_gate.py` — `POST_STATUS`를 주지 않으면 상태를 게시하지 않는다) 출력(`success`/`pending`/`failure`와 사유)을 G-02·G-03 근거에 붙이고, 결과 코멘트를 게시한 뒤 한 번 더 돌려 `success`인지 확인한다(DEC-046). 자동 리뷰(리뷰봇·리뷰 에이전트)는 Actions와 무관하게 돈다.
+4. **병합 전 검증(4절)은 그대로** — PR 브랜치에 `origin/main`을 먼저 합치고(CI가 보던 "main에 합친 상태"와 맞춤) push한 뒤, `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54331/lgcns_test bash scripts/local_ci.sh`로 돌린다 (먼저 `scripts/local_ci.sh` 머리말의 일회용 컨테이너 `docker run -d --rm --name lgcns-test-pg -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=lgcns_test -p 54331:5432 pgvector/pgvector:pg17`를 띄운다 — DB 이름은 `lgcns_test`여야 하고 일회용 컨테이너에만 쓴다). 통과하면 스크립트가 결과 줄(커밋 SHA·DB 테스트 실행됨·PR 번호)·pytest 요약·로그 전체 sha256(tee가 로그를 다 쓴 뒤 계산)을 PR 코멘트 `### 🧪 local CI (엄격) — 커밋 <SHA>`로 **직접** 남기고, 코멘트를 남기지 못하면 실패로 끝난다. G-01 근거는 **그 PR 코멘트뿐**이다 — 출력을 손으로 옮긴 줄은 근거로 쓰지 않는다(같은 계정이라 위조를 완전히 막지는 못한다, DEC-046). 이 모드는 열린 PR이 없거나 PR 최신 커밋과 검사 커밋이 다르거나 최신 `origin/main`이 검사 커밋에 들어 있지 않거나 검사 도중 main이 바뀌거나 `scripts/`·`lefthook.yml`에 커밋하지 않은 변경이 있거나 `scripts/`·`server/`·`tests/`에 추적하지 않는 새 파일이 있거나 `TEST_DATABASE_URL`이 전용 시험 DB(실제 접속 대상 `host`·`hostaddr`·`PGHOSTADDR`가 localhost·127.0.0.1이고 DB 이름 `lgcns_test` — `scripts/ci/db_guard.py`)가 아니거나 DB 테스트를 건너뛰거나 PR 코멘트를 남기지 못하면 실패하고, 통과하면 "엄격 — 병합 근거로 쓸 수 있음" 줄로 끝난다(기본 모드 출력은 근거로 쓰지 않는다). main을 합치면 head가 바뀌므로 자동 리뷰도 그 head로 다시 받는다(G-03). `frontend/`는 이 스크립트가 보지 않으므로(프런트 CI는 필수가 아님) 전환 중 프런트를 바꾸면 `cd frontend && npm ci && npm run lint && npm run build && npm test`를 따로 돌려 근거에 적는다. `merge-gate` 상태는 붙지 않으므로 결과 코멘트를 쓰기 전에 **로컬에서 `merge_gate.py`를 읽기 전용으로 돌려**(`REPO=jh3779/recall-casebook PR_NUMBER=<N> uv run python scripts/ci/merge_gate.py` — `POST_STATUS`를 주지 않으면 상태를 게시하지 않는다) 출력(`success`/`pending`/`failure`와 사유)을 G-02·G-03 근거에 붙이고(**PR이 `scripts/ci/merge_gate.py` 자체를 바꾸면 PR 쪽 파일로 돌리지 말고 main의 사본으로 돌린다** — `merge-gate`가 main의 코드만 실행한다는 위 "🔒 실행 위치"(DEC-009)와 같은 취지다: `git show origin/main:scripts/ci/merge_gate.py > <저장소 밖 임시 파일>` 뒤 `REPO=jh3779/recall-casebook PR_NUMBER=<N> python3 <그 임시 파일>`), 결과 코멘트를 게시한 뒤 한 번 더 돌려 `success`인지 확인한다(DEC-046). 자동 리뷰(리뷰봇·리뷰 에이전트)는 Actions와 무관하게 돈다.
 5. **되돌리기(한도가 다시 생기면)** — Actions 켜기(`-F enabled=true`) → 백업에서 읽기 전용 필드를 뺀 본문으로 필수 체크 복원: `jq '{name, target, enforcement, conditions, bypass_actors, rules}' ~/lgcns_ruleset_backup.json | gh api -X PUT repos/jh3779/recall-casebook/rulesets/24290303 --input -` → 열린 PR에 빈 커밋을 올려 CI를 한 번 돌린다.
