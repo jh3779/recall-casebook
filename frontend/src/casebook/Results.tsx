@@ -34,6 +34,7 @@ export function Results({ response, checked, checkedKey, onToggle, on3d, notes, 
   const found = response.customer_precedents.length + response.precedents.length;
   return <>
     <p className="sr-only" role="status">Found {found} precedent{found === 1 ? "" : "s"}: {response.customer_precedents.length} Hyundai / Kia, {response.precedents.length} other manufacturers.</p>
+    {found === 0 && <p className="cb-muted">No precedents found. Try changing the part name or how the failure appears.</p>}
     <div className="cb-grid">
       <CaseList response={response} checked={checked} onToggle={onToggle} />
       <section className="cb-stack" aria-label="Checked precedents">

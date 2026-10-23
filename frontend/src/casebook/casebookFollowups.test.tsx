@@ -4,7 +4,6 @@ import health from "../search/__fixtures__/health.json";
 import fixture from "../search/__fixtures__/search_airbag.json";
 import { hasCauseText, type Card, type HealthResponse, type SearchResponse } from "../search/types";
 import { CaseDetail } from "./CaseDetail";
-import { CaseList } from "./CaseList";
 import { Intro } from "./Intro";
 import { OverlayFailed, OverlayLoading } from "./OverlayBoundary";
 import { QUESTION_POOL } from "./questions";
@@ -37,7 +36,7 @@ it("검색 전 안내의 데이터 판본에도 묶음 sha256 전체를 펼쳐 �
 
 const resultsProps = { response, checked: [] as Card[], checkedKey: "", onToggle: () => {}, on3d: () => {}, notes: {}, onNoteChange: () => {}, caseName: "", persistent: false, storageBlocked: false, onCopy: () => {}, onClear: () => {}, copyMessage: "", storeMessage: "", onGroupPicked: () => {}, picked: [] as string[] };
 
-it("결과가 나오면 낭독기용 건수 알림이 붙고, 두 목록이 모두 비면 다시 써 보라는 안내가 나온다 (#165 사라진 안내)", () => {
+it("결과가 나오면 낭독기용 건수 알림이 붙고, 두 목록이 모두 비었을 때만 다시 써 보라는 안내가 한 번 나온다 (#165 사라진 안내)", () => {
   const markup = renderToStaticMarkup(<Results {...resultsProps} />);
   const found = response.customer_precedents.length + response.precedents.length;
   expect(markup).toContain(`<p class="sr-only" role="status">Found ${found} precedents: ${response.customer_precedents.length} Hyundai / Kia, ${response.precedents.length} other manufacturers.</p>`);
@@ -46,9 +45,13 @@ it("결과가 나오면 낭독기용 건수 알림이 붙고, 두 목록이 모�
   const one = renderToStaticMarkup(<Results {...resultsProps} response={{ ...response, customer_precedents: [], precedents: response.precedents.slice(0, 1) }} />);
   expect(one).toContain("Found 1 precedent: 0 Hyundai / Kia, 1 other manufacturers.");
 
-  const empty = renderToStaticMarkup(<CaseList response={{ ...response, customer_precedents: [], precedents: [] }} checked={[]} onToggle={() => {}} />);
-  expect(empty).toContain("No precedents found. Try changing the part name or how the failure appears.");
-  expect(renderToStaticMarkup(<CaseList response={response} checked={[]} onToggle={() => {}} />)).not.toContain("No precedents found");
+  const none = "No precedents found. Try changing the part name or how the failure appears.";
+  const empty = renderToStaticMarkup(<Results {...resultsProps} response={{ ...response, customer_precedents: [], precedents: [] }} />);
+  expect(empty).toContain(none);
+  expect(empty.split(none)).toHaveLength(2); // 한 번만 나온다
+  // 한쪽 목록만 비어도 선례가 화면에 있으면 "찾지 못했다"고 말하지 않는다
+  expect(renderToStaticMarkup(<Results {...resultsProps} response={{ ...response, precedents: [] }} />)).not.toContain("No precedents found");
+  expect(renderToStaticMarkup(<Results {...resultsProps} response={{ ...response, customer_precedents: [] }} />)).not.toContain("No precedents found");
 });
 
 it("결과 화면은 묶기 구역을 그리고 체크한 선례에 원인 글이 있을 때만 묶기 단추를 켠다 (#165 Results→GroupPanel)", () => {
