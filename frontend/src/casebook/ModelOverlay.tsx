@@ -3,7 +3,7 @@ import { CATEGORIES, MODELS } from "../config";
 import { Showroom } from "../showroom/Showroom";
 import type { Card } from "../search/types";
 import type { CategoryKey, Mode } from "../types";
-import { GUIDE_LAST, GUIDE_PLAY_MS, type Held, NOT_HELD, effectiveLook, guideMoves, guideView, holdOf, markerTitle } from "../showroom/guide";
+import { GUIDE_LAST, GUIDE_PLAY_MS, type Held, NOT_HELD, afterModeButton, effectiveLook, guideMoves, guideView, handOff, markerTitle } from "../showroom/guide";
 import { TYPICAL_COMPONENTS } from "../showroom/partNames";
 import { PEEL_LABELS, PEEL_MAX, peelControls } from "../showroom/peel";
 import { GuideCard } from "./GuideCard";
@@ -41,7 +41,8 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   const cardCats = partCategories(card.components);
   /** 직접 조작하면 안내 보기를 멈춘다(보던 화면은 그대로 둔다) */
   const manual = () => {
-    if (view) { setMode(view.mode); setLayer(view.layer); setHeld(holdOf(view)); } // 안내가 보여 주던 화면(모드·층·강조·확대)을 직접 조작의 시작점으로 넘긴다
+    const next = handOff(view); // 안내가 보여 주던 화면(모드·층·강조·확대)을 직접 조작의 시작점으로 넘긴다
+    if (next) { setMode(next.mode); setLayer(next.layer); setHeld(next.held); }
     setStep(null);
     setPlaying(false);
   };
@@ -173,8 +174,8 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
           </div>
         </div>
         <div className="cb-3d-mode" role="group" aria-label="View mode">
-          <button type="button" aria-pressed={effMode === "xray"} className={effMode === "xray" ? "on" : ""} onClick={() => { manual(); setMode("xray"); setHeld(NOT_HELD); }}>See-through</button>
-          <button type="button" aria-pressed={effMode === "exterior"} className={effMode === "exterior" ? "on" : ""} onClick={() => { manual(); setMode("exterior"); setHeld(NOT_HELD); }}>Exterior</button>
+          <button type="button" aria-pressed={effMode === "xray"} className={effMode === "xray" ? "on" : ""} onClick={() => { manual(); const next = afterModeButton("xray"); setMode(next.mode); setHeld(next.held); }}>See-through</button>
+          <button type="button" aria-pressed={effMode === "exterior"} className={effMode === "exterior" ? "on" : ""} onClick={() => { manual(); const next = afterModeButton("exterior"); setMode(next.mode); setHeld(next.held); }}>Exterior</button>
         </div>
       </>}
       <p className="cb-muted">3D: <a href={model.source} target="_blank" rel="noreferrer">{model.credit}</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a> · size and materials adjusted</p>

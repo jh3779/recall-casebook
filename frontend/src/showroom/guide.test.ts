@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import parts from "../../public/data/sorento_parts.json";
 import { CATEGORIES } from "../config";
-import { GUIDE_LAST, GUIDE_STEPS, NOT_HELD, clampGuide, effectiveLook, guideMoves, guideView, holdOf } from "./guide";
+import { GUIDE_LAST, GUIDE_STEPS, NOT_HELD, afterModeButton, clampGuide, effectiveLook, guideMoves, guideView, handOff, holdOf } from "./guide";
 import { MODEL_PART_BONES, TYPICAL_COMPONENTS, displayName } from "./partNames";
 import { CATEGORY_LAYER, PEEL_MAX, boneOfTitle } from "./peel";
 
@@ -82,5 +82,30 @@ describe("안내 보기에서 직접 조작으로 넘어갈 때(DEC-078)", () =>
     }
     expect(effectiveLook(null, "exterior", holdOf(guideView(0, "steering")))).toEqual({ mode: "exterior", highlight: false, zoom: false });
     expect(effectiveLook(null, "exterior", holdOf(guideView(1, null)))).toEqual({ mode: "exterior", highlight: false, zoom: false }); // 분류가 없으면 강조 없음
+  });
+  it("handOff: 안내 중이면 그 단계 화면(모드·층·강조·확대)을 넘기고, 안내 중이 아니면 넘길 것이 없다(null)", () => {
+    expect(handOff(null)).toBeNull();
+    for (let step = 0; step <= GUIDE_LAST; step++) {
+      const view = guideView(step, "steering");
+      expect(handOff(view), `step ${step}`).toEqual({ mode: "exterior", layer: view.layer, held: holdOf(view) });
+    }
+    expect(handOff(guideView(2, "engine"))).toEqual({ mode: "exterior", layer: CATEGORY_LAYER.engine, held: { highlight: true, zoom: true } });
+    expect(handOff(guideView(0, "engine"))).toEqual({ mode: "exterior", layer: 0, held: NOT_HELD });
+    expect(handOff(guideView(1, null))?.held).toEqual(NOT_HELD); // 분류가 없으면 이어받을 강조도 없다
+  });
+  it("handOff로 넘긴 화면은 직접 조작에서 안내 때와 같은 모습으로 이어진다", () => {
+    for (let step = 0; step <= GUIDE_LAST; step++) {
+      const view = guideView(step, "steering");
+      const next = handOff(view)!;
+      expect(effectiveLook(null, next.mode, next.held), `step ${step}`).toEqual({ mode: view.mode, highlight: view.highlight, zoom: view.zoom });
+    }
+  });
+  it("afterModeButton: 모드 버튼은 고른 모드로 바꾸고 이어받은 강조·확대를 비운다", () => {
+    expect(afterModeButton("xray")).toEqual({ mode: "xray", held: NOT_HELD });
+    expect(afterModeButton("exterior")).toEqual({ mode: "exterior", held: { highlight: false, zoom: false } });
+    const taken = handOff(guideView(2, "steering"))!;
+    expect(effectiveLook(null, "exterior", taken.held).highlight).toBe(true); // 비우기 전에는 남아 있고
+    const after = afterModeButton("exterior");
+    expect(effectiveLook(null, after.mode, after.held)).toEqual({ mode: "exterior", highlight: false, zoom: false }); // 모드 버튼 뒤에는 사라진다
   });
 });
