@@ -6,7 +6,7 @@ import { GUIDE_STEPS, type GuideMarker, guideMoves } from "../showroom/guide";
  * 부품 이름 목록(4단계)에는 추정 표시와 "단순화한 일반 설명용이며 이 리콜 차량의 실제 구조·결함 위치가 아니다" 안내가 항상 함께 나온다 —
  * 이름이 보이는데 안내가 없는 경로가 없도록 한 묶음으로 그린다.
  */
-export function GuideCard({ step, showParts, markers, typical, isPlaying, reducedMotion, onBack, onNext, onPlay, backRef, nextRef }: {
+export function GuideCard({ step, showParts, markers, typical, isPlaying, reducedMotion, onBack, onNext, onPlay, backRef, nextRef, playRef }: {
   step: number;
   showParts: boolean;
   markers: readonly GuideMarker[];
@@ -18,6 +18,7 @@ export function GuideCard({ step, showParts, markers, typical, isPlaying, reduce
   onPlay: () => void;
   backRef?: RefObject<HTMLButtonElement | null>;
   nextRef?: RefObject<HTMLButtonElement | null>;
+  playRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const moves = guideMoves(step);
   return <section className="cb-3d-guide" aria-label="Guided view">
@@ -27,7 +28,7 @@ export function GuideCard({ step, showParts, markers, typical, isPlaying, reduce
     <div className="cb-3d-layer-btns">
       <button type="button" ref={backRef} disabled={!moves.canBack} onClick={onBack}>Back</button>
       <button type="button" ref={nextRef} disabled={!moves.canNext} onClick={onNext}>Next</button>
-      <button type="button" aria-pressed={isPlaying} disabled={reducedMotion || !moves.canNext} title={reducedMotion ? "Auto-play is off because your system asks for reduced motion" : undefined} onClick={onPlay}>{isPlaying ? "Pause" : "Play"}</button>
+      <button type="button" ref={playRef} aria-pressed={isPlaying} disabled={reducedMotion || !moves.canNext} title={reducedMotion ? "Auto-play is off because your system asks for reduced motion" : undefined} onClick={onPlay}>{isPlaying ? "Pause" : "Play"}</button>
     </div>
     {showParts && <div className="cb-3d-parts">
       <h4>Parts of this category</h4>

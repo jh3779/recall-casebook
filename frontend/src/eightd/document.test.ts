@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { ALL_STEPS, composeDocument, toggleEvidence, CORE_STEPS, D4_EVIDENCE_KEY, D4_EVIDENCE_TITLE, d4EvidenceParagraphs, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep, APPENDIX_KEY, APPENDIX_TITLE, appendixParagraphs } from "./document";
+import { ALL_STEPS, composeDocument, itemCount, toggleEvidence, CORE_STEPS, D4_EVIDENCE_KEY, D4_EVIDENCE_TITLE, d4EvidenceParagraphs, insertBlock, insertedFor, pruneInserted, removeBlock, sameSteps, STEPS, stepParagraphs, TARGET, toggleStep, APPENDIX_KEY, APPENDIX_TITLE, appendixParagraphs } from "./document";
 
 const prov = { build_id: "abc123", snapshot_date: "2026-10-06" };
 it("빈 칸에는 그대로, 글이 있으면 한 줄 띄우고 덧붙인다", () => {
@@ -175,4 +175,11 @@ it("한쪽만 남아 있어도 빼는 쪽이고, 직접 고쳐 못 빼는 쪽은
   expect(edited.values[D4_EVIDENCE_KEY]).toBe("내가 고친 글"); // 못 뺀 본문은 그대로
   expect(edited.values[APPENDIX_KEY]).toBe(""); // 뺄 수 있는 부록은 빠진다
   expect(Object.keys(edited.inserted)).toEqual(["4|20V000001"]);
+});
+
+it("itemCount: 본문(4|)과 부록(4a|)에 함께 든 선례는 한 건으로 세고, 다른 선례는 따로 센다", () => {
+  expect(itemCount([])).toBe(0);
+  expect(itemCount(["4|20V000001", "4a|20V000001"])).toBe(1);
+  expect(itemCount(["4|20V000001", "4a|20V000001", "4|20V000002"])).toBe(2);
+  expect(itemCount(["4|draft:q", "4a|draft:q"])).toBe(1); // 묶음 초안의 확인 질문도 본문·부록 한 쌍이다
 });

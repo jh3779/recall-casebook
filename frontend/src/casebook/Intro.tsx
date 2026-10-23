@@ -20,7 +20,10 @@ export function Intro({ health, onExample }: { health: HealthState; onExample: (
     </div>
     <section className="cb-version"><h2>Data version</h2>
       {typeof health === "string" ? <p className="cb-muted">{health === "loading" ? "Checking server…" : "Server version unavailable"}</p>
-        : <p className="cb-muted">{health.cards.toLocaleString("en-US")} cards · build {health.build_id} · {health.bundle_sha256 ? `bundle ${health.bundle_sha256.slice(0, 12)}…` : "no bundle (server started from local files)"} · snapshot {health.snapshot_date} · model {health.model}</p>}
+        : <>
+          <p className="cb-muted">{health.cards.toLocaleString("en-US")} cards · build {health.build_id} · {health.bundle_sha256 ? `bundle ${health.bundle_sha256.slice(0, 12)}…` : "no bundle (server started from local files)"} · snapshot {health.snapshot_date} · model {health.model}</p>
+          {health.bundle_sha256 && <details><summary>Full version</summary><code className="cb-sha">{health.bundle_sha256}</code></details>}
+        </>}
     </section>
   </div>;
 }

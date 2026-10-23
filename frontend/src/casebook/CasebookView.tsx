@@ -34,7 +34,7 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
   const [caseInput, setCaseInput] = useState("");
   const [caseName, setCaseName] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
-  const [copyMessage, setCopyMessage] = useState("");
+  const [copyMessage, setCopyMessage] = useState(""); // 메모 구역의 복사·삭제 안내. 저장소 실패 안내(storeMessage)와 짝이라 사건 전환·새 결과·복사 때 함께 비운다
   const [view3d, setView3d] = useState<{ card: Card; opener: HTMLElement } | null>(null); // opener = 클릭한 Show in 3D 버튼(닫을 때 초점을 돌려줄 곳)
   const [picked, setPicked] = useState<{ key: string; ids: string[] } | null>(null); // 묶기에서 모델이 고른 확인 질문 번호 — 체크한 선례가 바뀌면 걷어 낸다
   const [storeMessage, setStoreMessage] = useState(""); // 저장·삭제 실패 안내 — D4 구역에서도 보인다
@@ -68,7 +68,7 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
     setCaseInput(name);
     if (name === caseName) return;
     if (losesNotesOnSwitch(caseName, notes, saveFailed, !!storage) && !confirm("Notes and D4 text that are not saved in this browser will be lost if you switch cases. Switch anyway?")) { setCaseInput(caseName); return; }
-    setCaseName(name);
+    setCaseName(name); setCopyMessage(""); setStoreMessage(""); // 이전 사건의 복사·삭제 실패 안내를 새 사건에 남기지 않는다
     // 이름 없이 적은 메모만 첫 사건 이름으로 옮긴다 — 다른 사건 이름이 붙어 있던 메모가 새 사건에 섞이지 않게
     const next = name ? adoptNotes(storage, name, caseName ? {} : notes) : { notes: {}, saved: true, failed: [] as string[] };
     setNotes(next.notes);
@@ -97,7 +97,7 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
       const result = await search(value, controller.signal);
       if (!gate.accepts(controller)) return;
       if (!caseRef.current) setNotes({}); // 이름 없는 메모는 새 결과가 실제로 온 뒤에 비운다(검색이 실패하면 메모를 잃지 않게)
-      setResponse(result); setState("done");
+      setResponse(result); setState("done"); setCopyMessage(""); setStoreMessage(""); // 새 결과에 이전 결과의 복사·삭제 안내를 남기지 않는다
     } catch (e) {
       if (!gate.accepts(controller)) return;
       setError(errorText(e, "search")); setRetryAt(e instanceof ApiError ? e.retryAt ?? null : null); setState("error");
@@ -111,6 +111,7 @@ export default function CasebookView({ health, draft = null, onWrite8d }: { heal
     setCopyMessage(failed); setStoreMessage(failed);
   }
   async function copyAll() {
+    setStoreMessage(""); // 복사 결과가 나오면 D4 구역에 남은 지난 삭제 실패 안내와 엇갈리지 않게
     try { await navigator.clipboard.writeText(notesText(checked, notes)); setCopyMessage("Copied."); }
     catch { setCopyMessage("Could not copy — select the text in the boxes instead."); }
   }

@@ -18,7 +18,7 @@ export class RequestGate {
     this.current = null;
   }
 
-  /** 이 요청의 응답을 화면에 넣어도 되는가 — 아직 지금 요청일 때만 */
+  /** 이 요청의 응답을 화면에 넣어도 되는가 — 아직 지금 요청일 때만. 요청이 끝났는지는 모른다: `begin` 뒤 `invalidate`나 다음 `begin` 전까지는 계속 인정한다 */
   accepts(request: AbortController): boolean {
     return this.current === request;
   }

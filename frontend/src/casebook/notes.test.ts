@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { D4_KEYS } from "./d4Doc";
 import { adoptNotes, applyNote, clearNotes, isUnsaved, loadNotes, losesNotesOnSwitch, nextUnsaved, normalizeCaseName, notesText, noteKey, saveNote, storageProblem, UNNAMED_MARK, type StorageLike } from "./notes";
 
 function memory(): StorageLike & { data: Map<string, string> } {
@@ -150,4 +151,12 @@ it("저장소 삭제가 되면 화면에서도 지우고, 이름이 없으면 �
   expect(loadNotes(s, "Case A")).toEqual({});
   expect(applyNote(s, "", { "1": "글" }, "1", "")).toEqual({ notes: {}, saved: false, deleteFailed: false });
   expect(applyNote(null, "Case A", {}, "1", "새 글")).toEqual({ notes: { "1": "새 글" }, saved: false, deleteFailed: false });
+});
+it("사건 이름을 정할 때 D4 글(@d4 키)도 메모처럼 합쳐진다 — 두 글을 모두 남기되 영어 표식이 D4 글 안에 들어간다(DEC-069 영향 ⑦, 현재 동작 고정)", () => {
+  const s = memory();
+  saveNote(s, "Case A", D4_KEYS.root, "저장돼 있던 근본 원인");
+  const { notes } = adoptNotes(s, "Case A", { [D4_KEYS.root]: "이름 없이 쓴 근본 원인", [D4_KEYS.escape]: "이름 없이 쓴 탈출 원인" });
+  expect(notes[D4_KEYS.root]).toBe(`저장돼 있던 근본 원인\n\n${UNNAMED_MARK}\n이름 없이 쓴 근본 원인`); // 어느 쪽 글도 버리지 않는다. 표식은 D4 미리보기에 보이고 .docx의 D4 칸에도 들어갈 수 있다
+  expect(notes[D4_KEYS.escape]).toBe("이름 없이 쓴 탈출 원인"); // 저장된 쪽이 없으면 그대로 옮긴다
+  expect(loadNotes(s, "Case A")[D4_KEYS.root]).toBe(notes[D4_KEYS.root]);
 });

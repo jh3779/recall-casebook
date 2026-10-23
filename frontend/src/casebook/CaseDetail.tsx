@@ -59,7 +59,7 @@ export function CaseDetail({ card, response, onRemove, on3d }: { card: Card; res
         </div>;
         if (item.item === "supplier") return supplier && <div key={item.item} className="cb-check-item">
           <h5>Supplier</h5>
-          {supplier.names.map((name, i) => <p key={i} className="cb-src-text" lang="en"><span className="cb-muted">{fieldLabel("573.supplier_names")} · </span>{name}</p>)}
+          {supplier.evidence.map((e, i) => <p key={i} className="cb-src-text" lang="en"><span className="cb-muted">{fieldLabel(e.field)} · </span>{e.text}</p>)}
           <Report source={supplier.source} />
         </div>;
         return <div key={item.item} className="cb-check-item">

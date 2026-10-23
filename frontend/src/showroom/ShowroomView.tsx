@@ -7,19 +7,13 @@ import { Panel } from "../components/Panel";
 import { TopBar } from "../components/TopBar";
 import { CATEGORY_KEYS, MODELS, PAINTS } from "../config";
 import { otherModel, recallsFor } from "../recalls";
+import { DemoDataError, loadFailed, startFailure } from "./loadFailure";
 import { Showroom } from "./Showroom";
 import type { CategoryKey, Mode, ModelKey, RecallsByModel } from "../types";
 
 const FIRST: ModelKey = "sonata";
 
 const loadingText = (key: ModelKey) => `${MODELS[key].label} 3D 모델 불러오는 중…`;
-
-// 모델 파일은 커밋하지 않으므로(용량) 받아 두지 않았으면 여기서 멈추고 안내한다
-const loadFailed = (key: ModelKey): LoaderState => ({
-  text: `3D 모델을 불러오지 못했습니다 (public/${MODELS[key].glb}). frontend/README.md의 "3D 모델 파일"을 보세요.`,
-  active: true,
-  failed: true,
-});
 
 interface Ready {
   showroom: Showroom;
@@ -43,22 +37,25 @@ export default function ShowroomView({ onSearch }: { onSearch: (question: string
       const scene = new Showroom(stageRef.current!);
       showroom = scene;
       const getJson = <T,>(path: string) => fetch(path, { signal: controller.signal }).then((r) => {
-        if (!r.ok) throw new Error("데모 데이터를 받지 못했습니다");
+        if (!r.ok) throw new Error(`${path} ${r.status}`);
         return r.json() as Promise<T>;
-      });
-      const [firstCats, recalls, manifest] = await Promise.all([
-        scene.load(FIRST),
+      }).catch((e) => { throw new DemoDataError(String(e)); }); // 못 받았거나(네트워크·404) 읽지 못했거나 모두 데이터 오류
+      const model = scene.load(FIRST);
+      model.catch(() => {}); // 아래에서 기다리기 전에 먼저 실패해도 처리 안 된 거부로 남지 않게
+      // 데이터와 모델이 함께 실패하면(네트워크 끊김) 먼저 끝난 쪽이 아니라 데이터 오류를 우선 알린다 — 모델 안내는 데이터를 받은 뒤에만
+      const [recalls, manifest] = await Promise.all([
         getJson<RecallsByModel>("data/hyundai-kia-recalls.json"),
         getJson<{ snapshot_date: string }>("data/hyundai-kia-manifest.json"),
       ]);
+      const firstCats = await model;
       if (!alive) return;
       scene.show(FIRST);
       scene.focus(null);
       setReady({ showroom: scene, recalls, snapshotDate: manifest.snapshot_date, firstCats });
       setLoader((l) => ({ ...l, active: false }));
       scene.load(otherModel(FIRST)).catch(() => {});
-    }).catch(() => {
-      if (alive) setLoader(showroom ? loadFailed(FIRST) : { text: "3D 화면을 시작하지 못했습니다. 이 브라우저에서 WebGL을 사용할 수 없습니다.", active: true, failed: true });
+    }).catch((e) => {
+      if (alive) setLoader(startFailure(e, !!showroom, FIRST));
     });
     return () => {
       alive = false;

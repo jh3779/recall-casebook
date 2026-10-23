@@ -34,6 +34,7 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
   const sliderRef = useRef<HTMLInputElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
+  const playRef = useRef<HTMLButtonElement>(null);
   const lastLayer = useRef(0);
   /** 다음 렌더 뒤에 초점을 줄 버튼(시작·재생 끝에서 누른 버튼이 사라지거나 비활성이 될 때) */
   const focusAfter = useRef<"next" | "back" | null>(null);
@@ -116,7 +117,10 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
     const target = focusAfter.current;
     focusAfter.current = null;
     if (target === "next") nextRef.current?.focus();
-    else if (target === "back") backRef.current?.focus();
+    else if (target === "back") { // 재생이 끝나 비활성이 된 Play에 있던 초점만 옮긴다 — 사용자가 분류 칩·Close 등으로 옮겨 둔 초점은 뺏지 않는다
+      const active = document.activeElement;
+      if (!active || active === document.body || active === playRef.current) backRef.current?.focus();
+    }
   }, [step]);
 
   useEffect(() => {
@@ -158,7 +162,7 @@ export default function ModelOverlay({ card, onClose, opener }: { card: Card; on
         {shown.length > 0 && (step === null
           ? <div className="cb-3d-guide"><button type="button" onClick={startGuide}>Start guided view</button></div>
           : <GuideCard step={step} showParts={!!view?.markers} markers={markers} typical={typical} isPlaying={isPlaying} reducedMotion={reducedMotion}
-            onBack={() => goStep(step - 1)} onNext={() => goStep(step + 1)} onPlay={() => setPlaying(!isPlaying)} backRef={backRef} nextRef={nextRef} />)}
+            onBack={() => goStep(step - 1)} onNext={() => goStep(step + 1)} onPlay={() => setPlaying(!isPlaying)} backRef={backRef} nextRef={nextRef} playRef={playRef} />)}
         <div className="cb-3d-layers">
           <label htmlFor="cb-3d-layer">Layers <b>{effLayer} · {PEEL_LABELS[effLayer]}</b></label>
           <input id="cb-3d-layer" ref={sliderRef} type="range" min={0} max={PEEL_MAX} step={1} value={effLayer} aria-valuetext={`${effLayer}, ${PEEL_LABELS[effLayer]}`} onChange={(e) => { manual(); setLayer(Number(e.target.value)); }} />

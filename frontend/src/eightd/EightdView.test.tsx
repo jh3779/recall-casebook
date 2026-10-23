@@ -77,6 +77,6 @@ it("D4 선례 참고는 버튼 하나로 D4 칸 본문과 부록에 함께 넣�
   expect(markup).not.toContain("본문에 텍스트로 넣기");
   for (const n of [1, 2, 3, 5, 6, 7, 8]) expect(markup.split(`id="ed-h-${n}"`)[1].split("</section>")[0]).not.toContain("에 넣기");
   expect(markup).toContain("선례 근거 — D4 칸에 들어가는 타사 원문");
-  expect(markup).toContain("선례 근거 부록 — D4 타사 원인");
+  expect(markup).toContain("선례 근거 부록 — D4 타사 원문·도구 확인 질문");
   expect(markup).toContain("선례 내용은 <b>D4에만</b> 넣습니다");
 });
