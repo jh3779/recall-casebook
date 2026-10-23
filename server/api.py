@@ -7,9 +7,9 @@
   `ALLOW_ADMIN_DB_FOR_SERVER=1`을 직접 붙여 적재용 관리자 연결 `DATABASE_URL`로 읽을 수 있다(경고를 남긴다, DEC-042).
 
 - `POST /search {"question": "..."}` → 고객사 선례, 같은 부품·다른 회사 선례. 카드마다 결함·결과·시정 원문과 Part 573 원인 원문(말한 주체·출처)을 싣는다.
-- `POST /draft` → 8D D2·D4에 선례 원문을 묶은 초안(DEC-065). 기본은 꺼짐(`DRAFT_ENABLED=1`) — 꺼지면 묶음 없이 원문 목록만 준다. IP당 1분 6회(`DRAFT_RATE_LIMIT_PER_MINUTE`).
+- `POST /draft` → 8D D2·D4에 선례 원문을 묶은 초안(DEC-065). 기본은 꺼짐(`DRAFT_ENABLED=1`) — 꺼지면 묶음 없이 원문 목록만 준다. IP당(IPv6는 /64당) 1분 6회(`DRAFT_RATE_LIMIT_PER_MINUTE`).
 - `GET /health` → 데이터 판본(build_id·스냅샷 날짜)과 카드 수.
-- `POST /search`는 IP당 1분 60회(`RATE_LIMIT_PER_MINUTE`)를 넘으면 429와 `Retry-After`를 낸다 — `server/ratelimit.py`, 이슈 #63.
+- `POST /search`는 IP당(IPv6는 /64당) 1분 60회(`RATE_LIMIT_PER_MINUTE`)를 넘으면 429와 `Retry-After`를 낸다 — `server/ratelimit.py`, 이슈 #63.
 - 판정하지 않는다: 응답에 적용 여부·리콜 필요 여부 같은 칸을 두지 않는다(AGENTS.md 2-1). 모든 응답에 build_id를 싣는다(2-4).
 - 시작할 때 로컬 build 파일(적재와 같은 검사)·DB 원인 명세·DB 벡터 기록을 대조하고, 하나라도 어긋나면 서버를 띄우지 않는다.
 - 응답은 아래 Pydantic 모델로 검사한다 — 원인 글(`filled`·`stated_unknown`)에는 말한 주체·출처가 반드시 있고, 모델에 없는 칸은 내보내지 않는다.
