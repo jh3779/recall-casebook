@@ -118,8 +118,8 @@ it("묶기 결과 문구: 꺼짐·실패·묶음 없음·원인 없음 안내에
   expect(renderToStaticMarkup(<GroupResult result={draftBase} cards={cards} />)).toContain("None of the checked precedents has a cause text");
 });
 it("stated_unknown 묶음 인용에는 '원인을 모른다는 뜻이 아니다' 안내가 붙는다", () => {
-  const unknown = cards.find((c) => c.cause.status === "stated_unknown");
-  if (!unknown) return;
+  const unknown = cards.find((c) => c.cause.status === "stated_unknown")!;
+  expect(unknown).toBeDefined(); // 픽스처에서 이 표본이 사라지면 시험이 조용히 통과하지 않고 실패한다
   const markup = renderToStaticMarkup(<GroupResult result={{ ...draftBase, groups: [{ title: "t", items: [item(unknown)] }] }} cards={cards} />);
   expect(markup).toContain("does not mean the cause is unknown");
 });

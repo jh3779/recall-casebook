@@ -11,17 +11,17 @@ export const productionItem = (card: Card): ProductionCheckItem | undefined =>
  * 공급사 표시 규칙(DEC-067 결정 ⑧): 공급사 항목에는 573 판본 출처가 없다. 원인 원문의 출처(`cause.source`)나 생산 기간의 출처가
  * 있어 같은 판본임을 확인할 수 있을 때만 그 출처와 함께 보이고, 확인할 수 없으면 숨긴다("출처 미표시"로는 보이지 않는다).
  */
-export function supplierView(card: Card): { names: string[]; source: ReportSource } | null {
+export function supplierView(card: Card): { evidence: { field: string; text: string }[]; source: ReportSource } | null {
   const item: CheckItem | undefined = card.checklist.find((c) => c.item === "supplier");
-  const names = item?.evidence.map((e) => e.text).filter(Boolean) ?? [];
-  if (!names.length) return null;
+  const evidence = item?.evidence.filter((e) => e.text) ?? [];
+  if (!evidence.length) return null;
   const fromCause = hasCauseText(card.cause) ? card.cause.source : null;
   const fromProduction = productionItem(card)?.source ?? null;
   if (fromCause && fromProduction && !same(fromCause, fromProduction)) return null;
   const found = fromCause ?? fromProduction;
   if (!found) return null;
   const { campaign, file, pdf_sha256, submission_date } = found; // 글 정리 방식 등 원인 글에만 해당하는 값은 공급사에 붙이지 않는다
-  return { names, source: { campaign, file, pdf_sha256, submission_date } };
+  return { evidence, source: { campaign, file, pdf_sha256, submission_date } };
 }
 
 /** 원인 칸의 상태를 영어 한 줄로 — 글이 있는지만 알리고 판단하지 않는다 */

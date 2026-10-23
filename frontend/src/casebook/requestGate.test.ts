@@ -44,7 +44,7 @@ it("새 검색을 시작하면 진행 중이던 이전 검색은 취소되고 �
   expect(requestA.signal.aborted).toBe(true);
   expect(requestB.signal.aborted).toBe(false);
 });
-it("끝난 요청이나 무효로 한 뒤에는 어떤 이전 요청도 인정하지 않는다", () => {
+it("무효로 한 뒤에는 이전 요청도, 이 관리자가 시작하지 않은 요청도 인정하지 않는다", () => {
   const gate = new RequestGate();
   const request = gate.begin();
   expect(gate.accepts(request)).toBe(true);

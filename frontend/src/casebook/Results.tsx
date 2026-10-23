@@ -31,7 +31,9 @@ interface Props {
 
 /** 검색 결과가 나온 뒤의 화면 — 목록·쌓이는 상세·메모와 묶기·D4 칸·응답 출처. 조립이 시험에 잡히도록 CasebookView에서 떼어 냈다(DEC-075) */
 export function Results({ response, checked, checkedKey, onToggle, on3d, notes, onNoteChange, caseName, persistent, storageBlocked, onCopy, onClear, copyMessage, storeMessage, onGroupPicked, picked, onWrite8d }: Props) {
+  const found = response.customer_precedents.length + response.precedents.length;
   return <>
+    <p className="sr-only" role="status">Found {found} precedent{found === 1 ? "" : "s"}: {response.customer_precedents.length} Hyundai / Kia, {response.precedents.length} other manufacturers.</p>
     <div className="cb-grid">
       <CaseList response={response} checked={checked} onToggle={onToggle} />
       <section className="cb-stack" aria-label="Checked precedents">

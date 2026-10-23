@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { D4_EVIDENCE_TITLE } from "../eightd/document";
 import { DocxError, inspectDocx, patchDocx, type Inspection, type Place } from "../eightd/docxPatch";
 import type { Card, SearchResponse } from "../search/types";
 import { d4Export, D4_KEYS, d4Values, docxContent, exportMessage } from "./d4Doc";
@@ -86,7 +87,7 @@ export function D4Panel({ cards, response, notes, onChange, caseName, persistent
       <h3>Output <small>.docx · the 8D form you upload is read in this browser and never leaves it; the original is not changed</small></h3>
       <label className="cb-d4-opt"><input type="checkbox" checked={precedents} onChange={(e) => setPrecedents(e.target.checked)} />
         <span>Put the cause texts of the {cards.length} checked precedent(s) in the D4 cell, after what you wrote, and also as an appendix after the 8D table <em>(off by default — nothing is added unless you tick this)</em></span></label>
-      {precedents && <p className="cb-muted">In the D4 cell they follow your Escape and Root Cause text under the line “[선례 근거 — 타사 공개 원문과 도구 안내문이며 자사 사실이 아닙니다]”; the appendix repeats them after the table. Each quote keeps its “[타사 선례 …]” header (recall number · maker · date) and its source line (who said it · report file · submitted date · sha256), so another manufacturer’s cause is not read as yours. Other D steps are never filled from precedents.{out.skipped.length > 0 ? ` No cause text for ${out.skipped.join(", ")} — left out, nothing is filled in.` : ""}</p>}
+      {precedents && <p className="cb-muted">In the D4 cell they follow your Escape and Root Cause text under the line “{D4_EVIDENCE_TITLE}”; the appendix repeats them after the table. Each quote keeps its “[타사 선례 …]” header (recall number · maker · date) and its source line (who said it · report file · submitted date · sha256), so another manufacturer’s cause is not read as yours. Other D steps are never filled from precedents.{out.skipped.length > 0 ? ` No cause text for ${out.skipped.join(", ")} — left out, nothing is filled in.` : ""}</p>}
       <div className="cb-d4-file">
         <label>8D form (.docx)<input type="file" aria-label="8D form file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => void onFile(e.target.files?.[0])} /></label>
         {docx && <label>D4 cell

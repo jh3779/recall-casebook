@@ -9,7 +9,7 @@ const supplierItem = withSupplier.checklist.find((i) => i.item === "supplier")!;
 
 it("원인 원문 출처가 있으면 공급사를 그 573 판본 출처와 함께 보인다", () => {
   const view = supplierView(withSupplier)!;
-  expect(view.names).toEqual(supplierItem.evidence.map((e) => e.text));
+  expect(view.evidence.map((e) => e.text)).toEqual(supplierItem.evidence.map((e) => e.text));
   expect(Object.keys(view.source).sort()).toEqual(["campaign", "file", "pdf_sha256", "submission_date"]);
   expect(view.source.pdf_sha256).toBe((withSupplier.cause as { source: { pdf_sha256: string } }).source.pdf_sha256);
 });

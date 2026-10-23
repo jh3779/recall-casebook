@@ -187,8 +187,10 @@ it("생산 기간과 공급사 근거에도 원문이 나온 칸 이름을 함�
 });
 it("호출 상한 오류 문구에는 처음 받은 대기 초가 고정으로 남지 않는다(남은 초는 따로 센다)", () => {
   const limited = errorText(new ApiError("rate_limit", "x", 429, undefined, 12), "search");
-  expect(limited).toContain("12 seconds"); // 대기 시간을 알 수 없는 경우(머리글 없음)의 문구는 그대로다
+  expect(limited).toContain("12 seconds");
   expect(searchErrorMessage(limited, true)).toBe("Too many requests.");
-  expect(searchErrorMessage(limited, false)).toBe(limited);
+  // 호출 상한이 아닌 오류는 원래 문구 그대로 — 머리글 없는 429도 api.ts가 60초로 정해 limited가 되므로 "limited가 아닌 호출 상한"은 오지 않는다
+  const network = errorText(new ApiError("network", "x"), "search");
+  expect(searchErrorMessage(network, false)).toBe(network);
   expect(searchErrorMessage("Could not reach the server.", false)).toBe("Could not reach the server.");
 });

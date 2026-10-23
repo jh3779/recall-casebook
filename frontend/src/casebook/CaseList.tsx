@@ -25,6 +25,6 @@ export function CaseList({ response, checked, onToggle }: { response: SearchResp
   </section>;
   return <aside className="cb-list" aria-label="Search results">
     {section("Customer precedents · Hyundai / Kia", "up to 5", response.customer_precedents, "No Hyundai / Kia recall in the top 100.")}
-    {section("Other manufacturers", "top 10", response.precedents)}
+    {section("Other manufacturers", "top 10", response.precedents, "No precedents found. Try changing the part name or how the failure appears.")}
   </aside>;
 }
