@@ -123,6 +123,16 @@ it("matchMedia가 예외를 던져도 어두운 화면으로 시작하고 렌더
   expect(t.readTheme()).toBe("dark");
   expect(() => t.followSystemTheme()).not.toThrow();
 });
+it("matchMedia가 예외를 던지는 환경에서도 스위치를 누르면 적용·저장·알림이 된다(움직임 설정 조회도 막혀 있다)", async () => {
+  const t = await load();
+  const env = setup({ mediaThrows: true });
+  const seen: string[] = [];
+  t.subscribeTheme((theme) => seen.push(theme));
+  expect(() => t.saveTheme("light")).not.toThrow();
+  expect(env.dataset.theme).toBe("light");
+  expect(env.store.theme).toBe("light");
+  expect(seen).toEqual(["light"]);
+});
 it("고르면 구독자에게 알린다 — 앱 바가 여럿이어도 스위치가 함께 바뀐다", async () => {
   const t = await load();
   setup();

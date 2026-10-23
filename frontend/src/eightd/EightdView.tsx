@@ -67,7 +67,9 @@ export default function EightdView({ cards, response, fresh = 0, freshQuestion, 
     setMessage("이전 작업을 비우고 새로 시작했습니다.");
   }
   const subject = subjectInput ?? freshQuestion ?? response?.question ?? "";
-  const onlySubjectKept = !Object.values(values).some((v) => v.trim()) && !docx; // 남은 작업이 직접 고친 SUBJECT뿐인가
+  const hasWork = Object.values(values).some((v) => v.trim()) || !!docx || subjectInput !== null;
+  const onlySubjectKept = hasWork && !Object.values(values).some((v) => v.trim()) && !docx; // 남은 작업이 직접 고친 SUBJECT뿐인가
+  if (stale && !hasWork) setStale(null); // 쓴 글을 모두 지웠고 SUBJECT도 고치지 않았다면 경고할 것이 없다
   const customers = new Set(response?.customer_precedents.map((c) => c.campno));
     const appliedInserted = insertedCount(inserted, applied); // 키는 "4|번호"(D4 본문)·"4a|번호"(부록)
   const fileText = composeDocument({ subject, values, withEvidence: appliedInserted > 0, prov: response, only: applied });

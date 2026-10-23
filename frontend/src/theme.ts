@@ -42,7 +42,9 @@ export function currentTheme(): Theme {
 // 글자까지 한꺼번에 매끄럽게 섞이도록 브라우저의 화면 전환(View Transitions)을 쓰고, 지원하지 않으면 색 전환(transition)으로 대신한다.
 function switchWithMotion(theme: Theme) {
   const root = document.documentElement;
-  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { applyTheme(theme); return; }
+  let reduce = false;
+  try { reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches; } catch { /* 조회가 막힌 환경에서도 전환은 된다 — 움직임 없이 바로 적용 */ }
+  if (reduce) { applyTheme(theme); return; }
   const start = (document as Document & { startViewTransition?: (update: () => void) => unknown }).startViewTransition;
   if (start) { start.call(document, () => applyTheme(theme)); return; }
   root.classList.add("theme-anim");

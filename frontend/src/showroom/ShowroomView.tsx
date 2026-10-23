@@ -40,11 +40,14 @@ export default function ShowroomView({ onSearch }: { onSearch: (question: string
         if (!r.ok) throw new Error(`${path} ${r.status}`);
         return r.json() as Promise<T>;
       }).catch((e) => { throw new DemoDataError(String(e)); }); // 못 받았거나(네트워크·404) 읽지 못했거나 모두 데이터 오류
-      const [firstCats, recalls, manifest] = await Promise.all([
-        scene.load(FIRST),
+      const model = scene.load(FIRST);
+      model.catch(() => {}); // 아래에서 기다리기 전에 먼저 실패해도 처리 안 된 거부로 남지 않게
+      // 데이터와 모델이 함께 실패하면(네트워크 끊김) 먼저 끝난 쪽이 아니라 데이터 오류를 우선 알린다 — 모델 안내는 데이터를 받은 뒤에만
+      const [recalls, manifest] = await Promise.all([
         getJson<RecallsByModel>("data/hyundai-kia-recalls.json"),
         getJson<{ snapshot_date: string }>("data/hyundai-kia-manifest.json"),
       ]);
+      const firstCats = await model;
       if (!alive) return;
       scene.show(FIRST);
       scene.focus(null);

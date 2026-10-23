@@ -39,6 +39,21 @@ it("SUBJECT만 직접 고쳤어도 질문이 바뀐 검색 결과로 돌아오�
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
+it("이전에 쓴 글을 모두 지웠고 SUBJECT도 고치지 않았다면 '고친 SUBJECT가 남았다'고 하지 않고 경고를 닫는다", async () => {
+  const user = userEvent.setup();
+  const rendered = render(view([A]));
+  await user.click(within(screen.getByRole("article", { name: `선례 ${A.campno}` })).getByRole("button"));
+  const boxes = () => screen.getAllByPlaceholderText(/D4 선례 참고에서 넣은 타사 원인 원문이/);
+  for (const box of boxes()) { await user.clear(box); await user.type(box, "my words"); }
+
+  rendered.rerender(view([A], { ...response, question: "a different question" }));
+  expect(screen.getByRole("alert").textContent).toContain("이전에 쓴 글은 남아 있습니다"); // 쓴 글이 있으니 이 문구
+
+  for (const box of boxes()) await user.clear(box); // 직접 모두 지움 — SUBJECT는 고친 적 없다
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(subjectInput().value).toBe("a different question");
+});
+
 it("아무것도 고치지 않았으면 질문이 바뀌어도 알리지 않고 SUBJECT가 새 질문을 따른다", () => {
   const rendered = render(view([]));
   rendered.rerender(view([], { ...response, question: "a different question" }));

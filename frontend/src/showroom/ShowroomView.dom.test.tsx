@@ -38,3 +38,13 @@ it("데이터는 받았는데 3D 모델 파일을 못 받으면 기존대로 모
   expect(alert.textContent).toContain(`3D 모델을 불러오지 못했습니다 (public/${MODELS.sonata.glb})`);
   expect(alert.textContent).not.toContain("데모 데이터");
 });
+
+it("데이터와 3D 모델이 함께 실패하면 어느 쪽이 먼저 끝나든 데이터 안내를 보인다", async () => {
+  // 네트워크가 끊긴 상황 — 모델 요청은 곧바로, JSON 요청은 한 박자 뒤에 실패한다
+  scene.load = async () => { throw new Error("glb network"); };
+  vi.stubGlobal("fetch", vi.fn(async () => { await new Promise((r) => setTimeout(r, 20)); throw new TypeError("Failed to fetch"); }));
+  render(<ShowroomView onSearch={() => {}} />);
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain("쇼룸 데모 데이터를 받지 못했습니다");
+  expect(alert.textContent).not.toContain(MODELS.sonata.glb);
+});
