@@ -26,6 +26,7 @@ import csv
 import hashlib
 import json
 import random
+import re
 import sys
 import time
 from pathlib import Path
@@ -290,6 +291,11 @@ def label_counts(labels: dict[str, str]) -> dict:
     }
 
 
+def regex_sha256(rx: re.Pattern) -> str:
+    """정규식의 패턴 글자와 플래그(정수)를 합쳐 해시한다 — 정규식이 같은지만 가리는 지문."""
+    return hashlib.sha256(f"{rx.pattern}\n{rx.flags}".encode()).hexdigest()
+
+
 def score_rule(sheet: Path) -> None:
     """서비스 규칙만 잰다(DEC-056) — 시트 원문에 지금의 `UNKNOWN_RE`를 적용하고, 모델 결과는 읽지도 계산하지도 않는다."""
     sheet_rows, labels, sheet_meta = read_sheet(sheet)
@@ -305,6 +311,9 @@ def score_rule(sheet: Path) -> None:
             "rules_py_sha256": hashlib.sha256(Path(rules.__file__).read_bytes()).hexdigest(),
             "unknown_re": UNKNOWN_RE.pattern,
             "flags": UNKNOWN_RE.flags,
+            # 정규식 단위 지문 — rules.py의 다른 줄(`check()` 등)이 바뀌어도 변하지 않는다. 파일 해시가 달라졌을 때 이 값이 같으면
+            # 규칙(패턴+플래그)은 그대로다(이슈 #116)
+            "unknown_re_sha256": regex_sha256(UNKNOWN_RE),
         },
     }
     print(json.dumps(out, ensure_ascii=False, indent=1))

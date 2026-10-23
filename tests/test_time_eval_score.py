@@ -1230,3 +1230,115 @@ def test_cli_score_dec066_accepts_replacement_round_built_from_an_updated_questi
         SystemExit, match="main 후보가 없다"
     ):  # 본 회차(main) 후보가 없으면 대조할 판본이 없다
         ts.main([*args[:i], str(alt), *args[i:]])
+
+
+# 아래는 이슈 #77(PR #72 리뷰 후속) 시험 — 규칙은 그대로이고 거부 조건을 고정한다.
+
+
+def test_score_refuses_a_sheet_with_extra_lines_the_candidates_do_not_have(tmp_path):
+    """시트에 후보 파일에 없는 줄이 더 있어도 멈춘다 — 빠진 줄(시트에 없음)과 따로 센다(`check_against_candidates`)."""
+    cand = items(("PE1", {"A": {"bm25": 1}}))
+    extra = ts.merge_labels(
+        [
+            ts.read_sheet(
+                write_sheet(tmp_path / "s.csv", [row("PE1", "A", "yes"), row("PE1", "B", "no")])
+            )
+        ]
+    )
+    with pytest.raises(SystemExit, match=r"시트에 없음 0개.*후보 파일에 없음 1개"):
+        ts.check_against_candidates(extra, cand)
+
+
+def test_candidate_files_need_build_info_present_not_just_equal():
+    """같아 보여도 비교할 값이 없으면 거부한다 — 임베딩 판본·모델 지문·스크립트 해시·데이터·모델·상위 개수(DEC-037 ⑦(c))."""
+    with pytest.raises(SystemExit, match=r"embedding\.fastembed"):  # fastembed 판본만 다르다
+        ts.check_same_build(
+            [
+                _cand("main"),
+                _cand("r1", embedding={"fastembed": "9.9.9", "model_fingerprint": "f"}),
+            ]
+        )
+    with pytest.raises(SystemExit, match=r"embedding\.model_fingerprint"):  # 모델 지문만 다르다
+        ts.check_same_build(
+            [
+                _cand("main"),
+                _cand("r1", embedding={"fastembed": "0.9.0", "model_fingerprint": "other"}),
+            ]
+        )
+    for emb in ({}, None):  # 둘 다 임베딩 정보가 없다 — 서로 같지만 비교할 수 없다
+        with pytest.raises(SystemExit, match=r"embedding\.fastembed"):
+            ts.check_same_build([_cand("main", embedding=emb), _cand("r1", embedding=emb)])
+    no_script = {"code": {"dirty": False}}
+    with pytest.raises(SystemExit, match=r"code\.script_sha256"):
+        ts.check_same_build([_cand("main", **no_script), _cand("r1", **no_script)])
+    for key in ts.SAME_BUILD_KEYS:  # 둘 다 이 칸이 아예 없다
+        a, b = _cand("main"), _cand("r1")
+        del a[key], b[key]
+        with pytest.raises(SystemExit, match=rf"'{key}'"):
+            ts.check_same_build([a, b])
+
+
+def test_single_candidate_file_needs_build_info_unless_partial():
+    """후보 파일이 하나뿐인 정식 채점도 판본 정보가 적힌 파일만 받는다(Codex 선택 개선, 이슈 #77)."""
+    ts.check_same_build([_cand("main")])
+    for broken in (
+        {"set": "main"},
+        {k: v for k, v in _cand("main").items() if k != "model"},
+        _cand("main", embedding={}),
+        _cand("main", code={"dirty": False}),
+    ):
+        with pytest.raises(SystemExit, match="판본 정보가 없는"):
+            ts.check_same_build([broken])
+        ts.check_same_build([broken], partial=True)  # 중간 결과는 막지 않는다
+
+
+def test_labeler_id_with_stray_spaces_is_still_one_person(tmp_path):
+    """ "L-A1 "와 "L-A1"은 같은 사람이다 — 두 사람으로 세어져 합의·일치 검사를 통과하면 안 된다."""
+    a = write_sheet(tmp_path / "a.csv", [row("PE1", "A", "yes", labeler_id="L-A1 ")])
+    c = write_sheet(tmp_path / "c.csv", [row("PE1", "A", "yes", agreed_label="yes")])
+    with pytest.raises(SystemExit, match="두 사람 이상"):
+        ts.merge_labels([ts.read_sheet(a), ts.read_sheet(c)])
+    with pytest.raises(SystemExit, match="labeler_id가 같다"):
+        ts.agreement(
+            [row("PE1", "A", "yes", labeler_id="L-A1 ")],
+            [row("PE1", "A", "yes", labeler_id=" L-A1")],
+            expected={"PE1"},
+        )
+
+
+def test_rechecked_agreed_label_on_the_first_sheet_only_is_refused_too(tmp_path):
+    """반대 방향(A 시트에만 합의값, C 시트에는 없음)도 멈춘다 — 이슈 #77, PR #72 Codex 642daf5."""
+    a_ok = write_sheet(tmp_path / "a.csv", [row("R1", "A", "yes", agreed_label="yes")])
+    c = write_sheet(tmp_path / "c.csv", [row("R1", "A", "yes", labeler_id="L-C1")])
+    with pytest.raises(SystemExit, match="한 사람 시트에만"):
+        ts.check_rechecked(ts.merge_labels([ts.read_sheet(a_ok), ts.read_sheet(c)]), {"R1"})
+
+
+def test_cli_score_refuses_recheck_result_without_resolution_complete(tmp_path):
+    """재확인 결과에 `resolution_complete` 키가 없는 옛 결과도 받지 않는다 — 예비 결과의 같은 시험의 재확인판(이슈 #77)."""
+    q, args = _recheck_setup(tmp_path, agreed=("R1", "R2", "R3"))
+    c = write_sheet(
+        tmp_path / "c.csv",
+        [row(r, "A", "yes", labeler_id="L-C1", agreed_label="yes") for r in ("R1", "R2", "R3")],
+    )
+    pilot_bad = agreement_file(tmp_path, "pilot", False, q)
+    old = Path(
+        agreement_file(
+            tmp_path, "recheck", True, q, "r_old.json", cand=tmp_path / "candidates_main.json"
+        )
+    )
+    d = json.loads(old.read_text("utf-8"))
+    del d["resolution_complete"]
+    old.write_text(json.dumps(d), encoding="utf-8")
+    with pytest.raises(SystemExit, match="재확인 결과가 합격했지만"):
+        ts.main([*args, str(c), "--agreement", pilot_bad, str(old)])
+
+
+def test_resolution_message_says_note_may_be_on_either_sheet():
+    """합의 이유(note)는 두 시트 중 한 곳 이상이면 된다 — 안내 문구가 "두 시트 모두"로 읽히지 않는다(이슈 #77, PR #81 🟢1)."""
+    with pytest.raises(SystemExit) as e:
+        ts.require_resolved({"resolution_complete": False}, "예비")
+    msg = str(e.value)
+    assert (
+        "두 시트 중 한 곳 이상" in msg and "두 시트 모두에 같은 agreed_label과 합의 이유" not in msg
+    )

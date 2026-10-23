@@ -275,3 +275,124 @@ def test_cmd_score_refuses_rows_from_another_source(tmp_path):
     sheet = _write_sheet_and_meta(tmp_path, rows, {"source": "573"})
     with pytest.raises(SystemExit, match="다른 출처"):
         cq.main(["score", "--sheet", str(sheet)])
+
+
+def _labeled_full(source: str = "573") -> list[dict]:
+    """표본 크기(N)만큼 채워진 표시 줄 — cmd_score의 줄 수 검사를 시험하려면 30줄이 필요하다."""
+    ids = [f"20V{i:03d}000" for i in range(100)]
+    cards = {c: _card(c) for c in ids}
+    causes = {c[:6]: _cause(c[:6], f"cause {c}") for c in ids}
+    questions = [{"action_no": f"EA{i:05d}", "question": f"q{i}"} for i in range(40)]
+    rankings = {q["action_no"]: ids[i * 2 : i * 2 + 10] for i, q in enumerate(questions)}
+    rows = cq.draw(questions, rankings, cards, causes, {}, {}, source)
+    assert len(rows) == cq.N
+    return [{**r, "label": "yes", "labeler_id": "L1"} for r in rows]
+
+
+def _meta_rows(rows: list[dict]) -> list[dict]:
+    return [{k: r[k] for k in ("sample_no", *cq.ROW_FIELDS[1:], "text_sha256")} for r in rows]
+
+
+def test_cmd_score_accepts_a_full_sheet(tmp_path, capsys):
+    rows = _labeled_full()
+    sheet = _write_sheet_and_meta(
+        tmp_path, rows, {"source": "573", "n": len(rows), "rows": _meta_rows(rows)}
+    )
+    cq.main(["score", "--sheet", str(sheet)])
+    assert '"n": 30' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("n_rows", "meta_n"), [(cq.N - 1, cq.N), (cq.N - 1, cq.N - 1), (cq.N, cq.N - 1)]
+)
+def test_cmd_score_refuses_a_sheet_that_is_not_n_rows(tmp_path, n_rows, meta_n):
+    """줄을 하나 뺀 시트는 메타 n이 그대로여도 같이 줄어도, 줄 수가 N인데 메타 n이 다를 때도 거부한다(PR #73 Codex)."""
+    rows = _labeled_full()[:n_rows]
+    sheet = _write_sheet_and_meta(
+        tmp_path, rows, {"source": "573", "n": meta_n, "rows": _meta_rows(rows)}
+    )
+    with pytest.raises(SystemExit, match="줄 수"):
+        cq.main(["score", "--sheet", str(sheet)])
+
+
+def test_cmd_score_explains_a_non_utf8_sheet(tmp_path):
+    """스프레드시트가 cp949로 저장한 CSV는 traceback 대신 'CSV UTF-8로 저장' 안내로 멈춘다(이슈 #75 🟢2)."""
+    sheet = tmp_path / cq.SOURCES["573"]
+    sheet.write_bytes("campno,cause_text\n20V000000,원인 글\n".encode("cp949"))
+    with pytest.raises(SystemExit, match="CSV UTF-8"):
+        cq.main(["score", "--sheet", str(sheet)])
+
+
+def test_sheet_refuses_a_folder_that_only_has_a_meta_file(tmp_path):
+    """시트는 지워졌어도 메타만 남은 폴더에는 새로 만들지 않는다 — 데이터를 읽기 전에 멈춘다."""
+    meta = tmp_path / (cq.SOURCES["조사 요약"] + ".meta.json")
+    meta.write_text("{}", encoding="utf-8")
+    with pytest.raises(SystemExit, match="이미 있다"):
+        cq.main(["sheet", "--out", str(tmp_path)])
+    assert [p.name for p in tmp_path.iterdir()] == [meta.name]
+
+
+def _stub_sheet_inputs(monkeypatch, tmp_path, draw_rows):
+    """`cmd_sheet`가 읽는 서버 빌드·모델·질문을 가짜로 바꾼다 — 표본 크기 분기만 본다."""
+    from types import SimpleNamespace
+
+    import fastembed
+
+    from scripts.defect_precedent import nhtsa, retrieval_compare
+    from server.rag import build, embeddings, investigations, search
+
+    (tmp_path / "eval.jsonl").write_text("{}\n", encoding="utf-8")
+    monkeypatch.setattr(nhtsa, "OUT_DIR", tmp_path)
+    b = SimpleNamespace(
+        build_id="b",
+        cards=[_card("20V000000")],
+        causes={},
+        unreadable={},
+        raw_manifest_sha256="r",
+    )
+    monkeypatch.setattr(build, "load_build", lambda: b)
+    monkeypatch.setattr(embeddings, "check_fastembed", lambda: None)
+    monkeypatch.setattr(embeddings, "verify_probe", lambda *a: None)
+    monkeypatch.setattr(fastembed, "TextEmbedding", lambda *a: object())
+    monkeypatch.setattr(cq, "cached_vectors", lambda *a: None)
+    monkeypatch.setattr(investigations, "load_investigations", lambda *a: {})
+    monkeypatch.setattr(retrieval_compare, "card_text", lambda c: c["campno"])
+    monkeypatch.setattr(
+        retrieval_compare, "load", lambda: (None, [{"action_no": "EA1", "question": "q"}])
+    )
+
+    class FakeSearcher:
+        def __init__(self, *a):
+            pass
+
+        def query_vectors(self, qs):
+            return [None] * len(qs)
+
+        def search(self, q, v):
+            return SimpleNamespace(ranking=["20V000000"])
+
+    monkeypatch.setattr(search, "Searcher", FakeSearcher)
+    monkeypatch.setattr(cq, "draw", lambda *a: draw_rows[a[-1]])
+
+
+def test_sheet_makes_no_file_when_a_source_has_fewer_than_n_rows(tmp_path, monkeypatch):
+    out = tmp_path / "out"
+    full = _labeled_full()
+    _stub_sheet_inputs(monkeypatch, tmp_path, {"573": full, "조사 요약": full[: cq.N - 1]})
+    with pytest.raises(SystemExit, match="시트를 만들지 않는다"):
+        cq.main(["sheet", "--out", str(out)])
+    assert not out.exists()  # 한쪽만 모자라도 어느 시트도 쓰지 않는다
+
+
+def test_sheet_writes_both_sheets_when_both_have_n_rows_and_score_reads_them_back(
+    tmp_path, monkeypatch, capsys
+):
+    out = tmp_path / "out"
+    full = _labeled_full()
+    _stub_sheet_inputs(monkeypatch, tmp_path, {"573": full, "조사 요약": full})
+    cq.main(["sheet", "--out", str(out)])
+    capsys.readouterr()
+    assert sorted(p.name for p in out.glob("*.csv")) == sorted(cq.SOURCES.values())
+    # 가짜 draw가 표시까지 채워 줬으므로 메타(n·지문·읽기 전용 칸)가 맞으면 채점까지 간다
+    cq.main(["score", "--sheet", str(out / cq.SOURCES["573"])])
+    assert '"n": 30' in capsys.readouterr().out

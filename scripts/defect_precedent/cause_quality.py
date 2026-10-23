@@ -326,8 +326,11 @@ def score(rows: list[dict]) -> dict:
 
 
 def cmd_score(a) -> None:
-    with a.sheet.open(encoding="utf-8-sig", newline="") as f:
-        rows = list(csv.DictReader(f))
+    try:
+        with a.sheet.open(encoding="utf-8-sig", newline="") as f:
+            rows = list(csv.DictReader(f))
+    except UnicodeDecodeError:  # 스프레드시트가 cp949 등으로 저장한 경우
+        sys.exit(f"{a.sheet.name}을 UTF-8로 읽지 못한다 — 스프레드시트에서 'CSV UTF-8'로 저장한다")
     meta_path = a.sheet.with_name(a.sheet.name + ".meta.json")
     meta = json.loads(meta_path.read_text("utf-8")) if meta_path.exists() else None
     if meta is None:
@@ -353,6 +356,9 @@ def cmd_score(a) -> None:
             "시트의 읽기 전용 칸이 만들 때와 다르다 — 스프레드시트가 값을 바꿨을 수 있다(모든 칸을 텍스트로 가져온다): "
             + "; ".join(changed[:5])
         )
+    # 표본 지문도 줄 추가·삭제를 잡지만, 줄 수 불일치를 직접 알려 준다
+    if not meta.get("n") == len(rows) == N:
+        sys.exit(f"시트의 줄 수 {len(rows)}가 메타의 n={meta.get('n')!r}·표본 크기 {N}와 다르다")
     if sample_fingerprint(rows) != meta["sample_sha256"]:
         sys.exit(
             "시트의 표본이 만들 때와 다르다(줄을 빼거나 더했거나 리콜·원인 글이 바뀌었다 — 줄 순서는 상관없다)"

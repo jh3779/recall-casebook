@@ -305,10 +305,7 @@ def input_label(
     allow_drift: bool,
 ) -> str:
     """기준 파일과 같은 입력인지 확인해 출력용 문구를 만든다. 다르면 멈춘다 (--allow-drift면 재계산으로 표시)."""
-    same_files = all(
-        info[k] == base["build"][k]
-        for k in ("raw_manifest_sha256", "recalls_sha256", "eval_sha256")
-    )
+    same_files = nhtsa.same_baseline_inputs(info, base["build"])
     same_sample = causes_sample is None or sample_matches(base, causes_sample)
     if same_files and same_sample:
         if causes_sample is None:

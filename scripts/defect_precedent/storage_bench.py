@@ -62,6 +62,17 @@ def vec_literal(v) -> str:
     return "[" + ",".join(f"{x:.6f}" for x in v) + "]"
 
 
+def check_local_db(url: str) -> None:
+    """시험 표를 만드니 로컬 Postgres만 허용한다. `hostaddr`가 있으면 host와 다른 곳에 붙을 수 있어 멈춘다."""
+    info = psycopg.conninfo.conninfo_to_dict(url)
+    host = (info.get("host") or "").lower()
+    if info.get("hostaddr") or host not in ("localhost", "127.0.0.1"):
+        raise SystemExit(
+            f"BENCH_DB 호스트가 {info.get('host')!r}(hostaddr {info.get('hostaddr')!r})이다 — "
+            "시험 표를 만들므로 로컬 Postgres(localhost)에서만 돌린다"
+        )
+
+
 def main(argv: list[str] | None = None) -> None:
     import numpy as np
 
@@ -71,11 +82,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if "BENCH_DB" not in os.environ:
         raise SystemExit("BENCH_DB(로컬 Postgres 주소)가 필요하다 — 머리말의 docker 명령 참고")
-    host = psycopg.conninfo.conninfo_to_dict(os.environ["BENCH_DB"]).get("host")
-    if host not in ("localhost", "127.0.0.1"):
-        raise SystemExit(
-            f"BENCH_DB 호스트가 {host!r}이다 — 시험 표를 만들므로 로컬 Postgres(localhost)에서만 돌린다"
-        )
+    check_local_db(os.environ["BENCH_DB"])
     data = provenance()
     cards = read_jsonl(OUT_DIR / "recalls.jsonl")
     questions = read_jsonl(OUT_DIR / "eval.jsonl")

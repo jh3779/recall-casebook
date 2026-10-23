@@ -4,7 +4,7 @@
     # 예비 5문항 두 사람 일치(합격선, docs/labeling/시점평가_정답표시_안내.md 4절) — 합의 전 표시(label)로 계산
     uv run python -m scripts.defect_precedent.time_eval_score agreement --phase pilot --candidates <candidates_pilot.json> --sheets <A의 labels_pilot.csv> <C의 labels_pilot.csv>
     #   결과를 파일로 남긴다: … agreement … > agreement_pilot.json
-    #   합격해도 한 사람만 yes인 후보는 두 시트에 같은 agreed_label과 합의 이유(note)를 적은 뒤 agreement를 다시 낸다
+    #   합격해도 한 사람만 yes인 후보는 두 시트에 같은 agreed_label을, 합의 이유(note)는 두 시트 중 한 곳 이상에 적은 뒤 agreement를 다시 낸다
     #   (resolution_complete가 참이어야 score가 받는다 — 일치율은 label로만 계산하므로 다시 내도 pass는 그대로)
     # 예비 미달이면 재확인 3문항(안내서 4절 — 질문 파일 main 앞 3개)만 추린 두 사람의 시트로:
     #   agreement --phase recheck --candidates <candidates_main.json> --sheets … > agreement_recheck.json
@@ -312,7 +312,7 @@ def require_resolved(g: dict, name: str) -> None:
     if g.get("resolution_complete") is not True:
         sys.exit(
             f"{name} 결과가 합격했지만 한 사람만 yes로 표시한 후보 {(g.get('unresolved_one_sided_yes') or [])[:3]}가 합의로 해소되지 않았다 — "
-            "두 시트 모두에 같은 agreed_label과 합의 이유(note)를 적고 agreement를 다시 낸다(안내서 4절 2항)"
+            "두 시트 모두에 같은 agreed_label을, 합의 이유(note)는 두 시트 중 한 곳 이상에 적고 agreement를 다시 낸다(안내서 4절 2항)"
         )
 
 
@@ -531,9 +531,14 @@ def check_same_build(cands: list[dict], partial: bool = False) -> None:
         sys.exit(
             f"커밋하지 않은 코드로 만든 후보 파일이다 {dirty} — 정식 채점에 쓰지 않는다(중간 결과는 --partial)"
         )
-    if len(cands) < 2:
-        return
     first = cands[0]
+    if len(cands) < 2:
+        # 파일이 하나뿐이어도 정식 채점은 판본 정보(데이터·모델·임베딩·스크립트 해시)가 적힌 파일만 받는다
+        if not partial and (missing := build_diff(first, first)):
+            sys.exit(
+                f"후보 파일 {first.get('set')}에 {missing}가 없다 — 판본 정보가 없는 파일은 정식 채점에 쓰지 않는다(중간 결과는 --partial)"
+            )
+        return
     for c in cands[1:]:
         if diff := build_diff(first, c):
             sys.exit(
