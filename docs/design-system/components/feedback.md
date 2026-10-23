@@ -1,5 +1,7 @@
 # 로딩 · 오류 · 빈 결과
 
+> **시점 안내**: 이 문서의 로딩·빈 결과 절과 오류의 앞 5행은 삭제된 한국어 검색 화면(DEC-075) 시점의 설계다. 현재 케이스북(영어 UI)의 동작은 — 로딩: `Searching…`(3초 뒤 `The server may be waking up — the first request can take 13–16 seconds.`를 덧붙임, 뼈대 상자 없음, `frontend/src/casebook/CasebookView.tsx`), 빈 결과: `No Hyundai / Kia recall in the top 100.`(`CaseList.tsx`)와 `No precedents found. Try changing the part name or how the failure appears.`(전체 0건일 때만, `Results.tsx`), 오류: `errors.ts`가 정본이다.
+
 ## 로딩
 
 | 시간 | 화면 |
@@ -30,7 +32,7 @@
 
 | 종류 | 언제 | 제목 | 설명 |
 |---|---|---|---|
-| 호출 상한(429) | 서버가 IP별 호출 상한을 넘겼다고 응답(DEC-057) | Too many requests. | "Too many requests."만 알림에 둔다(남은 초는 따로 센다) · `Retry-After` 초(머리글이 없거나 숫자가 아니면 60초) 동안 "{n}s left"를 보이고 [Retry (n)]·검색 단추를 비활성 · 다 기다리면 "You can search again." 안내 후 [Retry] 활성 |
+| 호출 상한(429) | 서버가 호출 상한(IPv4 주소별·IPv6 /64 묶음별 1분 60회)을 넘겼다고 응답(DEC-057) | Too many requests. | "Too many requests."만 알림에 둔다(남은 초는 따로 센다) · `Retry-After` 초(머리글이 없거나 숫자가 아니면 60초) 동안 "{n}s left"를 보이고 [Retry (n)]·검색 단추를 비활성 · 다 기다리면 "You can search again." 안내 후 [Retry] 활성 |
 
 호출 상한(429) 행은 옛 한국어 검색 화면 시점이 아니라 **현재 케이스북 화면(영어 UI)이 구현한 동작과 문구**(`frontend/src/casebook/errors.ts`·`SearchError.tsx`·`useCountdown.ts`)를 적은 것이다. 한국어 화면에 쓰려던 안은 "잠시 뒤에 다시 시도해 주세요(429)"였고(이슈 #63) 그 화면은 DEC-075로 지워졌다. 다시 누를수록 상한에 더 걸리므로 비활성 구간을 두는 것이 이 행의 목적이다.
 
