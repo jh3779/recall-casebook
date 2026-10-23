@@ -2,7 +2,7 @@
 # pyproject.toml에 두면 "pyproject를 바꾸면 uv.lock도 바꾼다"(AGENTS.md 4절, G-09) 규칙과 부딪혀 따로 둔다.
 
 # G-08: 이 경로(fnmatch, 대소문자 무시)를 바꾼 PR은 본문 "## 검증 방법"에
-# 지표 이름과 같은 평가셋 before → after 수치가 필요하다. docs/·루트 *.md·tests/는 제외(prompts/*.md는 포함).
+# 지표 이름과 같은 평가셋 before → after 수치가 필요하다. 문서 취급(`scripts/ci/pr_checks.py`의 `is_doc`·`DOC_EXEMPT`: 루트 *.md·docs/·tests/·scripts/ci/·.claude/·.github/)은 제외, 그 밖 경로의 prompts/*.md는 포함.
 # 코드 구조가 정해지면 좁힌다.
 rag-paths = [
     "*rag/*", "*rag_*", "*_rag.*", "*retriev*", "*prompt*", "*chunk*", "*embed*", "*eval/*", "*eval_*",
