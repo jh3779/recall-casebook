@@ -72,7 +72,7 @@ RAG_SOURCE=bundle SERVING_BUILD_ID=<build_id> SUPABASE_URL=<프로젝트 주소>
   uv run --env-file .env.server uvicorn server.api:app --port 8000
 ```
 
-- `RAG_SOURCE`가 없거나 `local`이면 지금까지처럼 로컬 build 파일로 뜬다(시연). `bundle`이면 로컬 데이터 파일을 읽지 않는다. 그 밖의 값이면 시작하지 않는다.
+- `RAG_SOURCE`가 없거나 비어 있거나 `local`이면 지금까지처럼 로컬 build 파일로 뜬다(시연). `bundle`이면 로컬 데이터 파일을 읽지 않는다. 그 밖의 값이면 시작하지 않는다.
 - 시작 순서: fastembed 판본 → DB `serving_bundles`에서 (build, 모델, 묶음 형식) 기록 → 공개 주소에서 `/tmp/serving/<sha256>.tar`로 받기(이미 있으면 다시 받지 않음) → 기록 sha256과 대조(다르면 파일을 지우고 멈춤) → `meta.json` 파일별 해시·카드 글 해시 → 묶음의 build·모델·fastembed 판본이 지금 서버와 같은지 → DB 원인 명세(`check_against_db`) → DB 벡터 기록(`check_set`) → DB에서 뽑은 64줄+마지막 줄이 묶음 벡터와 글자 그대로 같은지 → 묶음 안 모델 파일로 모델 열기(`specific_model_path`) → 탐침 16장. 하나라도 어긋나면 서버를 띄우지 않는다.
 - `SERVING_BUILD_ID`·`SUPABASE_URL`이 없으면 시작하지 않는다 — 어느 build로 띄울지 짐작하지 않는다. 관리자 키는 필요 없다(공개 읽기 버킷 + 조회 전용 계정).
 - `/health`와 `/search` 응답의 `bundle_sha256`에 쓴 묶음의 sha256이 실린다(로컬 경로는 `null`).

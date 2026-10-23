@@ -900,6 +900,30 @@ def test_load_build_takes_text_basis_from_manifest_and_refuses_files_without_it(
         load_build(d2)
 
 
+@pytest.mark.parametrize("bad", [None, "", "   ", 5])
+def test_load_build_has_its_own_text_basis_check_behind_the_load_stage(tmp_path, monkeypatch, bad):
+    """적재 단계(`load_files`)가 먼저 막지만 서버 시작에도 같은 검사가 이중 방어로 남아 있다 — `load_files`를 통과한 것처럼
+    바꿔 서버 쪽 검사만 직접 시험한다(#84 🟢1, AGENTS.md 3-3)."""
+    from server.rag import build as build_mod
+
+    d = make_data_dir(tmp_path)
+    write_full(d, [cause("24V001")], text_basis="rclrpt-2099-01-01; test")
+    real = build_mod.load_files
+
+    def passes_the_load_stage(data_dir, kind):
+        out = real(data_dir, kind)
+        spec = out["build"]["causes_spec"]
+        if bad is None:
+            del spec["text_basis"]
+        else:
+            spec["text_basis"] = bad
+        return out
+
+    monkeypatch.setattr(build_mod, "load_files", passes_the_load_stage)
+    with pytest.raises(BuildMismatch, match="text_basis"):
+        build_mod.load_build(d)
+
+
 def test_card_source_says_who_wrote_card_text_only_as_far_as_the_source_says():
     """카드 글(FLAT_RCL)의 작성 주체는 원본 칸 설명에 없다 — 아는 출처만 적은 고정 문구여야 한다(DEC-047)."""
     from pydantic import ValidationError
