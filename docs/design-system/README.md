@@ -3,6 +3,7 @@
 > **검색 전용 화면**(질문 → 선례·원인 원문)과 3D 쇼룸(PR #60)이 함께 쓰는 디자인 기준이다. 구현 PR(검색 화면 + API 연동)은 이 폴더를 기준으로 만든다.
 > 동작하는 목업은 [`mockup.html`](mockup.html) — 내려받아 브라우저로 연다. 목업의 영어 원문과 번호는 공개 API(`https://lg-cns-rag.vercel.app`)가 2026-10-13에 돌려준 응답(`POST /search` "airbag inflator rupture during deployment", `GET /health` build `f1fe1843ed0f2c66`)을 그대로 그렸다.
 > 상태: **v1.0 확정** — 열린 질문 6개와 이어진 질문 2개를 인터뷰로 정했다([결정 기록](open-questions.md)). 바꿀 때는 결정 기록에 날짜·이유를 남기고 판을 올린다.
+> **시점 표시(2026-10-23, 이슈 #165)**: 이 폴더의 `components/`·`patterns/`가 그리는 "검색 화면"은 옛 한국어 선례 검색 화면(`#search`)이다. 그 화면은 DEC-075(2026-10-18)로 케이스북(`#casebook`, 영어 UI)에 합쳐져 지워졌고 앱 바는 케이스북·3D 쇼룸 탭만 남는다(`app-bar.md`·`screens.md`·`feedback.md`의 서술은 당시 설계). 케이스북 화면 자체의 컴포넌트·화면 구성 기록은 이 폴더에 없다(색 토큰만 `tokens/colors.md`에 케이스북 언급이 있다) — 케이스북 기준으로 갱신할지는 정하지 않았다.
 
 ## 폴더 구성
 
