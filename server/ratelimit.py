@@ -7,6 +7,7 @@
 - CORS 미들웨어 **안쪽**에 둬야 429 응답에도 `Access-Control-Allow-Origin`이 붙는다(`server/api.py` `create_app`).
 """
 
+import ipaddress
 import math
 import os
 import time
@@ -69,6 +70,20 @@ class RateLimiter:
                 del self._hits[k]
 
 
+def counting_key(ip: str) -> str:
+    """IPv6는 한 가입자가 /64 안의 주소를 마음대로 바꿀 수 있어, 주소 하나가 아니라 앞 64비트(/64)로 묶어 센다(이슈 #118, 사용자 결정 2026-10-23).
+    IPv4와 IPv4-매핑 IPv6(`::ffff:1.2.3.4`)는 IPv4 주소 하나, IP로 읽히지 않는 값은 그대로 쓴다."""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    if isinstance(addr, ipaddress.IPv6Address):
+        if addr.ipv4_mapped is not None:
+            return str(addr.ipv4_mapped)
+        return str(ipaddress.ip_network((int(addr), 64), strict=False))
+    return str(addr)
+
+
 def client_ip(request: Request) -> str:
     """Vercel은 외부에서 온 X-Forwarded-For를 전달하지 않고 덮어써서 위조할 수 없다(Vercel 요청 머리글 문서).
     그 밖의 환경에서는 이 머리글을 믿지 않고 소켓 주소를 쓴다."""
@@ -96,7 +111,7 @@ class RateLimitMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http" and (scope["method"], route_path(scope)) == self.route:
-            wait = self.limiter.hit(client_ip(Request(scope)))
+            wait = self.limiter.hit(counting_key(client_ip(Request(scope))))
             if wait:
                 response = JSONResponse(
                     {"detail": f"호출이 너무 잦습니다. {wait}초 뒤에 다시 시도해 주세요."},

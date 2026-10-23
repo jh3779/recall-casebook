@@ -44,7 +44,7 @@
    DB에서 고르게 뽑은 64줄(마지막 줄 포함)이 사본과 글자 그대로 같을 때만 사본을 쓴다(아니거나 사본이 깨졌으면 다시 받는다). 운영 Supabase 기준 처음 18~100초,
    사본이 있으면 약 8~10초(2026-10-10, 집 회선 실측 — 벡터 46MB를 약 1.8MB/s로 받는다).
 
-`POST /search`는 IP당 1분 60회(`RATE_LIMIT_PER_MINUTE`)를 넘으면 429와 `Retry-After`를 낸다 — `server/ratelimit.py`, 시험 `tests/test_rate_limit.py`, 배포 쪽 WAF 안전망은 `docs/guides/배포_Vercel.md` 3-2절(이슈 #63, DEC-057).
+`POST /search`는 IP당(IPv6는 /64당) 1분 60회(`RATE_LIMIT_PER_MINUTE`)를 넘으면 429와 `Retry-After`를 낸다 — `server/ratelimit.py`, 시험 `tests/test_rate_limit.py`, 배포 쪽 WAF 안전망은 `docs/guides/배포_Vercel.md` 3-2절(이슈 #63, DEC-057).
 
 요청은 `{"question": "<영어 결함 설명>"}` 하나만 받는다 — 모르는 칸이 있거나(예: `top_k`) 영어 단어가 없으면 422로 거부한다(2026-10-12, PR #86).
 
@@ -107,7 +107,7 @@ RAG_SOURCE=bundle SERVING_BUILD_ID=<build_id> SUPABASE_URL=<프로젝트 주소>
 - 응답: `groups`(서버 내부용 제목 + 원문 인용 — 화면은 제목을 보이지 않는다: 번호·칸·원문 구간 `start`/`end`(출처 전체라 `0`~원문 길이)·말한 주체·출처), `ungrouped`(묶이지 않은 원문 전체), `questions`(고정 확인 질문), `picked_questions`(D4에서 LLM이 고정 풀 `QUESTION_POOL`(P1~P10)에서 **번호로** 고른 확인 질문 최대 3개 — 문장은 풀의 글자이며 버린 번호는 이유별로 `rejected.unknown_question`(풀 밖·문자열 아님), `rejected.duplicate_question`(이미 고른 번호 반복), `rejected.over_limit_question`(상한 3개를 넘은 유효한 번호)으로 센다. D2·꺼짐·실패는 빈 목록, DEC-071), `rejected`(원문과 다르다고 버린 인용 수와 버린 질문 번호 수), `degraded`.
 - **기본은 꺼짐**: `DRAFT_ENABLED=1`과 `OPENAI_API_KEY`가 있어야 켜진다(키 없이 켜면 시작하지 않는다). 꺼져 있거나 LLM 호출이 실패하면 `degraded`(`disabled`·`llm_failed`)와 함께 묶음 없이 원문 목록(`ungrouped`)만 준다.
 - LLM: 기본 `gpt-6-luna`·추론 `none`(`DRAFT_MODEL`·`DRAFT_REASONING_EFFORT`), OpenAI Responses API를 표준 라이브러리로 부른다(`store: false`, 구조화 출력). 입력은 공개 선례 원문뿐이다. 키는 응답·오류에 싣지 않는다.
-- 호출 상한: IP당 1분 6회(`DRAFT_RATE_LIMIT_PER_MINUTE`, `/search` 상한과 따로 센다). 넘으면 429 + `Retry-After`.
+- 호출 상한: IP당(IPv6는 /64당) 1분 6회(`DRAFT_RATE_LIMIT_PER_MINUTE`, `/search` 상한과 따로 센다). 넘으면 429 + `Retry-After`.
 - 표본 관찰 스크립트: `uv run --env-file .env python -m scripts.defect_precedent.draft_sample --dry-run` — 기록은 `docs/experiments/실험_8D초안표본.md`.
 
 ## 검증
@@ -121,4 +121,4 @@ RAG_SOURCE=bundle SERVING_BUILD_ID=<build_id> SUPABASE_URL=<프로젝트 주소>
 
 ## 아직 없는 것
 
-배포 화면 주소의 CORS 값(작업 F — 허용 주소는 `ALLOWED_ORIGINS`로 바꿀 수 있다), 화면의 429 처리(작업 F), 화면 문구(박성호 님, PR #60). 부품 범위 좁히기는 시험 뒤 기각했다(DEC-045).
+화면의 원인 상태 표시 문구는 사람 합의 전의 잠정안이다(이슈 #53). 최상위 부품 분류 카드 순위 올리기는 시험 뒤 기각했다(DEC-045 — 하위 분류 깊이는 열려 있다).
