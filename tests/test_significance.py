@@ -168,28 +168,28 @@ def test_세_함수를_이어_쓰는_입력_형식_예():
     assert adjusted == pytest.approx({"cont": 0.125, "hit": 0.125})
 
 
-# ---------- 축척(단위) 불변 ----------
+# ---------- 축척(단위) 불변과 정확한 비교 ----------
 
 
 @pytest.mark.parametrize("scale", [1e-16, 2e-15, 1e-3, 1e3, 1e12])
-def test_permutation_모든_차이에_같은_양수를_곱해도_p값이_같다_전수(scale):
-    base = [1.0] * 10
-    assert (
-        paired_permutation_p([x * scale for x in base], seed=0)
-        == paired_permutation_p(base, seed=0)
-        == 2 / 1024
-    )
-    mixed = [1.0, -2.0, 3.0, 1.0, -1.0, 2.0, 4.0, -1.0]
-    assert paired_permutation_p([x * scale for x in mixed], seed=0) == paired_permutation_p(
-        mixed, seed=0
-    )
+def test_permutation_같은_값을_작거나_큰_단위로_써도_p값이_같다_전수(scale):
+    # 원소가 모두 같으면 어떤 단위에서도 부호 조합의 합이 십진수로 정확히 같은 배수다
+    assert paired_permutation_p([scale] * 10, seed=0) == 2 / 1024
+    assert paired_permutation_p([1.0] * 10, seed=0) == 2 / 1024
 
 
-@pytest.mark.parametrize("scale", [1e-16, 1e-3, 1e3])
-def test_permutation_모든_차이에_같은_양수를_곱해도_p값이_같다_몬테카를로(scale):
-    base = [1.0] * 14 + [-1.0] * 7  # 21개라 몬테카를로 경로
-    expected = paired_permutation_p(base, seed=3, samples=2000)
-    assert paired_permutation_p([x * scale for x in base], seed=3, samples=2000) == expected
+@pytest.mark.parametrize("exponent", [-16, -3, 3, 12])
+def test_permutation_십진수_단위를_바꿔_쓰면_섞인_값도_p값이_같다(exponent):
+    # 정수 값을 "3e-16"처럼 단위만 바꿔 쓴 십진수로 읽는다(곱셈의 부동소수 반올림이 끼지 않게 문자열로 만든다)
+    mixed = [1, -2, 3, 1, -1, 2, 4, -1]
+    rescaled = [float(f"{x}e{exponent}") for x in mixed]
+    assert paired_permutation_p(rescaled, seed=0) == paired_permutation_p(
+        [float(x) for x in mixed], seed=0
+    )
+    big = [1] * 14 + [-1] * 7 + [2]  # 22개라 몬테카를로 경로
+    assert paired_permutation_p(
+        [float(f"{x}e{exponent}") for x in big], seed=3, samples=2000
+    ) == paired_permutation_p([float(x) for x in big], seed=3, samples=2000)
 
 
 def test_permutation_아주_작은_값도_정확히_0이_아니면_버리지_않는다():
@@ -197,13 +197,14 @@ def test_permutation_아주_작은_값도_정확히_0이_아니면_버리지_않
     assert paired_permutation_p([1e-16] * 10, seed=0) == 2 / 1024
 
 
+@pytest.mark.parametrize("small", [1e-10, 2.5e-10, 1e-12, 2.5e-13, 1e-15, 1e-20])
+def test_permutation_실제로_더_작은_합을_같다고_묶지_않는다(small):
+    # [1, small]: 부호 조합 4개의 합 ±(1+small), ±(1-small). 관측 |1+small| 이상은 두 조합뿐 → 2/4
+    assert paired_permutation_p([1.0, small], seed=0) == 0.5
+
+
 def test_permutation_십진수로는_합이_정확히_0인_입력은_1이다():
     # 이진 부동소수에서는 합이 1e-17대로 남지만 십진수로는 정확히 0 → 모든 부호 조합이 극단이므로 p=1.0
     diffs = [0.9, -0.8, 0.2, -0.2, 0.2, -0.4, 0.4, 0.8, -0.5, -0.6, -0.6, 0.8, -1.0, 0.8]
     assert paired_permutation_p(diffs, seed=0) == 1.0
-
-
-def test_permutation_값의_크기_차이가_매우_커도_다른_합을_같다고_묶지_않는다():
-    # [1, 1e-10]: 합 1±1e-10 두 가지. 부호 조합 4개 중 관측(둘 다 +, 둘 다 -)만 극단 → 2/4
-    assert paired_permutation_p([1.0, 1e-10], seed=0) == 0.5
-    assert paired_permutation_p([1.0, 1e-12], seed=0) == 0.5
+    assert paired_permutation_p([0.1, 0.2, -0.3], seed=0) == 1.0

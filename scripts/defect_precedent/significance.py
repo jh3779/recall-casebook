@@ -10,8 +10,9 @@
 가져오지 않는다. 그쪽에는 빈 라벨을 0점으로 치는 등 고쳐야 할 결함이 남아 있어(이슈 #179 1절) 가져오지 않았다.
 
 (3) `paired_permutation_p`의 0 판정·동률 허용오차가 원본의 고정 절댓값(1e-15)이었는데, 모든 차이에 같은 양수를 곱한(단위를 바꾼)
-입력에서 결과가 달라지는 결함이라(Codex 리뷰, 예: [1.0]*10 → 0.00195, [2e-15]*10 → 0.109) 정확히 0만 빼고 합은 math.fsum으로,
-동률 비교는 자료의 크기에 비례하는 허용오차(평균 절댓값의 1e-12배)로 바꿨다. 축척 불변 시험이 `tests/test_significance.py`에 있다.
+입력에서 결과가 달라지는 결함이라(Codex 리뷰, 예: [1.0]*10 → 0.00195, [2e-15]*10 → 0.109) 허용오차를 없앴다. 입력을 쓰인 그대로의
+십진수(repr)로 읽어 정수로 바꾸고 합을 정확히 비교한다(상대 오차 방식은 [1.0, 2.5e-13]처럼 실제로 더 작은 합을 같다고 묶는 결함이
+있어 쓰지 않았다). 축척·경계 시험이 `tests/test_significance.py`에 있다.
 
 이 모듈은 아무 곳에서도 import하지 않는다 — 검색·점수·서비스 응답을 바꾸지 않는다. 어떤 평가 점수도 만들지 않으며,
 유효한 평가 라벨이 없으면 이 함수들로 성능을 주장하지 않는다(AGENTS.md 5-1·5-2).
@@ -25,6 +26,7 @@
 
 import math
 import random
+from fractions import Fraction
 
 
 def exact_mcnemar(a_wins: int, b_wins: int) -> float:
@@ -40,36 +42,45 @@ def exact_mcnemar(a_wins: int, b_wins: int) -> float:
     return min(1.0, 2 * tail)
 
 
+def _decimal_ints(values: list[float]) -> list[int]:
+    """각 값을 쓰인 그대로의 십진수(`repr`)로 읽어 공통 분모의 정수로 바꾼다 — 합을 정확히 비교하려는 것이다.
+
+    이진 부동소수의 합산 오차로 같은 합이 다르게 나오는 문제(예: 0.1+0.2)와, 이를 가리려고 쓰는 허용오차가 단위(축척)에
+    따라 결과를 바꾸는 문제를 함께 피한다. 모든 값에 같은 양수를 곱해도(곱셈이 십진수로 정확할 때) 정수 비율이 같아 p값이 같다.
+    """
+    fractions = [Fraction(repr(x)) for x in values]
+    scale = math.lcm(*(f.denominator for f in fractions))
+    return [int(f * scale) for f in fractions]
+
+
 def paired_permutation_p(differences: list[float], seed: int, samples: int = 100_000) -> float:
     """평균 차이의 양측 paired sign-flip permutation p값.
 
-    귀무가설(차이의 부호는 무작위다) 아래에서 각 차이의 부호를 뒤집은 평균 가운데, 관측 평균의 절댓값 이상인
-    것의 비율이다. 차이가 0인 문항은 평균을 바꾸지 못하므로 뺀다(전부 0이면 1.0).
-    20개 이하는 모든 부호 조합을 열거해 정확값을 내고, 그보다 크면 고정 시드 Monte Carlo를 쓴다
+    귀무가설(차이의 부호는 무작위다) 아래에서 각 차이의 부호를 뒤집은 합(평균과 같은 순서) 가운데, 관측 합의 절댓값 이상인
+    것의 비율이다. 차이가 0인 문항은 합을 바꾸지 못하므로 뺀다(전부 0이면 1.0). 비교는 허용오차 없이 **정확히** 한다 —
+    입력을 십진수 정수로 바꿔 세므로 합이 십진수로 같으면 같고 조금이라도 다르면 다르다(NaN·무한대는 받지 않는다).
+    20개 이하는 부호 조합 분포를 정확히 계산하고, 그보다 크면 고정 시드 Monte Carlo를 쓴다
     (이때 값은 (극단 횟수 + 1) / (samples + 1)이라 0이 되지 않는다).
     """
-    diffs = [
-        x for x in differences if x != 0
-    ]  # 정확히 0인 값만 뺀다 — 고정 허용오차는 단위(축척)에 따라 결과를 바꾼다
+    diffs = [x for x in differences if x != 0]
     if not diffs:
         return 1.0
-    observed = abs(math.fsum(diffs) / len(diffs))
-    # 부동소수 합산 오차로 같은 값이 아주 조금 작게 나오는 경우만 같다고 본다. 허용오차를 자료 자체의 크기(평균 절댓값)에 맞추므로
-    # 모든 차이에 같은 양수를 곱하면(단위를 바꾸면) 허용오차도 같은 배율로 변해 판정이 달라지지 않는다. 합이 0으로 상쇄되는
-    # 입력과 값의 크기 차이가 큰 입력에서도 정의대로 센다.
-    tol = 1e-12 * math.fsum(abs(x) for x in diffs) / len(diffs)
-    if len(diffs) <= 20:
-        extreme = 0
-        total = 1 << len(diffs)
-        for mask in range(total):
-            mean = math.fsum(x if mask & (1 << i) else -x for i, x in enumerate(diffs)) / len(diffs)
-            extreme += abs(mean) >= observed - tol
-        return extreme / total
+    ints = _decimal_ints(diffs)
+    observed = abs(sum(ints))
+    if len(ints) <= 20:
+        dist: dict[int, int] = {0: 1}  # 합 -> 그 합이 되는 부호 조합 수
+        for x in ints:
+            nxt: dict[int, int] = {}
+            for total, count in dist.items():
+                nxt[total + x] = nxt.get(total + x, 0) + count
+                nxt[total - x] = nxt.get(total - x, 0) + count
+            dist = nxt
+        extreme = sum(count for total, count in dist.items() if abs(total) >= observed)
+        return extreme / (1 << len(ints))
     rng = random.Random(seed)
     extreme = 0
     for _ in range(samples):
-        mean = math.fsum(x if rng.getrandbits(1) else -x for x in diffs) / len(diffs)
-        extreme += abs(mean) >= observed - tol
+        extreme += abs(sum(x if rng.getrandbits(1) else -x for x in ints)) >= observed
     return (extreme + 1) / (samples + 1)
 
 
