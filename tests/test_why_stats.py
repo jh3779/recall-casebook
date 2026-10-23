@@ -318,6 +318,54 @@ def test_input_label_says_reproduction_only_when_the_inputs_match_the_baseline()
     assert "573 표본 캠페인·원인 칸 내용" in str(e.value)
 
 
+ALIASES = {"maker_aliases_sha256": "a1", "maker_aliases_draft_sha256": "d1"}
+
+
+def test_baseline_inputs_compare_the_alias_hashes_only_when_the_baseline_has_them():
+    """회사명 대응표 해시 칸은 '있으면 비교' — 칸이 없는 옛 기준 파일은 그대로 재현된다(이슈 #78)."""
+    old = make_base([sample_row("20V001")])  # 칸 없음
+    ok = "sha256 일치"
+    # 지금 build가 대응표를 써도, 안 써도 옛 기준 파일은 재현으로 본다
+    assert ok in why_stats.input_label("b.json", old, {**SAME, **ALIASES}, None, False)
+    assert ok in why_stats.input_label("b.json", old, SAME, None, False)
+    new = {**old, "build": {**old["build"], **ALIASES}}
+    assert ok in why_stats.input_label("b.json", new, {**SAME, **ALIASES}, None, False)
+    for drift in (
+        {**SAME, **ALIASES, "maker_aliases_sha256": "다른대응표"},
+        {**SAME, **ALIASES, "maker_aliases_draft_sha256": "다른초안"},
+        SAME,  # 지금 build.json에는 대응표 칸이 없다 — 어느 대응표로 만든 카드인지 알 수 없다
+    ):
+        with pytest.raises(SystemExit):
+            why_stats.input_label("b.json", new, drift, None, False)
+        assert "재현 아님" in why_stats.input_label("b.json", new, drift, None, True)
+
+
+def test_bm25_baseline_reproduction_uses_the_same_alias_hash_check(tmp_path, monkeypatch, capsys):
+    from scripts.defect_precedent import bm25_baseline as bm
+
+    (tmp_path / "recalls.jsonl").write_text(
+        json.dumps({"campno": "20V001000", "defect": "d", "consequence": "c", "remedy": "r"})
+        + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "eval.jsonl").write_text(
+        json.dumps({"action_no": "PE1", "question": "d", "gold_campnos": ["20V001000"]}) + "\n",
+        encoding="utf-8",
+    )
+    base = tmp_path / "base.json"
+    build = {**SAME, **ALIASES}
+    base.write_text(json.dumps({"eval_action_nos": ["PE1"], "build": build}), encoding="utf-8")
+    monkeypatch.setattr(bm, "OUT_DIR", tmp_path)
+    monkeypatch.setattr(bm, "verify_build", lambda: dict(build))
+    bm.main(base)
+    assert "재현 (원본·카드·시험지 sha256 일치)" in capsys.readouterr().out
+    monkeypatch.setattr(bm, "verify_build", lambda: {**build, "maker_aliases_sha256": "다름"})
+    with pytest.raises(SystemExit):
+        bm.main(base)
+    bm.main(base, allow_drift=True)
+    assert "재현 아님" in capsys.readouterr().out
+
+
 def test_input_label_stops_when_only_the_cause_status_or_row_count_of_the_sample_changed():
     sample = [sample_row("20V001"), sample_row("20V002", "empty")]
     base = make_base(sample)

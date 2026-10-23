@@ -203,6 +203,13 @@ def rrf(*rankings: list[str], k: int = RRF_K) -> list[str]:
     return sorted(s, key=lambda c: -s[c])
 
 
+def card_cache_path(model_name: str, texts: list[str], cache: Path | None = None) -> Path:
+    """카드 벡터 캐시 파일 경로 — 모델 이름과 **지금 카드 글 전체의 해시**로 정한다. 카드 글이 다른 옛 캐시는 행 수가 같아도
+    다른 이름이 된다. `embed_cards`와 `embedding_prefix_check`가 이 식을 함께 쓴다."""
+    key = hashlib.sha256("\n".join(texts).encode()).hexdigest()[:12]
+    return (cache or CACHE) / f"{model_name.replace('/', '_')}_{key}.npy"
+
+
 def embed_cards(model_name: str, texts: list[str]):
     """카드 임베딩(캐시). 캐시를 쓰기 전에 카드 16장을 지금 모델로 다시 임베딩해 캐시와 비교한다 —
     fastembed·모델 파일이 바뀌었으면 값이 달라지므로 캐시를 버리고 다시 만든다(옛 카드 벡터와 새 질문 벡터가 섞이지 않게)."""
@@ -216,8 +223,7 @@ def embed_cards(model_name: str, texts: list[str]):
         )
 
     CACHE.mkdir(parents=True, exist_ok=True)
-    key = hashlib.sha256("\n".join(texts).encode()).hexdigest()[:12]
-    path = CACHE / f"{model_name.replace('/', '_')}_{key}.npy"
+    path = card_cache_path(model_name, texts)
     model = TextEmbedding(model_name)
     probe_idx = list(range(0, len(texts), max(1, len(texts) // 16)))[:16]
     probe = np.array(list(model.passage_embed([texts[i] for i in probe_idx])), dtype="float32")

@@ -400,6 +400,16 @@ def build() -> None:
     print(f"출력: {OUT_DIR}")
 
 
+def same_baseline_inputs(info: dict, base_build: dict) -> bool:
+    """build.json(`info`)이 기준 파일의 `build`와 같은 입력인지 — 세 해시는 필수, 회사명 대응표 해시 둘(확인본·초안)은
+    기준 파일에 적혀 있을 때만 비교한다(그 칸이 없는 옛 기준 파일은 그대로 재현된다, 이슈 #78)."""
+    required = ("raw_manifest_sha256", "recalls_sha256", "eval_sha256")
+    optional = ("maker_aliases_sha256", "maker_aliases_draft_sha256")
+    return all(info.get(k) == base_build[k] for k in required) and all(
+        info.get(k) == base_build[k] for k in optional if k in base_build
+    )
+
+
 def verify_build(raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR) -> dict:
     """build.json이 지금 원본 manifest와 지금 카드·시험지 파일을 가리키는지 확인한다. 다르면 중단한다."""
     verify_raw(raw_dir)

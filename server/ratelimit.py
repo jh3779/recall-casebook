@@ -79,12 +79,23 @@ def client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def route_path(scope: Scope) -> str:
+    """라우터가 보는 경로 — `root_path` 접두어를 뺀 `scope["path"]`(Starlette `get_route_path`와 같은 규칙).
+    원문 `scope["path"]`로 비교하면 서버가 `root_path` 아래에서 돌 때 앱 상한이 말없이 꺼진다(이슈 #118)."""
+    path, root = scope["path"], scope.get("root_path", "")
+    if not root or not path.startswith(root):
+        return path
+    if path == root:
+        return ""
+    return path[len(root) :] if path[len(root)] == "/" else path
+
+
 class RateLimitMiddleware:
     def __init__(self, app: ASGIApp, limiter: RateLimiter, route: tuple[str, str] = LIMITED_ROUTE):
         self.app, self.limiter, self.route = app, limiter, route
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] == "http" and (scope["method"], scope["path"]) == self.route:
+        if scope["type"] == "http" and (scope["method"], route_path(scope)) == self.route:
             wait = self.limiter.hit(client_ip(Request(scope)))
             if wait:
                 response = JSONResponse(

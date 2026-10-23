@@ -170,6 +170,25 @@ def test_off_vercel_a_forged_forwarded_header_does_not_buy_a_new_bucket(tmp_path
         )
 
 
+def test_limit_follows_the_router_path_when_the_app_runs_under_a_root_path(tmp_path):
+    """서버가 root_path 아래에서 돌면 scope["path"]에는 접두어가 남는다 — 라우터가 보는 경로로 비교하지 않으면 상한이 꺼진다."""
+    state = make_state(tmp_path)
+    app = create_app(lambda: state, RateLimiter(1, clock=Clock()))
+    with TestClient(app, root_path="/api") as client:
+        assert client.post("/api/search", json=QUESTION).status_code == 200
+        assert client.post("/api/search", json=QUESTION).status_code == 429
+
+
+def test_route_path_strips_only_a_whole_root_path_segment():
+    scope = {"path": "/api/search", "root_path": "/api"}
+    assert ratelimit.route_path(scope) == "/search"
+    assert ratelimit.route_path({"path": "/search"}) == "/search"  # root_path 없음
+    assert ratelimit.route_path({"path": "/search", "root_path": "/api"}) == "/search"
+    assert ratelimit.route_path({"path": "/apix/search", "root_path": "/api"}) == "/apix/search"
+    assert ratelimit.route_path({"path": "/api", "root_path": "/api"}) == ""
+    assert ratelimit.route_path({"path": "/s", "root_path": "/api"}) == "/s"  # 접두어보다 짧은 경로
+
+
 def test_create_app_without_a_limiter_uses_the_env_limit(tmp_path, monkeypatch):
     # 배포는 `app = create_app()`라 상한이 환경변수에서 와야 한다 — 이 연결이 빠지면 설정이 말없이 무시된다
     monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1")

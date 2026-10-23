@@ -36,7 +36,7 @@ PR이 `OPEN`이 아니면 중단하고 보고한다.
 gh pr checks $N
 ```
 
-`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`가 모두 pass여야 한다. **Actions를 끈 동안**(MERGE_PROTOCOL 7절)에는 체크가 없으므로 대신 `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=<일회용 Postgres> bash scripts/local_ci.sh`를 돌린다. 통과하면 스크립트가 `### 🧪 local CI (엄격) — 커밋 <SHA>` 코멘트를 PR에 직접 남기고(못 남기면 실패로 끝나므로 다시 돌린다), G-01 근거는 그 코멘트뿐이다(손으로 옮겨 적은 줄은 근거가 아니다). 테스트 결과는 출력을 파일로 받아 **종료 코드로** 확인한다 — `| tail`로 넘기면 실패 종료 코드가 사라진다. `merge-gate`는 9절 결과 코멘트를 게시해야 통과하므로 이 단계에서는 pending이 정상이다. `pr-verify`가 실패하면 Actions 요약 표에서 어느 검사가 ❌인지 보고 고친다. pending이면 `gh pr checks $N --watch`로 기다린다. fail이면 로그(`gh run view <id> --log-failed`)로 원인을 찾아 보고한다.
+`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`가 모두 pass여야 한다. **Actions를 끈 동안**(MERGE_PROTOCOL 7절)에는 체크가 없으므로 대신 `LOCAL_CI_REQUIRE_PR=1 TEST_DATABASE_URL=postgresql://postgres:localtest@localhost:54331/lgcns_test bash scripts/local_ci.sh`를 돌린다 (먼저 `scripts/local_ci.sh` 머리말의 일회용 컨테이너 `docker run -d --rm --name lgcns-test-pg -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=lgcns_test -p 54331:5432 pgvector/pgvector:pg17`를 띄운다 — DB 이름은 `lgcns_test`여야 하고 일회용 컨테이너에만 쓴다). 통과하면 스크립트가 `### 🧪 local CI (엄격) — 커밋 <SHA>` 코멘트를 PR에 직접 남기고(못 남기면 실패로 끝나므로 다시 돌린다), G-01 근거는 그 코멘트뿐이다(손으로 옮겨 적은 줄은 근거가 아니다). **코멘트 제목의 SHA가 현재 head와 같은지도 본다** — 다르면 그 코멘트는 근거가 아니니 새 head로 다시 돌린다. 테스트 결과는 출력을 파일로 받아 **종료 코드로** 확인한다 — `| tail`로 넘기면 실패 종료 코드가 사라진다. `merge-gate`는 9절 결과 코멘트를 게시해야 통과하므로 이 단계에서는 pending이 정상이다. `pr-verify`가 실패하면 Actions 요약 표에서 어느 검사가 ❌인지 보고 고친다. pending이면 `gh pr checks $N --watch`로 기다린다. fail이면 로그(`gh run view <id> --log-failed`)로 원인을 찾아 보고한다.
 
 ## 2. G-02 · G-03 자동 리뷰 존재 + 최신 커밋 기준
 
@@ -80,7 +80,16 @@ query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(nu
   -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not) | select((.comments.nodes[0].authorAssociation) as $a | $a == null or $a == "OWNER" or $a == "MEMBER" or $a == "COLLABORATOR")]'
 ```
 
-외부인(협업자가 아닌 작성자)이 연 스레드는 이 명령이 걸러 낸다(`merge_gate.py`와 같은 기준 — 작성자를 알 수 없으면 센다). 걸러진 스레드도 사람이 한 번 읽는다. 결과가 `[]`여야 한다 (100개 초과 시 누락 — 그 규모가 되면 페이지네이션 추가). 남은 스레드는 3절처럼 처리한 뒤 답글로 처리 내역을 남긴다. 스레드를 resolve하는 것은 사람이 하거나, 처리 내역을 답글로 남긴 뒤에만 한다.
+외부인(협업자가 아닌 작성자)이 연 스레드는 이 명령이 걸러 낸다(`merge_gate.py`와 같은 기준 — 작성자를 알 수 없으면 센다). 걸러진 스레드도 사람이 한 번 읽는다 — 같은 쿼리에서 `select(...)` 조건만 뒤집은 **걸러진 스레드 조회**(개수만 보려면 `python3 scripts/ci/merge_gate.py` 요약의 "미해결 스레드 N개는 판정에서 뺌" 줄, Actions를 끈 동안은 로컬 실행으로만 본다):
+
+```bash
+gh api graphql -F o=${REPO%/*} -F r=${REPO#*/} -F n=$N -f query='
+query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
+  reviewThreads(first:100){nodes{isResolved path line comments(first:1){nodes{author{login} authorAssociation body}}}}}}}' \
+  -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not) | select((.comments.nodes[0].authorAssociation) as $a | $a != null and $a != "OWNER" and $a != "MEMBER" and $a != "COLLABORATOR")]'
+```
+
+위 첫 명령의 결과가 `[]`여야 한다 (100개 초과 시 누락 — 그 규모가 되면 페이지네이션 추가). 남은 스레드는 3절처럼 처리한 뒤 답글로 처리 내역을 남긴다. 스레드를 resolve하는 것은 사람이 하거나, 처리 내역을 답글로 남긴 뒤에만 한다.
 
 ## 5. G-06 diff 정독 · PR 설명 일치
 
@@ -132,6 +141,8 @@ gh pr comment $N -b "merge-gate 재판정"
 ```bash
 REPO=jh3779/recall-casebook PR_NUMBER=$N uv run python scripts/ci/merge_gate.py   # POST_STATUS 없음 = 상태 게시 안 함
 ```
+
+**PR이 `scripts/ci/merge_gate.py` 자체를 바꾸면** PR 쪽 파일로 돌리지 말고 main의 사본으로 돌린다(`merge-gate`는 main의 코드만 실행한다 — MERGE_PROTOCOL 2-1절 "🔒 실행 위치", DEC-009 취지): `git show origin/main:scripts/ci/merge_gate.py > <저장소 밖 임시 파일>` 뒤 `REPO=jh3779/recall-casebook PR_NUMBER=$N python3 <그 임시 파일>`.
 
 - 전부 ✅ → 코멘트 마지막 줄에 병합할 사람을 `@태그`하고 "병합 전 검증 확인 요청드립니다".
 - 하나라도 ❌ → 제목을 `## ❌ 병합 전 검증 결과`로, 실패 게이트·원인·제안 수정을 적는다. 병합하지 않는다.
