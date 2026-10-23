@@ -21,7 +21,7 @@
 | [components/cause.md](components/cause.md) | 원인 상태 배지·원인 블록 9종·꼬리표 |
 | [components/investigation.md](components/investigation.md) | NHTSA 조사 블록 |
 | [components/checklist.md](components/checklist.md) | 확인 항목 |
-| [components/feedback.md](components/feedback.md) | 로딩·오류 5종(5xx 포함)·빈 결과 |
+| [components/feedback.md](components/feedback.md) | 로딩·오류 6종(5xx·429 포함)·빈 결과 |
 | [patterns/screens.md](patterns/screens.md) | 화면 구성 — 첫 화면·결과(데스크톱)·모바일·쇼룸 연결 |
 | [copy/cause-status.md](copy/cause-status.md) | 원인 상태 문구(잠정 — 이슈 #53에 올릴 안) |
 | [copy/ui-text.md](copy/ui-text.md) | 라벨·안내·버튼 문구 모음 |

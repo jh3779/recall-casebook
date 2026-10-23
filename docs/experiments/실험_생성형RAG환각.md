@@ -31,7 +31,7 @@
 
 ## 3. 자동 채점이 못 잡은 것 — 사람이 읽고 본 것
 
-자동 채점은 번호와 인용 글자를 본다. 문장이 *무슨 뜻*인지는 보지 못한다. 답 100개를 훑고 10개를 자세히 읽은 관찰은 아래와 같다(휴리스틱 단어 세기이고 판정이 아니다).
+자동 채점은 번호와 인용 글자를 본다. 문장이 *무슨 뜻*인지는 보지 못한다. 답 100개를 훑고 10개를 자세히 읽은 관찰은 아래와 같다(휴리스틱 단어 세기이고 판정이 아니다). **1~3번의 단어 세기 수치(51개·11개·41개)는 재현하지 못한다** — 아래에 적은 단어 목록은 요약이고 실제로 쓴 정규식이 아니며, 그 정규식을 담은 코드는 `scripts/`·`tests/`에서 찾지 못했다(`generative_rag_trial.py`에는 문장 나누기 `SENT_SPLIT`·번호 찾기 `CAMP_IN_TEXT`뿐이고, `why_stats.py`의 `PATTERN`은 다른 용도의 패턴이다). 이 수치를 쓰려면 정규식을 먼저 정하고 `run1.jsonl`로 다시 세어야 한다.
 
 1. **원인을 자기 말로 쓴 답이 많다(휴리스틱).** 답 100개 중 51개에 `due to / caused by / because / result from / cause`가 들어 있다. 인용 구간이 아니라 모델의 문장이다. 예: "Recalls describe drive shafts separating due to loose transmission bolts…"(`PE01007`). 원문에 있는 말을 옮긴 것인지, 결함 서술을 원인처럼 풀어 쓴 것인지는 이 단어 세기로 가를 수 없다. **서비스 원칙 2("원인 문장은 원문을 한 글자도 바꾸지 않고")는 인용 칸에서만 지켜졌고, 요약 문장에는 적용되지 않았다.** 사용자가 요약 문장을 원인 서술로 읽으면 원문 대조를 통과하지 않은 말을 근거로 쓰게 된다.
 2. **추정·지지 표현이 일부 있다(휴리스틱).** 11개 답에 `plausible / likely / support / suggest / consistent with / indicate` 등. 예: "These precedents support ignition-switch wiring or switch failure as a plausible cause of underway stalling"(`EA08025`). 원인을 *단정*하진 않았지만 "그럴듯한 원인"이라고 평가한다 — 서비스 원칙 1(판정하지 않는다)의 회색 지대이고, 판정 패턴(`PRINCIPLE_PATTERN`)은 이런 문장을 못 잡는다.
