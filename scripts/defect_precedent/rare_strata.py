@@ -114,8 +114,9 @@ def model_record(info: dict, cache_sha256: str) -> dict:
 
 
 def ensure_reproduced(matches: dict[str, bool]) -> None:
-    """하나라도 기준과 다르면 비정상 종료한다 — '재현'으로 통과시키지 않는다(AGENTS.md 5-1)."""
-    if not all(matches.values()):
+    """하나라도 기준과 다르면 비정상 종료한다 — '재현'으로 통과시키지 않는다(AGENTS.md 5-1).
+    대조한 항목이 하나도 없는 빈 입력도 재현한 것이 아니므로 같이 막는다(`all({}.values())`는 참이다)."""
+    if not matches or not all(matches.values()):
         sys.exit(1)
 
 

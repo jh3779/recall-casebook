@@ -167,6 +167,13 @@ def test_기준과_다르면_비정상_종료한다():
     assert stop.value.code == 1
 
 
+def test_대조한_항목이_하나도_없으면_재현이_아니라_비정상_종료한다():
+    """빈 입력은 `all({}.values())`가 참이라 통과하던 틈(이슈 #180) — 아무것도 대조하지 않았으면 재현했다고 하지 않는다."""
+    with pytest.raises(SystemExit) as stop:
+        ensure_reproduced({})
+    assert stop.value.code == 1
+
+
 def test_결과_레코드에_추적_정보가_모두_들어간다():
     model = model_record(
         {
