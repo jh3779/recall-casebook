@@ -22,7 +22,7 @@ node_modules/
 dist/
 build/
 
-# 화면 3D 모델 (파일당 8~11MB, 커밋 훅 1MB 제한 — 팀 드라이브로 나눈다, frontend/README.md·DEC-041)
+# 화면 3D 모델 (파일당 약 8~42MiB — 쏘나타 화면용 배포본 42.2MiB, 쏘나타 원본은 약 111MiB, 커밋 훅 1MB 제한 — 팀 드라이브로 나눈다, frontend/README.md·DEC-041·DEC-058)
 frontend/public/models/
 # 랜딩 배경 영상·포스터 (출처·라이선스 미확인 — 로컬에만 둔다, DEC-074)
 frontend/public/landing/
