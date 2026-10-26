@@ -15,6 +15,17 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "local_ci.sh"
 BASH = "/bin/bash" if Path("/bin/bash").exists() else shutil.which("bash")
 
 
+def _bash_major() -> int | None:
+    """시험에 쓰는 bash의 주 버전(알 수 없으면 None)."""
+    if BASH is None:
+        return None
+    r = subprocess.run([BASH, "-c", "echo ${BASH_VERSINFO[0]}"], capture_output=True, text=True)
+    return int(r.stdout.strip()) if r.stdout.strip().isdigit() else None
+
+
+BASH_MAJOR = _bash_major()
+
+
 def _trap_block() -> str:
     """local_ci.sh에서 `DONE=0`부터 `trap cleanup EXIT`까지(종료 처리 정의)를 그대로 가져온다."""
     s = SCRIPT.read_text(encoding="utf-8")
@@ -33,10 +44,27 @@ def _run(body: str, tmp_path: Path) -> subprocess.CompletedProcess:
 
 
 @pytest.mark.skipif(BASH is None, reason="bash 없음")
+@pytest.mark.skipif(
+    BASH_MAJOR is None or BASH_MAJOR >= 4,
+    reason="이 버그는 bash 3.x(macOS 기본 3.2)에서만 재현된다 — bash 4 이상은 set -u 오류에서 보호 조건을 지워도 "
+    "0이 아닌 코드로 끝나 이 시험이 보호를 검증하지 못한다. 버전과 관계없는 검증은 아래 "
+    "test_exit_zero_before_done_marker_is_a_failure가 맡는다(이슈 #76).",
+)
 def test_unbound_variable_midway_is_a_failure(tmp_path):
-    """중간에 정의되지 않은 변수(한글이 붙은 $VAR 포함)로 멈추면 종료 코드가 0이 아니다."""
+    """중간에 정의되지 않은 변수(한글이 붙은 $VAR 포함)로 멈추면 종료 코드가 0이 아니다. (bash 3.x 한정)"""
     r = _run('X=1\necho "a $X에 b"\necho "$UNDEFINED_PROBE_VAR"\nDONE=1\n', tmp_path)
     assert r.returncode != 0, r.stdout + r.stderr
+
+
+@pytest.mark.skipif(BASH is None, reason="bash 없음")
+def test_exit_zero_before_done_marker_is_a_failure(tmp_path):
+    """`DONE=1` 전에 `exit 0`으로 끝나면 통과로 오인되지 않고 실패(0이 아님)로 바뀐다.
+
+    bash 버전과 관계없이 trap의 `DONE != 1 && rc == 0` 보호 분기를 직접 확인한다(Codex 제안, 이슈 #76).
+    """
+    r = _run('echo "partial"\nexit 0\nDONE=1\n', tmp_path)
+    assert r.returncode != 0, r.stdout + r.stderr
+    assert "통과가 아니다" in r.stderr
 
 
 @pytest.mark.skipif(BASH is None, reason="bash 없음")

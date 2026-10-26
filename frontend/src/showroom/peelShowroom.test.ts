@@ -1,8 +1,15 @@
-import { Box3, Object3D, PerspectiveCamera, Quaternion, Vector3 } from "three";
+import { Box3, BoxGeometry, Group, Mesh, MeshStandardMaterial, Object3D, PerspectiveCamera, Quaternion, Vector3 } from "three";
 import type { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { peelFraming, peelShift } from "./peel";
+import { computeMarkers } from "./markers";
 import { Showroom } from "./Showroom";
+
+// loadEntry가 computeMarkers에 무엇을 넘기는지 보려고 호출만 기록하고 원래 구현을 그대로 실행한다
+vi.mock("./markers", async (importOriginal) => {
+  const markers = await importOriginal<typeof import("./markers")>();
+  return { ...markers, computeMarkers: vi.fn(markers.computeMarkers) };
+});
 
 // rotation.test.ts와 같은 방식: GPU와 DOM만 대체하고 Showroom 생성자·tick·OrbitControls는 실제 구현을 쓴다.
 vi.mock("three", async (importOriginal) => {
@@ -431,5 +438,58 @@ describe("걷어내기: 부품 이름 마커", () => {
     showroom.bindMarker("steering:Steering wheel", null);
     tick(1000);
     expect(e.style.top).toBe("");
+  });
+});
+
+describe("모델 준비: loadEntry의 마커 연결", () => {
+  // GLB 대신 가짜 장면을 loader가 돌려준다 — prepareVehicle·createEstimatedParts·computeHotspots·computeMarkers는 실제 구현이다
+  type LoadedEntry = {
+    meshes: Mesh[]; hotspots: Record<string, { point: Vector3; bone?: string }>;
+    markers: Record<string, { id: string; label: string; estimated: boolean }[]>; markerIndex: Map<string, { id: string }>;
+  };
+  const material = new MeshStandardMaterial();
+  const piece = (name: string, size: [number, number, number], at: [number, number, number]) => {
+    const mesh = new Mesh(new BoxGeometry(...size), material);
+    mesh.name = name;
+    mesh.position.set(...at);
+    return mesh;
+  };
+  async function loadedShowroom() {
+    const { showroom } = fixture();
+    const source = new Group();
+    source.add(piece("bodyshell_030", [2.1, 1.7, 5.2], [0, 0.85, 0]), piece("steeringwheel_053", [0.4, 0.1, 0.4], [0.4, 1.1, -0.3]));
+    const parts = {
+      bodyshell_030: { title: "bodyshell_030 / xromat", defect: null, look: null },
+      steeringwheel_053: { title: "steeringwheel_053 / dash", defect: "steering", look: null },
+    };
+    Object.assign(showroom, { loader: { loadAsync: async () => ({ scene: source }) } });
+    vi.stubGlobal("fetch", async () => ({ ok: true, json: async () => parts }));
+    vi.mocked(computeMarkers).mockClear();
+    const categories = await showroom.load("sorento");
+    const entry = (showroom as unknown as { entries: Map<string, LoadedEntry> }).entries.get("sorento")!;
+    return { showroom, categories, entry };
+  }
+
+  it("실제 부품과 설명용 도형을 모두 합친 메시 목록과, 뼈대를 붙인 핫스팟을 computeMarkers에 넘긴다", async () => {
+    const { entry } = await loadedShowroom();
+    expect(computeMarkers).toHaveBeenCalledTimes(1);
+    const [meshes, hotspots] = vi.mocked(computeMarkers).mock.calls[0];
+    expect(meshes).toBe(entry.meshes); // 설명용 도형(estimated)이 들어 있는 전체 목록
+    expect(entry.meshes.some((m) => m.userData.estimated)).toBe(true);
+    expect(entry.meshes.some((m) => !m.userData.estimated && m.userData.part.defect === "steering")).toBe(true);
+    expect(hotspots).toBe(entry.hotspots); // 분류별 핫스팟 — 실제 부품의 뼈대 이름이 이미 붙은 뒤의 것
+    expect(entry.hotspots.steering.bone).toBe("steeringwheel_053");
+  });
+
+  it("computeMarkers의 결과가 분류별 마커 목록과 id 색인(markerIndex)이 된다", async () => {
+    const { showroom, entry } = await loadedShowroom();
+    showroom.show("sorento");
+    expect(showroom.markersOf("steering")).toEqual([{ id: "steering:Steering wheel", label: "Steering wheel", estimated: false }]);
+    const engine = showroom.markersOf("engine"); // 모델에 엔진이 없어 설명용 도형으로만 채운다
+    expect(engine.length).toBeGreaterThan(0);
+    expect(engine.every((m) => m.estimated)).toBe(true);
+    const ids = Object.values(entry.markers).flatMap((list) => list.map((m) => m.id));
+    expect([...entry.markerIndex.keys()].sort()).toEqual([...ids].sort());
+    expect(ids.length).toBeGreaterThan(2);
   });
 });

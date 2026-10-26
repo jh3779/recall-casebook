@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); Reflect.deleteProperty(window, "matchMedia"); localStorage.clear(); delete root.dataset.theme; root.classList.remove("theme-anim"); });
 
-// 이 시험은 직접 고른 값이 생기기 전이어야 해서(모듈 안의 chosen) 파일의 첫 시험으로 둔다
+// 이 시험은 직접 고른 값이 생기기 전이어야 해서(theme.ts 모듈 안의 chosen) 이 파일에는 이 시험 하나만 둔다 — 다른 시험(AppBar.keyboard.dom.test.tsx)은 파일을 나눠, 실행 순서를 섞어도(--sequence.shuffle) 서로의 선택이 새지 않게 한다
 it("고른 적이 없으면 기기 설정이 바뀔 때 스위치도 따라가고, 직접 고르면 그 뒤의 기기 설정 변화는 무시한다", async () => {
   const u = user();
   bar();
@@ -46,19 +46,4 @@ it("고른 적이 없으면 기기 설정이 바뀔 때 스위치도 따라가�
   act(() => { changeListeners.forEach((fn) => fn()); });
   expect(root.dataset.theme).toBe("dark");
   expect(toggle().getAttribute("aria-checked")).toBe("true");
-});
-
-it("스위치는 키보드(Enter·Space)로도 바뀌고 제목이 다음 동작을 알린다", async () => {
-  const u = user();
-  bar();
-  toggle().focus();
-  expect(toggle().title).toBe("밝은 화면으로 전환");
-  await u.keyboard("{Enter}");
-  expect(toggle().getAttribute("aria-checked")).toBe("false");
-  expect(toggle().title).toBe("어두운 화면으로 전환");
-  expect(root.dataset.theme).toBe("light");
-  await u.keyboard(" ");
-  expect(toggle().getAttribute("aria-checked")).toBe("true");
-  expect(toggle().title).toBe("밝은 화면으로 전환");
-  expect(localStorage.getItem("theme")).toBe("dark");
 });
