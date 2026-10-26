@@ -80,7 +80,7 @@ query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(nu
   -q '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not) | select((.comments.nodes[0].authorAssociation) as $a | $a == null or $a == "OWNER" or $a == "MEMBER" or $a == "COLLABORATOR")]'
 ```
 
-외부인(협업자가 아닌 작성자)이 연 스레드는 이 명령이 걸러 낸다(`merge_gate.py`와 같은 기준 — 작성자를 알 수 없으면 센다). 걸러진 스레드도 사람이 한 번 읽는다 — 같은 쿼리에서 `select(...)` 조건만 뒤집은 **걸러진 스레드 조회**(개수만 보려면 `python3 scripts/ci/merge_gate.py` 요약의 "미해결 스레드 N개는 판정에서 뺌" 줄, Actions를 끈 동안은 로컬 실행으로만 본다):
+외부인(협업자가 아닌 작성자)이 연 스레드는 이 명령이 걸러 낸다(`merge_gate.py`와 같은 기준 — 작성자를 알 수 없으면 센다). 걸러진 스레드도 사람이 한 번 읽는다 — 같은 쿼리에서 `select(...)` 조건만 뒤집은 **걸러진 스레드 조회**(개수만 보려면 `REPO=jh3779/recall-casebook PR_NUMBER=$N python3 scripts/ci/merge_gate.py` 요약의 "미해결 스레드 N개는 판정에서 뺌" 줄 — 두 환경변수가 없으면 시작하지 못하고, 걸러진 리뷰·코멘트·스레드 중 하나라도 1건 이상일 때만 이 줄이 나온다(`merge_gate.py` `main()`). Actions를 끈 동안은 로컬 실행으로만 본다):
 
 ```bash
 gh api graphql -F o=${REPO%/*} -F r=${REPO#*/} -F n=$N -f query='
