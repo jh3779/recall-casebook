@@ -85,5 +85,5 @@ PR 제목은 squash merge 후 main의 커밋 메시지가 되므로 위 형식 �
 | 머지 후 원격 브랜치 삭제 | 저장소 설정: `delete_branch_on_merge` | ✅ 적용됨 |
 | 브랜치명·PR 제목 규칙 + lint·테스트 + PR 상세 검증 | CI 필수 상태 체크 4개 (`lint-and-test` · `check-branch-name` · `validate-pr-title` · `pr-verify`) | ✅ 적용됨 — 실패 시 병합 불가 (⏸️ 2026-10-10부터 필수 체크 해제·Actions 중단, DEC-040 — 복원은 `docs/guides/MERGE_PROTOCOL.md` 7절 5단계) |
 | 병합 게이트 (`merge-gate`) | CI 필수 상태 체크 | ⏸️ 2단계 도입 중 (DEC-009) — main 병합 후 다음 PR에서 동작 확인 뒤 필수로 |
-| main 직접 push·force push·삭제 차단, PR 필수 | 룰셋 `main 보호` (Pro 플랜이라 private에서 동작) | ✅ 적용됨 — 필수 승인 0명, 대신 병합 전 검증 프로토콜(문서 규칙) |
+| main 직접 push·force push·삭제 차단, PR 필수 | 룰셋 `main 보호` (Pro 플랜이라 비공개 때도 동작했고, 2026-10-27 공개 전환 뒤에는 플랜과 무관하게 적용) | ✅ 적용됨 — 필수 승인 0명, 대신 병합 전 검증 프로토콜(문서 규칙) |
 | CODEOWNERS 승인 게이트 | 룰셋 "Require review from Code Owners" | ⬜ 팀원 확정 후 결정 |
