@@ -129,7 +129,19 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 | `f1fe1843ed0f2c66` | `dd0efac013a47dd9cb5b303d4d7958724e9cba21254f4bb9bc6f7f87a190bc1a` | 2026-10-06 판본, 생산 기간 칸 없음(DEC-059 이전) |
 | `5e32c164b15a544a` | `b466430d989b55e1d623346f70461428b6ec83bfbb0508eff40bbf4d98c25127` | 같은 판본 + 573 생산 기간(DEC-059). 2026-10-14부터 공개 |
 
-**바꾸는 법 — 손 절차** (자동 스크립트는 아직 없다. 실패 경로를 모두 시험한 스크립트 초안이 브랜치 `chore/switch-serving-build`에 있고 별도 PR로 검토한다.) 아래 `<BUILD>`에 위 표의 build를 넣는다.
+**바꾸는 법 — 스크립트 `scripts/switch_serving_build.sh`** (저장소 루트가 `lg-cns-rag`에 연결돼 있어야 한다: `.vercel/project.json`의 `projectName` 확인, 아니면 `vercel link --yes --project lg-cns-rag`. Vercel CLI 로그인 필요, 접속 정보는 읽지도 출력하지도 않는다. 터미널에 명령을 여러 줄 붙여 넣지 말고 한 줄씩 실행한다.)
+
+```bash
+bash scripts/switch_serving_build.sh f1fe1843ed0f2c66 --check
+bash scripts/switch_serving_build.sh f1fe1843ed0f2c66
+```
+
+- 첫 줄 `--check`는 아무것도 바꾸지 않는다: 프로젝트 연결, **Vercel 로그인·Production 환경변수 목록을 읽을 수 있는지**(`/health`는 로그인 없이 읽혀서 이 확인이 없으면 거짓으로 통과한다), 현재 공개 build와 묶음 sha256이 위 표와 같은지를 본다. 둘째 줄이 확인(`y`)을 받은 뒤 실제로 바꾼다. 인수는 위 표의 build 둘 중 하나만 받는다(되돌릴 때 `f1fe…`, 다시 올릴 때 `5e32…`). 새 build를 쓰려면 스크립트의 `expected` 표와 위 표를 함께 고친다. Python이 필요 없다(`curl`·`sed`·`vercel`만).
+- 순서: `SERVING_BUILD_ID` 삭제 → 추가 → `vercel deploy --prod` → `/health`를 최대 3번(10초 간격) 확인해 build·묶음 sha256이 표와 같을 때만 성공으로 끝낸다.
+- **실패 때의 동작**(`tests/test_switch_serving_build.py`가 가짜 `vercel`·`curl`로 시험): 환경변수 변경이 실패하면 배포하지 않고 이전 값으로 되돌린 뒤 멈춘다 · 배포 명령이 실패해도 원격에서 배포가 올라갔을 수 있어 이전 값으로 되돌린 뒤 `/health`를 보고, 이전 build가 아니거나 읽히지 않으면 이전 build를 **다시 배포**해 확인한다 · 배포 뒤 `/health`가 안 맞을 때도 같다 · 이전 값 복구가 실패하면 변수 없이 재배포하면 서버가 시작하지 못하므로 **재배포하지 않고** 대시보드에서 직접 넣으라고 안내한다 · 공개 서버가 이미 그 build이면 배포 없이 숨은 환경변수만 그 값으로 다시 맞춘다.
+- 이 스크립트도 `vercel deploy --prod`로 **지금 작업 폴더의 코드 전체**를 올린다 — 그래서 `--check`를 포함해 작업 폴더에 커밋하지 않은 변경이 있거나 HEAD가 `git fetch` 뒤의 `origin/main`과 다르면 중단한다(아래 "시작 전에 확인"의 첫 항목을 코드로 막은 것이고, 나머지 두 항목은 스크립트도 확인한다). 배포가 실패해 이전 build로 되돌린 뒤에도, 실패한 배포가 늦게 완료돼 새 build가 다시 공개될 수 있으니 대시보드 Deployments에서 진행 중인 배포가 없어질 때까지 `/health`를 다시 본다.
+
+**스크립트를 쓸 수 없을 때의 손 절차** — 아래 `<BUILD>`에 위 표의 build를 넣는다.
 
 **시작 전에 확인** — 이 절차의 `vercel deploy --prod`는 **지금 작업 폴더의 코드 전체**를 Production에 올린다(데이터 build만 바뀌는 게 아니다).
 - `git status --short`가 비어 있고 `git rev-parse HEAD`가 `git rev-parse origin/main`(`git fetch` 뒤)과 같은 **깨끗한 최신 main**에서만 한다. 아니면 멈춘다.
@@ -158,7 +170,7 @@ Vercel 프로젝트 환경변수(Production): `RAG_SOURCE=bundle` · `SERVING_BU
 - 검색 확인: `POST /search`(질문 한 건)에서 `build_id`가 같고 카드가 나오는지. 생산 기간 항목(`checklist[].item == "production_period"`)은 `5e32…`에서만 붙고 `f1fe…`에서는 0개가 정상이다.
 - 화면은 되돌릴 필요가 없다(생산 기간 항목이 없는 응답도 그대로 그린다).
 
-**검증한 것(2026-10-14)**: 되돌릴 대상 `f1fe1843ed0f2c66` 묶음이 **현재 코드(`0d05342`)로** 기동한다 — 로컬 서버(`RAG_SOURCE=bundle SERVING_BUILD_ID=f1fe1843ed0f2c66`, 조회 전용 계정이 없어 로컬 개발용 `ALLOW_ADMIN_DB_FOR_SERVER=1`로 기동)에서 `/health`가 위 표의 sha256과 같고 `/search`가 200에 카드 11건·생산 기간 항목 0개. 즉 되돌린 뒤 서버가 못 뜨는 경우는 이 확인으로 배제했다. **확인하지 못한 것**: 진짜 Vercel에서 `f1fe…`로 되돌려 보지는 않았다(공개 서비스를 바꾸므로 — 같은 명령 순서는 2026-10-14 생산 기간 재배포에서 사용자가 실행해 성공). 시연 전 연습이 필요하면 사용자가 정해 한다.
+**검증한 것(2026-10-14)**: 되돌릴 대상 `f1fe1843ed0f2c66` 묶음이 **현재 코드(`0d05342`)로** 기동한다 — 로컬 서버(`RAG_SOURCE=bundle SERVING_BUILD_ID=f1fe1843ed0f2c66`, 조회 전용 계정이 없어 로컬 개발용 `ALLOW_ADMIN_DB_FOR_SERVER=1`로 기동)에서 `/health`가 위 표의 sha256과 같고 `/search`가 200에 카드 11건·생산 기간 항목 0개. 즉 되돌린 뒤 서버가 못 뜨는 경우는 이 확인으로 배제했다. 스크립트 경로 16건(깨끗한 최신 main 점검 2건 포함)은 가짜 `vercel`·`curl`로 시험했고(`tests/test_switch_serving_build.py`, 복구 생략·로그인 확인 제거·복구 실패 무시 같은 변이를 넣으면 시험이 실패함), `--check`는 공개 서비스에 읽기 전용으로 실행해 현재 build 판독을 확인했다. **확인하지 못한 것**: 진짜 Vercel에서 환경변수 삭제·추가·재배포를 이 스크립트로 실행해 보지는 않았다(공개 서비스를 바꾸므로 — 같은 명령 순서는 2026-10-14 생산 기간 재배포에서 사용자가 직접 실행해 성공). 시연 전 연습이 필요하면 사용자가 정해 한다.
 
 **언제 되돌리나(DEC-059 인터뷰 결정 ⑤)**: 10/16 밤까지 배포를 끝내고 10/17부터 동결한다. 동결 뒤 새 build에서 문제가 보이면 위 절차로 `f1fe…`로 되돌리고, 생산 기간 표시는 발표에서 뺀다.
 
