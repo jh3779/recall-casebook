@@ -12,6 +12,7 @@
 #   - 배포 명령 실패             → 이전 값으로 되돌리고 /health를 본다. 이전 build가 아니거나 읽히지 않으면 이전 build를 다시 배포한다 (명령이 실패해도 원격 배포는 올라갔을 수 있다)
 #   - 배포 뒤 /health가 안 맞음   → 위와 같다 (이전 값 복구 → 이전 build 다시 배포 → /health 확인)
 #   - 이전 값 복구가 실패          → 변수가 없는 채로 재배포하면 서버가 시작하지 못하므로 재배포하지 않고 대시보드 안내만 한다
+#   - Ctrl-C·터미널 종료            → 환경변수를 이전 값으로 되돌리고(재배포는 안 함) 공개 상태를 다시 보라고 알린다
 #   - 작업 폴더가 깨끗한 최신 main이 아님 → vercel deploy --prod 가 작업 폴더 전체를 올리므로 --check도 중단한다
 #   - 공개 서버가 이미 그 build   → 숨은 환경변수만 그 값으로 다시 맞춘다 (배포 없음)
 
@@ -43,7 +44,9 @@ PROJECT=$(sed -n 's/.*"projectName"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' 
 # 로그인·권한을 먼저 확인한다 (/health는 로그인 없이 읽혀서 이 확인이 없으면 --check가 거짓으로 통과한다).
 ACCOUNT=$(vercel whoami 2>/dev/null | tail -1) || true
 [ -n "$ACCOUNT" ] || { echo "중단: Vercel에 로그인돼 있지 않다 (vercel login)"; exit 1; }
-vercel env ls production 2>/dev/null | grep -q SERVING_BUILD_ID || { echo "중단: Production 환경변수 목록을 읽지 못했거나 SERVING_BUILD_ID가 없다 (권한·프로젝트 확인)"; exit 1; }
+# 파이프로 바로 grep -q에 넘기지 않는다 — pipefail 아래에서 grep이 먼저 닫으면 vercel이 SIGPIPE로 죽어 거짓으로 중단할 수 있다.
+ENV_LIST=$(vercel env ls production 2>/dev/null) || true
+printf '%s' "$ENV_LIST" | grep -q SERVING_BUILD_ID || { echo "중단: Production 환경변수 목록을 읽지 못했거나 SERVING_BUILD_ID가 없다 (권한·프로젝트 확인)"; exit 1; }
 echo "Vercel 계정: $ACCOUNT"
 
 # /health를 "build sha256" 한 줄로 읽는다. 읽지 못하면 빈 문자열.
@@ -112,6 +115,7 @@ recover() {
   restore_env || return 1
   if [ "$(health)" = "$CUR_BUILD $(expected "$CUR_BUILD")" ]; then
     echo "공개 서버는 이전 build $CUR_BUILD 그대로입니다 (환경변수도 이전 값으로 복구)."
+    echo "!! 실패한 배포가 몇 분 뒤에 늦게 완료돼 새 build가 공개될 수 있다 — 대시보드 Deployments에서 진행 중인 배포가 없어질 때까지 /health를 다시 본다 (새 build가 보이면 이 스크립트를 $CUR_BUILD 로 다시 실행한다)"
     return 0
   fi
   echo "!! 공개 서버가 $CUR_BUILD 로 확인되지 않는다 — 이전 build를 다시 배포한다"
@@ -123,6 +127,18 @@ recover() {
     return 1
   fi
 }
+
+# Ctrl-C·터미널 종료로 끊겨도 환경변수가 새 값(또는 없는 상태)으로 남지 않게 이전 값을 되돌려 넣고, 공개 상태를 다시 보라고 알린다.
+# 재배포는 하지 않는다 — 끊은 시점에 원격 배포가 이미 올라갔을 수 있어 공개 상태를 단정할 수 없다.
+on_interrupt() {
+  trap '' INT TERM HUP
+  echo
+  echo "!! 중단됐다 — 환경변수를 이전 값 $CUR_BUILD 로 되돌린다 (재배포는 하지 않는다)"
+  restore_env || true
+  echo "!! 원격 배포는 계속 진행됐을 수 있다 — /health 의 build_id 를 확인하고, $BUILD 가 보이면 이 스크립트를 $CUR_BUILD 로 다시 실행해 되돌린다"
+  exit 130
+}
+trap on_interrupt INT TERM HUP
 
 if ! set_env "$BUILD"; then
   echo "!! 환경변수를 $BUILD 로 바꾸지 못했다 — 배포하지 않는다"

@@ -33,6 +33,7 @@ case "$1 $2" in
     [ "${FAIL_ADD_FOR:-}" = "$v" ] && exit 1
     printf '%s' "$v" > "$FAKE/env" ;;
   "deploy --prod")
+    [ -n "${DEPLOY_SLEEP:-}" ] && sleep "$DEPLOY_SLEEP"
     n=$(grep -c "^vercel deploy" "$FAKE/calls")
     if [ -n "${PROMOTE_THEN_FAIL:-}" ] && [ "$n" -eq 1 ]; then cp "$FAKE/env" "$FAKE/live"; exit 1; fi
     [ -n "${FAIL_DEPLOY_FROM:-}" ] && [ "$n" -ge "$FAIL_DEPLOY_FROM" ] && exit 1
@@ -43,6 +44,12 @@ esac
 
 FAKE_CURL = r"""#!/usr/bin/env bash
 live=$(cat "$FAKE/live")
+n=$(grep -c "^vercel deploy" "$FAKE/calls")
+# 배포를 N번 한 뒤부터 응답이 비거나(읽지 못함) 이상해지는 흉내 — 이전 build로 되돌린 뒤 확인 단계를 시험한다
+[ -n "${EMPTY_AFTER_DEPLOYS:-}" ] && [ "$n" -ge "$EMPTY_AFTER_DEPLOYS" ] && exit 7
+[ -n "${BAD_AFTER_DEPLOYS:-}" ] && [ "$n" -ge "$BAD_AFTER_DEPLOYS" ] && { echo '{"build_id":"broken","bundle_sha256":"x"}'; exit 0; }
+# build_id는 맞고 묶음 sha256만 틀린 응답
+[ -n "${WRONG_SHA_FOR:-}" ] && [ "$live" = "$WRONG_SHA_FOR" ] && { echo "{\"build_id\":\"$live\",\"bundle_sha256\":\"0000\"}"; exit 0; }
 [ -n "${BAD_HEALTH:-}" ] && [ "$live" = "$BAD_HEALTH" ] && { echo '{"build_id":"broken","bundle_sha256":"x"}'; exit 0; }
 echo "{\"build_id\":\"$live\",\"bundle_sha256\":\"$(grep "^$live " "$FAKE/sha" | cut -d' ' -f2)\"}"
 """
@@ -85,7 +92,7 @@ def sandbox(tmp_path):
     (fake / "env").write_text(OLD)
     (fake / "live").write_text(OLD)
 
-    def run(*args, answer="y\n", **env):
+    def build_env(**env):
         e = {
             **genv,
             **{k: v for k, v in os.environ.items() if not k.startswith("GIT_")},
@@ -94,6 +101,19 @@ def sandbox(tmp_path):
         }
         e["PATH"] = f"{bin_dir}:{e['PATH']}"
         e.update(env)
+        return e
+
+    def snapshot():
+        calls = (fake / "calls").read_text().splitlines()
+        return {
+            "env": (fake / "env").read_text() if (fake / "env").exists() else None,
+            "live": (fake / "live").read_text(),
+            "calls": calls,
+            "deploys": sum(1 for c in calls if c.startswith("vercel deploy")),
+        }
+
+    def run(*args, answer="y\n", **env):
+        e = build_env(**env)
         r = subprocess.run(
             ["bash", str(SCRIPT), *args],
             cwd=repo,
@@ -118,6 +138,8 @@ def sandbox(tmp_path):
         return r, state
 
     run.fake = fake
+    run.build_env = build_env
+    run.snapshot = snapshot
     run.repo = repo
     run.git = git
     return run
@@ -178,6 +200,8 @@ def test_deploy_failure_restores_old_env(sandbox):
     r, s = sandbox(NEW, FAIL_DEPLOY_FROM="1")
     assert r.returncode != 0
     assert s["env"] == OLD and s["live"] == OLD and s["deploys"] == 1
+    # 공개 서버가 아직 이전 build여도 실패한 배포가 늦게 완료될 수 있다는 안내를 빼먹지 않는다
+    assert "늦게 완료" in r.stdout
 
 
 @needs_bash
@@ -250,3 +274,64 @@ def test_head_behind_origin_main_is_rejected(sandbox):
     r, s = sandbox(NEW)
     assert r.returncode != 0 and "origin/main과 다르다" in r.stdout
     assert s["writes"] == 0 and s["env"] == OLD and s["live"] == OLD
+
+
+@needs_bash
+def test_rollback_redeploy_must_verify_the_old_build(sandbox):
+    """되돌린 배포 뒤 /health가 이전 build로 확인되지 않으면 성공이라고 하지 않는다(목표 일치 비교를 느슨하게 하면 실패해야 한다)."""
+    r, s = sandbox(NEW, BAD_HEALTH=NEW, BAD_AFTER_DEPLOYS="2")
+    assert r.returncode != 0
+    assert s["env"] == OLD and s["deploys"] == 2
+    assert (
+        "되돌린 배포도" in r.stdout
+        and "이전 build" in r.stdout
+        and "로 되돌렸습니다" not in r.stdout
+    )
+
+
+@needs_bash
+def test_unreadable_health_after_deploy_is_a_failure_and_rolls_back(sandbox):
+    """네트워크 실패·시간 초과로 /health가 비어도(읽지 못함) 성공으로 끝나지 않고 이전 값으로 되돌린다."""
+    r, s = sandbox(NEW, EMPTY_AFTER_DEPLOYS="1")
+    assert r.returncode != 0
+    assert s["env"] == OLD
+    assert "읽지 못함" in r.stdout
+
+
+@needs_bash
+def test_matching_build_id_with_wrong_bundle_sha_is_not_success(sandbox):
+    """build_id만 맞고 묶음 sha256이 틀리면 바뀐 것이 아니다."""
+    r, s = sandbox(NEW, WRONG_SHA_FOR=NEW)
+    assert r.returncode != 0
+    assert s["env"] == OLD and s["deploys"] == 2
+
+
+@needs_bash
+def test_interrupt_during_deploy_restores_old_env_and_tells_to_recheck(sandbox):
+    """배포 도중 Ctrl-C(SIGINT)로 끊겨도 환경변수를 이전 값으로 되돌리고, 재배포는 하지 않으며, 공개 상태를 다시 보라고 알린다."""
+    import signal
+    import time
+
+    proc = subprocess.Popen(
+        ["bash", str(SCRIPT), NEW],
+        cwd=sandbox.repo,
+        env=sandbox.build_env(DEPLOY_SLEEP="30"),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        start_new_session=True,
+    )
+    proc.stdin.write("y\n")
+    proc.stdin.flush()
+    calls = sandbox.fake / "calls"
+    deadline = time.time() + 20
+    while time.time() < deadline and "vercel deploy" not in calls.read_text():
+        time.sleep(0.1)
+    assert "vercel deploy" in calls.read_text(), "배포 단계에 이르지 못했다"
+    os.killpg(proc.pid, signal.SIGINT)
+    out, _ = proc.communicate(timeout=30)
+    s = sandbox.snapshot()
+    assert proc.returncode == 130, out
+    assert s["env"] == OLD and s["deploys"] == 1
+    assert "다시 실행" in out

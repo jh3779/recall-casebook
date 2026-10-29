@@ -205,7 +205,7 @@ _갱신: 2026-10-27 **저장소 공개 전환 완료** — PR #202(`09cea45`) �
 
 ## Relevant Files
 
-- `docs/guides/배포_Vercel.md` 3-1a절 — 공개 API의 서빙 build 전환·되돌리기 손 절차(DEC-059). 자동 스크립트(`scripts/switch_serving_build.sh`·`tests/test_switch_serving_build.py`, 16건 시험)는 2026-10-29 새 브랜치 `chore/switch-serving-build-revive`로 살렸다(옛 브랜치에서 가져온 14건에 더해, 옛 브랜치 때 Codex가 남긴 미해결 두 가지 — 깨끗한 최신 main 확인은 스크립트가 막고(시험 2건), 실패한 배포가 늦게 완료되는 경우는 복구 뒤 안내 문구로 다룬다)
+- `docs/guides/배포_Vercel.md` 3-1a절 — 공개 API의 서빙 build 전환·되돌리기 손 절차(DEC-059). 자동 스크립트(`scripts/switch_serving_build.sh`·`tests/test_switch_serving_build.py`, 20건 시험)는 2026-10-29 새 브랜치 `chore/switch-serving-build-revive`로 살렸다(옛 브랜치에서 가져온 14건에 더해, 옛 브랜치 때 Codex가 남긴 미해결 두 가지 — 깨끗한 최신 main 확인은 스크립트가 막고(시험 2건), 실패한 배포가 늦게 완료되는 경우는 복구 뒤 안내 문구로 다룬다)
 - `server/ratelimit.py`, `server/api.py`(`create_app`), `tests/test_rate_limit.py`, `docs/guides/배포_Vercel.md` 3-2절, `.agent/DECISIONS.md` DEC-057 — #63 호출 상한(PR #117)
 - `docs/발표대본_초안.md`·`docs/발표_슬라이드_구성안.md`(둘 다 미추적 — 2026-10-14 `git status` 기준. 메인 체크아웃 `docs/`에 지금도 있다(2026-10-23 `ls`로 존재만 확인). 이 줄의 앞 판은 구성안을 빠뜨렸다, 이슈 #127), `docs/product/계획_P3_리랭커시험.md`(PR #129로 저장소에 들어옴 — 메인 체크아웃의 미추적 원본은 갱신 순서 ③-2), `~/Documents/학습노트/`(저장소 밖) — 발표·학습 자료
 - `frontend/README.md` — 실행·모델 설치·라이선스·데이터 재생성
