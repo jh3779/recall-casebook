@@ -34,9 +34,9 @@ case "$1 $2" in
     [ "${FAIL_ADD_FOR:-}" = "$v" ] && exit 1
     printf '%s' "$v" > "$FAKE/env" ;;
   "deploy --prod")
-    [ -n "${PROMOTE_FIRST:-}" ] && cp "$FAKE/env" "$FAKE/live"
-    [ -n "${DEPLOY_SLEEP:-}" ] && sleep "$DEPLOY_SLEEP"
     n=$(grep -c "^vercel deploy" "$FAKE/calls")
+    [ -n "${PROMOTE_FIRST:-}" ] && cp "$FAKE/env" "$FAKE/live"
+    [ -n "${DEPLOY_SLEEP:-}" ] && [ "$n" -ge "${DEPLOY_SLEEP_FROM:-1}" ] && sleep "$DEPLOY_SLEEP"
     if [ -n "${PROMOTE_THEN_FAIL:-}" ] && [ "$n" -eq 1 ]; then cp "$FAKE/env" "$FAKE/live"; exit 1; fi
     [ -n "${FAIL_DEPLOY_FROM:-}" ] && [ "$n" -ge "$FAIL_DEPLOY_FROM" ] && exit 1
     printf '%s' "$(cat "$FAKE/env")" > "$FAKE/live" ;;
@@ -257,6 +257,8 @@ def test_old_value_restore_failure_never_triggers_a_redeploy(sandbox):
     assert r.returncode != 0
     assert s["deploys"] == 1
     assert "재배포하지 않는다" in r.stdout
+    # 복구가 실패한 경로에도 늦은 완료 안내와 수동 복구 절차(다시 실행)가 있다
+    assert "늦게 완료" in r.stdout and "다시 실행" in r.stdout
 
 
 @needs_bash
@@ -310,7 +312,7 @@ def test_matching_build_id_with_wrong_bundle_sha_is_not_success(sandbox):
     assert s["env"] == OLD and s["deploys"] == 2
 
 
-def _run_and_signal(sandbox, sig, wait_for, **env):
+def _run_and_signal(sandbox, sig, wait_for, deploys=1, **env):
     """스크립트를 띄워 wait_for 문구가 호출 기록에 나타나면 프로세스 그룹에 신호를 보내고 (종료 코드, 출력)을 돌려준다."""
     import time
 
@@ -328,9 +330,9 @@ def _run_and_signal(sandbox, sig, wait_for, **env):
     proc.stdin.flush()
     calls = sandbox.fake / "calls"
     deadline = time.time() + 20
-    while time.time() < deadline and wait_for not in calls.read_text():
+    while time.time() < deadline and calls.read_text().count(wait_for) < deploys:
         time.sleep(0.1)
-    assert wait_for in calls.read_text(), "목표 단계에 이르지 못했다"
+    assert calls.read_text().count(wait_for) >= deploys, "목표 단계에 이르지 못했다"
     time.sleep(0.5)  # 배포 명령이 끝났다면 /health 대기에 들어갈 시간을 준다
     os.killpg(proc.pid, sig)
     out, _ = proc.communicate(timeout=60)
@@ -364,3 +366,52 @@ def test_interrupt_while_waiting_for_health_keeps_new_env(sandbox):
     rc, out, s = _run_and_signal(sandbox, signal.SIGINT, "vercel deploy", **proc_env)
     assert s["live"] == NEW and s["env"] == NEW and s["deploys"] == 1, out
     assert rc != 0
+
+
+@needs_bash
+def test_interrupt_during_recovery_is_ignored_and_recovery_completes(sandbox):
+    """/health 확인이 실패해 이전 build를 되돌려 배포하는 도중 끊어도 복구는 끝까지 간다(환경변수와 공개 서버가 어긋나지 않는다)."""
+    rc, out, s = _run_and_signal(
+        sandbox,
+        signal.SIGINT,
+        "vercel deploy",
+        deploys=2,
+        BAD_HEALTH=NEW,
+        DEPLOY_SLEEP="3",
+        DEPLOY_SLEEP_FROM="2",
+    )
+    assert s["env"] == OLD and s["live"] == OLD and s["deploys"] == 2, out
+    assert "신호를 무시" in out and rc != 0
+
+
+@needs_bash
+def test_closed_terminal_still_restores_env_before_any_output(sandbox):
+    """터미널 창을 닫아 화면 출력이 실패(EIO)해도 SIGHUP 처리에서 환경변수를 이전 값으로 되돌린다(set -e로 멈추지 않는다)."""
+    import pty
+    import time
+
+    master, slave = pty.openpty()
+    proc = subprocess.Popen(
+        ["bash", str(SCRIPT), NEW],
+        cwd=sandbox.repo,
+        env=sandbox.build_env(DEPLOY_SLEEP="30"),
+        stdin=subprocess.PIPE,
+        stdout=slave,
+        stderr=slave,
+        text=True,
+        start_new_session=True,
+    )
+    os.close(slave)
+    proc.stdin.write("y\n")
+    proc.stdin.flush()
+    calls = sandbox.fake / "calls"
+    deadline = time.time() + 20
+    while time.time() < deadline and "vercel deploy" not in calls.read_text():
+        time.sleep(0.1)
+    assert "vercel deploy" in calls.read_text(), "배포 단계에 이르지 못했다"
+    os.close(master)  # 터미널 닫기 — 이후 화면 쓰기는 실패한다
+    time.sleep(0.3)
+    os.killpg(proc.pid, signal.SIGHUP)
+    proc.wait(timeout=30)
+    s = sandbox.snapshot()
+    assert s["env"] == OLD and s["deploys"] == 1

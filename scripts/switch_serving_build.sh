@@ -13,11 +13,15 @@
 #   - 배포 뒤 /health가 안 맞음   → 위와 같다 (이전 값 복구 → 이전 build 다시 배포 → /health 확인)
 #   - 이전 값 복구가 실패          → 변수가 없는 채로 재배포하면 서버가 시작하지 못하므로 재배포하지 않고 대시보드 안내만 한다
 #   - Ctrl-C·터미널 종료(배포 명령이 끝나기 전) → 환경변수를 이전 값으로 되돌리고(재배포는 안 함) 공개 상태를 다시 보라고 알린다
-#     배포 명령이 끝난 뒤의 /health 확인 중 끊기면 환경변수는 새 값 그대로 둔다(서버도 새 build). 복구 중에는 신호를 무시한다
+#     배포 명령이 끝난 뒤의 /health 확인 중 끊기면 환경변수는 새 값 그대로 둔다(서버도 새 build). 복구(recover) 중에는 신호를 무시한다
+#     터미널을 닫아 화면 출력이 실패해도 멈추지 않고(echo 재정의) 환경변수 복구를 안내 출력보다 먼저 한다
 #   - 작업 폴더가 깨끗한 최신 main이 아님 → vercel deploy --prod 가 작업 폴더 전체를 올리므로 --check도 중단한다
 #   - 공개 서버가 이미 그 build   → 숨은 환경변수만 그 값으로 다시 맞춘다 (배포 없음)
 
 set -euo pipefail
+
+# 터미널 창을 닫으면 화면 출력이 실패한다 — 출력 실패가 set -e로 스크립트를 멈춰 환경변수 복구가 중단되지 않게 한다.
+echo() { builtin echo "$@" 2>/dev/null || true; }
 
 # macOS 기본 bash 3.2에는 연관 배열이 없어 case로 표를 둔다 (build → 묶음 sha256).
 expected() {
@@ -107,7 +111,17 @@ read -r -p "SERVING_BUILD_ID를 $CUR_BUILD → $BUILD 로 바꿔 재배포할까
 
 restore_env() {
   echo "!! 환경변수를 이전 값 $CUR_BUILD 로 되돌린다"
-  set_env "$CUR_BUILD" || { echo "!! 이전 값 복구에 실패했다 — 환경변수가 없는 채로 재배포하면 서버가 시작하지 못하므로 재배포하지 않는다. 대시보드 Settings > Environment Variables에서 SERVING_BUILD_ID=$CUR_BUILD 를 직접 넣는다"; return 1; }
+  set_env "$CUR_BUILD" || {
+    echo "!! 이전 값 복구에 실패했다 — 환경변수가 없는 채로 재배포하면 서버가 시작하지 못하므로 재배포하지 않는다. 대시보드 Settings > Environment Variables에서 SERVING_BUILD_ID=$CUR_BUILD 를 직접 넣은 뒤 /health 를 확인하고, 이전 build가 아니면 이 스크립트를 $CUR_BUILD 로 다시 실행한다"
+    echo "!! 실패한 배포가 몇 분 뒤에 늦게 완료돼 새 build가 공개될 수 있다 — 환경변수를 고쳐도 진행 중인 배포는 취소되지 않으니 대시보드 Deployments에서 진행 중인 배포가 없어질 때까지 /health 를 계속 다시 본다"
+    return 1
+  }
+}
+
+# 복구에 들어가면 신호를 무시한다 — 복구 도중 끊기면 환경변수와 공개 서버가 어긋나거나 변수가 없는 채 끝날 수 있다(이 구간에서는 trap을 풀어 둔 상태).
+enter_recovery() {
+  trap '' INT TERM HUP
+  echo "!! 복구를 시작한다 — 복구 중에는 Ctrl-C 등 신호를 무시한다 (vercel 이 멈추면 다른 터미널에서 프로세스를 종료하고 대시보드에서 SERVING_BUILD_ID 를 직접 확인한다)"
 }
 
 # 새 build로 바꾸다 실패했을 때: 환경변수를 이전 값으로 복구하고, 공개 서버가 이전 build가 아니거나 읽히지 않으면
@@ -133,9 +147,15 @@ recover() {
 # 재배포는 하지 않는다 — 끊은 시점에 원격 배포가 이미 올라갔을 수 있어 공개 상태를 단정할 수 없다.
 on_interrupt() {
   trap '' INT TERM HUP
-  echo
-  echo "!! 중단됐다 — 환경변수를 이전 값 $CUR_BUILD 로 되돌린다 (재배포는 하지 않는다)"
-  restore_env || true
+  set +e
+  # 터미널을 닫아 출력이 막혀도 복구가 먼저 되도록 안내 출력보다 앞에서 환경변수를 되돌린다(출력은 숨긴다).
+  if set_env "$CUR_BUILD" >/dev/null 2>&1; then
+    echo
+    echo "!! 중단됐다 — 환경변수를 이전 값 $CUR_BUILD 로 되돌렸다 (재배포는 하지 않았다)"
+  else
+    echo
+    echo "!! 중단됐고 이전 값 복구에도 실패했다 — 대시보드 Settings > Environment Variables에서 SERVING_BUILD_ID=$CUR_BUILD 를 직접 넣는다"
+  fi
   echo "!! 원격 배포는 계속 진행됐을 수 있다 — /health 의 build_id 를 확인한다. 환경변수와 공개 서버가 다른 build면 원하는 build 인수로 이 스크립트를 다시 실행한다(공개 서버가 이미 그 build면 환경변수만 맞춘다): 되돌리려면 $CUR_BUILD, 새 build를 원하면 $BUILD"
   echo "!! 복구 중에는 신호를 무시한다 — vercel 이 멈추면 다른 터미널에서 프로세스를 종료하고 대시보드 Settings > Environment Variables 에서 SERVING_BUILD_ID 를 직접 확인한다"
   exit 130
@@ -150,6 +170,7 @@ fi
 
 if ! vercel deploy --prod; then
   echo "!! 배포 명령이 실패했다 — 원격에서 배포가 올라갔는지 알 수 없어 공개 /health로 확인한다"
+  enter_recovery
   recover || true
   exit 1
 fi
@@ -165,5 +186,6 @@ for _ in 1 2 3; do
 done
 
 echo "!! 배포 뒤 /health가 $BUILD 로 확인되지 않았다 — $CUR_BUILD 로 되돌린다"
+enter_recovery
 recover || true
 exit 1
