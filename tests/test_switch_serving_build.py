@@ -443,7 +443,7 @@ def _run_on_closed_terminal(sandbox, sig, ignore_hup=False, **env):
 
 @needs_bash
 def test_closed_terminal_still_restores_env_before_any_output(sandbox):
-    """터미널 창을 닫아 화면 출력이 실패(EIO)해도 SIGHUP 처리에서 안내 출력보다 먼저 환경변수를 이전 값으로 되돌린다."""
+    """터미널 창을 닫아 화면 출력이 실패(EIO)해도 SIGHUP 처리에서 환경변수를 이전 값으로 되돌린다(echo 재정의 없이는 set -e로 멈춘다)."""
     s = _run_on_closed_terminal(sandbox, signal.SIGHUP, DEPLOY_SLEEP="30")
     assert s["env"] == OLD and s["deploys"] == 1
 
