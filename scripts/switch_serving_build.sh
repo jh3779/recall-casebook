@@ -13,7 +13,7 @@
 #   - 배포 뒤 /health가 안 맞음   → 위와 같다 (이전 값 복구 → 이전 build 다시 배포 → /health 확인)
 #   - 이전 값 복구가 실패          → 변수가 없는 채로 재배포하면 서버가 시작하지 못하므로 재배포하지 않고 대시보드 안내만 한다
 #   - Ctrl-C·터미널 종료(배포 명령이 끝나기 전) → 환경변수를 이전 값으로 되돌리고(재배포는 안 함) 공개 상태를 다시 보라고 알린다
-#     배포 명령이 끝난 뒤의 /health 확인 중 끊기면 환경변수는 새 값 그대로 둔다(서버도 새 build). 복구(recover) 중에는 신호를 무시한다
+#     배포 명령이 끝난 뒤의 /health 확인 중 끊기면 환경변수는 새 값 그대로 둔다(서버도 새 build). 복구(recover) 중에는 스크립트가 신호를 무시한다(자식 vercel은 Ctrl-C를 받아 그 단계가 중단될 수 있다 — 끝난 뒤 /health 확인)
 #     터미널을 닫아 화면 출력이 실패해도 멈추지 않고(echo 재정의) 환경변수 복구를 안내 출력보다 먼저 한다
 #   - 작업 폴더가 깨끗한 최신 main이 아님 → vercel deploy --prod 가 작업 폴더 전체를 올리므로 --check도 중단한다
 #   - 공개 서버가 이미 그 build   → 숨은 환경변수만 그 값으로 다시 맞춘다 (배포 없음)
@@ -73,7 +73,8 @@ echo "현재 공개 API: $CURRENT"
 # 환경변수를 지우고 다시 넣는다. 지우기는 값이 없을 때도 실패하므로 무시하고, 넣기가 성공했는지로 판단한다.
 set_env() {
   vercel env rm SERVING_BUILD_ID production --yes >/dev/null 2>&1 || true
-  printf '%s' "$1" | vercel env add SERVING_BUILD_ID production
+  # 내장 printf가 아니라 외부 명령으로 실행한다 — 터미널이 닫혀 echo가 못 쓴 글자가 bash 출력 버퍼에 남아 있으면 내장 printf는 그 글자를 값 앞에 섞어 내보낸다.
+  env printf '%s' "$1" | vercel env add SERVING_BUILD_ID production
 }
 
 # 배포하고 /health가 target(build+sha256)과 같아질 때까지 최대 3번 본다.
@@ -121,7 +122,7 @@ restore_env() {
 # 복구에 들어가면 신호를 무시한다 — 복구 도중 끊기면 환경변수와 공개 서버가 어긋나거나 변수가 없는 채 끝날 수 있다(이 구간에서는 trap을 풀어 둔 상태).
 enter_recovery() {
   trap '' INT TERM HUP
-  echo "!! 복구를 시작한다 — 복구 중에는 Ctrl-C 등 신호를 무시한다 (vercel 이 멈추면 다른 터미널에서 프로세스를 종료하고 대시보드에서 SERVING_BUILD_ID 를 직접 확인한다)"
+  echo "!! 복구를 시작한다 — 이 스크립트는 복구 중 Ctrl-C 등 신호를 무시한다. 다만 자식인 vercel(node)은 Ctrl-C를 받아 그 단계가 중단될 수 있고, 그러면 스크립트는 다음 단계로 진행해 끝에서 실패 안내를 낸다 — 끝난 뒤 /health 와 대시보드의 SERVING_BUILD_ID 를 확인한다. vercel 이 멈추면 다른 터미널에서 ps 로 그 vercel 프로세스의 PID 를 찾아 kill <PID> 로 종료하고(안 되면 kill -KILL <PID>) 종료 직후 /health 와 SERVING_BUILD_ID 를 확인한다"
 }
 
 # 새 build로 바꾸다 실패했을 때: 환경변수를 이전 값으로 복구하고, 공개 서버가 이전 build가 아니거나 읽히지 않으면
@@ -157,7 +158,7 @@ on_interrupt() {
     echo "!! 중단됐고 이전 값 복구에도 실패했다 — 대시보드 Settings > Environment Variables에서 SERVING_BUILD_ID=$CUR_BUILD 를 직접 넣는다"
   fi
   echo "!! 원격 배포는 계속 진행됐을 수 있다 — /health 의 build_id 를 확인한다. 환경변수와 공개 서버가 다른 build면 원하는 build 인수로 이 스크립트를 다시 실행한다(공개 서버가 이미 그 build면 환경변수만 맞춘다): 되돌리려면 $CUR_BUILD, 새 build를 원하면 $BUILD"
-  echo "!! 복구 중에는 신호를 무시한다 — vercel 이 멈추면 다른 터미널에서 프로세스를 종료하고 대시보드 Settings > Environment Variables 에서 SERVING_BUILD_ID 를 직접 확인한다"
+  echo "!! 복구가 진행 중에 멈추면(vercel 이 응답하지 않으면) 다른 터미널에서 ps 로 그 vercel 프로세스의 PID 를 찾아 kill <PID> (안 되면 kill -KILL <PID>) 로 종료하고, 종료 직후 /health 와 대시보드 Settings > Environment Variables 의 SERVING_BUILD_ID 를 확인한다"
   exit 130
 }
 trap on_interrupt INT TERM HUP

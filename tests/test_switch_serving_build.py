@@ -312,6 +312,12 @@ def test_matching_build_id_with_wrong_bundle_sha_is_not_success(sandbox):
     assert s["env"] == OLD and s["deploys"] == 2
 
 
+def _default_signals():
+    """시험이 띄우는 bash가 SIGINT·SIGTERM·SIGHUP을 기본 동작으로 시작하게 한다 — 시험을 백그라운드·nohup으로 돌려도 결과가 같도록."""
+    for sg in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sg, signal.SIG_DFL)
+
+
 def _run_and_signal(sandbox, sig, wait_for, deploys=1, **env):
     """스크립트를 띄워 wait_for 문구가 호출 기록에 나타나면 프로세스 그룹에 신호를 보내고 (종료 코드, 출력)을 돌려준다."""
     import time
@@ -325,17 +331,24 @@ def _run_and_signal(sandbox, sig, wait_for, deploys=1, **env):
         stderr=subprocess.STDOUT,
         text=True,
         start_new_session=True,
+        preexec_fn=_default_signals,
     )
-    proc.stdin.write("y\n")
-    proc.stdin.flush()
-    calls = sandbox.fake / "calls"
-    deadline = time.time() + 20
-    while time.time() < deadline and calls.read_text().count(wait_for) < deploys:
-        time.sleep(0.1)
-    assert calls.read_text().count(wait_for) >= deploys, "목표 단계에 이르지 못했다"
-    time.sleep(0.5)  # 배포 명령이 끝났다면 /health 대기에 들어갈 시간을 준다
-    os.killpg(proc.pid, sig)
-    out, _ = proc.communicate(timeout=60)
+    try:
+        proc.stdin.write("y\n")
+        proc.stdin.flush()
+        calls = sandbox.fake / "calls"
+        deadline = time.time() + 20
+        while time.time() < deadline and calls.read_text().count(wait_for) < deploys:
+            time.sleep(0.1)
+        assert calls.read_text().count(wait_for) >= deploys, "목표 단계에 이르지 못했다"
+        time.sleep(0.5)  # 배포 명령이 끝났다면 /health 대기에 들어갈 시간을 준다
+        os.killpg(proc.pid, sig)
+        out, _ = proc.communicate(timeout=60)
+    finally:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)  # 시험이 실패해도 sleep 같은 자식을 남기지 않는다
+        except ProcessLookupError:
+            pass
     return proc.returncode, out, sandbox.snapshot()
 
 
@@ -346,7 +359,7 @@ def test_interrupt_during_deploy_restores_old_env_and_tells_to_recheck(sandbox, 
     rc, out, s = _run_and_signal(sandbox, sig, "vercel deploy", DEPLOY_SLEEP="30")
     assert rc == 130, out
     assert s["env"] == OLD and s["deploys"] == 1
-    assert "다시 실행" in out and "신호를 무시" in out
+    assert "다시 실행" in out and "kill" in out
 
 
 @needs_bash
@@ -381,37 +394,67 @@ def test_interrupt_during_recovery_is_ignored_and_recovery_completes(sandbox):
         DEPLOY_SLEEP_FROM="2",
     )
     assert s["env"] == OLD and s["live"] == OLD and s["deploys"] == 2, out
-    assert "신호를 무시" in out and rc != 0
+    assert "신호를 무시" in out and "자식인 vercel" in out and rc != 0
 
 
-@needs_bash
-def test_closed_terminal_still_restores_env_before_any_output(sandbox):
-    """터미널 창을 닫아 화면 출력이 실패(EIO)해도 SIGHUP 처리에서 환경변수를 이전 값으로 되돌린다(set -e로 멈추지 않는다)."""
+def _run_on_closed_terminal(sandbox, sig, ignore_hup=False, **env):
+    """가상 터미널에서 스크립트를 띄워 배포 단계에 이르면 터미널을 닫고(이후 화면 쓰기 실패), sig가 있으면 보낸다."""
     import pty
     import time
+
+    def pre():
+        _default_signals()
+        if ignore_hup:  # nohup으로 시작한 것처럼 HUP이 무시된 채 시작
+            signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
     master, slave = pty.openpty()
     proc = subprocess.Popen(
         ["bash", str(SCRIPT), NEW],
         cwd=sandbox.repo,
-        env=sandbox.build_env(DEPLOY_SLEEP="30"),
+        env=sandbox.build_env(**env),
         stdin=subprocess.PIPE,
         stdout=slave,
         stderr=slave,
         text=True,
         start_new_session=True,
+        preexec_fn=pre,
     )
     os.close(slave)
-    proc.stdin.write("y\n")
-    proc.stdin.flush()
-    calls = sandbox.fake / "calls"
-    deadline = time.time() + 20
-    while time.time() < deadline and "vercel deploy" not in calls.read_text():
-        time.sleep(0.1)
-    assert "vercel deploy" in calls.read_text(), "배포 단계에 이르지 못했다"
-    os.close(master)  # 터미널 닫기 — 이후 화면 쓰기는 실패한다
-    time.sleep(0.3)
-    os.killpg(proc.pid, signal.SIGHUP)
-    proc.wait(timeout=30)
-    s = sandbox.snapshot()
+    try:
+        proc.stdin.write("y\n")
+        proc.stdin.flush()
+        calls = sandbox.fake / "calls"
+        deadline = time.time() + 20
+        while time.time() < deadline and "vercel deploy" not in calls.read_text():
+            time.sleep(0.1)
+        assert "vercel deploy" in calls.read_text(), "배포 단계에 이르지 못했다"
+        os.close(master)  # 터미널 닫기 — 이후 화면 쓰기는 실패한다
+        time.sleep(0.3)
+        if sig is not None:
+            os.killpg(proc.pid, sig)
+        proc.wait(timeout=60)
+    finally:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    return sandbox.snapshot()
+
+
+@needs_bash
+def test_closed_terminal_still_restores_env_before_any_output(sandbox):
+    """터미널 창을 닫아 화면 출력이 실패(EIO)해도 SIGHUP 처리에서 안내 출력보다 먼저 환경변수를 이전 값으로 되돌린다."""
+    s = _run_on_closed_terminal(sandbox, signal.SIGHUP, DEPLOY_SLEEP="30")
     assert s["env"] == OLD and s["deploys"] == 1
+
+
+@needs_bash
+def test_closed_terminal_never_corrupts_the_env_value(sandbox):
+    """HUP이 무시된 채 시작해 터미널이 닫혀도(스크립트는 계속 진행) 복구로 넣는 환경변수 값이 못 쓴 안내 글자와 섞이지 않는다.
+
+    echo가 닫힌 터미널에 못 쓴 글자가 bash 버퍼에 남고, 내장 printf로 파이프에 쓰면 값 앞에 섞여 들어간다(외부 printf로 방지).
+    """
+    s = _run_on_closed_terminal(
+        sandbox, None, ignore_hup=True, DEPLOY_SLEEP="3", FAIL_DEPLOY_FROM="1"
+    )
+    assert s["env"] == OLD, repr(s["env"])
