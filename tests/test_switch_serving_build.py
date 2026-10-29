@@ -6,6 +6,7 @@
 
 import os
 import shutil
+import signal
 import subprocess
 from pathlib import Path
 
@@ -33,6 +34,7 @@ case "$1 $2" in
     [ "${FAIL_ADD_FOR:-}" = "$v" ] && exit 1
     printf '%s' "$v" > "$FAKE/env" ;;
   "deploy --prod")
+    [ -n "${PROMOTE_FIRST:-}" ] && cp "$FAKE/env" "$FAKE/live"
     [ -n "${DEPLOY_SLEEP:-}" ] && sleep "$DEPLOY_SLEEP"
     n=$(grep -c "^vercel deploy" "$FAKE/calls")
     if [ -n "${PROMOTE_THEN_FAIL:-}" ] && [ "$n" -eq 1 ]; then cp "$FAKE/env" "$FAKE/live"; exit 1; fi
@@ -210,6 +212,7 @@ def test_bad_health_after_deploy_rolls_back_and_redeploys(sandbox):
     assert r.returncode != 0
     assert s["env"] == OLD and s["live"] == OLD and s["deploys"] == 2
     assert "이전 build" in r.stdout
+    assert "늦게 완료" in r.stdout  # 되돌린 재배포가 성공한 경로에도 안내가 있다
 
 
 @needs_bash
@@ -219,6 +222,7 @@ def test_rollback_deploy_failure_is_reported_and_env_is_still_old(sandbox):
     assert r.returncode != 0
     assert s["env"] == OLD and s["deploys"] == 2
     assert "되돌린 배포도" in r.stdout
+    assert "늦게 완료" in r.stdout  # 되돌린 배포가 실패한 경로에도 안내가 있다
 
 
 @needs_bash
@@ -306,16 +310,14 @@ def test_matching_build_id_with_wrong_bundle_sha_is_not_success(sandbox):
     assert s["env"] == OLD and s["deploys"] == 2
 
 
-@needs_bash
-def test_interrupt_during_deploy_restores_old_env_and_tells_to_recheck(sandbox):
-    """배포 도중 Ctrl-C(SIGINT)로 끊겨도 환경변수를 이전 값으로 되돌리고, 재배포는 하지 않으며, 공개 상태를 다시 보라고 알린다."""
-    import signal
+def _run_and_signal(sandbox, sig, wait_for, **env):
+    """스크립트를 띄워 wait_for 문구가 호출 기록에 나타나면 프로세스 그룹에 신호를 보내고 (종료 코드, 출력)을 돌려준다."""
     import time
 
     proc = subprocess.Popen(
         ["bash", str(SCRIPT), NEW],
         cwd=sandbox.repo,
-        env=sandbox.build_env(DEPLOY_SLEEP="30"),
+        env=sandbox.build_env(**env),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -326,12 +328,39 @@ def test_interrupt_during_deploy_restores_old_env_and_tells_to_recheck(sandbox):
     proc.stdin.flush()
     calls = sandbox.fake / "calls"
     deadline = time.time() + 20
-    while time.time() < deadline and "vercel deploy" not in calls.read_text():
+    while time.time() < deadline and wait_for not in calls.read_text():
         time.sleep(0.1)
-    assert "vercel deploy" in calls.read_text(), "배포 단계에 이르지 못했다"
-    os.killpg(proc.pid, signal.SIGINT)
-    out, _ = proc.communicate(timeout=30)
-    s = sandbox.snapshot()
-    assert proc.returncode == 130, out
+    assert wait_for in calls.read_text(), "목표 단계에 이르지 못했다"
+    time.sleep(0.5)  # 배포 명령이 끝났다면 /health 대기에 들어갈 시간을 준다
+    os.killpg(proc.pid, sig)
+    out, _ = proc.communicate(timeout=60)
+    return proc.returncode, out, sandbox.snapshot()
+
+
+@needs_bash
+@pytest.mark.parametrize("sig", [signal.SIGINT, signal.SIGTERM, signal.SIGHUP])
+def test_interrupt_during_deploy_restores_old_env_and_tells_to_recheck(sandbox, sig):
+    """배포 도중 Ctrl-C·종료·터미널 닫힘으로 끊겨도 환경변수를 이전 값으로 되돌리고, 공개 상태를 다시 보라고 알린다."""
+    rc, out, s = _run_and_signal(sandbox, sig, "vercel deploy", DEPLOY_SLEEP="30")
+    assert rc == 130, out
     assert s["env"] == OLD and s["deploys"] == 1
-    assert "다시 실행" in out
+    assert "다시 실행" in out and "신호를 무시" in out
+
+
+@needs_bash
+def test_interrupt_never_redeploys_even_if_remote_already_promoted(sandbox):
+    """끊은 시점에 원격이 이미 새 build였어도 핸들러는 재배포하지 않는다(재배포하면 recover로 바뀐 것)."""
+    rc, out, s = _run_and_signal(
+        sandbox, signal.SIGINT, "vercel deploy", DEPLOY_SLEEP="30", PROMOTE_FIRST="1"
+    )
+    assert rc == 130, out
+    assert s["deploys"] == 1 and s["live"] == NEW and s["env"] == OLD
+
+
+@needs_bash
+def test_interrupt_while_waiting_for_health_keeps_new_env(sandbox):
+    """배포가 끝난 뒤 /health 확인 중에 끊으면 환경변수를 이전 값으로 되돌리지 않는다 — 서버(새 build)와 어긋나지 않게."""
+    proc_env = dict(WRONG_SHA_FOR=NEW, SWITCH_SLEEP="30")
+    rc, out, s = _run_and_signal(sandbox, signal.SIGINT, "vercel deploy", **proc_env)
+    assert s["live"] == NEW and s["env"] == NEW and s["deploys"] == 1, out
+    assert rc != 0

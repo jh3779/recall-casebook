@@ -12,7 +12,8 @@
 #   - 배포 명령 실패             → 이전 값으로 되돌리고 /health를 본다. 이전 build가 아니거나 읽히지 않으면 이전 build를 다시 배포한다 (명령이 실패해도 원격 배포는 올라갔을 수 있다)
 #   - 배포 뒤 /health가 안 맞음   → 위와 같다 (이전 값 복구 → 이전 build 다시 배포 → /health 확인)
 #   - 이전 값 복구가 실패          → 변수가 없는 채로 재배포하면 서버가 시작하지 못하므로 재배포하지 않고 대시보드 안내만 한다
-#   - Ctrl-C·터미널 종료            → 환경변수를 이전 값으로 되돌리고(재배포는 안 함) 공개 상태를 다시 보라고 알린다
+#   - Ctrl-C·터미널 종료(배포 명령이 끝나기 전) → 환경변수를 이전 값으로 되돌리고(재배포는 안 함) 공개 상태를 다시 보라고 알린다
+#     배포 명령이 끝난 뒤의 /health 확인 중 끊기면 환경변수는 새 값 그대로 둔다(서버도 새 build). 복구 중에는 신호를 무시한다
 #   - 작업 폴더가 깨끗한 최신 main이 아님 → vercel deploy --prod 가 작업 폴더 전체를 올리므로 --check도 중단한다
 #   - 공개 서버가 이미 그 build   → 숨은 환경변수만 그 값으로 다시 맞춘다 (배포 없음)
 
@@ -135,7 +136,8 @@ on_interrupt() {
   echo
   echo "!! 중단됐다 — 환경변수를 이전 값 $CUR_BUILD 로 되돌린다 (재배포는 하지 않는다)"
   restore_env || true
-  echo "!! 원격 배포는 계속 진행됐을 수 있다 — /health 의 build_id 를 확인하고, $BUILD 가 보이면 이 스크립트를 $CUR_BUILD 로 다시 실행해 되돌린다"
+  echo "!! 원격 배포는 계속 진행됐을 수 있다 — /health 의 build_id 를 확인한다. 환경변수와 공개 서버가 다른 build면 원하는 build 인수로 이 스크립트를 다시 실행한다(공개 서버가 이미 그 build면 환경변수만 맞춘다): 되돌리려면 $CUR_BUILD, 새 build를 원하면 $BUILD"
+  echo "!! 복구 중에는 신호를 무시한다 — vercel 이 멈추면 다른 터미널에서 프로세스를 종료하고 대시보드 Settings > Environment Variables 에서 SERVING_BUILD_ID 를 직접 확인한다"
   exit 130
 }
 trap on_interrupt INT TERM HUP
@@ -151,6 +153,9 @@ if ! vercel deploy --prod; then
   recover || true
   exit 1
 fi
+
+# 배포 명령이 끝나면 새 build가 이미 올라간 것이다 — 이후 구간에서 끊겨도 환경변수를 이전 값으로 되돌리지 않는다(되돌리면 서버=새 build, 환경변수=이전 값으로 어긋난다).
+trap - INT TERM HUP
 
 for _ in 1 2 3; do
   H=$(health)
